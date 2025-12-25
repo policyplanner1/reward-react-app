@@ -22,7 +22,7 @@ import {
 } from 'react-icons/fa';
 import { FiPackage } from 'react-icons/fi';
 
-const API_BASE = 'https://rewardplanners.com/api/crm';
+const API_BASE = 'http://localhost:5000/api';
 
 type ProductStatus =
   | 'pending'

@@ -20,7 +20,8 @@ interface VendorItem {
   submitted_at: string;
 }
 
-const API_BASE = 'https://rewardplanners.com/api/crm';
+// const API_BASE = 'https://rewardplanners.com/api/crm';
+const API_BASE = 'http://localhost:5000/api';
 
 const StatusChip = ({ status }: { status: VendorItem['status'] }) => {
   const styles = {
