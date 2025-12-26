@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, ChangeEvent, FormEvent, useEffect } from "react";
-import { useParams, useRouter } from "react-router-dom";
+import { useParams, useRouter } from "next/navigation";
 import {
   FaTag,
   FaBox,
