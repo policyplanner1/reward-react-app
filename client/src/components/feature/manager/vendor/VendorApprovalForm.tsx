@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
 import {
   FaBuilding,
   FaAddressBook,
@@ -454,7 +453,7 @@ export default function VendorApprovalForm() {
       if (!res.ok) throw new Error(json.message);
 
       alert(`Vendor status updated to ${status}`);
-      router.push("/src/manager/dashboard/vendorlist");
+      navigate("/src/manager/dashboard/vendorlist");
     } catch (err: any) {
       alert(err.message);
     } finally {

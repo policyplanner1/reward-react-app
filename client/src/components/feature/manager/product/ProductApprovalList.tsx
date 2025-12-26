@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { LucideIcon } from "lucide-react";
-import Link from "next/link";
 import {
   FaCheckCircle,
   FaTimesCircle,
@@ -28,6 +26,7 @@ import {
   FaTrash,
 } from "react-icons/fa";
 import { FiPackage } from "react-icons/fi";
+import { Link } from "react-router-dom";
 
 const API_BASE_URL = "http://localhost:5000/api";
 const API_BASEIMAGE_URL = "http://localhost:5000";
@@ -46,7 +45,7 @@ type ProductStatus =
 type StatusConfig = {
   text: string;
   color: string;
-  Icon: LucideIcon;
+  Icon: FaClock;
 };
 
 interface ProductDocument {
@@ -839,7 +838,7 @@ export default function ProductManagerList() {
                     <div className="flex items-center space-x-2">
                       {/* View Button*/}
                       <Link
-                        href={`/src/manager/dashboard/product/productView/${product.product_id}`}
+                        to={`/src/manager/dashboard/product/productView/${product.product_id}`}
                       >
                         <button
                           className="p-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"

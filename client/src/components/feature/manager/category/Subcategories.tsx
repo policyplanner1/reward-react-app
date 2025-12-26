@@ -1,6 +1,5 @@
 "use client";
 
-import { api } from "@/app/src/api/api";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   FiEdit,
@@ -12,6 +11,7 @@ import {
   FiX,
   FiSave,
 } from "react-icons/fi";
+import { api } from "../../../../api/api";
 
 type Status = "active" | "inactive";
 
