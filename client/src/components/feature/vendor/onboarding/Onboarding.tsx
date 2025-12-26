@@ -1,4 +1,5 @@
-import { useState, ChangeEvent, FormEvent, useEffect } from "react";
+// ...existing code...
+import { useState, ChangeEvent, FormEvent, useEffect, ComponentType } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   FaBuilding,
@@ -137,6 +138,84 @@ const initialFormData: VendorOnboardingData = {
   comments: "",
 };
 
+/* ================= SMALL UI HELPERS (added) ================= */
+
+type IconComp = ComponentType<any>;
+
+function SectionHeader({ icon: Icon, title, description }: { icon: IconComp; title: string; description?: string; }) {
+  return (
+    <div className="flex items-start space-x-3">
+      <div className="p-3 text-white rounded-md" style={{ background: "linear-gradient(to right, #852BAF, #FC3F78)" }}>
+        <Icon />
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold">{title}</h3>
+        {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+      </div>
+    </div>
+  );
+}
+
+function FormInput(props: {
+  id: string;
+  label: string;
+  value?: string | number;
+  onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  type?: string;
+  required?: boolean;
+  placeholder?: string;
+  error?: string;
+}) {
+  const { id, label, value = "", onChange, type = "text", required, placeholder, error } = props;
+  return (
+    <div className="flex flex-col space-y-1">
+      <label htmlFor={id} className="text-sm font-medium text-gray-700">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        id={id}
+        name={id}
+        value={value}
+        onChange={onChange}
+        type={type}
+        placeholder={placeholder}
+        required={required}
+        className="p-3 transition duration-150 border border-gray-300 rounded-lg focus:ring-1 focus:ring-brand-purple focus:border-brand-purple"
+      />
+      {error && <p className="text-xs text-red-500">{error}</p>}
+    </div>
+  );
+}
+
+function FileUploadInput(props: {
+  id: string;
+  label: string;
+  file: File | null;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  accept?: string;
+  required?: boolean;
+  description?: string;
+}) {
+  const { id, label, file, onChange, accept, required, description } = props;
+  return (
+    <div className="flex flex-col space-y-1">
+      <label htmlFor={id} className="text-sm font-medium text-gray-700">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        id={id}
+        name={id}
+        type="file"
+        accept={accept}
+        onChange={onChange as (e: ChangeEvent<HTMLInputElement>) => void}
+        className="text-sm"
+      />
+      {description && <p className="text-xs text-gray-500">{description}</p>}
+      {file && <p className="text-xs text-gray-600">Selected: {file.name}</p>}
+    </div>
+  );
+}
+
 /* ================= MAIN COMPONENT ================= */
 
 export default function Onboarding() {
@@ -151,6 +230,10 @@ export default function Onboarding() {
     "pending" | "sent_for_approval" | "approved" | "rejected" | null
   >(null);
   const [rejectionReason, setRejectionReason] = useState("");
+
+  // NEW local UI checkbox states & handlers
+  const [isSameAsAddress, setIsSameAsAddress] = useState(false);
+  const [isSameAsBilling, setIsSameAsBilling] = useState(false);
 
   /* ================= FETCH STATUS ================= */
 
@@ -176,7 +259,8 @@ export default function Onboarding() {
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    const { name, value, type, checked, files } = e.target as HTMLInputElement;
+    const target = e.target as HTMLInputElement;
+    const { name, value, type, checked, files } = target;
 
     if (type === "file") {
       setFormData((p) => ({ ...p, [name]: files?.[0] || null }));
@@ -189,6 +273,59 @@ export default function Onboarding() {
     }
 
     setFormData((p) => ({ ...p, [name]: value }));
+  };
+
+  const handleVendorTypeChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const v = e.target.value as VendorOnboardingData["vendorType"];
+    setFormData((p) => ({ ...p, vendorType: v }));
+  };
+
+  const handleCheckboxChange = (which: "billing" | "shipping") => {
+    if (which === "billing") {
+      const next = !isSameAsAddress;
+      setIsSameAsAddress(next);
+      if (next) {
+        setFormData((p) => ({
+          ...p,
+          billingAddressLine1: p.addressLine1,
+          billingAddressLine2: p.addressLine2,
+          billingCity: p.city,
+          billingState: p.state,
+          billingPincode: p.pincode,
+        }));
+      } else {
+        setFormData((p) => ({
+          ...p,
+          billingAddressLine1: "",
+          billingAddressLine2: "",
+          billingCity: "",
+          billingState: "",
+          billingPincode: "",
+        }));
+      }
+    } else {
+      const next = !isSameAsBilling;
+      setIsSameAsBilling(next);
+      if (next) {
+        setFormData((p) => ({
+          ...p,
+          shippingAddressLine1: p.billingAddressLine1,
+          shippingAddressLine2: p.billingAddressLine2,
+          shippingCity: p.billingCity,
+          shippingState: p.billingState,
+          shippingPincode: p.billingPincode,
+        }));
+      } else {
+        setFormData((p) => ({
+          ...p,
+          shippingAddressLine1: "",
+          shippingAddressLine2: "",
+          shippingCity: "",
+          shippingState: "",
+          shippingPincode: "",
+        }));
+      }
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -298,7 +435,7 @@ export default function Onboarding() {
                     id="gstinFile"
                     label="GST Certificate"
                     file={formData.gstinFile}
-                    onChange={handleChange}
+                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
                     required
                     description="Upload your GST Registration Certificate (PDF/JPG/PNG)."
                   />
@@ -307,7 +444,7 @@ export default function Onboarding() {
                     id="panFile"
                     label="PAN Card"
                     file={formData.panFile}
-                    onChange={handleChange}
+                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
                     required
                     description="Upload company PAN (PDF/JPG/PNG)."
                   />
@@ -317,7 +454,7 @@ export default function Onboarding() {
                     id="nocFile"
                     label="NOC"
                     file={formData.nocFile}
-                    onChange={handleChange}
+                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
                     required
                     accept=".jpg, .jpeg, .png, .pdf"
                     description="Upload a No objection certificate."
@@ -328,7 +465,7 @@ export default function Onboarding() {
                     id="rightsAdvisoryFile"
                     label="Trademark Certificate"
                     file={formData.rightsAdvisoryFile}
-                    onChange={handleChange}
+                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
                     required
                     accept=".jpg, .jpeg, .png, .pdf"
                     description="Trademark."
@@ -339,7 +476,7 @@ export default function Onboarding() {
                     id="signatoryIdFile"
                     label="Authorized Signatory ID Proof"
                     file={formData.signatoryIdFile}
-                    onChange={handleChange}
+                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
                     accept=".jpg, .jpeg, .png, .pdf"
                     description="Upload Aadhaar or PAN of authorized signatory."
                   />
@@ -349,7 +486,7 @@ export default function Onboarding() {
                     id="businessProfileFile"
                     label="Business Profile"
                     file={formData.businessProfileFile}
-                    onChange={handleChange}
+                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
                     accept=".pdf, .doc, .docx"
                     description="Upload your Business Profile (PDF or DOC)."
                   />
@@ -359,7 +496,7 @@ export default function Onboarding() {
                     id="brandLogoFile"
                     label="Brand Logo"
                     file={formData.brandLogoFile}
-                    onChange={handleChange}
+                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
                     accept=".jpg, .jpeg, .png, .svg"
                     description="Upload brand logo (PNG/JPG/SVG)."
                   />
@@ -369,7 +506,7 @@ export default function Onboarding() {
                     id="bankProofFile"
                     label="Bank Cancelled Cheque"
                     file={formData.bankProofFile}
-                    onChange={handleChange}
+                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
                     accept=".jpg, .jpeg, .png, .pdf"
                     description="Upload a Cancelled Cheque with company name and account details."
                   />
@@ -379,7 +516,7 @@ export default function Onboarding() {
                     id="electricityBillFile"
                     label="Electricity bill"
                     file={formData.electricityBillFile}
-                    onChange={handleChange}
+                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
                     accept=".jpg, .jpeg, .png, .pdf"
                     description="Upload Electricity bill."
                   />
@@ -408,7 +545,7 @@ export default function Onboarding() {
                       id="vendorAgreementFile"
                       label="Upload Signed Agreement (optional)"
                       file={formData.vendorAgreementFile}
-                      onChange={handleChange}
+                      onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
                       accept=".pdf, .jpg, .jpeg, .png"
                       description="If you have a signed agreement, upload it here (optional)."
                     />
@@ -428,15 +565,6 @@ export default function Onboarding() {
                           />
                           Company Email <span className="text-red-500">*</span>
                         </label>
-                        {/* <input
-                      type="email"
-                      id="companyEmail"
-                      name="companyEmail"
-                      value={formData.companyEmail}
-                      onChange={handleChange}
-                      required
-                      className="p-3 transition duration-150 border border-gray-300 rounded-lg focus:ring-1 focus:ring-brand-purple focus:border-brand-purple"
-                    /> */}
 
                         <FormInput
                           type="email"
@@ -468,7 +596,7 @@ export default function Onboarding() {
                       id="authorizationLetterFile"
                       label="Authorization / Dealership Letter"
                       file={formData.authorizationLetterFile}
-                      onChange={handleChange}
+                      onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
                       required
                       accept=".pdf, .jpg, .jpeg, .png"
                       description="Traders must upload an authorization/dealership agreement."
@@ -707,15 +835,6 @@ export default function Onboarding() {
                     onChange={handleChange}
                     required
                   />
-
-                  {/* <FileUploadInput 
-                  id="bankProofFile" 
-                  label="Cancelled Cheque" 
-                  file={formData.bankProofFile} 
-                  onChange={handleChange} 
-                  required
-                  description="Upload a Cancelled Cheque with company name and account details."
-              /> */}
                 </div>
               </section>
 

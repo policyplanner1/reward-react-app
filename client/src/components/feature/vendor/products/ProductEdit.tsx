@@ -1,4 +1,4 @@
-"use client";
+// NOTE: Custom form abstractions removed. Use native inputs.
 
 import React, { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import {
@@ -121,53 +121,7 @@ const allowOnlyNumbers = (value: string) => /^[0-9]*$/.test(value);
 const allowOnlyDecimal = (value: string) => /^\d*\.?\d*$/.test(value);
 const allowOnlyDimensionFormat = (value: string) => /^[0-9.*]*$/.test(value);
 
-const FormInput = ({
-  id,
-  label,
-  type = "text",
-  value,
-  onChange,
-  required = false,
-  placeholder = "",
-  className = "",
-}: any) => (
-  <div className="flex flex-col space-y-1">
-    <label htmlFor={id} className="text-sm font-medium text-gray-700">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    {type === "textarea" ? (
-      <textarea
-        id={id}
-        rows={4}
-        name={id}
-        value={value}
-        placeholder={placeholder}
-        onChange={onChange}
-        className={`p-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-[#852BAF] focus:border-[#852BAF] ${className}`}
-      />
-    ) : (
-      <input
-        type={type}
-        id={id}
-        name={id}
-        value={value}
-        placeholder={placeholder}
-        onChange={onChange}
-        className={`p-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-[#852BAF] focus:border-[#852BAF] ${className}`}
-      />
-    )}
-  </div>
-);
 
-const SectionHeader = ({ icon: Icon, title, description }: any) => (
-  <div className="flex items-center pb-2 mb-4 space-x-3 border-b">
-    <Icon className="text-2xl" style={{ color: "#852BAF" }} />
-    <div>
-      <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-      <p className="text-sm text-gray-500">{description}</p>
-    </div>
-  </div>
-);
 
 export default function EditProductPage() {
   const params = useParams();
