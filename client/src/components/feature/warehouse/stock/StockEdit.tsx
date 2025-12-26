@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
 
 const API_BASE_URL = "http://localhost:5000/api";
 
@@ -104,7 +103,7 @@ export default function StockInEditPage() {
       if (!res.ok) throw new Error(result.message);
 
       alert("Stock-In updated successfully");
-      router.push("/src/warehouse/stock/stockin");
+      navigate("/src/warehouse/stock/stockin");
     } catch (err) {
       console.error("Update failed:", err);
       alert("Failed to update stock-in");

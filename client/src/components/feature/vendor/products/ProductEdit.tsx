@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, ChangeEvent, FormEvent, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
 import {
   FaTag,
   FaBox,
@@ -780,7 +779,7 @@ export default function EditProductPage() {
       }
 
       setSuccess(`Product updated successfully! Product ID: ${data.productId}`);
-      router.push("/src/vendor/products/list");
+      navigate("/src/vendor/products/list");
     } catch (err: any) {
       console.error("Submit error:", err);
       setError(err.message);

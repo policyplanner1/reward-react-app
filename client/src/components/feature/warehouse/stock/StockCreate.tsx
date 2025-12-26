@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 const API_BASE_URL = "http://localhost:5000/api";
 
@@ -203,7 +202,7 @@ export default function StockInCreatePage() {
     });
 
     alert("Stock-In created successfully");
-    router.push("/src/warehouse/stock/stockin");
+    navigate("/src/warehouse/stock/stockin");
   };
 
   /* ================= UI ================= */

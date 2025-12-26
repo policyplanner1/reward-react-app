@@ -10,8 +10,6 @@ import {
   FaArrowLeft,
   FaEdit,
 } from "react-icons/fa";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 const API_BASE_URL = "http://localhost:5000/api";
 const API_BASEIMAGE_URL = "http://localhost:5000";

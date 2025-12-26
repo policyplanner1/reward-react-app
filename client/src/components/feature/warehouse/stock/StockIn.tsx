@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { FaEye, FaEdit, FaPaperPlane } from "react-icons/fa";
 
 const API_BASE_URL = "http://localhost:5000/api";
@@ -255,7 +254,7 @@ export default function StockInPage() {
 
         <button
           className="px-6 py-3 ml-8 text-white bg-purple-600 rounded-lg"
-          onClick={() => router.push("stockcreate")}
+          onClick={() => navigate("stockcreate")}
         >
           + New Stock In
         </button>
@@ -340,7 +339,7 @@ export default function StockInPage() {
                       <button
                         className="text-purple-600 hover:text-purple-800"
                         onClick={() =>
-                          router.push(
+                          navigate(
                             `/src/warehouse/stock/stockview?grn=${row.grn}`
                           )
                         }
@@ -353,7 +352,7 @@ export default function StockInPage() {
                         <button
                           className="text-green-600 hover:text-green-800"
                           onClick={() =>
-                            router.push(
+                            navigate(
                               `/src/warehouse/stock/stockedit?grn=${row.grn}`
                             )
                           }
