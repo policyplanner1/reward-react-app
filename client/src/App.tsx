@@ -19,13 +19,13 @@ import ManagerDashboard from './pages/vendor_manager/Dashboard';
 import WarehouseDashboard from './pages/warehouse/Dashboard';
 
 /* Manager Features */
-import VendorApprovalList from './components/feature/manager/VendorApprovalList';
-import ProductApprovalList from './components/feature/manager/ProductApprovalList';
-import ProductViewPage from './components/feature/manager/ProductViewPage';
-import VendorApprovalForm from './components/feature/manager/VendorApprovalForm';
-import CategoryManagement from './components/feature/manager/categoriesManagement/categories';
-import SubcategoryManagement from './components/feature/manager/categoriesManagement/subcategories';
-import SubSubCategoryManagement from './components/feature/manager/categoriesManagement/subsubcategories';
+import VendorApprovalList from './components/feature/manager/vendor/VendorApprovalList';
+import ProductApprovalList from './components/feature/manager/product/ProductApprovalList';
+import ProductViewPage from './components/feature/manager/product/ProductViewPage';
+import VendorApprovalForm from './components/feature/manager/vendor/VendorApprovalForm';
+import CategoryManagement from './components/feature/manager/category/Categories';
+import SubcategoryManagement from './components/feature/manager/category/Subcategories';
+import SubSubCategoryManagement from './components/feature/manager/category/Subsubcategories';
 
 export default function App() {
   return (
