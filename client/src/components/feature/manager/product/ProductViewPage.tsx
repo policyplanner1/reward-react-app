@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   FaTag,
+  FaBox,
   FaImages,
   FaFileUpload,
   FaSpinner,
@@ -10,7 +11,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 
 /* ================= CONFIG ================= */
-const API_BASE: string = import.meta.env.VITE_API_URL;
+const API_BASE = import.meta.env.VITE_API_URL;
 
 /* ================= TYPES ================= */
 
@@ -18,90 +19,82 @@ interface VariantView {
   size?: string;
   color?: string;
   dimension?: string;
-  customAttributes?: Record<string, unknown>;
+  materialType?: string;
   MRP?: string | number;
   salesPrice?: string | number;
   stock?: string | number;
   expiryDate?: string;
-  manufacturingYear?: string;
-  materialType?: string;
+  manufacturingDate?: string;
   images?: string[];
+  customAttributes?: Record<string, unknown>;
 }
 
 interface RequiredDoc {
   id: number;
   document_name: string;
-  status: string;
   mime_type: string;
   file_path: string;
 }
 
 interface ProductView {
-  productId?: number | string;
+  productId: number | string;
   productName?: string;
   brandName?: string;
   manufacturer?: string;
   barCode?: string;
+  gstIn?: string;
   description?: string;
   shortDescription?: string;
   categoryName?: string | null;
   subCategoryName?: string | null;
   subSubCategoryName?: string | null;
-  gstIn?: string;
-  product_status?: string;
-  variants?: VariantView[];
   productImages?: string[];
+  variants?: VariantView[];
   requiredDocs?: RequiredDoc[];
 }
 
 /* ================= SMALL COMPONENTS ================= */
 
-interface FormInputProps {
-  id: string;
-  label: string;
-  value?: string | number;
-  type?: "text" | "textarea";
-}
-
-const FormInput: React.FC<FormInputProps> = ({
-  id,
+const FormInput = ({
   label,
   value,
-  type = "text",
+  textarea,
+}: {
+  label: string;
+  value?: string | number;
+  textarea?: boolean;
 }) => (
-  <div className="flex flex-col space-y-1">
-    <label htmlFor={id} className="text-sm font-medium text-gray-700">
+  <div>
+    <label className="block mb-1 text-sm font-medium text-gray-700">
       {label}
     </label>
-    {type === "textarea" ? (
+    {textarea ? (
       <textarea
         readOnly
         rows={4}
         value={value ?? ""}
-        className="p-3 border rounded-lg bg-gray-50"
+        className="w-full p-3 border rounded bg-gray-50"
       />
     ) : (
       <input
         readOnly
         value={value ?? ""}
-        className="p-3 border rounded-lg bg-gray-50"
+        className="w-full p-3 border rounded bg-gray-50"
       />
     )}
   </div>
 );
 
-interface SectionHeaderProps {
-  icon: React.FC<any>;
-  title: string;
-  description: string;
-}
-
-const SectionHeader: React.FC<SectionHeaderProps> = ({
+const SectionHeader = ({
   icon: Icon,
   title,
   description,
+}: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
 }) => (
-  <div className="flex items-center pb-2 mb-4 space-x-3 border-b">
+  <div className="flex items-center gap-3 pb-2 mb-4 border-b">
     <Icon className="text-2xl text-[#852BAF]" />
     <div>
       <h2 className="text-xl font-semibold">{title}</h2>
@@ -112,7 +105,7 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
 
 /* ================= MAIN COMPONENT ================= */
 
-const ProductViewPage: React.FC = () => {
+export default function ProductViewPage() {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
 
@@ -122,31 +115,31 @@ const ProductViewPage: React.FC = () => {
 
   /* ================= HELPERS ================= */
 
-  const resolveImageUrl = (path?: string) => {
+  const resolveFileUrl = (path?: string) => {
     if (!path) return "";
     if (path.startsWith("http")) return path;
     return `${API_BASE}/uploads/${path.replace(/^\/+/, "")}`;
   };
 
   const downloadFile = (url: string, filename?: string) => {
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename || "file";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename ?? "file";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   /* ================= FETCH ================= */
 
   useEffect(() => {
     if (!productId) {
-      setError("Product ID missing in route");
+      setError("Product ID missing");
       setLoading(false);
       return;
     }
 
-    const fetchProduct = async () => {
+    (async () => {
       try {
         const res = await fetch(`${API_BASE}/api/product/${productId}`, {
           headers: {
@@ -154,12 +147,12 @@ const ProductViewPage: React.FC = () => {
           },
         });
 
-        if (!res.ok) throw new Error("Failed to load product");
+        if (!res.ok) throw new Error("Failed to fetch product");
 
         const json = await res.json();
         const raw = json.data ?? json.product ?? json;
 
-        const mapped: ProductView = {
+        setProduct({
           productId: raw.product_id,
           productName: raw.product_name,
           brandName: raw.brand_name,
@@ -172,20 +165,16 @@ const ProductViewPage: React.FC = () => {
           subCategoryName: raw.subcategory_name ?? raw.custom_subcategory,
           subSubCategoryName:
             raw.sub_subcategory_name ?? raw.custom_sub_subcategory,
-          productImages: raw.productImages ?? raw.images ?? [],
+          productImages: raw.images ?? [],
           variants: raw.variants ?? [],
           requiredDocs: raw.documents ?? [],
-        };
-
-        setProduct(mapped);
+        });
       } catch (err: any) {
         setError(err.message || "Error loading product");
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchProduct();
+    })();
   }, [productId]);
 
   /* ================= STATES ================= */
@@ -199,18 +188,10 @@ const ProductViewPage: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error || !product) {
     return (
-      <div className="p-6 text-red-700 border rounded bg-red-50">
-        {error}
-      </div>
-    );
-  }
-
-  if (!product) {
-    return (
-      <div className="p-6 text-yellow-700 border rounded bg-yellow-50">
-        No product found
+      <div className="p-6 text-red-700 bg-red-50 border rounded">
+        {error ?? "Product not found"}
       </div>
     );
   }
@@ -219,20 +200,18 @@ const ProductViewPage: React.FC = () => {
 
   return (
     <div className="p-6 bg-[#FFFAFB]">
-      <div className="p-6 mx-auto bg-white border shadow-xl max-w-7xl rounded-2xl">
-
+      <div className="max-w-7xl p-6 mx-auto bg-white border shadow rounded-2xl">
         {/* HEADER */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">Product Review</h1>
             <p className="text-sm text-gray-600">
-              Viewing product ID: {product.productId}
+              Product ID: {product.productId}
             </p>
           </div>
-
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50"
+            className="flex items-center gap-2 px-4 py-2 border rounded hover:bg-gray-50"
           >
             <FaArrowLeft /> Back
           </button>
@@ -241,93 +220,96 @@ const ProductViewPage: React.FC = () => {
         {/* CATEGORY */}
         <SectionHeader
           icon={FaTag}
-          title="Category Selection"
-          description="Category and classification"
+          title="Category"
+          description="Category classification"
         />
-
-        <div className="grid gap-6 md:grid-cols-3">
-          <FormInput label="Category" id="cat" value={product.categoryName} />
-          <FormInput
-            label="Sub Category"
-            id="sub"
-            value={product.subCategoryName}
-          />
-          <FormInput
-            label="Type"
-            id="type"
-            value={product.subSubCategoryName}
-          />
+        <div className="grid md:grid-cols-3 gap-4">
+          <FormInput label="Category" value={product.categoryName} />
+          <FormInput label="Sub Category" value={product.subCategoryName} />
+          <FormInput label="Type" value={product.subSubCategoryName} />
         </div>
 
         {/* BASIC INFO */}
         <section className="mt-6">
           <SectionHeader
             icon={FaTag}
-            title="Product Identification"
-            description="Basic product details"
+            title="Product Info"
+            description="Basic identification"
           />
-
-          <div className="grid gap-5 md:grid-cols-3">
-            <FormInput label="Product Name" id="name" value={product.productName} />
-            <FormInput label="Brand Name" id="brand" value={product.brandName} />
-            <FormInput label="Manufacturer" id="man" value={product.manufacturer} />
-            <FormInput label="Barcode" id="bar" value={product.barCode} />
-            <FormInput label="GST" id="gst" value={product.gstIn} />
+          <div className="grid md:grid-cols-3 gap-4">
+            <FormInput label="Product Name" value={product.productName} />
+            <FormInput label="Brand Name" value={product.brandName} />
+            <FormInput label="Manufacturer" value={product.manufacturer} />
+            <FormInput label="Barcode" value={product.barCode} />
+            <FormInput label="GST" value={product.gstIn} />
           </div>
         </section>
 
-        {/* PRODUCT IMAGES */}
+        {/* VARIANTS */}
         <section className="mt-6">
           <SectionHeader
-            icon={FaImages}
-            title="Product Images"
-            description="Main listing images"
+            icon={FaBox}
+            title="Variants"
+            description="Product variants"
           />
 
-          <div className="flex flex-wrap gap-2">
-            {product.productImages?.length ? (
-              product.productImages.map((img, i) => {
-                const url = resolveImageUrl(img);
-                return (
-                  <div
-                    key={i}
-                    className="relative w-20 h-20 overflow-hidden border rounded group"
-                  >
-                    <img
-                      src={url}
-                      className="object-cover w-full h-full"
-                    />
-                    <button
-                      onClick={() => downloadFile(url, `product-${i + 1}.jpg`)}
-                      className="absolute p-1 text-white rounded opacity-0 bottom-1 right-1 bg-black/60 group-hover:opacity-100"
-                    >
-                      <FaDownload />
-                    </button>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-sm text-gray-500">No images</p>
-            )}
-          </div>
+          {product.variants?.map((v, i) => (
+            <div
+              key={i}
+              className="p-4 mb-4 bg-gray-50 border rounded-lg"
+            >
+              <div className="grid md:grid-cols-3 gap-3">
+                <FormInput label="Size" value={v.size} />
+                <FormInput label="Color" value={v.color} />
+                <FormInput label="Material" value={v.materialType} />
+                <FormInput label="MRP" value={v.MRP} />
+                <FormInput label="Sales Price" value={v.salesPrice} />
+                <FormInput label="Stock" value={v.stock} />
+                <FormInput label="Manufacturing Date" value={v.manufacturingDate} />
+                <FormInput label="Expiry Date" value={v.expiryDate} />
+              </div>
+
+              {/* Variant Images */}
+              <div className="flex gap-2 mt-3 flex-wrap">
+                {v.images?.map((img, idx) => {
+                  const url = resolveFileUrl(img);
+                  return (
+                    <div key={idx} className="relative w-20 h-20 border rounded">
+                      <img
+                        src={url}
+                        className="object-cover w-full h-full"
+                      />
+                      <button
+                        onClick={() =>
+                          downloadFile(url, `variant-${i}-${idx}.jpg`)
+                        }
+                        className="absolute bottom-1 right-1 p-1 text-white bg-black/60 rounded"
+                      >
+                        <FaDownload />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </section>
 
         {/* DOCUMENTS */}
-        {product.requiredDocs?.length && (
+        {product.requiredDocs && product.requiredDocs.length > 0 && (
           <section className="mt-6">
             <SectionHeader
               icon={FaFileUpload}
               title="Documents"
               description="Uploaded documents"
             />
-
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid md:grid-cols-2 gap-4">
               {product.requiredDocs.map((doc) => {
-                const url = resolveImageUrl(doc.file_path);
+                const url = resolveFileUrl(doc.file_path);
                 return (
                   <div
                     key={doc.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
+                    className="flex justify-between p-4 border rounded"
                   >
                     <div>
                       <div className="font-medium">{doc.document_name}</div>
@@ -336,8 +318,10 @@ const ProductViewPage: React.FC = () => {
                       </div>
                     </div>
                     <button
-                      onClick={() => downloadFile(url, doc.document_name)}
-                      className="px-3 py-1.5 text-white bg-[#852BAF] rounded"
+                      onClick={() =>
+                        downloadFile(url, doc.document_name)
+                      }
+                      className="px-3 py-1 text-white bg-[#852BAF] rounded"
                     >
                       <FaDownload />
                     </button>
@@ -350,6 +334,4 @@ const ProductViewPage: React.FC = () => {
       </div>
     </div>
   );
-};
-
-export default ProductViewPage;
+}

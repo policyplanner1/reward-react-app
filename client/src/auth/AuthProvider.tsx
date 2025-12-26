@@ -42,8 +42,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setLoading(true);
       setError(null);
+       console.log("role in auth provider:", role);
+      const res = await api.post(`/auth/${resolveRoute(role)}/login`, {
 
-      const res = await api.post(`/crm/auth/${resolveRoute(role)}/login`, {
         email,
         password,
       });

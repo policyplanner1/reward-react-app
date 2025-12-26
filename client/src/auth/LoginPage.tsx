@@ -124,7 +124,7 @@ export default function LoginPage() {
                 id="role"
                 name="role"
                 disabled={loading}
-                className="w-full px-4 py-3 transition-all bg-white border border-gray-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 disabled:opacity-60"
+                className="w-full px-4 py-3 transition-all text-gray-700 bg-white border border-gray-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 disabled:opacity-60"
                 value={formData.role}
                 onChange={handleChange}
               >
@@ -149,7 +149,7 @@ export default function LoginPage() {
                 type="password"
                 required
                 disabled={loading}
-                className="w-full px-4 py-3 transition-all bg-white border border-gray-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-60"
+                className="w-full px-4 py-3 transition-all text-gray-700 bg-white border border-gray-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-60"
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}

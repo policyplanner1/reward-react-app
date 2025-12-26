@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { 
   FiEdit, FiTrash2, FiEye, FiPlus, FiCalendar,
