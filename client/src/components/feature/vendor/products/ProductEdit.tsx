@@ -1,6 +1,55 @@
-// NOTE: Custom form abstractions removed. Use native inputs.
 
-import React, { useState, ChangeEvent, FormEvent, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import type { ChangeEvent, FormEvent } from "react";
+import type { ComponentType } from "react";
+
+type IconComp = ComponentType<any>;
+
+function SectionHeader({ icon: Icon, title, description }: { icon: IconComp; title: string; description?: string; }) {
+  return (
+    <div className="flex items-start space-x-3">
+      <div className="p-3 text-white rounded-md" style={{ background: "linear-gradient(to right, #852BAF, #FC3F78)" }}>
+        <Icon />
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold">{title}</h3>
+        {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+      </div>
+    </div>
+  );
+}
+
+function FormInput(props: {
+  id: string;
+  label: string;
+  value?: string | number;
+  onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  type?: string;
+  required?: boolean;
+  placeholder?: string;
+  error?: string;
+}) {
+  const { id, label, value = "", onChange, type = "text", required, placeholder, error } = props;
+  return (
+    <div className="flex flex-col space-y-1">
+      <label htmlFor={id} className="text-sm font-medium text-gray-700">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        id={id}
+        name={id}
+        value={value}
+        onChange={onChange}
+        type={type}
+        placeholder={placeholder}
+        required={required}
+        className="p-3 transition duration-150 border border-gray-300 rounded-lg focus:ring-1 focus:ring-brand-purple focus:border-brand-purple"
+      />
+      {error && <p className="text-xs text-red-500">{error}</p>}
+    </div>
+  );
+}
+
 import {
   FaTag,
   FaBox,
@@ -1325,7 +1374,6 @@ export default function EditProductPage() {
               />
               <FormInput
                 id="brandName"
-                name="brandName"
                 label="Brand"
                 required
                 value={product.brandName}
@@ -1335,7 +1383,6 @@ export default function EditProductPage() {
 
               <FormInput
                 id="manufacturer"
-                name="manufacturer"
                 label="Manufacturer"
                 required
                 value={product.manufacturer}
@@ -1345,7 +1392,6 @@ export default function EditProductPage() {
 
               <FormInput
                 id="barCode"
-                name="barCode"
                 label="Barcode"
                 value={product.barCode}
                 onChange={handleFieldChange}
@@ -1354,7 +1400,6 @@ export default function EditProductPage() {
 
               <FormInput
                 id="gstIn"
-                name="gstIn"
                 label="GST"
                 value={product.gstIn}
                 onChange={handleFieldChange}
@@ -1369,7 +1414,6 @@ export default function EditProductPage() {
 
             <FormInput
               id="description"
-              name="description"
               label="Detailed Description"
               type="textarea"
               required
@@ -1381,7 +1425,6 @@ export default function EditProductPage() {
             <div className="mt-4">
               <FormInput
                 id="shortDescription"
-                name="shortDescription"
                 label="Short Description"
                 required
                 value={product.shortDescription}

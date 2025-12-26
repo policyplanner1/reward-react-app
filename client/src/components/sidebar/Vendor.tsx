@@ -10,7 +10,15 @@ import { useAuth } from "../../auth/useAuth";
 type SvgProps = React.SVGProps<SVGSVGElement>;
 
 const LayoutDashboard = (props: SvgProps) => (
-  <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg
+    {...props}
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
     <rect x="3" y="3" width="7" height="9" />
     <rect x="14" y="3" width="7" height="5" />
     <rect x="14" y="12" width="7" height="9" />
@@ -19,7 +27,15 @@ const LayoutDashboard = (props: SvgProps) => (
 );
 
 const PackageIcon = (props: SvgProps) => (
-  <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg
+    {...props}
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
     <path d="m7.5 4.27 9 5.15" />
     <path d="m21 8.24-9-5.15-9 5.15" />
     <path d="M3.27 12.44 12 17.59l8.73-5.15" />
@@ -28,7 +44,15 @@ const PackageIcon = (props: SvgProps) => (
 );
 
 const PlusSquare = (props: SvgProps) => (
-  <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg
+    {...props}
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
     <rect x="3" y="3" width="18" height="18" rx="2" />
     <line x1="12" y1="8" x2="12" y2="16" />
     <line x1="8" y1="12" x2="16" y2="12" />
@@ -36,7 +60,15 @@ const PlusSquare = (props: SvgProps) => (
 );
 
 const Building = (props: SvgProps) => (
-  <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg
+    {...props}
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
     <path d="M18 22V7.5L12 2L6 7.5V22" />
     <path d="M4 22h16" />
   </svg>
@@ -66,16 +98,41 @@ export default function VendorNavbar() {
   const { pathname } = useLocation();
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [vendorStatus, setVendorStatus] = useState<"approved" | "pending" | null>(null);
+  const [vendorStatus, setVendorStatus] = useState<
+    "approved" | "pending" | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   /* ---------------- FETCH VENDOR STATUS ---------------- */
 
+  // useEffect(() => {
+  //   const fetchStatus = async () => {
+  //     try {
+  //       const res = await api.get("/vendor/my-details");
+  //       setVendorStatus(res.data.vendor.status);
+  //     } catch {
+  //       setVendorStatus(null);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchStatus();
+  // }, []);
+
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const res = await api.get("/crm/vendor/my-details");
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const res = await api.get("/vendor/my-details", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
         setVendorStatus(res.data.vendor.status);
       } catch {
         setVendorStatus(null);
@@ -113,7 +170,11 @@ export default function VendorNavbar() {
       Icon: FiTag,
       children: [
         { label: "Add Product", to: "/vendor/products/add", Icon: PlusSquare },
-        { label: "Product List", to: "/vendor/products/list", Icon: PackageIcon },
+        {
+          label: "Product List",
+          to: "/vendor/products/list",
+          Icon: PackageIcon,
+        },
       ],
     },
   ].filter(Boolean) as NavItem[];
@@ -135,7 +196,9 @@ export default function VendorNavbar() {
             <div key={item.label}>
               <button
                 onClick={() =>
-                  setOpenDropdown(openDropdown === item.label ? null : item.label)
+                  setOpenDropdown(
+                    openDropdown === item.label ? null : item.label
+                  )
                 }
                 className="flex items-center w-full gap-3 px-4 py-3 font-semibold rounded-xl hover:bg-gray-50"
               >

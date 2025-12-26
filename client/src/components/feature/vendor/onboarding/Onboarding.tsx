@@ -1,5 +1,6 @@
-// ...existing code...
-import { useState, ChangeEvent, FormEvent, useEffect, ComponentType } from "react";
+import React, { useState, useEffect } from "react";
+import type { ChangeEvent, FormEvent } from "react";
+import type { ComponentType } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   FaBuilding,
@@ -13,7 +14,8 @@ import {
   FaEnvelope,
 } from "react-icons/fa";
 
-import { API_BASE_URL } from "@/config/api";
+
+const API_BASE = import.meta.env.VITE_API_URL;
 
 /* ================= TYPES ================= */
 
@@ -241,7 +243,7 @@ export default function Onboarding() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    fetch(`${API_BASE_URL}/vendor/my-details`, {
+    fetch(`${API_BASE}/vendor/my-details`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -340,7 +342,7 @@ export default function Onboarding() {
       else if (v !== null) form.append(k, String(v));
     });
 
-    const res = await fetch(`${API_BASE_URL}/vendor/onboard`, {
+    const res = await fetch(`${API_BASE}/vendor/onboard`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: form,

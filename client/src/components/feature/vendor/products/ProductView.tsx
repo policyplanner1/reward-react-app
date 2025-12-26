@@ -1,6 +1,95 @@
-// NOTE: Custom form abstractions removed. Use native inputs.
+import React, { useState, useEffect } from "react";
+import type { ChangeEvent, FormEvent } from "react";
+import type { ComponentType } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+type IconComp = ComponentType<any>;
 
-import React, { useEffect, useState } from "react";
+function SectionHeader({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: IconComp;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="flex items-start space-x-3">
+      <div
+        className="p-3 text-white rounded-md"
+        style={{ background: "linear-gradient(to right, #852BAF, #FC3F78)" }}
+      >
+        <Icon />
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold">{title}</h3>
+        {description && (
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FormInput(props: {
+  id: string;
+  label: string;
+  value?: string | number;
+  onChange?: (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => void;
+  type?: "text" | "textarea";
+  required?: boolean;
+  placeholder?: string;
+  error?: string;
+  readOnly?: boolean;
+}) {
+  const {
+    id,
+    label,
+    value = "",
+    onChange,
+    type = "text",
+    required,
+    placeholder,
+    error,
+    readOnly = false,
+  } = props;
+
+  return (
+    <div className="flex flex-col space-y-1">
+      <label htmlFor={id} className="text-sm font-medium text-gray-700">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+
+      {type === "textarea" ? (
+        <textarea
+          id={id}
+          name={id}
+          value={String(value)}
+          onChange={onChange}
+          readOnly={readOnly}
+          placeholder={placeholder}
+          className="p-3 border rounded-lg bg-gray-50"
+        />
+      ) : (
+        <input
+          id={id}
+          name={id}
+          value={String(value)}
+          onChange={onChange}
+          readOnly={readOnly}
+          type="text"
+          placeholder={placeholder}
+          className="p-3 border rounded-lg bg-gray-50"
+        />
+      )}
+
+      {error && <p className="text-xs text-red-500">{error}</p>}
+    </div>
+  );
+}
+
 import {
   FaTag,
   FaBox,
@@ -10,6 +99,7 @@ import {
   FaArrowLeft,
   FaEdit,
 } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
 const API_BASE_URL = "http://localhost:5000/api";
 const API_BASEIMAGE_URL = "http://localhost:5000";
@@ -56,15 +146,10 @@ interface ProductView {
   }>;
 }
 
+export default function ReviewProductPage() {
+  const { productId } = useParams<{ productId: string }>();
+  const navigate = useNavigate();
 
-
-export default function ReviewProductPage({
-  params,
-}: {
-  params: { productId: string };
-}) {
-  const { productId } = params;
-  const router = useRouter();
 
   const [product, setProduct] = useState<ProductView | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -216,11 +301,12 @@ export default function ReviewProductPage({
 
           <div className="flex gap-2">
             <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50"
-            >
-              <FaArrowLeft /> Back
-            </button>
+  onClick={() => navigate(-1)}
+  className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50"
+>
+  <FaArrowLeft /> Back
+</button>
+
 
             {/* Edit button - navigate to your edit route if exists */}
             {/* <Link
@@ -233,7 +319,7 @@ export default function ReviewProductPage({
               product.product_status ?? ""
             ) && (
               <Link
-                href={`/src/vendor/products/edit/${product.productId}`}
+                to={`/src/vendor/products/edit/${product.productId}`}
                 target="_blank"
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50"
               >

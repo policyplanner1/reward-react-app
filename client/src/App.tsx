@@ -33,6 +33,11 @@ import StockInViewPage from "./components/feature/warehouse/stock/Stockview";
 import StockInCreatePage from "./components/feature/warehouse/stock/StockCreate";
 import StockInEditPage from "./components/feature/warehouse/stock/StockEdit";
 import ProductViewPage from "./components/feature/manager/product/ProductViewPage";
+import Onboarding from "./components/feature/vendor/onboarding/Onboarding";
+import ProductListingDynamic from "./components/feature/vendor/products/ProductAdd";
+import ProductManagerList from "./components/feature/vendor/products/ProductList";
+import EditProductPage from "./components/feature/vendor/products/ProductEdit";
+import ReviewProductPage from "./components/feature/vendor/products/ProductView";
 
 export default function App() {
   return (
@@ -47,8 +52,44 @@ export default function App() {
 
       {/* ========== VENDOR ========== */}
       <Route element={<VendorLayout />}>
-        <Route path={routes.vendor.dashboard} element={<VendorDashboard />} />
-      </Route>
+
+  <Route
+    path={routes.vendor.dashboard}
+    element={<VendorDashboard />}
+  />
+
+  <Route
+    path={routes.vendor.onboarding}
+    element={<Onboarding />}
+  />
+
+  <Route
+    path={routes.vendor.products.add}
+    element={<ProductListingDynamic />}
+  />
+
+  <Route
+    path={routes.vendor.products.list}
+    element={<ProductManagerList />}
+  />
+
+  <Route
+    path={routes.vendor.products.edit}
+    element={<EditProductPage />}
+  />
+
+  <Route
+    path={routes.vendor.products.review}
+    element={<ReviewProductPage/>}
+  />
+
+  <Route
+    path={routes.vendor.productManagerList}
+    element={<ProductManagerList />}
+  />
+
+</Route>
+
 
       {/* ========== MANAGER ========== */}
       <Route element={<ManagerLayout />}>

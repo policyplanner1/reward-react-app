@@ -1,24 +1,34 @@
 export const routes = {
   vendor: {
-    dashboard: '/vendor/dashboard',
-    list: '/vendor/list',
-    products: '/vendor/products',
+    dashboard: "/vendor/dashboard",
+    onboarding: "/vendor/onboarding",
+
+    products: {
+      add: "/vendor/products/add",
+      list: "/vendor/products/list",
+      edit: "/vendor/products/edit/:id",
+      review: "/vendor/products/review/:id",
+      
+    },
+
+
+    productManagerList: "/vendor/product-managers",
   },
 
   manager: {
-    dashboard: '/manager/dashboard',
-    vendors: '/manager/vendors',
-    products: '/manager/products',
+    dashboard: "/manager/dashboard",
+    vendors: "/manager/vendors",
+    products: "/manager/products",
 
-    productView: '/manager/product',      
-    vendorReview: '/manager/vendor-review', 
+    productView: "/manager/product/:id",
+    vendorReview: "/manager/vendor-review/:id",
 
-    categories: '/manager/category_management/categories',
-    subcategories: '/manager/category_management/subcategories',
-    subsubcategories: '/manager/category_management/subsubcategories',
+    categories: "/manager/category_management/categories",
+    subcategories: "/manager/category_management/subcategories",
+    subsubcategories: "/manager/category_management/subsubcategories",
   },
 
-   warehouse: {
+  warehouse: {
     dashboard: "/warehouse/dashboard",
 
     inventory: "/warehouse/inventory",
