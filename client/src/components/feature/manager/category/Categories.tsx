@@ -1,9 +1,11 @@
+'use client';
+
+import { api } from '@/app/src/api/api';
 import React, { useState, useEffect } from 'react';
 import { 
   FiEdit, FiTrash2, FiEye, FiPlus, FiCalendar,
   FiX, FiSave, FiTag
 } from 'react-icons/fi';
-import { api } from '../../../../api/api';
 
 type Status = "active" | "inactive";
 
