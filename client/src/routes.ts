@@ -3,26 +3,23 @@ export const routes = {
     dashboard: "/vendor/dashboard",
     onboarding: "/vendor/onboarding",
 
-    products: {
-      add: "/vendor/products/add",
-      list: "/vendor/products/list",
-      edit: "/vendor/products/edit/:id",
-      review: "/vendor/products/review/:id",
-      
-    },
+   products: {
+  add: "/vendor/products/add",
+  list: "/vendor/products/list",
+  edit: "/vendor/products/edit/:id",
+  review: "/vendor/products/review/:productId", // changed from :id to :productId
+  },
 
 
     productManagerList: "/vendor/product-managers",
   },
 
-  manager: {
+   manager: {
     dashboard: "/manager/dashboard",
     vendors: "/manager/vendors",
     products: "/manager/products",
-
-    productView: "/manager/product/:id",
+    productView: "/manager/product/:id", // ✅ route with :id param
     vendorReview: "/manager/vendor-review/:id",
-
     categories: "/manager/category_management/categories",
     subcategories: "/manager/category_management/subcategories",
     subsubcategories: "/manager/category_management/subsubcategories",

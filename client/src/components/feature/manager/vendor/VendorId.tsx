@@ -248,11 +248,11 @@ const SectionHeader = ({
   </div>
 );
 
-
 export default function VendorApprovalForm() {
-  const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
-  const vendorId = id; // <-- get vendor ID
+ const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const vendorId = searchParams.get("vendor_id");
 
   const [vendorStatus, setVendorStatus] = useState<
     "pending" | "sent_for_approval" | "approved" | "rejected" | null

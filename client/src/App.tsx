@@ -19,9 +19,7 @@ import ManagerDashboard from "./pages/vendor_manager/Dashboard";
 import WarehouseDashboard from "./pages/warehouse/Dashboard";
 
 /* Manager Features */
-import VendorApprovalList from "./components/feature/manager/vendor/VendorApprovalList";
 import ProductApprovalList from "./components/feature/manager/product/ProductApprovalList";
-import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprovalForm";
 import CategoryManagement from "./components/feature/manager/category/Categories";
 import SubcategoryManagement from "./components/feature/manager/category/Subcategories";
 import SubSubCategoryManagement from "./components/feature/manager/category/Subsubcategories";
@@ -38,6 +36,8 @@ import ProductListingDynamic from "./components/feature/vendor/products/ProductA
 import ProductManagerList from "./components/feature/vendor/products/ProductList";
 import EditProductPage from "./components/feature/vendor/products/ProductEdit";
 import ReviewProductPage from "./components/feature/vendor/products/ProductView";
+import VendorApprovalList from "./components/feature/manager/vendor/VendorApprovalList";
+import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprovalForm";
 
 export default function App() {
   return (
@@ -73,15 +73,17 @@ export default function App() {
     element={<ProductManagerList />}
   />
 
-  <Route
-    path={routes.vendor.products.edit}
-    element={<EditProductPage />}
-  />
+<Route
+  path={routes.vendor.products.review}   // "/vendor/products/review/:productId"
+  element={<ReviewProductPage/>}
+/>
 
-  <Route
-    path={routes.vendor.products.review}
-    element={<ReviewProductPage/>}
-  />
+<Route
+  path={routes.vendor.products.edit}     // "/vendor/products/edit/:productId"
+  element={<EditProductPage />}
+/>
+
+
 
   <Route
     path={routes.vendor.productManagerList}
@@ -100,11 +102,8 @@ export default function App() {
           element={<ProductApprovalList />}
         />
 
-        {/* ✅ FIXED ROUTES */}
-        <Route
-          path={`${routes.manager.productView}/:productId`}
-          element={<ProductViewPage />}
-        />
+     <Route path={routes.manager.productView} element={<ProductViewPage />} />
+
 
         <Route
           path={routes.manager.vendorReview}

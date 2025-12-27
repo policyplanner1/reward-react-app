@@ -145,25 +145,22 @@ interface ProductView {
     file_path: string;
   }>;
 }
-
 export default function ReviewProductPage() {
-  const { productId } = useParams<{ productId: string }>();
+  const { id } = useParams<{ id: string }>();  // only one useParams
   const navigate = useNavigate();
-
 
   const [product, setProduct] = useState<ProductView | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!productId) {
+    if (!id) {
       setError("Product ID not provided in route.");
       setLoading(false);
       return;
     }
-    fetchProduct(productId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId]);
+    fetchProduct(id);
+  }, [id]);
 
   const resolveImageUrl = (path?: string) => {
     if (!path) return "";

@@ -9,6 +9,7 @@ import {
   FaFileAlt,
 } from "react-icons/fa";
 import { FiUsers } from "react-icons/fi";
+import { Link } from "react-router-dom";
 
 interface VendorItem {
   vendor_id: number;
@@ -48,7 +49,7 @@ const StatusChip = ({ status }: { status: VendorItem["status"] }) => {
     );
   }
 
-  return null; 
+  return null;
 };
 
 export default function VendorApprovalList() {
@@ -183,9 +184,7 @@ export default function VendorApprovalList() {
 
                   {/* Action */}
                   <td className="px-6 py-4">
-                    <Link
-                      href={`/src/manager/dashboard/VendorId?vendor_id=${v.vendor_id}`}
-                    >
+                    <Link to={`/manager/vendor-review/${v.vendor_id}`}>
                       <button className="flex items-center px-4 py-2 bg-[#852BAF] text-white rounded-lg hover:bg-[#73239c] transition text-sm">
                         <FaEye className="mr-2" /> Review
                       </button>

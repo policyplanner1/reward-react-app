@@ -27,6 +27,7 @@ import {
 } from "react-icons/fa";
 import { FiPackage } from "react-icons/fi";
 import { Link } from "react-router-dom";
+import { routes } from "../../../../routes";
 
 const API_BASE_URL = "http://localhost:5000/api";
 const API_BASEIMAGE_URL = "http://localhost:5000";
@@ -40,7 +41,6 @@ type ProductStatus =
   | "rejected"
   | "resubmission"
   | "sent_for_approval";
-
 
 type StatusConfig = {
   text: string;
@@ -152,9 +152,8 @@ const StatusChip = ({ status }: { status: ProductStatus }) => {
 
   return (
     <div
-      className={`inline-flex items-center px-3 py-1.5 rounded-full border text-xs font-medium ${cfg.color}`}
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full border shadow-sm text-[11px] font-semibold tracking-wide uppercase ${cfg.color}`}
     >
-{/* <Icon className="mr-1.5" size={12} /> */}
       {cfg.text}
     </div>
   );
@@ -268,8 +267,8 @@ const ActionModal = ({
         </div>
 
         {config.showReason && (
-          <div className="mb-6">
-            <label className="block mb-2 text-sm font-medium text-gray-700">
+          <div className="mb-8 animate-in fade-in slide-in-from-top-2 duration-300">
+            <label className="block mb-2.5 text-xs font-bold uppercase tracking-widest text-slate-500">
               Reason / Comments *
             </label>
             <textarea
@@ -277,28 +276,29 @@ const ActionModal = ({
               onChange={(e) => setReason(e.target.value)}
               placeholder={config.placeholder}
               rows={4}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#852BAF] focus:border-transparent"
+              className="w-full p-4 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none transition-all focus:bg-white focus:ring-4 focus:ring-purple-100 focus:border-[#852BAF] placeholder:text-slate-400"
             />
           </div>
         )}
 
-        <div className="flex justify-end space-x-3">
+        <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
           <button
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            className="px-5 py-2.5 text-sm font-semibold text-slate-600 rounded-xl hover:bg-slate-100 active:scale-95 transition-all disabled:opacity-50"
           >
             Cancel
           </button>
+
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className={`px-4 py-2 text-white rounded-lg ${config.buttonColor} disabled:opacity-50 flex items-center`}
+            className={`px-6 py-2.5 text-sm font-bold text-white rounded-xl shadow-lg shadow-purple-200 active:scale-95 transition-all flex items-center justify-center min-w-[120px] ${config.buttonColor} disabled:opacity-50 disabled:shadow-none`}
           >
             {loading ? (
               <>
                 <FaSpinner className="mr-2 animate-spin" />
-                Processing...
+                <span className="opacity-90">Processing</span>
               </>
             ) : (
               config.buttonText
@@ -838,16 +838,18 @@ export default function ProductManagerList() {
                     <div className="flex items-center space-x-2">
                       {/* View Button*/}
                       <Link
-                        to={`/src/manager/dashboard/product/productView/${product.product_id}`}
+                        to={routes.manager.productView.replace(
+                          ":id",
+                          product.product_id.toString()
+                        )}
                       >
                         <button
                           className="p-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                          title="view"
+                          title="View"
                         >
                           <FaEye />
                         </button>
                       </Link>
-
                       {/* APPROVE */}
                       {product.status === "pending" && (
                         <button

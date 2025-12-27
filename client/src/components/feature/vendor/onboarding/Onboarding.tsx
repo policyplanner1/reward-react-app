@@ -146,17 +146,18 @@ type IconComp = ComponentType<any>;
 
 function SectionHeader({ icon: Icon, title, description }: { icon: IconComp; title: string; description?: string; }) {
   return (
-    <div className="flex items-start space-x-3">
-      <div className="p-3 text-white rounded-md" style={{ background: "linear-gradient(to right, #852BAF, #FC3F78)" }}>
-        <Icon />
+<div className="flex items-center space-x-4 pb-4 border-b border-gray-100 mb-6">
+      <div className="p-3 text-white rounded-2xl shadow-lg shadow-[#852BAF]/20 bg-gradient-to-tr from-[#852BAF] to-[#FC3F78]">
+        <Icon className="text-xl" />
       </div>
       <div>
-        <h3 className="text-lg font-semibold">{title}</h3>
-        {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+        <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+        {description && <p className="text-sm text-gray-500 font-medium">{description}</p>}
       </div>
     </div>
   );
 }
+
 
 function FormInput(props: {
   id: string;
@@ -170,9 +171,9 @@ function FormInput(props: {
 }) {
   const { id, label, value = "", onChange, type = "text", required, placeholder, error } = props;
   return (
-    <div className="flex flex-col space-y-1">
-      <label htmlFor={id} className="text-sm font-medium text-gray-700">
-        {label} {required && <span className="text-red-500">*</span>}
+    <div className="flex flex-col space-y-1.5">
+      <label htmlFor={id} className="text-xs font-bold uppercase tracking-wider text-gray-600 ml-1">
+        {label} {required && <span className="text-[#FC3F78]">*</span>}
       </label>
       <input
         id={id}
@@ -182,9 +183,9 @@ function FormInput(props: {
         type={type}
         placeholder={placeholder}
         required={required}
-        className="p-3 transition duration-150 border border-gray-300 rounded-lg focus:ring-1 focus:ring-brand-purple focus:border-brand-purple"
+        className="px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#852BAF]/10 focus:border-[#852BAF] focus:bg-white transition-all outline-none text-sm text-gray-800 placeholder:text-gray-400"
       />
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-[10px] font-bold text-[#FC3F78] mt-1 ml-1 uppercase">{error}</p>}
     </div>
   );
 }
@@ -200,20 +201,28 @@ function FileUploadInput(props: {
 }) {
   const { id, label, file, onChange, accept, required, description } = props;
   return (
-    <div className="flex flex-col space-y-1">
-      <label htmlFor={id} className="text-sm font-medium text-gray-700">
-        {label} {required && <span className="text-red-500">*</span>}
+    <div className="flex flex-col space-y-1.5">
+      <label className="text-xs font-bold uppercase tracking-wider text-gray-600 ml-1">
+        {label} {required && <span className="text-[#FC3F78]">*</span>}
       </label>
-      <input
-        id={id}
-        name={id}
-        type="file"
-        accept={accept}
-        onChange={onChange as (e: ChangeEvent<HTMLInputElement>) => void}
-        className="text-sm"
-      />
-      {description && <p className="text-xs text-gray-500">{description}</p>}
-      {file && <p className="text-xs text-gray-600">Selected: {file.name}</p>}
+      <div className="relative group">
+        <input
+          id={id}
+          name={id}
+          type="file"
+          accept={accept}
+          onChange={onChange}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+        />
+        <div className={`p-3 border-2 border-dashed rounded-xl transition-all flex flex-col items-center justify-center bg-gray-50/50 
+          ${file ? "border-emerald-200 bg-emerald-50/30" : "border-gray-200 group-hover:border-[#852BAF]/40 group-hover:bg-gray-50"}`}>
+          <FaFileUpload className={`text-xl mb-1 ${file ? "text-emerald-500" : "text-gray-400"}`} />
+          <span className="text-[11px] font-bold text-gray-500 text-center truncate w-full px-2">
+            {file ? file.name : "Click to upload document"}
+          </span>
+        </div>
+      </div>
+      {description && <p className="text-[10px] text-gray-400 italic leading-tight">{description}</p>}
     </div>
   );
 }
@@ -237,6 +246,105 @@ export default function Onboarding() {
   const [isSameAsAddress, setIsSameAsAddress] = useState(false);
   const [isSameAsBilling, setIsSameAsBilling] = useState(false);
 
+
+   /* ================= LIVE VALIDATION ================= */
+  const validateField = (name: string, value: any): string => {
+    switch (name) {
+      case "companyName":
+        return value.trim() ? "" : "Company Name is required";
+      case "fullName":
+        if (!value.trim()) return "Full Name is required";
+        if (!validators.fullName(value)) return "Only alphabets allowed";
+        return "";
+      case "vendorType":
+        return value ? "" : "Select vendor type";
+      case "gstin":
+        return value.trim() ? "" : "GSTIN is required";
+      case "panNumber":
+        if (!value.trim()) return "PAN Number is required";
+        if (!panValidator(value.toUpperCase())) return "PAN must be in format ABCDE1234F";
+        return "";
+      case "email":
+        if (!value.trim()) return "Email is required";
+        if (!validators.email(value)) return "Enter a valid email";
+        return "";
+      case "primaryContactNumber":
+        if (!value.trim()) return "Primary contact is required";
+        if (!validators.phone(value)) return "Contact number must be 10 digits";
+        return "";
+      case "pincode":
+      case "billingPincode":
+      case "shippingPincode":
+        if (!value.trim()) return "Pincode is required";
+        if (!validators.pincode(value)) return "Pincode must be 6 digits";
+        return "";
+      case "billingAddressLine1":
+        if (!isSameAsAddress && !value.trim()) return "Billing address is required";
+        return "";
+      case "billingCity":
+        if (!isSameAsAddress && !value.trim()) return "Billing city is required";
+        return "";
+      case "billingState":
+        if (!isSameAsAddress && !value.trim()) return "Billing state is required";
+        return "";
+      case "shippingAddressLine1":
+        if (!isSameAsBilling && !value.trim()) return "Shipping address is required";
+        return "";
+      case "shippingCity":
+        if (!isSameAsBilling && !value.trim()) return "Shipping city is required";
+        return "";
+      case "shippingState":
+        if (!isSameAsBilling && !value.trim()) return "Shipping state is required";
+        return "";
+      case "bankName":
+        return value.trim() ? "" : "Bank name is required";
+      case "accountNumber":
+        return value.trim() ? "" : "Account number is required";
+      case "branch":
+        return value.trim() ? "" : "Branch is required";
+      case "ifscCode":
+        return value.trim() ? "" : "IFSC code is required";
+      case "agreementAccepted":
+        return value ? "" : "You must accept the agreement";
+      default:
+        return "";
+    }
+  };
+
+const validators = {
+  fullName: (value: string) => /^[A-Za-z ]+$/.test(value),
+
+  panNumber: (value: string) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value),
+
+  pincode: (value: string) => /^[0-9]{6}$/.test(value),
+
+  phone: (value: string) => /^[0-9]{10}$/.test(value),
+
+  state: (value: string) => /^[A-Za-z ]+$/.test(value),
+
+  email: (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value),
+};
+
+const allowOnlyAlphabets = (value: string) => /^[A-Za-z ]*$/.test(value);
+
+const allowOnlyNumbers = (value: string) => /^[0-9]*$/.test(value);
+
+const panValidator = (value: string) => {
+  return /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value);
+};
+const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    Object.entries(formData).forEach(([k, v]) => {
+      const error = validateField(k, v);
+      if (error) newErrors[k] = error;
+    });
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  
   /* ================= FETCH STATUS ================= */
 
   useEffect(() => {
@@ -261,20 +369,18 @@ export default function Onboarding() {
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    const target = e.target as HTMLInputElement;
-    const { name, value, type, checked, files } = target;
+    const { name, value, type, checked, files } = e.target as HTMLInputElement;
 
-    if (type === "file") {
-      setFormData((p) => ({ ...p, [name]: files?.[0] || null }));
-      return;
-    }
+    let fieldValue: any = value;
+    if (type === "checkbox") fieldValue = checked;
+    if (type === "file") fieldValue = files?.[0] || null;
 
-    if (type === "checkbox") {
-      setFormData((p) => ({ ...p, [name]: checked }));
-      return;
-    }
+    // Update form data
+    setFormData((p) => ({ ...p, [name]: fieldValue }));
 
-    setFormData((p) => ({ ...p, [name]: value }));
+    // Validate the field live
+    const error = validateField(name, fieldValue);
+    setErrors((prev) => ({ ...prev, [name]: error }));
   };
 
   const handleVendorTypeChange = (e: ChangeEvent<HTMLSelectElement>) => {
@@ -330,8 +436,9 @@ export default function Onboarding() {
     }
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return alert("Please fix the errors in the form.");
 
     const token = localStorage.getItem("token");
     if (!token) return alert("Not logged in");
@@ -355,13 +462,20 @@ export default function Onboarding() {
     navigate("/vendor/dashboard");
   };
 
+
   /* ================= UI ================= */
 
   return (
-    <div className="p-6 bg-white rounded-xl shadow-xl">
-      <h1 className="mb-6 text-3xl font-bold">Vendor Onboarding</h1>
+   <div className="max-w-6xl mx-auto py-10 px-4">
+      {/* Header Section */}
+      <div className="mb-10 text-left ">
+        <h1 className="text-4xl font-black text-gray-900 tracking-tight">
+          Complete Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#852BAF] to-[#FC3F78]">Onboarding</span>
+        </h1>
+        <p className="text-gray-500 mt-2 font-medium">Verify your business details to start selling.</p>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-8">
               {/* A. Business Information */}
               <section className="space-y-4">
                 <SectionHeader
@@ -799,13 +913,13 @@ export default function Onboarding() {
               </section>
 
               {/* Bank Details */}
-              <section className="space-y-4">
+              <section className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-gray-100">
                 <SectionHeader
                   icon={FaUniversity}
                   title="Bank Details & Proof"
                   description="Account details for receiving payments and required proof."
                 />
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+<div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">                  
                   <FormInput
                     id="bankName"
                     label="Bank Name"
@@ -843,10 +957,10 @@ export default function Onboarding() {
               {/* Contact Details */}
               <section className="space-y-4">
                 <SectionHeader
-                  icon={FaPhoneAlt}
-                  title="Contact Details"
-                  description="Primary and secondary contact information."
-                />
+            icon={FaAddressBook}
+            title="Registered Address"
+            description="Official business location"
+          />
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                   <FormInput
                     id="primaryContactNumber"
@@ -931,18 +1045,10 @@ export default function Onboarding() {
               </section>
 
               {/* Submit Button */}
-              <div className="pt-4 border-t">
-                <button
-                  type="submit"
-                  disabled={Object.values(errors).some(Boolean)}
-                  className="w-full px-6 py-3 text-lg font-semibold text-white transition duration-300 rounded-full  md:w-auto hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
-                  style={{
-                    background: "linear-gradient(to right, #852BAF, #FC3F78)",
-                  }}
-                >
-                  Submit Onboarding Application
-                </button>
-              </div>
+              <div className="flex justify-center pt-6">
+         <button type="submit" disabled={Object.keys(errors).length > 0} className="...">Submit Application</button>
+
+        </div>
       </form>
     </div>
   );

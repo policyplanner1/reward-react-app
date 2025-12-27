@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback } from "react";
 import {
   FaCheckCircle,
@@ -27,6 +26,7 @@ import {
 import { FiPackage } from "react-icons/fi";
 
 import { Link } from "react-router-dom";
+import { routes } from "../../../../routes";
 
 const API_BASE_URL = "http://localhost:5000/api";
 const API_BASEIMAGE_URL = "http://localhost:5000";
@@ -389,6 +389,7 @@ export default function ProductManagerList() {
        FETCH PRODUCTS
   ================================= */
   const fetchProducts = useCallback(async () => {
+    
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
@@ -530,7 +531,7 @@ export default function ProductManagerList() {
             },
             credentials: "include",
             body: JSON.stringify({
-              reason: reason || null, 
+              reason: reason || null,
             }),
           }
         );
@@ -858,7 +859,10 @@ export default function ProductManagerList() {
                     <div className="flex items-center space-x-2">
                       {/* View Button*/}
                       <Link
-                        to={`/src/vendor/products/review/${product.product_id}`}
+                        to={routes.vendor.products.review.replace(
+                          ":id",
+                          String(product.product_id)
+                        )}
                       >
                         <button className="p-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
                           <FaEye />
@@ -870,7 +874,10 @@ export default function ProductManagerList() {
                         product.status
                       ) && (
                         <Link
-                          to={`/src/vendor/products/edit/${product.product_id}`}
+                          to={routes.vendor.products.edit.replace(
+                            ":id",
+                            String(product.product_id)
+                          )}
                           target="_blank"
                         >
                           <button className="p-2 text-purple-700 bg-purple-100 rounded hover:bg-purple-200">
