@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import type { ComponentType } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -8,14 +8,11 @@ import {
   FaCreditCard,
   FaShippingFast,
   FaUniversity,
-  FaPhoneAlt,
   FaFileContract,
   FaFileUpload,
   FaEnvelope,
 } from "react-icons/fa";
-
-
-const API_BASE = import.meta.env.VITE_API_URL;
+import { api } from "../../../../api/api";
 
 /* ================= TYPES ================= */
 
@@ -144,35 +141,58 @@ const initialFormData: VendorOnboardingData = {
 
 type IconComp = ComponentType<any>;
 
-function SectionHeader({ icon: Icon, title, description }: { icon: IconComp; title: string; description?: string; }) {
+function SectionHeader({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: IconComp;
+  title: string;
+  description?: string;
+}) {
   return (
-<div className="flex items-center space-x-4 pb-4 border-b border-gray-100 mb-6">
+    <div className="flex items-center space-x-4 pb-4 border-b border-gray-100 mb-6">
       <div className="p-3 text-white rounded-2xl shadow-lg shadow-[#852BAF]/20 bg-gradient-to-tr from-[#852BAF] to-[#FC3F78]">
         <Icon className="text-xl" />
       </div>
       <div>
         <h3 className="text-xl font-bold text-gray-800">{title}</h3>
-        {description && <p className="text-sm text-gray-500 font-medium">{description}</p>}
+        {description && (
+          <p className="text-sm text-gray-500 font-medium">{description}</p>
+        )}
       </div>
     </div>
   );
 }
 
-
 function FormInput(props: {
   id: string;
   label: string;
   value?: string | number;
-  onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  onChange: (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => void;
   type?: string;
   required?: boolean;
   placeholder?: string;
   error?: string;
 }) {
-  const { id, label, value = "", onChange, type = "text", required, placeholder, error } = props;
+  const {
+    id,
+    label,
+    value = "",
+    onChange,
+    type = "text",
+    required,
+    placeholder,
+    error,
+  } = props;
   return (
     <div className="flex flex-col space-y-1.5">
-      <label htmlFor={id} className="text-xs font-bold uppercase tracking-wider text-gray-600 ml-1">
+      <label
+        htmlFor={id}
+        className="text-xs font-bold uppercase tracking-wider text-gray-600 ml-1"
+      >
         {label} {required && <span className="text-[#FC3F78]">*</span>}
       </label>
       <input
@@ -185,7 +205,11 @@ function FormInput(props: {
         required={required}
         className="px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#852BAF]/10 focus:border-[#852BAF] focus:bg-white transition-all outline-none text-sm text-gray-800 placeholder:text-gray-400"
       />
-      {error && <p className="text-[10px] font-bold text-[#FC3F78] mt-1 ml-1 uppercase">{error}</p>}
+      {error && (
+        <p className="text-[10px] font-bold text-[#FC3F78] mt-1 ml-1 uppercase">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -214,15 +238,29 @@ function FileUploadInput(props: {
           onChange={onChange}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
         />
-        <div className={`p-3 border-2 border-dashed rounded-xl transition-all flex flex-col items-center justify-center bg-gray-50/50 
-          ${file ? "border-emerald-200 bg-emerald-50/30" : "border-gray-200 group-hover:border-[#852BAF]/40 group-hover:bg-gray-50"}`}>
-          <FaFileUpload className={`text-xl mb-1 ${file ? "text-emerald-500" : "text-gray-400"}`} />
+        <div
+          className={`p-3 border-2 border-dashed rounded-xl transition-all flex flex-col items-center justify-center bg-gray-50/50 
+          ${
+            file
+              ? "border-emerald-200 bg-emerald-50/30"
+              : "border-gray-200 group-hover:border-[#852BAF]/40 group-hover:bg-gray-50"
+          }`}
+        >
+          <FaFileUpload
+            className={`text-xl mb-1 ${
+              file ? "text-emerald-500" : "text-gray-400"
+            }`}
+          />
           <span className="text-[11px] font-bold text-gray-500 text-center truncate w-full px-2">
             {file ? file.name : "Click to upload document"}
           </span>
         </div>
       </div>
-      {description && <p className="text-[10px] text-gray-400 italic leading-tight">{description}</p>}
+      {description && (
+        <p className="text-[10px] text-gray-400 italic leading-tight">
+          {description}
+        </p>
+      )}
     </div>
   );
 }
@@ -246,119 +284,162 @@ export default function Onboarding() {
   const [isSameAsAddress, setIsSameAsAddress] = useState(false);
   const [isSameAsBilling, setIsSameAsBilling] = useState(false);
 
+  /* ================= VALIDATORS ================= */
 
-   /* ================= LIVE VALIDATION ================= */
-  const validateField = (name: string, value: any): string => {
+  const validators = {
+    fullName: (value: string) => /^[A-Za-z ]+$/.test(value),
+    panNumber: (value: string) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value),
+    pincode: (value: string) => /^[0-9]{6}$/.test(value),
+    phone: (value: string) => /^[0-9]{10}$/.test(value),
+    state: (value: string) => /^[A-Za-z ]+$/.test(value),
+    email: (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value),
+  };
+
+  /* ================= FIELD VALIDATION ================= */
+
+  const validateField = (
+    name: string,
+    value: any,
+    formData: VendorOnboardingData
+  ): string => {
     switch (name) {
       case "companyName":
         return value.trim() ? "" : "Company Name is required";
+
       case "fullName":
         if (!value.trim()) return "Full Name is required";
         if (!validators.fullName(value)) return "Only alphabets allowed";
         return "";
+
       case "vendorType":
         return value ? "" : "Select vendor type";
+
       case "gstin":
         return value.trim() ? "" : "GSTIN is required";
+
       case "panNumber":
         if (!value.trim()) return "PAN Number is required";
-        if (!panValidator(value.toUpperCase())) return "PAN must be in format ABCDE1234F";
+        if (!validators.panNumber(value.toUpperCase()))
+          return "PAN must be in format ABCDE1234F";
         return "";
+
       case "email":
         if (!value.trim()) return "Email is required";
         if (!validators.email(value)) return "Enter a valid email";
         return "";
+
       case "primaryContactNumber":
         if (!value.trim()) return "Primary contact is required";
         if (!validators.phone(value)) return "Contact number must be 10 digits";
         return "";
+
       case "pincode":
       case "billingPincode":
       case "shippingPincode":
         if (!value.trim()) return "Pincode is required";
         if (!validators.pincode(value)) return "Pincode must be 6 digits";
         return "";
+
       case "billingAddressLine1":
-        if (!isSameAsAddress && !value.trim()) return "Billing address is required";
+        if (!formData.vendorType) return "";
+        if (formData.vendorType && !formData.isSameAsAddress && !value.trim())
+          return "Billing address is required";
         return "";
+
       case "billingCity":
-        if (!isSameAsAddress && !value.trim()) return "Billing city is required";
+        if (!formData.vendorType) return "";
+        if (formData.vendorType && !formData.isSameAsAddress && !value.trim())
+          return "Billing city is required";
         return "";
+
       case "billingState":
-        if (!isSameAsAddress && !value.trim()) return "Billing state is required";
+        if (!formData.vendorType) return "";
+        if (formData.vendorType && !formData.isSameAsAddress && !value.trim())
+          return "Billing state is required";
         return "";
+
       case "shippingAddressLine1":
-        if (!isSameAsBilling && !value.trim()) return "Shipping address is required";
+        if (!formData.vendorType) return "";
+        if (formData.vendorType && !formData.isSameAsBilling && !value.trim())
+          return "Shipping address is required";
         return "";
+
       case "shippingCity":
-        if (!isSameAsBilling && !value.trim()) return "Shipping city is required";
+        if (!formData.vendorType) return "";
+        if (formData.vendorType && !formData.isSameAsBilling && !value.trim())
+          return "Shipping city is required";
         return "";
+
       case "shippingState":
-        if (!isSameAsBilling && !value.trim()) return "Shipping state is required";
+        if (!formData.vendorType) return "";
+        if (formData.vendorType && !formData.isSameAsBilling && !value.trim())
+          return "Shipping state is required";
         return "";
+
       case "bankName":
         return value.trim() ? "" : "Bank name is required";
+
       case "accountNumber":
         return value.trim() ? "" : "Account number is required";
+
       case "branch":
         return value.trim() ? "" : "Branch is required";
+
       case "ifscCode":
         return value.trim() ? "" : "IFSC code is required";
+
       case "agreementAccepted":
         return value ? "" : "You must accept the agreement";
+
+      /* ================= CONDITIONAL VALIDATIONS ================= */
+      case "companyEmail":
+        if (formData.vendorType === "Manufacturer") {
+          if (!value.trim()) return "Company Email is required";
+          if (!validators.email(value)) return "Enter a valid email";
+        }
+        return "";
+
+      case "companyPhone":
+        if (formData.vendorType === "Manufacturer") {
+          if (!value.trim()) return "Company Phone is required";
+          if (!validators.phone(value)) return "Phone must be 10 digits";
+        }
+        return "";
+
+      case "authorizationLetterFile":
+        if (formData.vendorType === "Trader") {
+          if (!value) return "Authorization letter is required";
+        }
+        return "";
+
       default:
         return "";
     }
   };
 
-const validators = {
-  fullName: (value: string) => /^[A-Za-z ]+$/.test(value),
+  /* ================= FORM VALIDATION ================= */
 
-  panNumber: (value: string) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value),
-
-  pincode: (value: string) => /^[0-9]{6}$/.test(value),
-
-  phone: (value: string) => /^[0-9]{10}$/.test(value),
-
-  state: (value: string) => /^[A-Za-z ]+$/.test(value),
-
-  email: (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value),
-};
-
-const allowOnlyAlphabets = (value: string) => /^[A-Za-z ]*$/.test(value);
-
-const allowOnlyNumbers = (value: string) => /^[0-9]*$/.test(value);
-
-const panValidator = (value: string) => {
-  return /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value);
-};
-const validateForm = (): boolean => {
+  const validateForm = (formData: VendorOnboardingData) => {
     const newErrors: Record<string, string> = {};
-
-    Object.entries(formData).forEach(([k, v]) => {
-      const error = validateField(k, v);
-      if (error) newErrors[k] = error;
+    Object.entries(formData).forEach(([key, value]) => {
+      const error = validateField(key, value, formData);
+      if (error) newErrors[key] = error;
     });
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
-  
   /* ================= FETCH STATUS ================= */
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    fetch(`${API_BASE}/vendor/my-details`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setVendorStatus(data.vendor.status);
-          setRejectionReason(data.vendor.rejection_reason || "");
+    api
+      .get("/vendor/my-details")
+      .then((res) => {
+        if (res.data.success) {
+          setVendorStatus(res.data.vendor.status);
+          setRejectionReason(res.data.vendor.rejection_reason || "");
         }
       })
       .finally(() => setLoadingStatus(false));
@@ -369,18 +450,20 @@ const validateForm = (): boolean => {
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    const { name, value, type, checked, files } = e.target as HTMLInputElement;
+    const target = e.target as HTMLInputElement;
+    const { name, value, type, checked, files } = target;
 
-    let fieldValue: any = value;
-    if (type === "checkbox") fieldValue = checked;
-    if (type === "file") fieldValue = files?.[0] || null;
+    if (type === "file") {
+      setFormData((p) => ({ ...p, [name]: files?.[0] || null }));
+      return;
+    }
 
-    // Update form data
-    setFormData((p) => ({ ...p, [name]: fieldValue }));
+    if (type === "checkbox") {
+      setFormData((p) => ({ ...p, [name]: checked }));
+      return;
+    }
 
-    // Validate the field live
-    const error = validateField(name, fieldValue);
-    setErrors((prev) => ({ ...prev, [name]: error }));
+    setFormData((p) => ({ ...p, [name]: value }));
   };
 
   const handleVendorTypeChange = (e: ChangeEvent<HTMLSelectElement>) => {
@@ -436,9 +519,8 @@ const validateForm = (): boolean => {
     }
   };
 
-   const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return alert("Please fix the errors in the form.");
 
     const token = localStorage.getItem("token");
     if (!token) return alert("Not logged in");
@@ -449,605 +531,635 @@ const validateForm = (): boolean => {
       else if (v !== null) form.append(k, String(v));
     });
 
-    const res = await fetch(`${API_BASE}/vendor/onboard`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: form,
+    const res = await api.post("/vendor/onboard", form, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     });
 
-    const data = await res.json();
-    if (!data.success) return alert(data.message);
+    if (!res.data.success) {
+      alert(res.data.message);
+      return;
+    }
 
     alert("Onboarding submitted successfully");
     navigate("/vendor/dashboard");
   };
 
-
   /* ================= UI ================= */
 
   return (
-   <div className="max-w-6xl mx-auto py-10 px-4">
+    <div className="max-w-6xl mx-auto py-10 px-4">
       {/* Header Section */}
       <div className="mb-10 text-left ">
         <h1 className="text-4xl font-black text-gray-900 tracking-tight">
-          Complete Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#852BAF] to-[#FC3F78]">Onboarding</span>
+          Complete Your{" "}
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#852BAF] to-[#FC3F78]">
+            Onboarding
+          </span>
         </h1>
-        <p className="text-gray-500 mt-2 font-medium">Verify your business details to start selling.</p>
+        <p className="text-gray-500 mt-2 font-medium">
+          Verify your business details to start selling.
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
-              {/* A. Business Information */}
-              <section className="space-y-4">
-                <SectionHeader
-                  icon={FaBuilding}
-                  title="Business Information & Documents"
-                  description="Upload only the common mandatory documents."
+        {/* A. Business Information */}
+        <section className="space-y-4">
+          <SectionHeader
+            icon={FaBuilding}
+            title="Business Information & Documents"
+            description="Upload only the common mandatory documents."
+          />
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <FormInput
+              id="companyName"
+              label="Company Name"
+              value={formData.companyName}
+              onChange={handleChange}
+              required
+            />
+            <FormInput
+              id="fullName"
+              label="Full Name (as per PAN Card)"
+              value={formData.fullName}
+              onChange={handleChange}
+              required
+              error={errors.fullName}
+            />
+
+            {/* Vendor Type Dropdown */}
+            <div className="flex flex-col space-y-1">
+              <label
+                htmlFor="vendorType"
+                className="text-sm font-medium text-gray-700"
+              >
+                Vendor Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="vendorType"
+                name="vendorType"
+                value={formData.vendorType}
+                onChange={handleVendorTypeChange}
+                required
+                className="p-3 transition duration-150 border border-gray-300 rounded-lg focus:ring-1 focus:ring-brand-purple focus:border-brand-purple"
+              >
+                <option value="">Select vendor type</option>
+                <option value="Manufacturer">Manufacturer</option>
+                <option value="Trader">Trader</option>
+                <option value="Distributor">Distributor</option>
+                <option value="Service Provider">Service Provider</option>
+              </select>
+            </div>
+
+            <FormInput
+              id="gstin"
+              label="GSTIN"
+              value={formData.gstin}
+              onChange={handleChange}
+              required
+            />
+            <FormInput
+              id="panNumber"
+              label="PAN Number"
+              value={formData.panNumber}
+              onChange={handleChange}
+              required
+              error={errors.panNumber}
+            />
+            <FormInput
+              id="ip_address"
+              label="IP Address"
+              value={formData.ip_address}
+              onChange={handleChange}
+            />
+
+            {/* File uploads: only the common docs */}
+            <FileUploadInput
+              id="gstinFile"
+              label="GST Certificate"
+              file={formData.gstinFile}
+              onChange={
+                handleChange as (e: ChangeEvent<HTMLInputElement>) => void
+              }
+              required
+              description="Upload your GST Registration Certificate (PDF/JPG/PNG)."
+            />
+
+            <FileUploadInput
+              id="panFile"
+              label="PAN Card"
+              file={formData.panFile}
+              onChange={
+                handleChange as (e: ChangeEvent<HTMLInputElement>) => void
+              }
+              required
+              description="Upload company PAN (PDF/JPG/PNG)."
+            />
+
+            {/* Noc */}
+            <FileUploadInput
+              id="nocFile"
+              label="NOC"
+              file={formData.nocFile}
+              onChange={
+                handleChange as (e: ChangeEvent<HTMLInputElement>) => void
+              }
+              required
+              accept=".jpg, .jpeg, .png, .pdf"
+              description="Upload a No objection certificate."
+            />
+
+            {/* Trademark File */}
+            <FileUploadInput
+              id="rightsAdvisoryFile"
+              label="Trademark Certificate"
+              file={formData.rightsAdvisoryFile}
+              onChange={
+                handleChange as (e: ChangeEvent<HTMLInputElement>) => void
+              }
+              required
+              accept=".jpg, .jpeg, .png, .pdf"
+              description="Trademark."
+            />
+
+            {/* Signatory ID */}
+            <FileUploadInput
+              id="signatoryIdFile"
+              label="Authorized Signatory ID Proof"
+              file={formData.signatoryIdFile}
+              onChange={
+                handleChange as (e: ChangeEvent<HTMLInputElement>) => void
+              }
+              accept=".jpg, .jpeg, .png, .pdf"
+              description="Upload Aadhaar or PAN of authorized signatory."
+            />
+
+            {/* Business profile */}
+            <FileUploadInput
+              id="businessProfileFile"
+              label="Business Profile"
+              file={formData.businessProfileFile}
+              onChange={
+                handleChange as (e: ChangeEvent<HTMLInputElement>) => void
+              }
+              accept=".pdf, .doc, .docx"
+              description="Upload your Business Profile (PDF or DOC)."
+            />
+
+            {/* Brand logo - required for Manufacturer and Trader */}
+            <FileUploadInput
+              id="brandLogoFile"
+              label="Brand Logo"
+              file={formData.brandLogoFile}
+              onChange={
+                handleChange as (e: ChangeEvent<HTMLInputElement>) => void
+              }
+              accept=".jpg, .jpeg, .png, .svg"
+              description="Upload brand logo (PNG/JPG/SVG)."
+            />
+
+            {/* Bank proof - cancelled cheque or passbook image */}
+            <FileUploadInput
+              id="bankProofFile"
+              label="Bank Cancelled Cheque"
+              file={formData.bankProofFile}
+              onChange={
+                handleChange as (e: ChangeEvent<HTMLInputElement>) => void
+              }
+              accept=".jpg, .jpeg, .png, .pdf"
+              description="Upload a Cancelled Cheque with company name and account details."
+            />
+
+            {/* Electricity */}
+            <FileUploadInput
+              id="electricityBillFile"
+              label="Electricity bill"
+              file={formData.electricityBillFile}
+              onChange={
+                handleChange as (e: ChangeEvent<HTMLInputElement>) => void
+              }
+              accept=".jpg, .jpeg, .png, .pdf"
+              description="Upload Electricity bill."
+            />
+
+            {/* Vendor agreement - checkbox + optional upload */}
+            <div className="col-span-1 md:col-span-2 lg:col-span-3">
+              <div className="flex items-center mb-3 space-x-3">
+                <input
+                  type="checkbox"
+                  id="agreementAccepted"
+                  name="agreementAccepted"
+                  checked={formData.agreementAccepted}
+                  onChange={handleChange}
+                  className="w-4 h-4 border-gray-300 rounded text-brand-purple"
+                  style={{ accentColor: "#852BAF" }}
                 />
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-                  <FormInput
-                    id="companyName"
-                    label="Company Name"
-                    value={formData.companyName}
-                    onChange={handleChange}
-                    required
-                  />
-                  <FormInput
-                    id="fullName"
-                    label="Full Name (as per PAN Card)"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    required
-                    error={errors.fullName}
-                  />
-
-                  {/* Vendor Type Dropdown */}
-                  <div className="flex flex-col space-y-1">
-                    <label
-                      htmlFor="vendorType"
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      Vendor Type <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="vendorType"
-                      name="vendorType"
-                      value={formData.vendorType}
-                      onChange={handleVendorTypeChange}
-                      required
-                      className="p-3 transition duration-150 border border-gray-300 rounded-lg focus:ring-1 focus:ring-brand-purple focus:border-brand-purple"
-                    >
-                      <option value="">Select vendor type</option>
-                      <option value="Manufacturer">Manufacturer</option>
-                      <option value="Trader">Trader</option>
-                      <option value="Distributor">Distributor</option>
-                      <option value="Service Provider">Service Provider</option>
-                    </select>
-                  </div>
-
-                  <FormInput
-                    id="gstin"
-                    label="GSTIN"
-                    value={formData.gstin}
-                    onChange={handleChange}
-                    required
-                  />
-                  <FormInput
-                    id="panNumber"
-                    label="PAN Number"
-                    value={formData.panNumber}
-                    onChange={handleChange}
-                    required
-                    error={errors.panNumber}
-                  />
-                  <FormInput
-                    id="ip_address"
-                    label="IP Address"
-                    value={formData.ip_address}
-                    onChange={handleChange}
-                  />
-
-                  {/* File uploads: only the common docs */}
-                  <FileUploadInput
-                    id="gstinFile"
-                    label="GST Certificate"
-                    file={formData.gstinFile}
-                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
-                    required
-                    description="Upload your GST Registration Certificate (PDF/JPG/PNG)."
-                  />
-
-                  <FileUploadInput
-                    id="panFile"
-                    label="PAN Card"
-                    file={formData.panFile}
-                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
-                    required
-                    description="Upload company PAN (PDF/JPG/PNG)."
-                  />
-
-                  {/* Noc */}
-                  <FileUploadInput
-                    id="nocFile"
-                    label="NOC"
-                    file={formData.nocFile}
-                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
-                    required
-                    accept=".jpg, .jpeg, .png, .pdf"
-                    description="Upload a No objection certificate."
-                  />
-
-                  {/* Trademark File */}
-                  <FileUploadInput
-                    id="rightsAdvisoryFile"
-                    label="Trademark Certificate"
-                    file={formData.rightsAdvisoryFile}
-                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
-                    required
-                    accept=".jpg, .jpeg, .png, .pdf"
-                    description="Trademark."
-                  />
-
-                  {/* Signatory ID */}
-                  <FileUploadInput
-                    id="signatoryIdFile"
-                    label="Authorized Signatory ID Proof"
-                    file={formData.signatoryIdFile}
-                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
-                    accept=".jpg, .jpeg, .png, .pdf"
-                    description="Upload Aadhaar or PAN of authorized signatory."
-                  />
-
-                  {/* Business profile */}
-                  <FileUploadInput
-                    id="businessProfileFile"
-                    label="Business Profile"
-                    file={formData.businessProfileFile}
-                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
-                    accept=".pdf, .doc, .docx"
-                    description="Upload your Business Profile (PDF or DOC)."
-                  />
-
-                  {/* Brand logo - required for Manufacturer and Trader */}
-                  <FileUploadInput
-                    id="brandLogoFile"
-                    label="Brand Logo"
-                    file={formData.brandLogoFile}
-                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
-                    accept=".jpg, .jpeg, .png, .svg"
-                    description="Upload brand logo (PNG/JPG/SVG)."
-                  />
-
-                  {/* Bank proof - cancelled cheque or passbook image */}
-                  <FileUploadInput
-                    id="bankProofFile"
-                    label="Bank Cancelled Cheque"
-                    file={formData.bankProofFile}
-                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
-                    accept=".jpg, .jpeg, .png, .pdf"
-                    description="Upload a Cancelled Cheque with company name and account details."
-                  />
-
-                  {/* Electricity */}
-                  <FileUploadInput
-                    id="electricityBillFile"
-                    label="Electricity bill"
-                    file={formData.electricityBillFile}
-                    onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
-                    accept=".jpg, .jpeg, .png, .pdf"
-                    description="Upload Electricity bill."
-                  />
-
-                  {/* Vendor agreement - checkbox + optional upload */}
-                  <div className="col-span-1 md:col-span-2 lg:col-span-3">
-                    <div className="flex items-center mb-3 space-x-3">
-                      <input
-                        type="checkbox"
-                        id="agreementAccepted"
-                        name="agreementAccepted"
-                        checked={formData.agreementAccepted}
-                        onChange={handleChange}
-                        className="w-4 h-4 border-gray-300 rounded text-brand-purple"
-                        style={{ accentColor: "#852BAF" }}
-                      />
-                      <label
-                        htmlFor="agreementAccepted"
-                        className="text-sm font-medium text-gray-700"
-                      >
-                        I accept the Vendor Agreement terms.
-                      </label>
-                    </div>
-
-                    <FileUploadInput
-                      id="vendorAgreementFile"
-                      label="Upload Signed Agreement (optional)"
-                      file={formData.vendorAgreementFile}
-                      onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
-                      accept=".pdf, .jpg, .jpeg, .png"
-                      description="If you have a signed agreement, upload it here (optional)."
-                    />
-                  </div>
-
-                  {/* Conditional: Manufacturer fields */}
-                  {formData.vendorType === "Manufacturer" && (
-                    <>
-                      <div className="flex flex-col space-y-1">
-                        <label
-                          htmlFor="companyEmail"
-                          className="flex items-center text-sm font-medium text-gray-700"
-                        >
-                          <FaEnvelope
-                            className="mr-2 text-brand-purple"
-                            style={{ color: "#852BAF" }}
-                          />
-                          Company Email <span className="text-red-500">*</span>
-                        </label>
-
-                        <FormInput
-                          type="email"
-                          id="companyEmail"
-                          label="Company Email"
-                          value={formData.companyEmail}
-                          onChange={handleChange}
-                          placeholder="Enter official company email"
-                          required
-                          error={errors.companyEmail}
-                        />
-                      </div>
-
-                      <FormInput
-                        id="companyPhone"
-                        label="Company Phone"
-                        value={formData.companyPhone}
-                        onChange={handleChange}
-                        type="tel"
-                        required
-                        placeholder="Enter official company phone"
-                      />
-                    </>
-                  )}
-
-                  {/* Conditional: Authorization letter (Trader only) */}
-                  {formData.vendorType === "Trader" && (
-                    <FileUploadInput
-                      id="authorizationLetterFile"
-                      label="Authorization / Dealership Letter"
-                      file={formData.authorizationLetterFile}
-                      onChange={handleChange as (e: ChangeEvent<HTMLInputElement>) => void}
-                      required
-                      accept=".pdf, .jpg, .jpeg, .png"
-                      description="Traders must upload an authorization/dealership agreement."
-                    />
-                  )}
-                </div>
-              </section>
-
-              {/* Address Sections */}
-              <section className="space-y-4">
-                <SectionHeader
-                  icon={FaAddressBook}
-                  title="Registered Address"
-                  description="The official registered address of your business."
-                />
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-                  <FormInput
-                    id="addressLine1"
-                    label="Address Line 1"
-                    value={formData.addressLine1}
-                    onChange={handleChange}
-                    required
-                  />
-                  <FormInput
-                    id="addressLine2"
-                    label="Address Line 2"
-                    value={formData.addressLine2}
-                    onChange={handleChange}
-                  />
-                  <FormInput
-                    id="addressLine3"
-                    label="Address Line 3"
-                    value={formData.addressLine3}
-                    onChange={handleChange}
-                  />
-
-                  <FormInput
-                    id="city"
-                    label="City"
-                    value={formData.city}
-                    onChange={handleChange}
-                    required
-                  />
-                  <FormInput
-                    id="state"
-                    label="State"
-                    value={formData.state}
-                    onChange={handleChange}
-                    required
-                  />
-                  <FormInput
-                    id="pincode"
-                    label="Pincode"
-                    value={formData.pincode}
-                    onChange={handleChange}
-                    required
-                    error={errors.pincode}
-                  />
-                </div>
-              </section>
-
-              {/* Billing Address */}
-              <section className="space-y-4">
-                <SectionHeader
-                  icon={FaCreditCard}
-                  title="Billing Address"
-                  description="Address for invoices and official correspondence."
-                />
-
-                <div className="flex items-center mb-4">
-                  <input
-                    type="checkbox"
-                    id="sameAsAddress"
-                    checked={isSameAsAddress}
-                    onChange={() => handleCheckboxChange("billing")}
-                    className="w-4 h-4 border-gray-300 rounded text-brand-purple focus:ring-brand-purple"
-                    style={{ accentColor: "#852BAF" }}
-                  />
-                  <label
-                    htmlFor="sameAsAddress"
-                    className="ml-2 text-sm font-medium text-gray-700"
-                  >
-                    Same as Registered Address
-                  </label>
-                </div>
-
-                <div
-                  className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${
-                    isSameAsAddress ? "opacity-50 pointer-events-none" : ""
-                  }`}
+                <label
+                  htmlFor="agreementAccepted"
+                  className="text-sm font-medium text-gray-700"
                 >
-                  <FormInput
-                    id="billingAddressLine1"
-                    label="Billing Address Line 1"
-                    value={formData.billingAddressLine1}
-                    onChange={handleChange}
-                    required={!isSameAsAddress}
-                  />
-                  <FormInput
-                    id="billingAddressLine2"
-                    label="Billing Address Line 2"
-                    value={formData.billingAddressLine2}
-                    onChange={handleChange}
-                  />
+                  I accept the Vendor Agreement terms.
+                </label>
+              </div>
 
-                  <FormInput
-                    id="billingCity"
-                    label="Billing City"
-                    value={formData.billingCity}
-                    onChange={handleChange}
-                    required={!isSameAsAddress}
-                  />
-                  <FormInput
-                    id="billingState"
-                    label="Billing State"
-                    value={formData.billingState}
-                    onChange={handleChange}
-                    required={!isSameAsAddress}
-                  />
-                  <FormInput
-                    id="billingPincode"
-                    label="Billing Pincode"
-                    value={formData.billingPincode}
-                    onChange={handleChange}
-                    required={!isSameAsAddress}
-                    error={errors.billingPincode}
-                  />
-                </div>
-              </section>
+              <FileUploadInput
+                id="vendorAgreementFile"
+                label="Upload Signed Agreement (optional)"
+                file={formData.vendorAgreementFile}
+                onChange={
+                  handleChange as (e: ChangeEvent<HTMLInputElement>) => void
+                }
+                accept=".pdf, .jpg, .jpeg, .png"
+                description="If you have a signed agreement, upload it here (optional)."
+              />
+            </div>
 
-              {/* Shipping Address */}
-              <section className="space-y-4">
-                <SectionHeader
-                  icon={FaShippingFast}
-                  title="Shipping Address"
-                  description="Where products will be picked up from."
-                />
-
-                <div className="flex items-center mb-4">
-                  <input
-                    type="checkbox"
-                    id="sameAsBilling"
-                    checked={isSameAsBilling}
-                    onChange={() => handleCheckboxChange("shipping")}
-                    className="w-4 h-4 border-gray-300 rounded text-brand-pink focus:ring-brand-pink"
-                    style={{ accentColor: "#FC3F78" }}
-                  />
+            {/* Conditional: Manufacturer fields */}
+            {formData.vendorType === "Manufacturer" && (
+              <>
+                <div className="flex flex-col space-y-1">
                   <label
-                    htmlFor="sameAsBilling"
-                    className="ml-2 text-sm font-medium text-gray-700"
+                    htmlFor="companyEmail"
+                    className="flex items-center text-sm font-medium text-gray-700"
                   >
-                    Same as Billing Address
+                    <FaEnvelope
+                      className="mr-2 text-brand-purple"
+                      style={{ color: "#852BAF" }}
+                    />
+                    Company Email <span className="text-red-500">*</span>
                   </label>
+
+                  <FormInput
+                    type="email"
+                    id="companyEmail"
+                    label="Company Email"
+                    value={formData.companyEmail}
+                    onChange={handleChange}
+                    placeholder="Enter official company email"
+                    required
+                    error={errors.companyEmail}
+                  />
                 </div>
 
-                <div
-                  className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${
-                    isSameAsBilling ? "opacity-50 pointer-events-none" : ""
-                  }`}
-                >
-                  <FormInput
-                    id="shippingAddressLine1"
-                    label="Shipping Address Line 1"
-                    value={formData.shippingAddressLine1}
-                    onChange={handleChange}
-                    required={!isSameAsBilling}
-                  />
-                  <FormInput
-                    id="shippingAddressLine2"
-                    label="Shipping Address Line 2"
-                    value={formData.shippingAddressLine2}
-                    onChange={handleChange}
-                  />
-
-                  <FormInput
-                    id="shippingCity"
-                    label="Shipping City"
-                    value={formData.shippingCity}
-                    onChange={handleChange}
-                    required={!isSameAsBilling}
-                  />
-                  <FormInput
-                    id="shippingState"
-                    label="Shipping State"
-                    value={formData.shippingState}
-                    onChange={handleChange}
-                    required={!isSameAsBilling}
-                  />
-                  <FormInput
-                    id="shippingPincode"
-                    label="Shipping Pincode"
-                    value={formData.shippingPincode}
-                    onChange={handleChange}
-                    required={!isSameAsBilling}
-                    error={errors.shippingPincode}
-                  />
-                </div>
-              </section>
-
-              {/* Bank Details */}
-              <section className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-gray-100">
-                <SectionHeader
-                  icon={FaUniversity}
-                  title="Bank Details & Proof"
-                  description="Account details for receiving payments and required proof."
+                <FormInput
+                  id="companyPhone"
+                  label="Company Phone"
+                  value={formData.companyPhone}
+                  onChange={handleChange}
+                  type="tel"
+                  required
+                  placeholder="Enter official company phone"
                 />
-<div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">                  
-                  <FormInput
-                    id="bankName"
-                    label="Bank Name"
-                    value={formData.bankName}
-                    onChange={handleChange}
-                    required
-                  />
-                  <FormInput
-                    id="accountNumber"
-                    label="Account Number"
-                    value={formData.accountNumber}
-                    onChange={handleChange}
-                    type="text"
-                    required
-                  />
-                  <div className="hidden lg:block" />
+              </>
+            )}
 
-                  <FormInput
-                    id="branch"
-                    label="Branch"
-                    value={formData.branch}
-                    onChange={handleChange}
-                    required
-                  />
-                  <FormInput
-                    id="ifscCode"
-                    label="IFSC Code"
-                    value={formData.ifscCode}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </section>
+            {/* Conditional: Authorization letter (Trader only) */}
+            {formData.vendorType === "Trader" && (
+              <FileUploadInput
+                id="authorizationLetterFile"
+                label="Authorization / Dealership Letter"
+                file={formData.authorizationLetterFile}
+                onChange={
+                  handleChange as (e: ChangeEvent<HTMLInputElement>) => void
+                }
+                required
+                accept=".pdf, .jpg, .jpeg, .png"
+                description="Traders must upload an authorization/dealership agreement."
+              />
+            )}
+          </div>
+        </section>
 
-              {/* Contact Details */}
-              <section className="space-y-4">
-                <SectionHeader
+        {/* Address Sections */}
+        <section className="space-y-4">
+          <SectionHeader
+            icon={FaAddressBook}
+            title="Registered Address"
+            description="The official registered address of your business."
+          />
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <FormInput
+              id="addressLine1"
+              label="Address Line 1"
+              value={formData.addressLine1}
+              onChange={handleChange}
+              required
+            />
+            <FormInput
+              id="addressLine2"
+              label="Address Line 2"
+              value={formData.addressLine2}
+              onChange={handleChange}
+            />
+            <FormInput
+              id="addressLine3"
+              label="Address Line 3"
+              value={formData.addressLine3}
+              onChange={handleChange}
+            />
+
+            <FormInput
+              id="city"
+              label="City"
+              value={formData.city}
+              onChange={handleChange}
+              required
+            />
+            <FormInput
+              id="state"
+              label="State"
+              value={formData.state}
+              onChange={handleChange}
+              required
+            />
+            <FormInput
+              id="pincode"
+              label="Pincode"
+              value={formData.pincode}
+              onChange={handleChange}
+              required
+              error={errors.pincode}
+            />
+          </div>
+        </section>
+
+        {/* Billing Address */}
+        <section className="space-y-4">
+          <SectionHeader
+            icon={FaCreditCard}
+            title="Billing Address"
+            description="Address for invoices and official correspondence."
+          />
+
+          <div className="flex items-center mb-4">
+            <input
+              type="checkbox"
+              id="sameAsAddress"
+              checked={isSameAsAddress}
+              onChange={() => handleCheckboxChange("billing")}
+              className="w-4 h-4 border-gray-300 rounded text-brand-purple focus:ring-brand-purple"
+              style={{ accentColor: "#852BAF" }}
+            />
+            <label
+              htmlFor="sameAsAddress"
+              className="ml-2 text-sm font-medium text-gray-700"
+            >
+              Same as Registered Address
+            </label>
+          </div>
+
+          <div
+            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${
+              isSameAsAddress ? "opacity-50 pointer-events-none" : ""
+            }`}
+          >
+            <FormInput
+              id="billingAddressLine1"
+              label="Billing Address Line 1"
+              value={formData.billingAddressLine1}
+              onChange={handleChange}
+              required={!isSameAsAddress}
+            />
+            <FormInput
+              id="billingAddressLine2"
+              label="Billing Address Line 2"
+              value={formData.billingAddressLine2}
+              onChange={handleChange}
+            />
+
+            <FormInput
+              id="billingCity"
+              label="Billing City"
+              value={formData.billingCity}
+              onChange={handleChange}
+              required={!isSameAsAddress}
+            />
+            <FormInput
+              id="billingState"
+              label="Billing State"
+              value={formData.billingState}
+              onChange={handleChange}
+              required={!isSameAsAddress}
+            />
+            <FormInput
+              id="billingPincode"
+              label="Billing Pincode"
+              value={formData.billingPincode}
+              onChange={handleChange}
+              required={!isSameAsAddress}
+              error={errors.billingPincode}
+            />
+          </div>
+        </section>
+
+        {/* Shipping Address */}
+        <section className="space-y-4">
+          <SectionHeader
+            icon={FaShippingFast}
+            title="Shipping Address"
+            description="Where products will be picked up from."
+          />
+
+          <div className="flex items-center mb-4">
+            <input
+              type="checkbox"
+              id="sameAsBilling"
+              checked={isSameAsBilling}
+              onChange={() => handleCheckboxChange("shipping")}
+              className="w-4 h-4 border-gray-300 rounded text-brand-pink focus:ring-brand-pink"
+              style={{ accentColor: "#FC3F78" }}
+            />
+            <label
+              htmlFor="sameAsBilling"
+              className="ml-2 text-sm font-medium text-gray-700"
+            >
+              Same as Billing Address
+            </label>
+          </div>
+
+          <div
+            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${
+              isSameAsBilling ? "opacity-50 pointer-events-none" : ""
+            }`}
+          >
+            <FormInput
+              id="shippingAddressLine1"
+              label="Shipping Address Line 1"
+              value={formData.shippingAddressLine1}
+              onChange={handleChange}
+              required={!isSameAsBilling}
+            />
+            <FormInput
+              id="shippingAddressLine2"
+              label="Shipping Address Line 2"
+              value={formData.shippingAddressLine2}
+              onChange={handleChange}
+            />
+
+            <FormInput
+              id="shippingCity"
+              label="Shipping City"
+              value={formData.shippingCity}
+              onChange={handleChange}
+              required={!isSameAsBilling}
+            />
+            <FormInput
+              id="shippingState"
+              label="Shipping State"
+              value={formData.shippingState}
+              onChange={handleChange}
+              required={!isSameAsBilling}
+            />
+            <FormInput
+              id="shippingPincode"
+              label="Shipping Pincode"
+              value={formData.shippingPincode}
+              onChange={handleChange}
+              required={!isSameAsBilling}
+              error={errors.shippingPincode}
+            />
+          </div>
+        </section>
+
+        {/* Bank Details */}
+        <section className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-gray-100">
+          <SectionHeader
+            icon={FaUniversity}
+            title="Bank Details & Proof"
+            description="Account details for receiving payments and required proof."
+          />
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <FormInput
+              id="bankName"
+              label="Bank Name"
+              value={formData.bankName}
+              onChange={handleChange}
+              required
+            />
+            <FormInput
+              id="accountNumber"
+              label="Account Number"
+              value={formData.accountNumber}
+              onChange={handleChange}
+              type="text"
+              required
+            />
+            <div className="hidden lg:block" />
+
+            <FormInput
+              id="branch"
+              label="Branch"
+              value={formData.branch}
+              onChange={handleChange}
+              required
+            />
+            <FormInput
+              id="ifscCode"
+              label="IFSC Code"
+              value={formData.ifscCode}
+              onChange={handleChange}
+              required
+            />
+          </div>
+        </section>
+
+        {/* Contact Details */}
+        <section className="space-y-4">
+          <SectionHeader
             icon={FaAddressBook}
             title="Registered Address"
             description="Official business location"
           />
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-                  <FormInput
-                    id="primaryContactNumber"
-                    label="Primary Contact Number"
-                    value={formData.primaryContactNumber}
-                    onChange={handleChange}
-                    type="tel"
-                    required
-                    error={errors.primaryContactNumber}
-                  />
-                  <FormInput
-                    id="alternateContactNumber"
-                    label="Alternate Contact Number"
-                    value={formData.alternateContactNumber}
-                    onChange={handleChange}
-                    type="tel"
-                    error={errors.alternateContactNumber}
-                  />
-                  <FormInput
-                    id="email"
-                    label="Email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    type="email"
-                    required
-                    error={errors.email}
-                  />
-                </div>
-              </section>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            <FormInput
+              id="primaryContactNumber"
+              label="Primary Contact Number"
+              value={formData.primaryContactNumber}
+              onChange={handleChange}
+              type="tel"
+              required
+              error={errors.primaryContactNumber}
+            />
+            <FormInput
+              id="alternateContactNumber"
+              label="Alternate Contact Number"
+              value={formData.alternateContactNumber}
+              onChange={handleChange}
+              type="tel"
+              error={errors.alternateContactNumber}
+            />
+            <FormInput
+              id="email"
+              label="Email"
+              value={formData.email}
+              onChange={handleChange}
+              type="email"
+              required
+              error={errors.email}
+            />
+          </div>
+        </section>
 
-              {/* Payment Terms */}
-              <section className="space-y-4">
-                <SectionHeader
-                  icon={FaFileContract}
-                  title="Payment & Comments"
-                  description="Custom terms and vendor notes."
-                />
+        {/* Payment Terms */}
+        <section className="space-y-4">
+          <SectionHeader
+            icon={FaFileContract}
+            title="Payment & Comments"
+            description="Custom terms and vendor notes."
+          />
 
-                <div className="flex flex-col space-y-1">
-                  <label
-                    htmlFor="paymentTerms"
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Payment Terms
-                  </label>
+          <div className="flex flex-col space-y-1">
+            <label
+              htmlFor="paymentTerms"
+              className="text-sm font-medium text-gray-700"
+            >
+              Payment Terms
+            </label>
 
-                  <select
-                    id="paymentTerms"
-                    name="paymentTerms"
-                    value={formData.paymentTerms}
-                    onChange={handleChange}
-                    className="p-3 transition duration-150 border border-gray-300 rounded-lg focus:ring-1 focus:ring-brand-purple focus:border-brand-purple"
-                  >
-                    <option value="">Select payment terms</option>
-                    <option value="NET 15">NET 15</option>
-                    <option value="NET 30">NET 30</option>
-                    <option value="NET 45">NET 45</option>
-                  </select>
-                </div>
+            <select
+              id="paymentTerms"
+              name="paymentTerms"
+              value={formData.paymentTerms}
+              onChange={handleChange}
+              className="p-3 transition duration-150 border border-gray-300 rounded-lg focus:ring-1 focus:ring-brand-purple focus:border-brand-purple"
+            >
+              <option value="">Select payment terms</option>
+              <option value="NET 15">NET 15</option>
+              <option value="NET 30">NET 30</option>
+              <option value="NET 45">NET 45</option>
+            </select>
+          </div>
 
-                <div className="flex flex-col space-y-1">
-                  <label
-                    htmlFor="comments"
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Comments (Vendor notes)
-                  </label>
-                  <textarea
-                    id="comments"
-                    name="comments"
-                    rows={3}
-                    value={formData.comments}
-                    onChange={
-                      handleChange as (
-                        e: ChangeEvent<HTMLTextAreaElement>
-                      ) => void
-                    }
-                    placeholder="Add any specific notes or requirements here..."
-                    className="p-3 transition duration-150 border border-gray-300 rounded-lg focus:ring-1 focus:ring-brand-purple focus:border-brand-purple"
-                  />
-                </div>
-              </section>
+          <div className="flex flex-col space-y-1">
+            <label
+              htmlFor="comments"
+              className="text-sm font-medium text-gray-700"
+            >
+              Comments (Vendor notes)
+            </label>
+            <textarea
+              id="comments"
+              name="comments"
+              rows={3}
+              value={formData.comments}
+              onChange={
+                handleChange as (e: ChangeEvent<HTMLTextAreaElement>) => void
+              }
+              placeholder="Add any specific notes or requirements here..."
+              className="p-3 transition duration-150 border border-gray-300 rounded-lg focus:ring-1 focus:ring-brand-purple focus:border-brand-purple"
+            />
+          </div>
+        </section>
 
-              {/* Submit Button */}
-              <div className="flex justify-center pt-6">
-         <button type="submit" disabled={Object.keys(errors).length > 0} className="...">Submit Application</button>
-
+        {/* Submit Button */}
+        <div className="flex justify-center pt-6">
+          <button
+            type="submit"
+            className="px-12 py-4 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] text-white font-bold rounded-2xl shadow-xl shadow-[#852BAF]/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center gap-3 text-lg"
+          >
+            Submit Application
+          </button>
         </div>
       </form>
     </div>
