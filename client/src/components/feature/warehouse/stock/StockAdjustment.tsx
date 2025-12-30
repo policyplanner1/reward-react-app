@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 // ============================
 // Type Definitions
@@ -57,7 +57,7 @@ export default function StockAdjustmentPage() {
 
     try {
       const res = await fetch(
-        `${API_BASE_URL}/warehouse/search?query=${search}`,
+        `${API_BASE}/warehouse/search?query=${search}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -79,7 +79,7 @@ export default function StockAdjustmentPage() {
     const token = localStorage.getItem("token");
 
     try {
-      const res = await fetch(`${API_BASE_URL}/warehouse/stock-adjustments`, {
+      const res = await fetch(`${API_BASE}/warehouse/stock-adjustments`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -139,7 +139,7 @@ export default function StockAdjustmentPage() {
     const token = localStorage.getItem("token");
 
     try {
-      const res = await fetch(`${API_BASE_URL}/warehouse/stock-adjustments`, {
+      const res = await fetch(`${API_BASE}/warehouse/stock-adjustments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

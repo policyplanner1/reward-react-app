@@ -84,6 +84,17 @@ class SubCategoryModel {
   // DELETE SUB CATEGORY
   async deleteSubCategory(id) {
     try {
+      const [subSubCats] = await db.execute(
+        `SELECT COUNT(*) as count FROM sub_sub_categories WHERE subcategory_id = ?`,
+        [id]
+      );
+
+      if (subSubCats[0].count > 0) {
+        throw new Error(
+          "Cannot delete subcategory with existing sub-subcategories"
+        );
+      }
+
       const [result] = await db.execute(
         `DELETE FROM sub_categories WHERE subcategory_id = ?`,
         [id]
@@ -91,7 +102,6 @@ class SubCategoryModel {
 
       return result.affectedRows;
     } catch (error) {
-      console.error("Error deleting sub category:", error);
       throw error;
     }
   }

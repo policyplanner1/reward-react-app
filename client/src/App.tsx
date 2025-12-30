@@ -74,12 +74,12 @@ export default function App() {
   />
 
 <Route
-  path={routes.vendor.products.review}   // "/vendor/products/review/:productId"
+  path={routes.vendor.products.review}   
   element={<ReviewProductPage/>}
 />
 
 <Route
-  path={routes.vendor.products.edit}     // "/vendor/products/edit/:productId"
+  path={routes.vendor.products.edit}     
   element={<EditProductPage />}
 />
 

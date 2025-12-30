@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FaTag,
   FaBox,
@@ -8,11 +8,11 @@ import {
   FaArrowLeft,
   FaDownload,
 } from "react-icons/fa";
-// Replaced Next.js imports with react-router-dom
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-const API_BASE_URL = "http://localhost:5000/api";
-const API_BASEIMAGE_URL = "http://localhost:5000";
+
+const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASEIMAGE_URL = "https://rewardplanners.com";
 
 interface VariantView {
   size?: string;
@@ -138,7 +138,7 @@ export default function ReviewProductPage() {
     setError(null);
     try {
       const res = await fetch(
-        `${API_BASE_URL}/product/${encodeURIComponent(id)}`,
+        `${API_BASE}/product/${encodeURIComponent(id)}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token") || ""}`,

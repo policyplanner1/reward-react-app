@@ -10,8 +10,7 @@ import {
   FiTag,
   FiX,
   FiSave,
-  FiCheckCircle,
-  FiXCircle,
+  
   FiGrid,
 } from "react-icons/fi";
 import { api } from "../../../../api/api";

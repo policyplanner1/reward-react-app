@@ -1,16 +1,19 @@
 import axios from "axios";
 
 export const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "/api/crm", 
 });
 
-// Interceptor to attach token automatically
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
-    if (token && config.headers) {
-      config.headers["Authorization"] = `Bearer ${token}`;
+
+    // Do NOT attach Authorization for login/auth
+    if (token && config.url && !config.url.includes("/auth/")) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
     }
+
     return config;
   },
   (error) => Promise.reject(error)

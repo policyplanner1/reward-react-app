@@ -17,8 +17,8 @@ import {
   FaFilePdf,
 } from "react-icons/fa";
 
-const API_BASE_URL = "http://localhost:5000/api";
-const API_BASEIMAGE_URL = "http://localhost:5000";
+const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASEIMAGE_URL = "https://rewardplanners.com";
 
 const resolveImageUrl = (path: string) =>
   path?.startsWith("http") ? path : `${API_BASEIMAGE_URL}/uploads/${path}`;
@@ -281,7 +281,7 @@ export default function VendorApprovalForm() {
       }
 
       try {
-        const res = await fetch(`${API_BASE_URL}/vendor/${vendorId}`, {
+        const res = await fetch(`${API_BASE}/vendor/${vendorId}`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -329,7 +329,7 @@ export default function VendorApprovalForm() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/vendor/status/${vendorId}`, {
+      const res = await fetch(`${API_BASE}/vendor/status/${vendorId}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
