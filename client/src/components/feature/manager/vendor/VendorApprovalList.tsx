@@ -22,7 +22,8 @@ interface VendorItem {
   submitted_at: string;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL;
+// const API_BASE = import.meta.env.VITE_API_URL;
+import { api } from "../../../../api/api";
 
 const StatusChip = ({ status }: { status: VendorItem["status"] }) => {
   if (status === "approved") {
@@ -68,15 +69,10 @@ export default function VendorApprovalList() {
   useEffect(() => {
     async function fetchVendors() {
       try {
-        const token = localStorage.getItem("token");
+        const res = await api.get("/manager/all-vendors");
 
-        const res = await fetch(`${API_BASE}/manager/all-vendors`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const data = await res.json();
-        if (data.success) {
-          setVendors(data.data);
+        if (res.data.success) {
+          setVendors(res.data.data);
         }
       } catch (err) {
         console.error("Error loading vendors:", err);

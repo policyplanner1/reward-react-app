@@ -17,7 +17,7 @@ import {
   FaFilePdf,
 } from "react-icons/fa";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+import { api } from "../../../../api/api";
 const API_BASEIMAGE_URL = "https://rewardplanners.com";
 
 const resolveImageUrl = (path: string) =>
@@ -31,7 +31,6 @@ const downloadFile = (url: string, filename?: string) => {
   link.click();
   document.body.removeChild(link);
 };
-
 
 interface VendorOnboardingData {
   companyName: string;
@@ -248,7 +247,6 @@ const SectionHeader = ({
   </div>
 );
 
-
 export default function VendorApprovalForm() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -273,35 +271,22 @@ export default function VendorApprovalForm() {
         return;
       }
 
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setLoading(false);
-        setError("Authentication token not found. Please log in.");
-        return;
-      }
-
       try {
-        const res = await fetch(`${API_BASE}/vendor/${vendorId}`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+        const res = await api.get(`/vendor/${vendorId}`);
 
-        if (!res.ok) {
-          const json = await res.json();
-          throw new Error(json.message || `Failed to fetch vendor data`);
-        }
+        const data = res.data.data;
 
-        const json = await res.json();
-        setFormData(restructureData(json.data));
-        setDocumentMap(mapDocumentsByKey(json.data.documents));
-        setVendorStatus(json.data.vendor.status);
+        setFormData(restructureData(data));
+        setDocumentMap(mapDocumentsByKey(data.documents));
+        setVendorStatus(data.vendor.status);
         setError(null);
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        setError(err instanceof Error ? err.message : String(err));
+        setError(
+          err?.response?.data?.message ||
+            err.message ||
+            "Failed to fetch vendor data"
+        );
       } finally {
         setLoading(false);
       }
@@ -310,15 +295,49 @@ export default function VendorApprovalForm() {
     fetchVendorData();
   }, [vendorId]);
 
+  // const handleFinalDecision = async (status: "approved" | "rejected") => {
+  //   if (status === "rejected" && rejectionReason.trim() === "") {
+  //     alert("Rejection reason is required to reject the vendor.");
+  //     return;
+  //   }
+
+  //   const token = localStorage.getItem("token");
+  //   if (!token) {
+  //     alert("Authentication missing. Please refresh and log in.");
+  //     return;
+  //   }
+
+  //   const payload = {
+  //     status,
+  //     rejectionReason: status === "rejected" ? rejectionReason : null,
+  //   };
+
+  //   setIsSubmitting(true);
+  //   try {
+  //     const res = await fetch(`${API_BASE}/vendor/status/${vendorId}`, {
+  //       method: "PUT",
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify(payload),
+  //     });
+
+  //     const json = await res.json();
+  //     if (!res.ok) throw new Error(json.message);
+
+  //     alert(`Vendor status updated to ${status}`);
+  //     navigate("/manager/dashboard/vendorlist");
+  //   } catch (err: any) {
+  //     alert(err.message);
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
+
   const handleFinalDecision = async (status: "approved" | "rejected") => {
     if (status === "rejected" && rejectionReason.trim() === "") {
       alert("Rejection reason is required to reject the vendor.");
-      return;
-    }
-
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Authentication missing. Please refresh and log in.");
       return;
     }
 
@@ -328,23 +347,22 @@ export default function VendorApprovalForm() {
     };
 
     setIsSubmitting(true);
-    try {
-      const res = await fetch(`${API_BASE}/vendor/status/${vendorId}`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message);
+    try {
+      const res = await api.put(`/vendor/status/${vendorId}`, payload);
+
+      if (!res.data.success) {
+        throw new Error(res.data.message || "Failed to update vendor status");
+      }
 
       alert(`Vendor status updated to ${status}`);
       navigate("/manager/dashboard/vendorlist");
     } catch (err: any) {
-      alert(err.message);
+      alert(
+        err?.response?.data?.message ||
+          err.message ||
+          "Failed to update vendor status"
+      );
     } finally {
       setIsSubmitting(false);
     }
