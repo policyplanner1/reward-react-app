@@ -788,7 +788,7 @@ export default function ProductManagerList() {
                       {/* View Button*/}
                       <Link
                         to={routes.vendor.products.review.replace(
-                          ":id",
+                          ":productId",
                           String(product.product_id)
                         )}
                       >

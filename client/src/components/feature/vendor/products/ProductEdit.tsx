@@ -1,19 +1,32 @@
-
 import React, { useState, useEffect } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import type { ComponentType } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 
 type IconComp = ComponentType<any>;
 
-function SectionHeader({ icon: Icon, title, description }: { icon: IconComp; title: string; description?: string; }) {
+function SectionHeader({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: IconComp;
+  title: string;
+  description?: string;
+}) {
   return (
     <div className="flex items-start space-x-3">
-      <div className="p-3 text-white rounded-md" style={{ background: "linear-gradient(to right, #852BAF, #FC3F78)" }}>
+      <div
+        className="p-3 text-white rounded-md"
+        style={{ background: "linear-gradient(to right, #852BAF, #FC3F78)" }}
+      >
         <Icon />
       </div>
       <div>
         <h3 className="text-lg font-semibold">{title}</h3>
-        {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+        {description && (
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        )}
       </div>
     </div>
   );
@@ -23,13 +36,24 @@ function FormInput(props: {
   id: string;
   label: string;
   value?: string | number;
-  onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  onChange: (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => void;
   type?: string;
   required?: boolean;
   placeholder?: string;
   error?: string;
 }) {
-  const { id, label, value = "", onChange, type = "text", required, placeholder, error } = props;
+  const {
+    id,
+    label,
+    value = "",
+    onChange,
+    type = "text",
+    required,
+    placeholder,
+    error,
+  } = props;
   return (
     <div className="flex flex-col space-y-1">
       <label htmlFor={id} className="text-sm font-medium text-gray-700">
@@ -63,8 +87,9 @@ import {
   FaSpinner,
 } from "react-icons/fa";
 
-const API_BASE_URL = "http://localhost:5000/api";
-const API_BASEIMAGE_URL = "http://localhost:5000";
+// const API_BASE = import.meta.env.VITE_API_URL;
+import { api } from "../../../../api/api";
+const API_BASEIMAGE_URL = "https://rewardplanners.com";
 
 interface Category {
   category_id: number;
@@ -170,14 +195,9 @@ const allowOnlyNumbers = (value: string) => /^[0-9]*$/.test(value);
 const allowOnlyDecimal = (value: string) => /^\d*\.?\d*$/.test(value);
 const allowOnlyDimensionFormat = (value: string) => /^[0-9.*]*$/.test(value);
 
-
-
 export default function EditProductPage() {
-  const params = useParams();
-  const productId = Array.isArray(params.productId)
-    ? params.productId[0]
-    : params.productId;
-  const router = useRouter();
+  const { id: productId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   const [product, setProduct] = useState<ProductData>(initialProductData);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -207,10 +227,10 @@ export default function EditProductPage() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/category`);
-      const json = await res.json();
-      if (json.success) {
-        setCategories(json.data);
+      const res = await api.get("/category");
+
+      if (res.data.success) {
+        setCategories(res.data.data);
       }
     } catch (err) {
       console.error("Error fetching categories:", err);
@@ -268,11 +288,10 @@ export default function EditProductPage() {
 
   const fetchSubCategories = async (categoryId: number) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/subcategory/${categoryId}`);
+      const res = await api.get(`/subcategory/${categoryId}`);
 
-      const json = await res.json();
-      if (json.success) {
-        setSubCategories(json.data);
+      if (res.data.success) {
+        setSubCategories(res.data.data);
       }
     } catch (err) {
       console.error("Error fetching subcategories:", err);
@@ -281,43 +300,26 @@ export default function EditProductPage() {
 
   const fetchSubSubCategories = async (subcategoryId: number) => {
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/subsubcategory/${subcategoryId}`
-      );
-      const json = await res.json();
-      if (json.success) {
-        setSubSubCategories(json.data);
+      const res = await api.get(`/subsubcategory/${subcategoryId}`);
+
+      if (res.data.success) {
+        setSubSubCategories(res.data.data);
       }
     } catch (err) {
       console.error("Error fetching sub-subcategories:", err);
     }
   };
 
-  // FIXED: Using correct endpoint for required documents
   const fetchRequiredDocuments = async (categoryId: number) => {
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/product/category/required_docs/${categoryId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-            "Content-Type": "application/json",
-          },
-        }
+      const res = await api.get(
+        `/product/category/required_docs/${categoryId}`
       );
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      const json = await res.json();
-
-      if (json.success) {
-        setRequiredDocs(json.data || []);
-        // Clear any previously selected doc files
+      if (res.data.success) {
+        setRequiredDocs(res.data.data || []);
         setDocFiles({});
       } else {
-        console.error("Failed to fetch documents:", json.message);
         setRequiredDocs([]);
       }
     } catch (err) {
@@ -390,21 +392,16 @@ export default function EditProductPage() {
   const fetchProductDetails = async (id: string) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
 
-      const res = await fetch(`${API_BASE_URL}/product/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await api.get(`/product/${id}`);
+      const json = res.data;
 
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message);
+      if (!json.success) {
+        throw new Error(json.message || "Failed to fetch product");
+      }
 
       const p = json.product;
-      if (!p) {
-        throw new Error("Product not found");
-      }
+      if (!p) throw new Error("Product not found");
 
       // Detect custom taxonomy
       const hasCustomCategory = !p.category_id && !!p.custom_category;
@@ -659,10 +656,10 @@ export default function EditProductPage() {
     setSuccess(null);
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("Authentication required. Please login.");
-      }
+      // const token = localStorage.getItem("token");
+      // if (!token) {
+      //   throw new Error("Authentication required. Please login.");
+      // }
 
       // Validate required fields
       if (!product.categoryId && !custom_category.trim()) {
@@ -764,25 +761,24 @@ export default function EditProductPage() {
       });
 
       // Submit to backend
-      const response = await fetch(
-        `${API_BASE_URL}/product/update-product/${productId}`,
+      const response = await api.put(
+        `/product/update-product/${productId}`,
+        formData,
         {
-          method: "PUT",
           headers: {
-            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
           },
-          body: formData,
         }
       );
 
-      const data = await response.json();
+      const data = response.data;
 
       if (!data.success) {
-        throw new Error(data.message || "Failed to create product");
+        throw new Error(data.message || "Failed to update product");
       }
 
       setSuccess(`Product updated successfully! Product ID: ${data.productId}`);
-      navigate("/src/vendor/products/list");
+      navigate("/vendor/products/list");
     } catch (err: any) {
       console.error("Submit error:", err);
       setError(err.message);
@@ -1028,7 +1024,9 @@ export default function EditProductPage() {
                 <input
                   type="date"
                   value={variant.expiryDate || ""}
-                  min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
+                  min={
+                    new Date(Date.now() + 86400000).toISOString().split("T")[0]
+                  }
                   onChange={(e) =>
                     handleVariantChange(index, "expiryDate", e.target.value)
                   }

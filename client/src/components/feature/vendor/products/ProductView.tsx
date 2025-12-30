@@ -101,7 +101,8 @@ import {
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+// const API_BASE = import.meta.env.VITE_API_URL;
+import { api } from "../../../../api/api";
 const API_BASEIMAGE_URL = "https://rewardplanners.com";
 
 interface VariantView {
@@ -146,7 +147,7 @@ interface ProductView {
   }>;
 }
 export default function ReviewProductPage() {
-  const { id } = useParams<{ id: string }>();  // only one useParams
+  const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
 
   const [product, setProduct] = useState<ProductView | null>(null);
@@ -154,13 +155,13 @@ export default function ReviewProductPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) {
+    if (!productId) {
       setError("Product ID not provided in route.");
       setLoading(false);
       return;
     }
-    fetchProduct(id);
-  }, [id]);
+    fetchProduct(productId);
+  }, [productId]);
 
   const resolveImageUrl = (path?: string) => {
     if (!path) return "";
@@ -180,24 +181,11 @@ export default function ReviewProductPage() {
   const fetchProduct = async (id: string) => {
     setLoading(true);
     setError(null);
+
     try {
-      const res = await fetch(
-        `${API_BASE}/product/${encodeURIComponent(id)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const res = await api.get(`/product/${encodeURIComponent(id)}`);
 
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Failed to fetch product: ${res.status} ${txt}`);
-      }
-
-      const json = await res.json();
-      const raw = json.data ?? json.product ?? json;
+      const raw = res.data?.data ?? res.data?.product ?? res.data;
 
       // Map backend shape to ProductView expected by this page
       const mapped: ProductView = {
@@ -223,6 +211,7 @@ export default function ReviewProductPage() {
         productImages: Array.isArray(raw.productImages)
           ? raw.productImages
           : raw.images ?? [],
+
         variants: Array.isArray(raw.variants)
           ? raw.variants.map((v: any) => ({
               size: v.size ?? "",
@@ -244,13 +233,16 @@ export default function ReviewProductPage() {
               images: Array.isArray(v.images) ? v.images : v.imageUrls ?? [],
             }))
           : [],
+
         requiredDocs: raw.documents ?? [],
       };
 
       setProduct(mapped);
     } catch (err: any) {
       console.error(err);
-      setError(err?.message ?? "Failed to load product");
+      setError(
+        err?.response?.data?.message || err.message || "Failed to load product"
+      );
     } finally {
       setLoading(false);
     }
@@ -298,12 +290,11 @@ export default function ReviewProductPage() {
 
           <div className="flex gap-2">
             <button
-  onClick={() => navigate(-1)}
-  className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50"
->
-  <FaArrowLeft /> Back
-</button>
-
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50"
+            >
+              <FaArrowLeft /> Back
+            </button>
 
             {/* Edit button - navigate to your edit route if exists */}
             {/* <Link
