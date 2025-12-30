@@ -625,12 +625,12 @@ class ProductModel {
         where += ` AND p.status = ?`;
         params.push(status);
       }
+
       if (search) {
         where += ` AND p.product_name LIKE ?`;
         params.push(`%${search}%`);
       }
 
-      // Validate sort column
       const sortableColumns = ["created_at", "product_name", "brand_name"];
       if (!sortableColumns.includes(sortBy)) sortBy = "created_at";
 
@@ -650,21 +650,17 @@ class ProductModel {
         p.custom_subcategory,
         p.custom_sub_subcategory,
         p.created_at,
-        IFNULL(
-          CONCAT(
-            '[', 
-            GROUP_CONCAT(
-              DISTINCT JSON_OBJECT(
-                'image_id', pi.image_id,
-                'image_url', pi.image_url,
-                'type', pi.type,
-                'sort_order', pi.sort_order
-              ) ORDER BY pi.sort_order ASC
-            ),
-            ']'
-          ),
-          '[]'
+
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id, '::',
+            pi.image_url, '::',
+            pi.type, '::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
         ) AS images
+
       FROM products p
       LEFT JOIN vendors v ON p.vendor_id = v.vendor_id
       LEFT JOIN categories c ON p.category_id = c.category_id
@@ -681,13 +677,35 @@ class ProductModel {
 
       const [rows] = await db.execute(query, params);
 
-      // Total count for pagination
+      // 🔹 Parse images safely in Node.js
+      const products = rows.map((row) => {
+        let images = [];
+
+        if (row.images) {
+          images = row.images.split(",").map((item) => {
+            const [image_id, image_url, type, sort_order] = item.split("::");
+            return {
+              image_id: Number(image_id),
+              image_url,
+              type,
+              sort_order: Number(sort_order),
+            };
+          });
+        }
+
+        return {
+          ...row,
+          images,
+        };
+      });
+
+      // Total count (no LIMIT/OFFSET)
       const [[{ total }]] = await db.execute(
         `SELECT COUNT(*) AS total FROM products p ${where}`,
-        params.slice(0, -2) // remove limit & offset
+        params.slice(0, -2)
       );
 
-      return { products: rows, totalItems: total };
+      return { products, totalItems: total };
     } catch (error) {
       console.error("Error fetching products by vendor:", error);
       throw error;
