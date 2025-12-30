@@ -11,13 +11,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const u = localStorage.getItem("user");
     const t = localStorage.getItem("token");
-    if (u && t) setUser(JSON.parse(u));
+
+    if (u && t) {
+      setUser(JSON.parse(u));
+    }
+
+    setLoading(false);
   }, []);
 
   const resolveRoute = (role: User["role"]) =>
@@ -42,9 +47,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setLoading(true);
       setError(null);
-       console.log("role in auth provider:", role);
+      console.log("role in auth provider:", role);
       const res = await api.post(`/auth/${resolveRoute(role)}/login`, {
-
         email,
         password,
       });
@@ -67,7 +71,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    localStorage.clear();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
     navigate("/login");
   };
