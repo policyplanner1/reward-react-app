@@ -1,18 +1,32 @@
 import React, { useState, useEffect } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import type { ComponentType } from "react";
+import { api } from "../../../../api/api";
 
 type IconComp = ComponentType<any>;
 
-function SectionHeader({ icon: Icon, title, description }: { icon: IconComp; title: string; description?: string; }) {
+function SectionHeader({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: IconComp;
+  title: string;
+  description?: string;
+}) {
   return (
     <div className="flex items-start space-x-3">
-      <div className="p-3 text-white rounded-md" style={{ background: "linear-gradient(to right, #852BAF, #FC3F78)" }}>
+      <div
+        className="p-3 text-white rounded-md"
+        style={{ background: "linear-gradient(to right, #852BAF, #FC3F78)" }}
+      >
         <Icon />
       </div>
       <div>
         <h3 className="text-lg font-semibold">{title}</h3>
-        {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+        {description && (
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        )}
       </div>
     </div>
   );
@@ -22,13 +36,24 @@ function FormInput(props: {
   id: string;
   label: string;
   value?: string | number;
-  onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  onChange: (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => void;
   type?: string;
   required?: boolean;
   placeholder?: string;
   error?: string;
 }) {
-  const { id, label, value = "", onChange, type = "text", required, placeholder, error } = props;
+  const {
+    id,
+    label,
+    value = "",
+    onChange,
+    type = "text",
+    required,
+    placeholder,
+    error,
+  } = props;
   return (
     <div className="flex flex-col space-y-1">
       <label htmlFor={id} className="text-sm font-medium text-gray-700">
@@ -62,7 +87,7 @@ import {
   FaSpinner,
 } from "react-icons/fa";
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 // --- Interfaces matching your backend ---
 interface Category {
@@ -172,7 +197,6 @@ const numberValidators = {
 
 // --- UI Components ---
 
-
 const allowOnlyNumbers = (value: string, allowDecimal = false) => {
   const regex = allowDecimal ? /^[0-9]*\.?[0-9]*$/ : /^[0-9]*$/;
   return regex.test(value);
@@ -230,14 +254,10 @@ export default function ProductListingDynamic() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/category`);
-      const json = await res.json();
-      if (json.success) {
-        setCategories(json.data);
-      }
-    } catch (err) {
-      console.error("Error fetching categories:", err);
-      setError("Failed to load categories. Please try again.");
+      const res = await api.get("/category");
+      if (res.data.success) setCategories(res.data.data);
+    } catch {
+      setError("Failed to load categories");
     } finally {
       setLoading(false);
     }
@@ -295,65 +315,21 @@ export default function ProductListingDynamic() {
   }, [product.subCategoryId]);
 
   const fetchSubCategories = async (categoryId: number) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/subcategory/${categoryId}`);
-
-      const json = await res.json();
-      console.log("Subcategories response:", json);
-      if (json.success) {
-        setSubCategories(json.data);
-      }
-    } catch (err) {
-      console.error("Error fetching subcategories:", err);
-    }
+    const res = await api.get(`/subcategory/${categoryId}`);
+    if (res.data.success) setSubCategories(res.data.data);
   };
 
   const fetchSubSubCategories = async (subcategoryId: number) => {
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/subsubcategory/${subcategoryId}`
-      );
-      const json = await res.json();
-      console.log("Sub-subcategories response:", json.data);
-      if (json.success) {
-        setSubSubCategories(json.data);
-      }
-    } catch (err) {
-      console.error("Error fetching sub-subcategories:", err);
-    }
+    const res = await api.get(`/subsubcategory/${subcategoryId}`);
+    if (res.data.success) setSubSubCategories(res.data.data);
   };
 
   // FIXED: Using correct endpoint for required documents
   const fetchRequiredDocuments = async (categoryId: number) => {
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/product/category/required_docs/${categoryId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      const json = await res.json();
-      console.log("Required documents response:", json);
-
-      if (json.success) {
-        setRequiredDocs(json.data || []);
-        // Clear any previously selected doc files
-        setDocFiles({});
-      } else {
-        console.error("Failed to fetch documents:", json.message);
-        setRequiredDocs([]);
-      }
-    } catch (err) {
-      console.error("Error fetching category documents:", err);
-      setRequiredDocs([]);
+    const res = await api.get(`/product/category/required_docs/${categoryId}`);
+    if (res.data.success) {
+      setRequiredDocs(res.data.data || []);
+      setDocFiles({});
     }
   };
 
@@ -785,23 +761,14 @@ export default function ProductListingDynamic() {
       });
 
       // Submit to backend
-      const response = await fetch(`${API_BASE_URL}/product/create-product`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
+      const res = await api.post("/product/create-product", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
-      const data = await response.json();
+      if (!res.data.success)
+        throw new Error(res.data.message || "Failed to create product");
 
-      if (!data.success) {
-        throw new Error(data.message || "Failed to create product");
-      }
-
-      setSuccess(`Product created successfully! Product ID: ${data.productId}`);
-
-      // Reset form
+      setSuccess("Product created successfully");
       setProduct(initialProductData);
       setDocFiles({});
       setRequiredDocs([]);
