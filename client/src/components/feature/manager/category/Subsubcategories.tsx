@@ -169,7 +169,7 @@ export default function SubSubCategoryManagement() {
   const handleView = async (id: number) => {
     try {
       const res = await api.get(`/vendor/sub-subcategory/${id}`);
-      const s = res.data;
+      const s = res.data.data;
       const formatted: SubSubcategory = {
         sub_subcategory_id: s.sub_subcategory_id,
         subcategory_id: s.subcategory_id,

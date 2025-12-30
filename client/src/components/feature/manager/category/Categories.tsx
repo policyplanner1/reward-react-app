@@ -80,10 +80,10 @@ export default function CategoryManagement() {
     try {
       const res = await api.get(`/vendor/category/${categoryId}`);
       const data: Category = {
-        category_id: res.data.category_id,
-        name: res.data.category_name,
-        status: res.data.status === 1 ? "active" : "inactive",
-        created_at: res.data.created_at,
+        category_id: res.data.data.category_id,
+        name: res.data.data.category_name,
+        status: res.data.data.status === 1 ? "active" : "inactive",
+        created_at: res.data.data.created_at,
       };
       setSelected(data);
       setEditName(data.name);

@@ -5,7 +5,10 @@ class SubCategoryController {
   async getAllSubCategories(req, res) {
     try {
       const [rows] = await db.execute(
-        `SELECT * FROM sub_categories LEFT JOIN categories on sub_categories.category_id=categories.category_id`
+        `SELECT sub_categories.*, categories.category_name 
+       FROM sub_categories 
+       LEFT JOIN categories 
+       ON sub_categories.category_id = categories.category_id`
       );
 
       res.json({

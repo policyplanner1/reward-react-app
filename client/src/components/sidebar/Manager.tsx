@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
   { label: 'Vendors', to: routes.manager.vendors, icon: <FiUsers />, type: 'link' },
   { label: 'Products', to: routes.manager.products, icon: <FiPackage />, type: 'link' },
   {
-    label: 'Categories',
+    label: 'Category',
     icon: <FiTag />,
     type: 'dropdown',
     children: [
@@ -151,9 +151,9 @@ const navItems: NavItem[] = [
               <Link to="/manager/profile" className="flex items-center gap-3 px-5 py-4 text-sm font-bold text-gray-600 hover:bg-gray-50 hover:text-[#852BAF] transition-colors border-b border-gray-50">
                 <FiUser className="text-lg" /> Profile Details
               </Link>
-              <Link to="/manager/settings" className="flex items-center gap-3 px-5 py-4 text-sm font-bold text-gray-600 hover:bg-gray-50 hover:text-[#852BAF] transition-colors border-b border-gray-50">
+              {/* <Link to="/manager/settings" className="flex items-center gap-3 px-5 py-4 text-sm font-bold text-gray-600 hover:bg-gray-50 hover:text-[#852BAF] transition-colors border-b border-gray-50">
                 <FiSettings className="text-lg" /> Settings
-              </Link>
+              </Link> */}
               <button
                 onClick={logout}
                 className="flex items-center w-full gap-3 px-5 py-4 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors"

@@ -40,7 +40,14 @@ export default function SubcategoryManagement() {
   const [editName, setEditName] = useState("");
   const [loadingAdd, setLoadingAdd] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
-const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const normalizeStatus = (status: any): Status => {
+    if (status === "active") return "active";
+    if (status === "inactive") return "inactive";
+    if (status === 1 || status === "1") return "active";
+    return "inactive";
+  };
 
   const fetchCategories = async () => {
     try {
@@ -63,31 +70,33 @@ const [error, setError] = useState<string | null>(null);
   };
 
   const fetchSubcategories = async () => {
-  try {
-    const res = await api.get("/subcategory");
+    try {
+      const res = await api.get("/subcategory");
 
-    const subArray = Array.isArray(res.data)
-      ? res.data
-      : Array.isArray(res.data.data)
-      ? res.data.data
-      : [];
+      const subArray = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data.data)
+        ? res.data.data
+        : [];
 
-    const formatted = subArray.map((s: any) => ({
-      subcategory_id: s?.subcategory_id ?? "",
-      category_id: s?.category_id ?? "",
-      subcategory_name: s?.subcategory_name ?? "",
-      category_name: s?.category_name ?? "",
-      status: Number(s?.status) === 1 ? "active" : "inactive",
-      created_at: s?.created_at ?? "",
-    }));
+        console.log("Fetched subcategories:", subArray);  
 
-    setSubcategories(formatted);
-  } catch (err) {
-    setError("Failed to load subcategories");
-    console.error(err);
-  }
-};
+      const formatted = subArray.map((s: any) => ({
+        subcategory_id: s?.subcategory_id ?? "",
+        category_id: s?.category_id ?? "",
+        subcategory_name: s?.subcategory_name ?? "",
+        category_name: s?.category_name ?? "",
+        // status: Number(s?.status) === 1 ? "active" : "inactive",
+        status: normalizeStatus(s.status),
+        created_at: s?.created_at ?? "",
+      }));
 
+      setSubcategories(formatted);
+    } catch (err) {
+      setError("Failed to load subcategories");
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     fetchCategories();
@@ -122,13 +131,13 @@ const [error, setError] = useState<string | null>(null);
   const handleView = async (id: number) => {
     try {
       const res = await api.get(`/vendor/subcategory/${id}`);
-      const s = res.data;
+      const s = res.data.data;
       const formatted: Subcategory = {
         subcategory_id: s.subcategory_id,
         category_id: s.category_id,
         subcategory_name: s.subcategory_name,
         category_name: s.category_name,
-        status: Number(s.status) === 1 ? "active" : "inactive",
+        status: normalizeStatus(s.status),
         created_at: s.created_at,
       };
       setSelected(formatted);
@@ -148,6 +157,12 @@ const [error, setError] = useState<string | null>(null);
         category_id: selected.category_id,
         name: editName,
         status: selected.status === "active" ? 1 : 0,
+      });
+
+      setSelected({
+        ...selected,
+        subcategory_name: editName,
+        status: selected.status,
       });
 
       fetchSubcategories();
@@ -286,7 +301,7 @@ const [error, setError] = useState<string | null>(null);
                           : "bg-red-500"
                       }`}
                     />
-                    {sub.status}
+                    {sub.status === "active" ? "Active" : "Inactive"}
                   </span>
                 </td>
                 <td className="px-8 py-5 text-sm font-semibold text-gray-400">
