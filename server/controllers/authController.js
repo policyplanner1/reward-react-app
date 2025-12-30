@@ -241,14 +241,13 @@ const authController = {
         });
       }
 
-      if (user.is_verified !== 1) {
+      if (Number(user.is_verified) !== 1) {
         return res.status(403).json({
           success: false,
           message: "User is not verified",
         });
       }
 
-      // 🎯 Get correct vendor profile (approved > pending > others)
       let vendorData = null;
       let vendorId = null;
 

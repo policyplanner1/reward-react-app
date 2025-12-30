@@ -53,6 +53,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         password,
       });
 
+      const data = await res.data;
+      if (!data.success) throw new Error(data.message);
+
       const { token, user } = res.data.data;
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
@@ -65,6 +68,106 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setError("Login failed");
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    role: User["role"],
+    phone?: string
+  ) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const route = resolveRoute(role);
+
+      const { data } = await api.post(`/auth/${route}/register`, {
+        name,
+        email,
+        password,
+        phone,
+      });
+
+      if (!data?.success) {
+        throw new Error(data?.message || "Registration failed");
+      }
+
+      sessionStorage.setItem("otp_email", email);
+      sessionStorage.setItem("otp_role", role);
+
+      navigate("/verify-otp");
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message || err.message || "Registration failed"
+      );
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOtp = async (email: string, otp: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const role = sessionStorage.getItem("otp_role") as User["role"];
+      if (!role) throw new Error("Role not found for OTP verification");
+
+      const route = resolveRoute(role);
+
+      const { data } = await api.post(`/auth/${route}/verify-otp`, {
+        email,
+        otp,
+      });
+
+      if (!data?.success) {
+        throw new Error(data?.message || "OTP verification failed");
+      }
+
+      const { token, user } = data.data;
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+      setUser(user);
+
+      sessionStorage.removeItem("otp_email");
+      sessionStorage.removeItem("otp_role");
+
+      navigate(resolveDashboard(user.role));
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || "Invalid OTP");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendOtp = async (email: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const role = sessionStorage.getItem("otp_role") as User["role"];
+      if (!role) throw new Error("Role not found for OTP resend");
+
+      const route = resolveRoute(role);
+
+      const { data } = await api.post(`/auth/${route}/resend-otp`, { email });
+
+      if (!data?.success) {
+        throw new Error(data?.message || "Failed to resend OTP");
+      }
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message || err.message || "Failed to resend OTP"
+      );
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -84,9 +187,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         loading,
         error,
         login,
-        register: async () => {},
-        verifyOtp: async () => {},
-        resendOtp: async () => {},
+        register,
+        verifyOtp,
+        resendOtp,
         logout,
       }}
     >
