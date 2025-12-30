@@ -10,8 +10,8 @@ import {
 } from "react-icons/fa";
 import { useNavigate, useParams } from "react-router-dom";
 
-
-const API_BASE = import.meta.env.VITE_API_URL;
+// const API_BASE = import.meta.env.VITE_API_URL;
+import { api } from "../../../../api/api";
 const API_BASEIMAGE_URL = "https://rewardplanners.com";
 
 interface VariantView {
@@ -25,7 +25,7 @@ interface VariantView {
   expiryDate?: string;
   manufacturingYear?: string;
   materialType?: string;
-  images?: string[]; 
+  images?: string[];
 }
 
 interface ProductView {
@@ -110,7 +110,6 @@ export default function ReviewProductPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-
   useEffect(() => {
     if (!productId) {
       setError("Product ID not provided in route.");
@@ -136,23 +135,11 @@ export default function ReviewProductPage() {
   const fetchProduct = async (id: string) => {
     setLoading(true);
     setError(null);
+
     try {
-      const res = await fetch(
-        `${API_BASE}/product/${encodeURIComponent(id)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const res = await api.get(`/product/${encodeURIComponent(id)}`);
+      const json = res.data;
 
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Failed to fetch product: ${res.status} ${txt}`);
-      }
-
-      const json = await res.json();
       const raw = json.data ?? json.product ?? json;
 
       const mapped: ProductView = {
@@ -166,12 +153,19 @@ export default function ReviewProductPage() {
         shortDescription: raw.short_description ?? raw.shortDescription ?? "",
         categoryId: raw.category_id ?? raw.categoryId ?? null,
         subCategoryId: raw.subcategory_id ?? raw.subCategoryId ?? null,
-        subSubCategoryId: raw.sub_subcategory_id ?? raw.subSubCategoryId ?? null,
+        subSubCategoryId:
+          raw.sub_subcategory_id ?? raw.subSubCategoryId ?? null,
+
         categoryName: raw.category_name ?? raw.custom_category ?? null,
         subCategoryName: raw.subcategory_name ?? raw.custom_subcategory ?? null,
-        subSubCategoryName: raw.sub_subcategory_name ?? raw.custom_sub_subcategory ?? null,
+        subSubCategoryName:
+          raw.sub_subcategory_name ?? raw.custom_sub_subcategory ?? null,
+
         product_status: raw.status ?? "",
-        productImages: Array.isArray(raw.productImages) ? raw.productImages : raw.images ?? [],
+        productImages: Array.isArray(raw.productImages)
+          ? raw.productImages
+          : raw.images ?? [],
+
         variants: Array.isArray(raw.variants)
           ? raw.variants.map((v: any) => ({
               size: v.size ?? "",
@@ -181,12 +175,19 @@ export default function ReviewProductPage() {
               MRP: v.mrp ?? "",
               salesPrice: v.sale_price ?? "",
               stock: v.stock ?? v.qty ?? "",
-              expiryDate: v.expiry_date && isValidDate(v.expiry_date) ? new Date(v.expiry_date).toLocaleDateString() : "",
-              manufacturingYear: v.manufacturing_date && isValidDate(v.manufacturing_date) ? new Date(v.manufacturing_date).toLocaleDateString() : "",
+              expiryDate:
+                v.expiry_date && isValidDate(v.expiry_date)
+                  ? new Date(v.expiry_date).toLocaleDateString()
+                  : "",
+              manufacturingYear:
+                v.manufacturing_date && isValidDate(v.manufacturing_date)
+                  ? new Date(v.manufacturing_date).toLocaleDateString()
+                  : "",
               materialType: v.material_type ?? "",
               images: Array.isArray(v.images) ? v.images : v.imageUrls ?? [],
             }))
           : [],
+
         requiredDocs: raw.documents ?? [],
       };
 
@@ -228,7 +229,9 @@ export default function ReviewProductPage() {
   if (!product) {
     return (
       <div className="p-6">
-        <div className="p-4 border rounded bg-yellow-50 text-yellow-700">No product found.</div>
+        <div className="p-4 border rounded bg-yellow-50 text-yellow-700">
+          No product found.
+        </div>
       </div>
     );
   }
@@ -238,8 +241,12 @@ export default function ReviewProductPage() {
       <div className="p-6 mx-auto bg-white border border-gray-100 shadow-xl rounded-2xl max-w-7xl">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="mb-1 text-3xl font-bold text-gray-900">Product Review</h1>
-            <div className="text-sm text-gray-600">Viewing product ID: {product.productId}</div>
+            <h1 className="mb-1 text-3xl font-bold text-gray-900">
+              Product Review
+            </h1>
+            <div className="text-sm text-gray-600">
+              Viewing product ID: {product.productId}
+            </div>
           </div>
 
           <div className="flex gap-2">
@@ -261,27 +268,61 @@ export default function ReviewProductPage() {
           />
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">Category</label>
-              <input readOnly value={String(product.categoryName ?? "Not selected")} className="w-full p-3 border rounded-lg bg-gray-50" />
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Category
+              </label>
+              <input
+                readOnly
+                value={String(product.categoryName ?? "Not selected")}
+                className="w-full p-3 border rounded-lg bg-gray-50"
+              />
             </div>
             <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">Sub Category</label>
-              <input readOnly value={String(product.subCategoryName ?? "Not selected")} className="w-full p-3 border rounded-lg bg-gray-50" />
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Sub Category
+              </label>
+              <input
+                readOnly
+                value={String(product.subCategoryName ?? "Not selected")}
+                className="w-full p-3 border rounded-lg bg-gray-50"
+              />
             </div>
             <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">Type / Sub-type</label>
-              <input readOnly value={String(product.subSubCategoryName ?? "Not selected")} className="w-full p-3 border rounded-lg bg-gray-50" />
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Type / Sub-type
+              </label>
+              <input
+                readOnly
+                value={String(product.subSubCategoryName ?? "Not selected")}
+                className="w-full p-3 border rounded-lg bg-gray-50"
+              />
             </div>
           </div>
         </section>
 
         {/* Section: Product Identification */}
         <section className="mt-6">
-          <SectionHeader icon={FaTag} title="Product Identification" description="Basic product information" />
+          <SectionHeader
+            icon={FaTag}
+            title="Product Identification"
+            description="Basic product information"
+          />
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-            <FormInput id="productName" label="Product Name" value={product.productName} />
-            <FormInput id="brandName" label="Brand Name" value={product.brandName} />
-            <FormInput id="manufacturer" label="Manufacturer" value={product.manufacturer} />
+            <FormInput
+              id="productName"
+              label="Product Name"
+              value={product.productName}
+            />
+            <FormInput
+              id="brandName"
+              label="Brand Name"
+              value={product.brandName}
+            />
+            <FormInput
+              id="manufacturer"
+              label="Manufacturer"
+              value={product.manufacturer}
+            />
             <FormInput id="barCode" label="Barcode" value={product.barCode} />
             <FormInput id="gst" label="GST" value={product.gstIn} />
           </div>
@@ -289,111 +330,280 @@ export default function ReviewProductPage() {
 
         {/* Section: Variants */}
         <section className="mt-6">
-          <SectionHeader icon={FaBox} title="Product Variants" description="Configured product variants" />
+          <SectionHeader
+            icon={FaBox}
+            title="Product Variants"
+            description="Configured product variants"
+          />
           {product.variants && product.variants.length > 0 ? (
             product.variants.map((v, idx) => (
-              <div key={idx} className="p-6 mb-6 border shadow-sm rounded-xl bg-gray-50">
+              <div
+                key={idx}
+                className="p-6 mb-6 border shadow-sm rounded-xl bg-gray-50"
+              >
                 <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-3">
                   {/* Variant Fields */}
-                  <div><label className="block mb-1 text-sm font-medium text-gray-700">Size</label><input readOnly value={v.size ?? ""} className="w-full p-2 border rounded-lg" /></div>
-                  <div><label className="block mb-1 text-sm font-medium text-gray-700">Color</label><input readOnly value={v.color ?? ""} className="w-full p-2 border rounded-lg" /></div>
-                  <div><label className="block mb-1 text-sm font-medium text-gray-700">Material Type</label><input readOnly value={v.materialType ?? ""} className="w-full p-2 border rounded-lg" /></div>
-                  <div><label className="block mb-1 text-sm font-medium text-gray-700">Dimension</label><input readOnly value={v.dimension ?? ""} className="w-full p-2 border rounded-lg" /></div>
-                  <div><label className="block mb-1 text-sm font-medium text-gray-700">MRP</label><input readOnly value={String(v.MRP ?? "")} className="w-full p-2 border rounded-lg" /></div>
-                  <div><label className="block mb-1 text-sm font-medium text-gray-700">Sales Price</label><input readOnly value={String(v.salesPrice ?? "")} className="w-full p-2 border rounded-lg" /></div>
-                  <div><label className="block mb-1 text-sm font-medium text-gray-700">Stock</label><input readOnly value={String(v.stock ?? "")} className="w-full p-2 border rounded-lg" /></div>
-                  <div><label className="block mb-1 text-sm font-medium text-gray-700">Manufacturing Year</label><input readOnly value={v.manufacturingYear ?? ""} className="w-full p-2 border rounded-lg" /></div>
-                  <div><label className="block mb-1 text-sm font-medium text-gray-700">Expiry Date</label><input readOnly value={v.expiryDate ?? ""} className="w-full p-2 border rounded-lg" /></div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                      Size
+                    </label>
+                    <input
+                      readOnly
+                      value={v.size ?? ""}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                      Color
+                    </label>
+                    <input
+                      readOnly
+                      value={v.color ?? ""}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                      Material Type
+                    </label>
+                    <input
+                      readOnly
+                      value={v.materialType ?? ""}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                      Dimension
+                    </label>
+                    <input
+                      readOnly
+                      value={v.dimension ?? ""}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                      MRP
+                    </label>
+                    <input
+                      readOnly
+                      value={String(v.MRP ?? "")}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                      Sales Price
+                    </label>
+                    <input
+                      readOnly
+                      value={String(v.salesPrice ?? "")}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                      Stock
+                    </label>
+                    <input
+                      readOnly
+                      value={String(v.stock ?? "")}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                      Manufacturing Year
+                    </label>
+                    <input
+                      readOnly
+                      value={v.manufacturingYear ?? ""}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                      Expiry Date
+                    </label>
+                    <input
+                      readOnly
+                      value={v.expiryDate ?? ""}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
                 </div>
 
                 {/* Attributes */}
-                {v.customAttributes && Object.keys(v.customAttributes).length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="mb-2 font-medium text-gray-700">Product Attributes</h4>
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                      {Object.keys(v.customAttributes).map((key) => (
-                        <div key={key}>
-                          <label className="block mb-1 text-sm font-medium text-gray-700">{key}</label>
-                          <input readOnly value={String(v.customAttributes?.[key] ?? "")} className="w-full p-2 border rounded-lg" />
-                        </div>
-                      ))}
+                {v.customAttributes &&
+                  Object.keys(v.customAttributes).length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="mb-2 font-medium text-gray-700">
+                        Product Attributes
+                      </h4>
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        {Object.keys(v.customAttributes).map((key) => (
+                          <div key={key}>
+                            <label className="block mb-1 text-sm font-medium text-gray-700">
+                              {key}
+                            </label>
+                            <input
+                              readOnly
+                              value={String(v.customAttributes?.[key] ?? "")}
+                              className="w-full p-2 border rounded-lg"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Variant Images */}
                 <div className="mt-4">
-                  <label className="block mb-2 text-sm font-medium text-gray-700">Variant Images</label>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Variant Images
+                  </label>
                   <div className="flex gap-2 flex-wrap">
                     {v.images && v.images.length > 0 ? (
                       v.images.map((img, i) => {
                         const resolvedUrl = resolveImageUrl(img);
                         return (
-                          <div key={i} className="relative w-20 h-20 border rounded overflow-hidden group">
-                            <img src={resolvedUrl} alt={`Variant ${idx + 1}`} className="w-full h-full object-cover" />
-                            <button onClick={() => downloadFile(resolvedUrl, `variant-${idx + 1}-${i + 1}.jpg`)} className="absolute bottom-1 right-1 p-1 text-xs text-white bg-black/60 rounded opacity-0 group-hover:opacity-100">
+                          <div
+                            key={i}
+                            className="relative w-20 h-20 border rounded overflow-hidden group"
+                          >
+                            <img
+                              src={resolvedUrl}
+                              alt={`Variant ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              onClick={() =>
+                                downloadFile(
+                                  resolvedUrl,
+                                  `variant-${idx + 1}-${i + 1}.jpg`
+                                )
+                              }
+                              className="absolute bottom-1 right-1 p-1 text-xs text-white bg-black/60 rounded opacity-0 group-hover:opacity-100"
+                            >
                               <FaDownload className="text-sm" />
                             </button>
                           </div>
                         );
                       })
-                    ) : <div className="text-xs text-gray-500">No images</div>}
+                    ) : (
+                      <div className="text-xs text-gray-500">No images</div>
+                    )}
                   </div>
                 </div>
               </div>
             ))
-          ) : <div className="text-sm text-gray-500">No variants configured.</div>}
+          ) : (
+            <div className="text-sm text-gray-500">No variants configured.</div>
+          )}
 
           {/* Descriptions */}
           <div className="mt-6">
-            <FormInput id="description" label="Detailed Description" type="textarea" value={product.description} />
+            <FormInput
+              id="description"
+              label="Detailed Description"
+              type="textarea"
+              value={product.description}
+            />
             <div className="mt-4">
-              <FormInput id="shortDescription" label="Short Description" value={product.shortDescription} />
+              <FormInput
+                id="shortDescription"
+                label="Short Description"
+                value={product.shortDescription}
+              />
             </div>
           </div>
         </section>
 
         {/* Section: Main Images */}
         <section className="mt-6">
-          <SectionHeader icon={FaImages} title="Product Images" description="Main images for product listing" />
+          <SectionHeader
+            icon={FaImages}
+            title="Product Images"
+            description="Main images for product listing"
+          />
           <div className="flex gap-2 flex-wrap">
             {product.productImages && product.productImages.length > 0 ? (
               product.productImages.map((img, i) => {
                 const resolvedUrl = resolveImageUrl(img);
                 return (
-                  <div key={i} className="relative w-20 h-20 border rounded overflow-hidden group">
-                    <img src={resolvedUrl} alt={`Main ${i + 1}`} className="w-full h-full object-cover" />
-                    <button onClick={() => downloadFile(resolvedUrl, `product-main-${i + 1}.jpg`)} className="absolute bottom-1 right-1 p-1 text-xs text-white bg-black/60 rounded opacity-0 group-hover:opacity-100">
+                  <div
+                    key={i}
+                    className="relative w-20 h-20 border rounded overflow-hidden group"
+                  >
+                    <img
+                      src={resolvedUrl}
+                      alt={`Main ${i + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      onClick={() =>
+                        downloadFile(resolvedUrl, `product-main-${i + 1}.jpg`)
+                      }
+                      className="absolute bottom-1 right-1 p-1 text-xs text-white bg-black/60 rounded opacity-0 group-hover:opacity-100"
+                    >
                       <FaDownload className="text-sm" />
                     </button>
                   </div>
                 );
               })
-            ) : <div className="text-sm text-gray-500">No images available</div>}
+            ) : (
+              <div className="text-sm text-gray-500">No images available</div>
+            )}
           </div>
         </section>
 
         {/* Section: Documents */}
         {product.requiredDocs && product.requiredDocs.length > 0 && (
           <section className="mt-6">
-            <SectionHeader icon={FaFileUpload} title="Documents" description="Uploaded / required documents" />
+            <SectionHeader
+              icon={FaFileUpload}
+              title="Documents"
+              description="Uploaded / required documents"
+            />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {product.requiredDocs.map((doc) => {
                 const fileUrl = resolveImageUrl(doc.file_path);
                 return (
-                  <div key={doc.id} className="p-4 bg-white border rounded-lg shadow-sm">
+                  <div
+                    key={doc.id}
+                    className="p-4 bg-white border rounded-lg shadow-sm"
+                  >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1">
-                        <div className="font-medium text-gray-800">{doc.document_name}</div>
-                        <div className="text-xs text-gray-500 mt-1">{doc.mime_type || "Unknown type"}</div>
+                        <div className="font-medium text-gray-800">
+                          {doc.document_name}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {doc.mime_type || "Unknown type"}
+                        </div>
                       </div>
                       <div className="flex items-center gap-3">
                         {doc.mime_type?.startsWith("image/") && (
-                          <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-                            <img src={fileUrl} alt={doc.document_name} className="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-90" />
+                          <a
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <img
+                              src={fileUrl}
+                              alt={doc.document_name}
+                              className="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-90"
+                            />
                           </a>
                         )}
-                        <button onClick={() => downloadFile(fileUrl, doc.document_name)} className="px-3 py-1.5 text-sm font-medium text-white bg-[#852BAF] rounded hover:bg-[#76209e]">
+                        <button
+                          onClick={() =>
+                            downloadFile(fileUrl, doc.document_name)
+                          }
+                          className="px-3 py-1.5 text-sm font-medium text-white bg-[#852BAF] rounded hover:bg-[#76209e]"
+                        >
                           <FaDownload className="text-sm" />
                         </button>
                       </div>
