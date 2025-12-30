@@ -289,7 +289,6 @@ class ProductController {
   // Get all Products
   async getAllProductDetails(req, res) {
     try {
-      // filters
       const user = req?.user;
       const role = user?.role;
 
@@ -303,7 +302,6 @@ class ProductController {
       const sortOrder =
         req.query.sortOrder?.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
-      // fetch product Details
       const { products, totalItems } = await ProductModel.getAllProductDetails({
         search,
         status,
@@ -313,20 +311,13 @@ class ProductController {
         offset,
       });
 
-      const processedProducts = products.map((product) => {
-        let images = [];
-        try {
-          images = JSON.parse(product.images);
-        } catch {
-          images = [];
-        }
-
-        return {
-          ...product,
-          images,
-          main_image: images.length ? images[0].image_url : null,
-        };
-      });
+      const processedProducts = products.map((product) => ({
+        ...product,
+        main_image:
+          product.images && product.images.length
+            ? product.images[0].image_url
+            : null,
+      }));
 
       const normalizedProducts =
         role === "vendor_manager"
@@ -338,7 +329,6 @@ class ProductController {
               }))
           : processedProducts;
 
-      // Stats calculation
       const statsSource =
         role === "vendor_manager"
           ? processedProducts
@@ -379,7 +369,7 @@ class ProductController {
       console.error("GET ALL PRODUCTS ERROR:", err);
       return res.status(500).json({
         success: false,
-        message: err.message,
+        message: err.message || "Internal server error",
       });
     }
   }
