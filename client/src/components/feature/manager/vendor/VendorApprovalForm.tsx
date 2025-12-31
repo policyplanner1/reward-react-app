@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   FaBuilding,
   FaAddressBook,
@@ -18,7 +18,7 @@ import {
 } from "react-icons/fa";
 
 import { api } from "../../../../api/api";
-const API_BASEIMAGE_URL = "https://rewardplanners.com";
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 const resolveImageUrl = (path: string) =>
   path?.startsWith("http") ? path : `${API_BASEIMAGE_URL}/uploads/${path}`;

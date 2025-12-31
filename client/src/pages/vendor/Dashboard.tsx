@@ -1,12 +1,14 @@
-import React from "react";
+// import React from "react";
+// import { 
+//   FaBox, FaShoppingCart, FaWallet, FaChartLine, 
+//   FaArrowUp, FaPlus, FaEllipsisH 
+// } from "react-icons/fa";
 import { 
-  FaBox, FaShoppingCart, FaWallet, FaChartLine, 
-  FaArrowUp, FaPlus, FaEllipsisH 
+  FaBox, FaShoppingCart, FaWallet,FaPlus, FaEllipsisH 
 } from "react-icons/fa";
 import { FiPackage, FiActivity, FiUsers } from "react-icons/fi";
 
 export default function VendorDashboard() {
-  // Mock data for the dashboard
   const stats = [
     { title: "Total Revenue", value: "₹4,25,000", icon: FaWallet, color: "text-emerald-600", bg: "bg-emerald-50", trend: "+12.5%" },
     { title: "Total Orders", value: "1,240", icon: FaShoppingCart, color: "text-blue-600", bg: "bg-blue-50", trend: "+8.2%" },

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import {
   FiEdit,
   FiTrash2,
@@ -79,7 +80,7 @@ export default function SubcategoryManagement() {
         ? res.data.data
         : [];
 
-        console.log("Fetched subcategories:", subArray);  
+      console.log("Fetched subcategories:", subArray);
 
       const formatted = subArray.map((s: any) => ({
         subcategory_id: s?.subcategory_id ?? "",
@@ -182,8 +183,19 @@ export default function SubcategoryManagement() {
       fetchSubcategories();
       setDrawerOpen(false);
     } catch (err) {
-      console.log("Delete error:", err);
-      setError(`Delete error: ${err.response?.data?.error}`);
+      console.error("Delete error:", err);
+
+      if (axios.isAxiosError(err)) {
+        setError(
+          err.response?.data?.error ||
+            err.response?.data?.message ||
+            "Failed to delete subcategory"
+        );
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to delete subcategory");
+      }
     }
   };
 

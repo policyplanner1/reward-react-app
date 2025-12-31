@@ -12,7 +12,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 // const API_BASE = import.meta.env.VITE_API_URL;
 import { api } from "../../../../api/api";
-const API_BASEIMAGE_URL = "https://rewardplanners.com";
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 interface VariantView {
   size?: string;

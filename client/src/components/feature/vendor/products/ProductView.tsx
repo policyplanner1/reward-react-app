@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import type { ChangeEvent, FormEvent } from "react";
+import  { useState, useEffect } from "react";
+import type { ChangeEvent } from "react";
 import type { ComponentType } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 type IconComp = ComponentType<any>;
@@ -103,7 +103,7 @@ import { Link } from "react-router-dom";
 
 // const API_BASE = import.meta.env.VITE_API_URL;
 import { api } from "../../../../api/api";
-const API_BASEIMAGE_URL = "https://rewardplanners.com";
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 interface VariantView {
   size?: string;

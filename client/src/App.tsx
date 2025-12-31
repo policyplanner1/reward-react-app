@@ -11,25 +11,16 @@ import VerifyOtpPage from "./auth/VerifyOtpPage";
 /* Layouts */
 import VendorLayout from "./layouts/VendorLayout";
 import ManagerLayout from "./layouts/ManagerLayout";
-import WarehouseLayout from "./layouts/WarehouseLayout";
 
 /* Dashboards */
 import VendorDashboard from "./pages/vendor/Dashboard";
 import ManagerDashboard from "./pages/vendor_manager/Dashboard";
-import WarehouseDashboard from "./pages/warehouse/Dashboard";
 
 /* Manager Features */
 import ProductApprovalList from "./components/feature/manager/product/ProductApprovalList";
 import CategoryManagement from "./components/feature/manager/category/Categories";
 import SubcategoryManagement from "./components/feature/manager/category/Subcategories";
 import SubSubCategoryManagement from "./components/feature/manager/category/Subsubcategories";
-import InventoryMasterPage from "./components/feature/warehouse/inventory/Inventory";
-import StockAdjustmentPage from "./components/feature/warehouse/stock/StockAdjustment";
-import StockInPage from "./components/feature/warehouse/stock/StockIn";
-import StockOutTable from "./components/feature/warehouse/stock/StockOut";
-import StockInViewPage from "./components/feature/warehouse/stock/Stockview";
-import StockInCreatePage from "./components/feature/warehouse/stock/StockCreate";
-import StockInEditPage from "./components/feature/warehouse/stock/StockEdit";
 import ProductViewPage from "./components/feature/manager/product/ProductViewPage";
 import Onboarding from "./components/feature/vendor/onboarding/Onboarding";
 import ProductListingDynamic from "./components/feature/vendor/products/ProductAdd";
@@ -125,16 +116,6 @@ export default function App() {
       </Route>
 
       {/* ========== WAREHOUSE ========== */}
-      <Route element={<WarehouseLayout />}>
-        <Route path={routes.warehouse.dashboard} element={<WarehouseDashboard />} />
-        <Route path={routes.warehouse.inventory} element={<InventoryMasterPage />} />
-        <Route path={routes.warehouse.stockIn} element={<StockInPage />} />
-        <Route path={routes.warehouse.stockOut} element={<StockOutTable />} />
-        <Route path={routes.warehouse.stockAdjustment} element={<StockAdjustmentPage />} />
-        <Route path={routes.warehouse.stockCreate} element={<StockInCreatePage />} />
-        <Route path={routes.warehouse.stockView} element={<StockInViewPage />} />
-        <Route path={routes.warehouse.stockEdit} element={<StockInEditPage />} />
-      </Route>
 
       {/* ========== FALLBACK ========== */}
       <Route path="*" element={<Navigate to="/login" replace />} />

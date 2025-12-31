@@ -91,7 +91,7 @@ export default function WarehouseNavbar() {
 
   const brandPurple = "#852BAF";
   const brandPink = "#FC3F78";
-  const brandLightPurple = "#F3E8FF";
+  // const brandLightPurple = "#F3E8FF";
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
