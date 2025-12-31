@@ -119,9 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const role = sessionStorage.getItem("otp_role") as User["role"];
       if (!role) throw new Error("Role not found for OTP verification");
 
-      const route = resolveRoute(role);
-
-      const { data } = await api.post(`/auth/${route}/verify-otp`, {
+      const { data } = await api.post(`/auth/verify-otp`, {
         email,
         otp,
       });
@@ -156,9 +154,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const role = sessionStorage.getItem("otp_role") as User["role"];
       if (!role) throw new Error("Role not found for OTP resend");
 
-      const route = resolveRoute(role);
-
-      const { data } = await api.post(`/auth/${route}/resend-otp`, { email });
+      const { data } = await api.post(`/auth/resend-otp`, { email });
 
       if (!data?.success) {
         throw new Error(data?.message || "Failed to resend OTP");
