@@ -64,6 +64,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       navigate(resolveDashboard(user.role));
     } catch (err: unknown) {
       if (err instanceof AxiosError) {
+        const code = err.response?.data?.code;
+
+        if (code === "USER_NOT_VERIFIED") {
+          const email = err.response?.data?.data?.email;
+          const role = err.response?.data?.data?.role;
+
+          sessionStorage.setItem("otp_email", email);
+          sessionStorage.setItem("otp_role", role);
+
+          navigate("/verify-otp");
+          return;
+        }
         setError(err.response?.data?.message ?? "Login failed");
       } else {
         setError("Login failed");

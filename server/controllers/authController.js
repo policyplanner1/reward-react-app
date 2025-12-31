@@ -242,9 +242,32 @@ const authController = {
       }
 
       if (Number(user.is_verified) !== 1) {
+        // 🔁 Resend OTP
+        const otp = generateOTP();
+        const otpHash = hashOTP(otp);
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+        // Remove old OTPs
+        await db.execute("DELETE FROM user_otps WHERE user_id = ?", [
+          user.user_id,
+        ]);
+
+        await db.execute(
+          `INSERT INTO user_otps (user_id, otp_hash, expires_at)
+     VALUES (?, ?, ?)`,
+          [user.user_id, otpHash, expiresAt]
+        );
+
+        await sendOtpEmail(user.email, otp);
+
         return res.status(403).json({
           success: false,
-          message: "User is not verified",
+          code: "USER_NOT_VERIFIED",
+          message: "Account not verified. OTP resent.",
+          data: {
+            email: user.email,
+            role: user.role,
+          },
         });
       }
 
