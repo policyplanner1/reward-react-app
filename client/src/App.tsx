@@ -23,13 +23,14 @@ import SubcategoryManagement from "./components/feature/manager/category/Subcate
 import SubSubCategoryManagement from "./components/feature/manager/category/Subsubcategories";
 import ProductViewPage from "./components/feature/manager/product/ProductViewPage";
 import Onboarding from "./components/feature/vendor/onboarding/Onboarding";
+import ChangePasswordPage from "./components/feature/vendor/changePassword";
 import ProductListingDynamic from "./components/feature/vendor/products/ProductAdd";
 import ProductManagerList from "./components/feature/vendor/products/ProductList";
 import EditProductPage from "./components/feature/vendor/products/ProductEdit";
 import ReviewProductPage from "./components/feature/vendor/products/ProductView";
 import VendorApprovalList from "./components/feature/manager/vendor/VendorApprovalList";
 import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprovalForm";
-import NotFoundPage from "./components/feature/others/NotFound";
+import NotFoundPage from "./pages/NotFound";
 
 export default function App() {
   return (
@@ -47,6 +48,8 @@ export default function App() {
         <Route path={routes.vendor.dashboard} element={<VendorDashboard />} />
 
         <Route path={routes.vendor.onboarding} element={<Onboarding />} />
+
+        <Route path={routes.vendor.changePassword} element={<ChangePasswordPage />} />
 
         <Route
           path={routes.vendor.products.add}

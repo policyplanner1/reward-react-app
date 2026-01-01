@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import errorImage from "../../../assets/Error.png";
+import errorImage from "../assets/Error.png";
 
 export default function NotFoundPage() {
   const navigate = useNavigate();

@@ -2,7 +2,7 @@ export const routes = {
   vendor: {
     dashboard: "/vendor/dashboard",
     onboarding: "/vendor/onboarding",
-
+    changePassword: "/vendor/change-password",
    products: {
     add: "/vendor/products/add",
     list: "/vendor/products/list",
