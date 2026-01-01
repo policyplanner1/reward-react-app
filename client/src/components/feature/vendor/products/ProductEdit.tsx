@@ -5,6 +5,11 @@ import { useParams, useNavigate } from "react-router-dom";
 
 type IconComp = ComponentType<any>;
 
+interface ImagePreview {
+  file: File;
+  url: string;
+}
+
 function SectionHeader({
   icon: Icon,
   title,
@@ -77,19 +82,16 @@ function FormInput(props: {
 import {
   FaTag,
   FaBox,
-  FaDollarSign,
   FaImages,
   FaFileUpload,
   FaPlus,
   FaTrash,
-  FaTimes,
-  FaCheck,
   FaSpinner,
 } from "react-icons/fa";
 
 // const API_BASE = import.meta.env.VITE_API_URL;
 import { api } from "../../../../api/api";
-const API_BASEIMAGE_URL = "https://rewardplanners.com";
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 interface Category {
   category_id: number;
@@ -109,13 +111,6 @@ interface SubSubCategory {
   subcategory_id: number;
   name: string;
   attributes?: any;
-}
-
-interface DocumentType {
-  document_id: number;
-  document_name: string;
-  status: number;
-  document_key?: string;
 }
 
 interface RequiredDocument {
@@ -154,7 +149,7 @@ interface ProductData {
   subSubCategoryId: number | null;
   gstIn?: string;
   variants: Variant[];
-  productImages: File[];
+  productImages: ImagePreview[];
   existingImages?: string[];
 }
 
@@ -191,9 +186,7 @@ const initialProductData: ProductData = {
 };
 
 const allowOnlyAlphabets = (value: string) => /^[A-Za-z ]*$/.test(value);
-const allowOnlyNumbers = (value: string) => /^[0-9]*$/.test(value);
 const allowOnlyDecimal = (value: string) => /^\d*\.?\d*$/.test(value);
-const allowOnlyDimensionFormat = (value: string) => /^[0-9.*]*$/.test(value);
 
 export default function EditProductPage() {
   const { id: productId } = useParams<{ id: string }>();
@@ -250,16 +243,20 @@ export default function EditProductPage() {
       return;
     }
 
-    setImageError("");
+    const previews = files.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
+
     setProduct((prev) => ({
       ...prev,
-      productImages: files,
+      productImages: previews,
     }));
   };
 
   useEffect(() => {
     return () => {
-      product.productImages.forEach((file) => URL.revokeObjectURL(file));
+      product.productImages.forEach((img) => URL.revokeObjectURL(img.url));
     };
   }, [product.productImages]);
 
@@ -552,19 +549,6 @@ export default function EditProductPage() {
     }));
   };
 
-  const handleVariantAttributeChange = (
-    variantIndex: number,
-    attrName: string,
-    value: any
-  ) => {
-    const updatedVariants = [...product.variants];
-    updatedVariants[variantIndex].customAttributes = {
-      ...updatedVariants[variantIndex].customAttributes,
-      [attrName]: value,
-    };
-    setProduct((prev) => ({ ...prev, variants: updatedVariants }));
-  };
-
   const handleVariantImages = (
     variantIndex: number,
     e: React.ChangeEvent<HTMLInputElement>
@@ -628,24 +612,6 @@ export default function EditProductPage() {
   ) => {
     const file = e.target.files?.[0] ?? null;
     setDocFiles((prev) => ({ ...prev, [documentId]: file }));
-  };
-
-  // Get attributes for selected sub-subcategory
-  const getSelectedAttributes = () => {
-    if (!product.subSubCategoryId) return null;
-
-    const found = subSubCategories.find(
-      (s) => s.sub_subcategory_id === product.subSubCategoryId
-    );
-
-    return (
-      found?.attributes || {
-        variation_types: [],
-        sizes: [],
-        colors: [],
-        attributes: {},
-      }
-    );
   };
 
   // --- Form Submission ---
@@ -726,7 +692,7 @@ export default function EditProductPage() {
       if (product.gstIn) formData.append("gstIn", product.gstIn);
 
       // Add main product images
-      product.productImages.forEach((file, index) => {
+      product.productImages.forEach(({ file }) => {
         formData.append("images", file);
       });
 
@@ -736,7 +702,7 @@ export default function EditProductPage() {
         }
       });
 
-      const variantsPayload = product.variants.map((variant, index) => ({
+      const variantsPayload = product.variants.map((variant) => ({
         variant_id: variant.variant_id,
         expiryDate: variant.expiryDate,
         manufacturingYear: variant.manufacturingYear,
@@ -836,8 +802,6 @@ export default function EditProductPage() {
   };
 
   const renderVariantBuilder = () => {
-    const attributes = getSelectedAttributes();
-
     return (
       <section>
         <SectionHeader
@@ -1364,7 +1328,6 @@ export default function EditProductPage() {
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
               <FormInput
                 id="productName"
-                name="productName"
                 label="Product Name"
                 value={product.productName}
                 onChange={handleFieldChange}
@@ -1481,21 +1444,18 @@ export default function EditProductPage() {
             {/* Image Previews */}
             {product.productImages.length > 0 && (
               <div className="mt-3 flex gap-2 flex-wrap">
-                {product.productImages.map((file, index) => {
-                  const url = URL.createObjectURL(file);
-                  return (
-                    <div
-                      key={index}
-                      className="w-20 h-20 border rounded overflow-hidden"
-                    >
-                      <img
-                        src={url}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  );
-                })}
+                {product.productImages.map((img, index) => (
+                  <div
+                    key={index}
+                    className="w-20 h-20 border rounded overflow-hidden"
+                  >
+                    <img
+                      src={img.url}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
               </div>
             )}
           </section>

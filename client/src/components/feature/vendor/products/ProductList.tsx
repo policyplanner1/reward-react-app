@@ -3,22 +3,16 @@ import {
   FaCheckCircle,
   FaTimesCircle,
   FaClock,
-  FaExclamationTriangle,
   FaEye,
   FaFileAlt,
   FaSpinner,
   FaFilter,
   FaSearch,
-  FaSort,
-  FaSortUp,
   FaQuestionCircle,
-  FaSortDown,
   FaEdit,
   FaRedo,
   FaCheck,
   FaTimes,
-  FaDownload,
-  FaUser,
   FaBox,
   FaPaperPlane,
   FaTrash,
@@ -29,7 +23,7 @@ import { Link } from "react-router-dom";
 import { routes } from "../../../../routes";
 
 import { api } from "../../../../api/api";
-const API_BASEIMAGE_URL = "https://rewardplanners.com";
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 /* ================================
        TYPES
@@ -146,7 +140,7 @@ const StatusChip = ({ status }: { status: ProductStatus }) => {
     <div
       className={`inline-flex items-center px-3 py-1.5 rounded-full border text-xs font-medium ${cfg.color}`}
     >
-      <Icon className="mr-1.5" size={12} />
+      <Icon size={12} />
       {cfg.text}
     </div>
   );
@@ -308,7 +302,6 @@ const ActionModal = ({
 export default function ProductManagerList() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -341,49 +334,6 @@ export default function ProductManagerList() {
     product: null,
     actionType: "approve",
   });
-
-  /* ================================
-       HELPERS
-  ================================= */
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-IN", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 2,
-    }).format(price);
-  };
-
-  const getSortIcon = (column: string) => {
-    if (sortBy !== column) return <FaSort className="ml-1 opacity-30" />;
-    return sortOrder === "asc" ? (
-      <FaSortUp className="ml-1" />
-    ) : (
-      <FaSortDown className="ml-1" />
-    );
-  };
-
-  const handleDownloadDocument = (
-    documentUrl: string,
-    documentName: string
-  ) => {
-    const link = document.createElement("a");
-    link.href = documentUrl;
-    link.download = documentName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   /* ================================
        FETCH PRODUCTS
@@ -446,7 +396,6 @@ export default function ProductManagerList() {
     productId: number,
     reason?: string
   ) => {
-    setActionLoading(productId);
     try {
       // const token = localStorage.getItem("token");
       // if (!token) throw new Error("No token");
@@ -487,7 +436,6 @@ export default function ProductManagerList() {
       alert(error.message || "Error performing action");
       throw error;
     } finally {
-      setActionLoading(null);
     }
   };
 
@@ -513,16 +461,6 @@ export default function ProductManagerList() {
     if (page >= 1 && page <= pagination.totalPages) {
       setPagination((prev) => ({ ...prev, currentPage: page }));
     }
-  };
-
-  const handleSort = (column: string) => {
-    if (sortBy === column) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(column);
-      setSortOrder("desc");
-    }
-    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
   /* ================================

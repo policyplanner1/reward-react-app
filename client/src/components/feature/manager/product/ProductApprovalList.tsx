@@ -300,7 +300,7 @@ const ActionModal = ({
 export default function ProductManagerList() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  // const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -314,14 +314,14 @@ export default function ProductManagerList() {
     itemsPerPage: 10,
   });
 
-  const [stats, setStats] = useState<Stats>({
-    total: 0,
-    pending: 0,
-    sent_for_approval: 0,
-    approved: 0,
-    rejected: 0,
-    resubmission: 0,
-  });
+  // const [stats, setStats] = useState<Stats>({
+  //   total: 0,
+  //   pending: 0,
+  //   sent_for_approval: 0,
+  //   approved: 0,
+  //   rejected: 0,
+  //   resubmission: 0,
+  // });
 
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -340,25 +340,6 @@ export default function ProductManagerList() {
     ) : (
       <FaSortDown className="ml-1 text-[#852BAF]" />
     );
-  };
-
-  const handleDownloadDocument = (
-    documentUrl: string,
-    documentName: string
-  ) => {
-    fetch(documentUrl)
-      .then((response) => response.blob())
-      .then((blob) => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = documentName;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      })
-      .catch(() => alert("Failed to download document"));
   };
 
   const fetchProducts = useCallback(async () => {
@@ -385,7 +366,7 @@ export default function ProductManagerList() {
           totalPages: data.totalPages || 1,
           totalItems: data.total || 0,
         }));
-        if (data.stats) setStats(data.stats);
+        // if (data.stats) setStats(data.stats);
       }
     } catch (err) {
       console.error("Error loading products:", err);
@@ -410,7 +391,7 @@ export default function ProductManagerList() {
     productId: number,
     reason?: string
   ) => {
-    setActionLoading(productId);
+    // setActionLoading(productId);
 
     try {
       const endpoint =
@@ -430,7 +411,7 @@ export default function ProductManagerList() {
     } catch (error: any) {
       alert(error.message);
     } finally {
-      setActionLoading(null);
+      // setActionLoading(null);
     }
   };
 
