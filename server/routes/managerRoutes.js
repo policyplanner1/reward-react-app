@@ -20,13 +20,23 @@ router.get(
         FROM vendors
       `);
 
+      // const [[productStats]] = await db.execute(`
+      //   SELECT
+      //     COUNT(*) AS totalProducts,
+      //     SUM(status='pending') AS pendingProducts,
+      //     SUM(status='sent_for_approval') AS sentForApproval,
+      //     SUM(status='resubmission') AS resubmissionProducts,
+      //     SUM(status='approved') AS approvedProducts
+      //   FROM products
+      // `);
+
       const [[productStats]] = await db.execute(`
         SELECT
-          COUNT(*) AS totalProducts,
-          SUM(status='pending') AS pendingProducts,
-          SUM(status='sent_for_approval') AS sentForApproval,
-          SUM(status='resubmission') AS resubmissionProducts,
-          SUM(status='approved') AS approvedProducts
+          COUNT(CASE WHEN status != 'pending' THEN 1 END) AS totalProducts,
+          SUM(status = 'pending') AS pendingProducts,
+          SUM(status = 'sent_for_approval') AS sentForApproval,
+          SUM(status = 'resubmission') AS resubmissionProducts,
+          SUM(status = 'approved') AS approvedProducts
         FROM products
       `);
 
