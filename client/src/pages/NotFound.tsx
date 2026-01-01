@@ -1,8 +1,34 @@
 import { useNavigate } from "react-router-dom";
 import errorImage from "../assets/Error.png";
+import { useAuth } from "../auth/useAuth";
 
 export default function NotFoundPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  const resolveDashboard = (role?: string) => {
+    switch (role) {
+      case "vendor":
+        return "/vendor/dashboard";
+      case "vendor_manager":
+        return "/manager/dashboard";
+      case "warehouse_manager":
+        return "/warehouse/dashboard";
+      case "admin":
+        return "/admin/dashboard";
+      default:
+        return "/login";
+    }
+  };
+
+  const handleGoHome = () => {
+    if (!user) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    navigate(resolveDashboard(user.role), { replace: true });
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F8F9FD] px-4">
@@ -25,7 +51,7 @@ export default function NotFoundPage() {
 
             <div className="mt-8 flex gap-4">
               <button
-                onClick={() => navigate("/vendor/dashboard")}
+                onClick={handleGoHome}
                 className="
                   px-6 py-3 rounded-xl font-semibold text-white
                   bg-gradient-to-r from-[#852BAF] to-[#FC3F78]

@@ -13,6 +13,7 @@ export const routes = {
   },
    manager: {
     dashboard: "/manager/dashboard",
+    changePassword: "/manager/change-password",
     vendors: "/manager/vendors",
     products: "/manager/products",
     productView: "/manager/product/:id",

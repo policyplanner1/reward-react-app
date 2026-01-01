@@ -179,10 +179,10 @@ export default function ManagerNavbar() {
         {profileOpen && (
           <div className="mt-2 bg-white border border-gray-100 shadow-xl rounded-2xl overflow-hidden">
             <Link
-              to="/manager/profile"
+              to="/manager/change-password"
               className="flex items-center gap-3 px-5 py-4 text-sm font-bold text-gray-600 hover:bg-gray-50"
             >
-              <FiUser /> Profile Details
+              <FiUser /> Change Password
             </Link>
             <button
               onClick={logout}

@@ -49,7 +49,10 @@ export default function App() {
 
         <Route path={routes.vendor.onboarding} element={<Onboarding />} />
 
-        <Route path={routes.vendor.changePassword} element={<ChangePasswordPage />} />
+        <Route
+          path={routes.vendor.changePassword}
+          element={<ChangePasswordPage />}
+        />
 
         <Route
           path={routes.vendor.products.add}
@@ -81,6 +84,12 @@ export default function App() {
       <Route element={<ManagerLayout />}>
         <Route path={routes.manager.dashboard} element={<ManagerDashboard />} />
         <Route path={routes.manager.vendors} element={<VendorApprovalList />} />
+
+        <Route
+          path={routes.manager.changePassword}
+          element={<ChangePasswordPage />}
+        />
+
         <Route
           path={routes.manager.products}
           element={<ProductApprovalList />}
@@ -109,7 +118,7 @@ export default function App() {
           element={<SubSubCategoryManagement />}
         />
       </Route>
-      
+
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
