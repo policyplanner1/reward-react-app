@@ -4,13 +4,11 @@ export const routes = {
     onboarding: "/vendor/onboarding",
 
    products: {
-  add: "/vendor/products/add",
-  list: "/vendor/products/list",
-  edit: "/vendor/products/edit/:id",
-  review: "/vendor/products/review/:productId", 
-  },
-
-
+    add: "/vendor/products/add",
+    list: "/vendor/products/list",
+    edit: "/vendor/products/edit/:id",
+    review: "/vendor/products/review/:productId", 
+    },
     productManagerList: "/vendor/product-managers",
   },
 
