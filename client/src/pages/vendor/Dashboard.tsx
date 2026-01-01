@@ -14,10 +14,14 @@ import { useAuth } from "../../auth/useAuth";
 export default function VendorDashboard() {
   const [vendorStatus, setVendorStatus] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [productStats, setProductStats] = useState({
+    totalProducts: 0,
+  });
+
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const stats = [
+  const dashboardStats = [
     {
       title: "Total Revenue",
       value: "₹4,25,000",
@@ -36,7 +40,7 @@ export default function VendorDashboard() {
     },
     {
       title: "Active Products",
-      value: "85",
+      value: productStats.totalProducts.toString(),
       icon: FaBox,
       color: "text-purple-600",
       bg: "bg-purple-50",
@@ -53,8 +57,23 @@ export default function VendorDashboard() {
   ];
 
   useEffect(() => {
+    fetchVendorStats();
     fetchVendorStatus();
   }, []);
+
+  const fetchVendorStats = async () => {
+    try {
+      const res = await api.get("/vendor/stats");
+
+      if (res.data?.success) {
+        setProductStats({
+          totalProducts: res.data.stats?.totalProducts || 0,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    }
+  };
 
   const fetchVendorStatus = async () => {
     try {
@@ -115,7 +134,7 @@ export default function VendorDashboard() {
           ) : (
             <>
               <button
-                onClick={() => navigate("/vendor/products")}
+                onClick={() => navigate("/vendor/products/list")}
                 className="flex items-center gap-2 px-5 py-2.5
                    bg-black text-white font-semibold rounded-xl
                    hover:bg-gray-900 transition-all shadow-sm"
@@ -141,7 +160,7 @@ export default function VendorDashboard() {
 
       {/* --- STATS GRID --- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        {stats.map((item, idx) => (
+        {dashboardStats.map((item, idx) => (
           <div
             key={idx}
             className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group"
