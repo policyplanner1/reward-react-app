@@ -68,6 +68,15 @@ export default function ManagerNavbar() {
         { label: "Type / Sub-type", to: routes.manager.subsubcategories },
       ],
     },
+    {
+      label: "Document",
+      icon: <FiTag />,
+      type: "dropdown",
+      children: [
+        { label: "Add Document", to: routes.manager.addDocument },
+        { label: "Category Link Document", to: routes.manager.linkDocument },
+      ],
+    },
   ];
 
   return (
@@ -98,9 +107,7 @@ export default function ManagerNavbar() {
             return (
               <div key={item.label} className="space-y-1">
                 <button
-                  onClick={() =>
-                    setOpen(isDropdownOpen ? null : item.label)
-                  }
+                  onClick={() => setOpen(isDropdownOpen ? null : item.label)}
                   className={`flex items-center justify-between w-full px-4 py-3 text-sm font-bold rounded-xl transition-all ${
                     isDropdownOpen
                       ? "text-[#852BAF] bg-purple-50/50"

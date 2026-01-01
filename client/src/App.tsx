@@ -20,6 +20,8 @@ import ManagerDashboard from "./pages/vendor_manager/Dashboard";
 import ProductApprovalList from "./components/feature/manager/product/ProductApprovalList";
 import CategoryManagement from "./components/feature/manager/category/Categories";
 import SubcategoryManagement from "./components/feature/manager/category/Subcategories";
+import DocumentManagement from "./components/feature/manager/document/DocumentAdd";
+import DocumentCategoryManagement from "./components/feature/manager/document/DocumentCategory";
 import SubSubCategoryManagement from "./components/feature/manager/category/Subsubcategories";
 import ProductViewPage from "./components/feature/manager/product/ProductViewPage";
 import Onboarding from "./components/feature/vendor/onboarding/Onboarding";
@@ -84,27 +86,24 @@ export default function App() {
       <Route element={<ManagerLayout />}>
         <Route path={routes.manager.dashboard} element={<ManagerDashboard />} />
         <Route path={routes.manager.vendors} element={<VendorApprovalList />} />
-
         <Route
           path={routes.manager.changePassword}
           element={<ChangePasswordPage />}
         />
-
         <Route
           path={routes.manager.products}
           element={<ProductApprovalList />}
         />
-
         <Route
           path={routes.manager.productView}
           element={<ProductViewPage />}
         />
-
         <Route
           path={routes.manager.vendorReview}
           element={<VendorApprovalForm />}
         />
 
+        {/* Category */}
         <Route
           path={routes.manager.categories}
           element={<CategoryManagement />}
@@ -117,8 +116,20 @@ export default function App() {
           path={routes.manager.subsubcategories}
           element={<SubSubCategoryManagement />}
         />
+
+        {/* Document */}
+        <Route
+          path={routes.manager.addDocument}
+          element={<DocumentManagement />}
+        />
+
+      <Route
+          path={routes.manager.linkDocument}
+          element={<DocumentCategoryManagement />}
+        />
       </Route>
 
+      {/* ========== FALLBACK ========== */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

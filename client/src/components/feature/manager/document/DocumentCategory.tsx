@@ -27,7 +27,7 @@ interface Mapping {
 /* =========================
         COMPONENT
 ========================= */
-export default function DocumentManagement() {
+export default function DocumentCategoryManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [records, setRecords] = useState<Mapping[]>([]);
