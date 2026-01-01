@@ -358,6 +358,69 @@ const authController = {
     res.clearCookie();
     return res.json({ success: true, message: "Logout successful" });
   },
+
+  /* ============================================================
+      PASSWORD RESET
+     ============================================================ */
+  passwordReset: async (req, res) => {
+    try {
+      const { email, currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: "Email, current password and new password are required",
+        });
+      }
+
+      if (newPassword.length < 5) {
+        return res.status(400).json({
+          success: false,
+          message: "New password must be at least 5 characters",
+        });
+      }
+
+      const [rows] = await db.execute(
+        "SELECT password FROM users WHERE email = ?",
+        [email]
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      const user = rows[0];
+
+      const isValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isValid) {
+        return res.status(401).json({
+          success: false,
+          message: "Current password is incorrect",
+        });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+      await db.execute("UPDATE users SET password = ? WHERE email = ?", [
+        hashedPassword,
+        email,
+      ]);
+
+      return res.json({
+        success: true,
+        message: "Password changed successfully",
+      });
+    } catch (err) {
+      console.error("Change Password Error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+      });
+    }
+  },
 };
 
 module.exports = authController;

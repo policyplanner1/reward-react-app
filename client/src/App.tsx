@@ -23,7 +23,7 @@ import SubcategoryManagement from "./components/feature/manager/category/Subcate
 import SubSubCategoryManagement from "./components/feature/manager/category/Subsubcategories";
 import ProductViewPage from "./components/feature/manager/product/ProductViewPage";
 import Onboarding from "./components/feature/vendor/onboarding/Onboarding";
-import ChangePasswordPage from "./components/feature/vendor/changePassword";
+import ChangePasswordPage from "./pages/changePassword";
 import ProductListingDynamic from "./components/feature/vendor/products/ProductAdd";
 import ProductManagerList from "./components/feature/vendor/products/ProductList";
 import EditProductPage from "./components/feature/vendor/products/ProductEdit";

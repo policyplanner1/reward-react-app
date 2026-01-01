@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useAuth } from "../../../auth/useAuth";
-import {api} from "../../../api/api"
+import { useAuth } from "../auth/useAuth";
+import { api } from "../api/api";
 
 export default function ChangePasswordPage() {
   const { user } = useAuth();
@@ -13,12 +13,11 @@ export default function ChangePasswordPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    
-    if(!user)
-    {
+    if (!user) {
       setError("User not authenticated.");
       return;
     }
+    let email = user?.email;
 
     e.preventDefault();
     setError(null);
@@ -29,8 +28,8 @@ export default function ChangePasswordPage() {
       return;
     }
 
-    if (newPassword.length < 8) {
-      setError("New password must be at least 8 characters.");
+    if (newPassword.length < 5) {
+      setError("New password must be at least 5 characters.");
       return;
     }
 
@@ -42,7 +41,8 @@ export default function ChangePasswordPage() {
     try {
       setLoading(true);
 
-      const res = await api.post("/user/change-password", {
+      const res = await api.post("/auth/password/reset", {
+        email,
         currentPassword,
         newPassword,
       });
