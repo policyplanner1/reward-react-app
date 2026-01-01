@@ -288,6 +288,37 @@ const ActionModal = ({
   );
 };
 
+// Stats
+interface StatCardProps {
+  title: string;
+  value: number;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}
+
+const StatCard = ({ title, value, icon: Icon, color }: StatCardProps) => {
+  return (
+    <div
+      className={`relative overflow-hidden rounded-2xl p-5 text-white shadow-lg bg-gradient-to-br ${color}`}
+    >
+      <div className="absolute top-0 right-0 w-24 h-24 -mt-10 -mr-10 bg-white opacity-20 rounded-full" />
+
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold tracking-wide uppercase opacity-90">
+            {title}
+          </p>
+          <p className="mt-2 text-2xl font-bold">{value}</p>
+        </div>
+
+        <div className="p-3 bg-white/20 rounded-xl">
+          <Icon className="text-xl" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ================================
        MAIN COMPONENT
 ================================ */
@@ -296,6 +327,13 @@ export default function ProductManagerList() {
     (Omit<ProductItem, "status"> & { status: ProductStatus })[]
   >([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<Stats>({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    resubmission: 0,
+  });
   // const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -370,7 +408,9 @@ export default function ProductManagerList() {
           totalPages: data.totalPages || 1,
           totalItems: data.total || 0,
         }));
-        // if (data.stats) setStats(data.stats);
+        if (data.stats) {
+          setStats(data.stats);
+        }
       }
     } catch (err) {
       console.error("Error loading products:", err);
@@ -452,7 +492,43 @@ export default function ProductManagerList() {
       />
 
       <div className="p-4 bg-white border border-gray-200 shadow-lg rounded-2xl md:p-6">
-        {/* Header and Stats Omitted for brevity, kept same as your snippet */}
+        {/* STATS CARDS */}
+        <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-5">
+          <StatCard
+            title="Total Products"
+            value={stats.total}
+            icon={FaFileAlt}
+            color="from-purple-500 to-purple-700"
+          />
+
+          <StatCard
+            title="Pending for Review"
+            value={stats.pending}
+            icon={FaClock}
+            color="from-yellow-500 to-yellow-700"
+          />
+
+          <StatCard
+            title="Approved"
+            value={stats.approved}
+            icon={FaCheckCircle}
+            color="from-green-500 to-green-700"
+          />
+
+          <StatCard
+            title="Rejected"
+            value={stats.rejected}
+            icon={FaTimesCircle}
+            color="from-red-500 to-red-700"
+          />
+
+          <StatCard
+            title="Need Resubmission"
+            value={stats.resubmission}
+            icon={FaRedo}
+            color="from-blue-500 to-blue-700"
+          />
+        </div>
 
         {/* FILTERS + SEARCH */}
         <div className="flex flex-col gap-4 mb-6 md:flex-row">
