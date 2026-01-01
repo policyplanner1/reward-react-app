@@ -29,6 +29,7 @@ import EditProductPage from "./components/feature/vendor/products/ProductEdit";
 import ReviewProductPage from "./components/feature/vendor/products/ProductView";
 import VendorApprovalList from "./components/feature/manager/vendor/VendorApprovalList";
 import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprovalForm";
+import NotFoundPage from "./components/feature/others/NotFound";
 
 export default function App() {
   return (
@@ -43,46 +44,35 @@ export default function App() {
 
       {/* ========== VENDOR ========== */}
       <Route element={<VendorLayout />}>
+        <Route path={routes.vendor.dashboard} element={<VendorDashboard />} />
 
-  <Route
-    path={routes.vendor.dashboard}
-    element={<VendorDashboard />}
-  />
+        <Route path={routes.vendor.onboarding} element={<Onboarding />} />
 
-  <Route
-    path={routes.vendor.onboarding}
-    element={<Onboarding />}
-  />
+        <Route
+          path={routes.vendor.products.add}
+          element={<ProductListingDynamic />}
+        />
 
-  <Route
-    path={routes.vendor.products.add}
-    element={<ProductListingDynamic />}
-  />
+        <Route
+          path={routes.vendor.products.list}
+          element={<ProductManagerList />}
+        />
 
-  <Route
-    path={routes.vendor.products.list}
-    element={<ProductManagerList />}
-  />
+        <Route
+          path={routes.vendor.products.review}
+          element={<ReviewProductPage />}
+        />
 
-<Route
-  path={routes.vendor.products.review}   
-  element={<ReviewProductPage/>}
-/>
+        <Route
+          path={routes.vendor.products.edit}
+          element={<EditProductPage />}
+        />
 
-<Route
-  path={routes.vendor.products.edit}     
-  element={<EditProductPage />}
-/>
-
-
-
-  <Route
-    path={routes.vendor.productManagerList}
-    element={<ProductManagerList />}
-  />
-
-</Route>
-
+        <Route
+          path={routes.vendor.productManagerList}
+          element={<ProductManagerList />}
+        />
+      </Route>
 
       {/* ========== MANAGER ========== */}
       <Route element={<ManagerLayout />}>
@@ -93,8 +83,10 @@ export default function App() {
           element={<ProductApprovalList />}
         />
 
-     <Route path={routes.manager.productView} element={<ProductViewPage />} />
-
+        <Route
+          path={routes.manager.productView}
+          element={<ProductViewPage />}
+        />
 
         <Route
           path={routes.manager.vendorReview}
@@ -114,11 +106,8 @@ export default function App() {
           element={<SubSubCategoryManagement />}
         />
       </Route>
-
-      {/* ========== WAREHOUSE ========== */}
-
-      {/* ========== FALLBACK ========== */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

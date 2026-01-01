@@ -11,7 +11,6 @@ export const routes = {
     },
     productManagerList: "/vendor/product-managers",
   },
-
    manager: {
     dashboard: "/manager/dashboard",
     vendors: "/manager/vendors",
