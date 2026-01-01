@@ -67,7 +67,7 @@ export default function VendorDashboard() {
 
       if (res.data?.success) {
         setProductStats({
-          totalProducts: res.data.stats?.totalProducts || 0,
+          totalProducts: res.data.stats?.total || 0,
         });
       }
     } catch (error) {
