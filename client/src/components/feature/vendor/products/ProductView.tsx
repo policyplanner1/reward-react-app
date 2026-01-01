@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import type { ChangeEvent, FormEvent } from "react";
+import  { useState, useEffect } from "react";
+import type { ChangeEvent } from "react";
 import type { ComponentType } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 type IconComp = ComponentType<any>;
@@ -101,8 +101,9 @@ import {
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
-const API_BASE_URL = "http://localhost:5000/api";
-const API_BASEIMAGE_URL = "http://localhost:5000";
+// const API_BASE = import.meta.env.VITE_API_URL;
+import { api } from "../../../../api/api";
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 interface VariantView {
   size?: string;
@@ -145,11 +146,9 @@ interface ProductView {
     file_path: string;
   }>;
 }
-
 export default function ReviewProductPage() {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
-
 
   const [product, setProduct] = useState<ProductView | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -162,7 +161,6 @@ export default function ReviewProductPage() {
       return;
     }
     fetchProduct(productId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
 
   const resolveImageUrl = (path?: string) => {
@@ -183,24 +181,11 @@ export default function ReviewProductPage() {
   const fetchProduct = async (id: string) => {
     setLoading(true);
     setError(null);
+
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/product/${encodeURIComponent(id)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const res = await api.get(`/product/${encodeURIComponent(id)}`);
 
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Failed to fetch product: ${res.status} ${txt}`);
-      }
-
-      const json = await res.json();
-      const raw = json.data ?? json.product ?? json;
+      const raw = res.data?.data ?? res.data?.product ?? res.data;
 
       // Map backend shape to ProductView expected by this page
       const mapped: ProductView = {
@@ -226,6 +211,7 @@ export default function ReviewProductPage() {
         productImages: Array.isArray(raw.productImages)
           ? raw.productImages
           : raw.images ?? [],
+
         variants: Array.isArray(raw.variants)
           ? raw.variants.map((v: any) => ({
               size: v.size ?? "",
@@ -247,13 +233,16 @@ export default function ReviewProductPage() {
               images: Array.isArray(v.images) ? v.images : v.imageUrls ?? [],
             }))
           : [],
+
         requiredDocs: raw.documents ?? [],
       };
 
       setProduct(mapped);
     } catch (err: any) {
       console.error(err);
-      setError(err?.message ?? "Failed to load product");
+      setError(
+        err?.response?.data?.message || err.message || "Failed to load product"
+      );
     } finally {
       setLoading(false);
     }
@@ -301,12 +290,11 @@ export default function ReviewProductPage() {
 
           <div className="flex gap-2">
             <button
-  onClick={() => navigate(-1)}
-  className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50"
->
-  <FaArrowLeft /> Back
-</button>
-
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50"
+            >
+              <FaArrowLeft /> Back
+            </button>
 
             {/* Edit button - navigate to your edit route if exists */}
             {/* <Link

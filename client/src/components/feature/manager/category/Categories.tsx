@@ -1,11 +1,15 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
-import { 
-  FiEdit, FiTrash2, FiEye, FiPlus, FiCalendar,
-  FiX, FiSave, FiTag
-} from 'react-icons/fi';
-import { api } from '../../../../api/api';
+import React, { useState, useEffect } from "react";
+import {
+  FiEdit,
+  FiTrash2,
+  FiEye,
+  FiPlus,
+  FiCalendar,
+  FiX,
+  FiSave,
+  FiTag,
+} from "react-icons/fi";
+import { api } from "../../../../api/api";
 
 type Status = "active" | "inactive";
 
@@ -18,81 +22,76 @@ interface Category {
 
 export default function CategoryManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<Category | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState('');
+  const [editName, setEditName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  /* ==========================================
-     1️⃣ FETCH ALL CATEGORIES
-  ========================================== */
   const fetchCategories = async () => {
     try {
       const res = await api.get("/category");
 
-      const formatted = res.data.map((c: any) => ({
+      const categoriesArray = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data.data)
+        ? res.data.data
+        : [];
+
+      const formatted: Category[] = categoriesArray.map((c: any) => ({
         category_id: c.category_id,
         name: c.category_name || "Unnamed",
         status: c.status === 1 ? "active" : "inactive",
-        created_at: c.created_at
+        created_at: c.created_at,
       }));
 
       setCategories(formatted);
-    } catch (err) {
-      console.log("Fetch Category Error:", err);
+    } catch (err: any) {
+      console.error("Fetch Category Error:", err.response?.data || err.message);
+      setError("Failed to fetch categories. Please check your login and role.");
     }
   };
-
   useEffect(() => {
     fetchCategories();
   }, []);
 
-  /* ==========================================
-     2️⃣ CREATE CATEGORY
-  ========================================== */
   const handleAdd = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!newCategoryName.trim()) return;
-
     try {
       setLoading(true);
-
       await api.post("/vendor/create-category", {
         name: newCategoryName,
-        status: 1
+        status: 1,
       });
-
       setNewCategoryName("");
       fetchCategories();
-    } catch (err) {
-      console.log("Add category error:", err);
+    } catch (err: any) {
+      console.error("Add category error:", err.response?.data || err.message);
+      setError("Failed to add category. Make sure you are a vendor_manager.");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ==========================================
-     3️⃣ VIEW CATEGORY
-  ========================================== */
   const handleView = async (categoryId: number) => {
     try {
       const res = await api.get(`/vendor/category/${categoryId}`);
-
       const data: Category = {
-        category_id: res.data.category_id,
-        name: res.data.category_name,
-        status: res.data.status === 1 ? "active" : "inactive",
-        created_at: res.data.created_at
+        category_id: res.data.data.category_id,
+        name: res.data.data.category_name,
+        status: res.data.data.status === 1 ? "active" : "inactive",
+        created_at: res.data.data.created_at,
       };
-
       setSelected(data);
       setEditName(data.name);
       setDrawerOpen(true);
       setIsEditing(false);
-    } catch (err) {
-      console.log("View error:", err);
+    } catch (err: any) {
+      console.error("View error:", err.response?.data || err.message);
+      setError("Failed to fetch category details.");
     }
   };
 
@@ -101,116 +100,152 @@ export default function CategoryManagement() {
     setTimeout(() => setSelected(null), 300);
   };
 
-  /* ==========================================
-     4️⃣ UPDATE CATEGORY
-  ========================================== */
   const handleSaveEdit = async () => {
     if (!selected) return;
-
     try {
       await api.put(`/vendor/update-category/${selected.category_id}`, {
         name: editName,
-        status: selected.status === "active" ? 1 : 0
+        status: selected.status === "active" ? 1 : 0,
       });
-
       fetchCategories();
       setIsEditing(false);
-    } catch (err) {
-      console.log("Update error:", err);
+      closeDrawer();
+    } catch (err: any) {
+      console.error("Update error:", err.response?.data || err.message);
+      setError("Failed to update category.");
     }
   };
 
-  /* ==========================================
-     5️⃣ DELETE CATEGORY
-  ========================================== */
   const handleDelete = async (id: number) => {
     if (!confirm("Delete category?")) return;
-
     try {
       await api.delete(`/vendor/delete-category/${id}`);
       fetchCategories();
       closeDrawer();
-    } catch (err) {
-      console.log("Delete error:", err);
+    } catch (err: any) {
+      console.error("Delete error:", err.response?.data?.error);
+      setError(`Delete error: ${err.response?.data?.error}`);
     }
   };
 
   return (
-    <div className="min-h-screen p-8 bg-gradient-to-br from-purple-50 to-pink-50">
-
+    <div className="min-h-screen p-8 bg-[#FAFAFE]">
       {/* PAGE HEADER */}
-      <h1 className="flex items-center gap-3 mb-6 text-4xl font-bold text-purple-700 drop-shadow-sm">
-        <FiTag className="text-purple-600" /> 
-        Category Management
-      </h1>
-
+      <div className="mb-10">
+        <h1 className="flex items-center gap-4 text-3xl font-black tracking-tight text-gray-900">
+          <div className="p-3 bg-white shadow-sm rounded-2xl text-[#852BAF]">
+            <FiTag />
+          </div>
+          Category Management
+        </h1>
+        <p className="mt-2 ml-16 font-medium text-gray-400">
+          Manage and organize your product catalog
+        </p>
+      </div>
+      {error && (
+        <div className="mb-8 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 font-semibold">
+          {error}
+        </div>
+      )}
       {/* ADD CATEGORY INPUT */}
-      <form onSubmit={handleAdd} className="flex gap-4 mb-8">
+      <form
+        onSubmit={handleAdd}
+        className="flex gap-4 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-3xl"
+      >
         <input
           value={newCategoryName}
-          onChange={e => setNewCategoryName(e.target.value)}
-          className="flex-1 px-5 py-3 border shadow-sm rounded-xl focus:ring-2 focus:ring-purple-400"
-          placeholder="Enter category name..."
+          onChange={(e) => setNewCategoryName(e.target.value)}
+          className="flex-1 px-5 py-3 text-sm font-semibold bg-transparent outline-none placeholder:text-gray-300"
+          placeholder="Type new category name..."
         />
-
         <button
           type="submit"
           disabled={loading}
-          className="flex items-center gap-2 px-6 py-3 font-semibold text-white transition-all bg-purple-600 shadow rounded-xl hover:bg-purple-700"
+          className="flex items-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200"
         >
-          <FiPlus /> Add
+          <FiPlus /> {loading ? "Adding..." : "Add Category"}
         </button>
       </form>
 
-      {/* TABLE */}
-      <div className="overflow-hidden bg-white shadow-xl rounded-2xl">
-        <table className="min-w-full">
-          <thead className="text-white bg-purple-600">
-            <tr>
-              <th className="px-6 py-4 text-left">Category</th>
-              <th className="px-6 py-4 text-left">Status</th>
-              <th className="px-6 py-4 text-left">Created</th>
-              <th className="px-6 py-4 text-right">Actions</th>
+      {/* TABLE SECTION */}
+      <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] border border-gray-100 overflow-hidden">
+        <table className="min-w-full border-collapse">
+          <thead>
+            <tr className="border-b border-gray-50">
+              <th className="px-8 py-6 text-xs font-black tracking-widest text-left text-gray-400 uppercase">
+                Category Name
+              </th>
+              <th className="px-8 py-6 text-xs font-black tracking-widest text-left text-gray-400 uppercase">
+                Status
+              </th>
+              <th className="px-8 py-6 text-xs font-black tracking-widest text-left text-gray-400 uppercase">
+                Created Date
+              </th>
+              <th className="px-8 py-6 text-xs font-black tracking-widest text-right text-gray-400 uppercase">
+                Actions
+              </th>
             </tr>
           </thead>
 
-          <tbody>
-            {categories.map(cat => (
-              <tr key={cat.category_id} className="transition hover:bg-purple-50">
-                
-                <td className="px-6 py-4 font-semibold">{cat.name}</td>
-
-                <td className="px-6 py-4">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    cat.status === "active"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-600"
-                  }`}>
+          <tbody className="divide-y divide-gray-50">
+            {categories.map((cat) => (
+              <tr
+                key={cat.category_id}
+                className="group transition-colors hover:bg-gray-50/50"
+              >
+                <td className="px-8 py-5 text-sm font-bold text-gray-700">
+                  {cat.name}
+                </td>
+                <td className="px-8 py-5">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider ${
+                      cat.status === "active"
+                        ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                        : "bg-red-50 text-red-500 border border-red-100"
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        cat.status === "active"
+                          ? "bg-emerald-500"
+                          : "bg-red-500"
+                      }`}
+                    />
                     {cat.status}
                   </span>
                 </td>
-
-                <td className="px-6 py-4">
-                  {new Date(cat.created_at).toLocaleDateString()}
+                <td className="px-8 py-5 text-sm font-semibold text-gray-400">
+                  {new Date(cat.created_at).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
                 </td>
-
-                <td className="flex justify-end gap-3 px-6 py-4 text-right">
-                  <button className="p-2 text-blue-600 hover:text-blue-800" 
-                    onClick={() => handleView(cat.category_id)}>
-                    <FiEye size={18} />
-                  </button>
-
-                  <button className="p-2 text-purple-600 hover:text-purple-800"
-                    onClick={() => { handleView(cat.category_id); setIsEditing(true); }}>
-                    <FiEdit size={18} />
-                  </button>
-
-                  <button className="p-2 text-red-600 hover:text-red-800"
-                    onClick={() => handleDelete(cat.category_id)}>
-                    <FiTrash2 size={18} />
-                  </button>
+                <td className="px-8 py-5">
+                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleView(cat.category_id)}
+                      className="p-2.5 text-gray-400 hover:text-[#852BAF] bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all"
+                    >
+                      <FiEye size={16} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleView(cat.category_id);
+                        setIsEditing(true);
+                      }}
+                      className="p-2.5 text-gray-400 hover:text-[#FC3F78] bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all"
+                    >
+                      <FiEdit size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(cat.category_id)}
+                      className="p-2.5 text-gray-400 hover:text-red-500 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all"
+                    >
+                      <FiTrash2 size={16} />
+                    </button>
+                  </div>
                 </td>
-
               </tr>
             ))}
           </tbody>
@@ -219,90 +254,116 @@ export default function CategoryManagement() {
 
       {/* DRAWER PANEL */}
       {selected && (
-        <div className={`fixed inset-0 z-50 transition ${drawerOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-          
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closeDrawer}></div>
+        <div
+          className={`fixed inset-0 z-50 transition-all duration-500 ${
+            drawerOpen ? "visible" : "invisible"
+          }`}
+        >
+          <div
+            className={`absolute inset-0 bg-gray-900/20 backdrop-blur-md transition-opacity duration-500 ${
+              drawerOpen ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={closeDrawer}
+          />
 
-          <div className={`absolute right-0 top-0 h-full w-[420px] bg-white shadow-2xl rounded-l-2xl transition-transform ${
+          <div
+            className={`absolute right-0 top-0 h-full w-[450px] bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.05)] transition-transform duration-500 ease-out ${
               drawerOpen ? "translate-x-0" : "translate-x-full"
-            }`}>
-
+            }`}
+          >
             {/* DRAWER HEADER */}
-            <div className="flex justify-between p-6 bg-purple-600 border-b rounded-tl-2xl">
-              <div>
-                <h2 className="text-xl font-bold text-white">{selected.name}</h2>
-                <p className="flex items-center gap-2 text-sm text-purple-100">
-                  <FiCalendar /> {new Date(selected.created_at).toLocaleDateString()}
-                </p>
+            <div className="p-8 border-b border-gray-50">
+              <div className="flex items-center justify-between mb-6">
+                <div className="w-12 h-12 bg-gradient-to-tr from-[#852BAF] to-[#FC3F78] rounded-2xl flex items-center justify-center text-white text-xl shadow-lg shadow-purple-200">
+                  <FiTag />
+                </div>
+                <button
+                  onClick={closeDrawer}
+                  className="p-2 text-gray-400 hover:bg-gray-50 rounded-xl transition-colors"
+                >
+                  <FiX size={24} />
+                </button>
               </div>
-              <button onClick={closeDrawer} className="text-white hover:text-gray-200">
-                <FiX size={22} />
-              </button>
+              <h2 className="text-2xl font-black text-gray-900">
+                {isEditing ? "Edit Category" : selected.name}
+              </h2>
+              <p className="flex items-center gap-2 mt-1 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                <FiCalendar /> Created on{" "}
+                {new Date(selected.created_at).toLocaleDateString()}
+              </p>
             </div>
 
             {/* DRAWER BODY */}
-            <div className="p-6">
-
+            <div className="p-8 space-y-8">
               {!isEditing ? (
-                <button
-                  className="w-full py-3 mb-3 font-semibold text-white bg-purple-600 rounded-xl hover:bg-purple-700"
-                  onClick={() => setIsEditing(true)}
-                >
-                  <FiEdit className="inline-block mr-2" />
-                  Edit Category
-                </button>
+                <div className="space-y-6">
+                  <div className="p-6 bg-gray-50 rounded-[2rem] border border-gray-100">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">
+                      Current Status
+                    </p>
+                    <p className="text-lg font-bold text-gray-800 capitalize">
+                      {selected.status}
+                    </p>
+                  </div>
+                  <button
+                    className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl hover:bg-gray-800 transition-all active:scale-95 shadow-xl shadow-gray-200"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    Modify Category
+                  </button>
+                </div>
               ) : (
-                <>
-                  {/* NAME INPUT */}
-                  <div className="mb-6">
-                    <label className="text-sm font-medium">Category Name</label>
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
+                      Category Name
+                    </label>
                     <input
                       value={editName}
-                      onChange={e => setEditName(e.target.value)}
-                      className="w-full px-4 py-3 border shadow-sm rounded-xl focus:ring-2 focus:ring-purple-400"
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="w-full px-5 py-4 font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#852BAF]/20 focus:bg-white transition-all outline-none"
                     />
                   </div>
 
-                  {/* STATUS SELECT */}
-                  <div className="mb-6">
-                    <label className="text-sm font-medium">Status</label>
-                    <select 
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
+                      Display Status
+                    </label>
+                    <select
                       value={selected.status}
-                      onChange={e => setSelected({
-                        ...selected,
-                        status: e.target.value as Status
-                      })}
-                      className="w-full px-4 py-3 border shadow-sm rounded-xl"
+                      onChange={(e) =>
+                        setSelected({
+                          ...selected,
+                          status: e.target.value as Status,
+                        })
+                      }
+                      className="w-full px-5 py-4 font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-2xl outline-none"
                     >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
+                      <option value="active">Active (Visible to users)</option>
+                      <option value="inactive">Inactive (Hidden)</option>
                     </select>
                   </div>
 
-                  {/* SAVE BUTTON */}
-                  <button
-                    onClick={handleSaveEdit}
-                    className="w-full py-3 mb-3 font-semibold text-white bg-purple-700 rounded-xl hover:bg-purple-800"
-                  >
-                    <FiSave className="inline-block mr-2" />
-                    Save Changes
-                  </button>
-
-                  {/* CANCEL BUTTON */}
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    className="w-full py-3 border rounded-xl"
-                  >
-                    Cancel
-                  </button>
-                </>
+                  <div className="pt-4 space-y-3">
+                    <button
+                      onClick={handleSaveEdit}
+                      className="w-full py-4 font-black text-white bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-2xl shadow-lg shadow-purple-200 hover:opacity-90 transition-all"
+                    >
+                      <FiSave className="inline-block mr-2" /> Save Changes
+                    </button>
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl hover:bg-gray-50 transition-all"
+                    >
+                      Discard
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 }

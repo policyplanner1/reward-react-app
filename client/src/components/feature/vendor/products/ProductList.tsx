@@ -1,33 +1,29 @@
-
 import { useEffect, useState, useCallback } from "react";
 import {
   FaCheckCircle,
   FaTimesCircle,
   FaClock,
-  FaExclamationTriangle,
   FaEye,
   FaFileAlt,
   FaSpinner,
   FaFilter,
   FaSearch,
-  FaSort,
-  FaSortUp,
   FaQuestionCircle,
-  FaSortDown,
   FaEdit,
   FaRedo,
   FaCheck,
   FaTimes,
-  FaDownload,
-  FaUser,
   FaBox,
   FaPaperPlane,
   FaTrash,
 } from "react-icons/fa";
 import { FiPackage } from "react-icons/fi";
 
-const API_BASE_URL = "http://localhost:5000/api";
-const API_BASEIMAGE_URL = "http://localhost:5000";
+import { Link } from "react-router-dom";
+import { routes } from "../../../../routes";
+
+import { api } from "../../../../api/api";
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 /* ================================
        TYPES
@@ -144,7 +140,7 @@ const StatusChip = ({ status }: { status: ProductStatus }) => {
     <div
       className={`inline-flex items-center px-3 py-1.5 rounded-full border text-xs font-medium ${cfg.color}`}
     >
-      <Icon className="mr-1.5" size={12} />
+      <Icon size={12} />
       {cfg.text}
     </div>
   );
@@ -306,7 +302,6 @@ const ActionModal = ({
 export default function ProductManagerList() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -341,86 +336,24 @@ export default function ProductManagerList() {
   });
 
   /* ================================
-       HELPERS
-  ================================= */
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-IN", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 2,
-    }).format(price);
-  };
-
-  const getSortIcon = (column: string) => {
-    if (sortBy !== column) return <FaSort className="ml-1 opacity-30" />;
-    return sortOrder === "asc" ? (
-      <FaSortUp className="ml-1" />
-    ) : (
-      <FaSortDown className="ml-1" />
-    );
-  };
-
-  const handleDownloadDocument = (
-    documentUrl: string,
-    documentName: string
-  ) => {
-    const link = document.createElement("a");
-    link.href = documentUrl;
-    link.download = documentName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  /* ================================
        FETCH PRODUCTS
   ================================= */
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      if (!token) {
-        console.error("No authentication token found");
-        setLoading(false);
-        return;
-      }
 
-      const params = new URLSearchParams({
-        page: pagination.currentPage.toString(),
-        limit: pagination.itemsPerPage.toString(),
-        status: statusFilter !== "all" ? statusFilter : "",
-        search: searchQuery,
+      const params = {
+        page: pagination.currentPage,
+        limit: pagination.itemsPerPage,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        search: searchQuery || undefined,
         sortBy,
         sortOrder,
-      });
+      };
 
-      const response = await fetch(
-        `${API_BASE_URL}/product/my-listed-products?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        }
-      );
+      const res = await api.get("/product/my-listed-products", { params });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: ApiResponse = await response.json();
+      const data: ApiResponse = res.data;
 
       if (data.success) {
         setProducts(data.products);
@@ -463,47 +396,14 @@ export default function ProductManagerList() {
     productId: number,
     reason?: string
   ) => {
-    setActionLoading(productId);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No token");
+      // const token = localStorage.getItem("token");
+      // if (!token) throw new Error("No token");
 
       // --- DELETE branch (implemented) ---
       if (action === "delete") {
-        const res = await fetch(
-          `${API_BASE_URL}/product/delete-product/${productId}`,
-          {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            credentials: "include",
-          }
-        );
+        await api.delete(`/product/delete-product/${productId}`);
 
-        if (!res.ok) {
-          let text = await res.text().catch(() => "");
-          try {
-            const json = JSON.parse(text || "{}");
-            throw new Error(
-              json.message || `Failed to delete product (status ${res.status})`
-            );
-          } catch {
-            throw new Error(
-              text || `Failed to delete product (status ${res.status})`
-            );
-          }
-        }
-
-        // Parse response (if JSON)
-        const data = await res.json().catch(() => ({ success: true }));
-
-        if (data && data.success === false) {
-          throw new Error(data.message || "Delete failed");
-        }
-
-        // Remove from local UI
         setProducts((prev) => prev.filter((p) => p.product_id !== productId));
 
         setStats((prev) => ({
@@ -512,33 +412,14 @@ export default function ProductManagerList() {
           pending: Math.max(0, prev.pending - 1),
         }));
 
-        alert(data.message || "Product deleted successfully");
-        return;
+        alert("Product deleted successfully");
       }
 
       // --- REQUEST RESUBMISSION ---
       if (action === "request_resubmission") {
-        const res = await fetch(
-          `${API_BASE_URL}/product/submission/${productId}`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            credentials: "include",
-            body: JSON.stringify({
-              reason: reason || null, 
-            }),
-          }
-        );
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.message || "Failed to send for approval");
-        }
-
-        const data = await res.json();
+        const res = await api.post(`/product/submission/${productId}`, {
+          reason: reason || null,
+        });
 
         setProducts((prev) =>
           prev.map((p) =>
@@ -548,15 +429,13 @@ export default function ProductManagerList() {
           )
         );
 
-        alert(data.message || "Product sent for approval successfully");
-        return;
+        alert(res.data.message || "Product sent for approval successfully");
       }
     } catch (error: any) {
       console.error("Error performing action:", error);
       alert(error.message || "Error performing action");
       throw error;
     } finally {
-      setActionLoading(null);
     }
   };
 
@@ -582,16 +461,6 @@ export default function ProductManagerList() {
     if (page >= 1 && page <= pagination.totalPages) {
       setPagination((prev) => ({ ...prev, currentPage: page }));
     }
-  };
-
-  const handleSort = (column: string) => {
-    if (sortBy === column) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(column);
-      setSortOrder("desc");
-    }
-    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
   /* ================================
@@ -856,7 +725,10 @@ export default function ProductManagerList() {
                     <div className="flex items-center space-x-2">
                       {/* View Button*/}
                       <Link
-                        href={`/src/vendor/products/review/${product.product_id}`}
+                        to={routes.vendor.products.review.replace(
+                          ":productId",
+                          String(product.product_id)
+                        )}
                       >
                         <button className="p-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
                           <FaEye />
@@ -868,7 +740,10 @@ export default function ProductManagerList() {
                         product.status
                       ) && (
                         <Link
-                          href={`/src/vendor/products/edit/${product.product_id}`}
+                          to={routes.vendor.products.edit.replace(
+                            ":id",
+                            String(product.product_id)
+                          )}
                           target="_blank"
                         >
                           <button className="p-2 text-purple-700 bg-purple-100 rounded hover:bg-purple-200">

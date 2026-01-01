@@ -9,6 +9,7 @@ import {
   FaFileAlt,
 } from "react-icons/fa";
 import { FiUsers } from "react-icons/fi";
+import { Link } from "react-router-dom";
 
 interface VendorItem {
   vendor_id: number;
@@ -21,7 +22,8 @@ interface VendorItem {
   submitted_at: string;
 }
 
-const API_BASE_URL = "http://localhost:5000/api";
+// const API_BASE = import.meta.env.VITE_API_URL;
+import { api } from "../../../../api/api";
 
 const StatusChip = ({ status }: { status: VendorItem["status"] }) => {
   if (status === "approved") {
@@ -48,7 +50,7 @@ const StatusChip = ({ status }: { status: VendorItem["status"] }) => {
     );
   }
 
-  return null; 
+  return null;
 };
 
 export default function VendorApprovalList() {
@@ -67,15 +69,10 @@ export default function VendorApprovalList() {
   useEffect(() => {
     async function fetchVendors() {
       try {
-        const token = localStorage.getItem("token");
+        const res = await api.get("/manager/all-vendors");
 
-        const res = await fetch(`${API_BASE_URL}/manager/all-vendors`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const data = await res.json();
-        if (data.success) {
-          setVendors(data.data);
+        if (res.data.success) {
+          setVendors(res.data.data);
         }
       } catch (err) {
         console.error("Error loading vendors:", err);
@@ -183,9 +180,7 @@ export default function VendorApprovalList() {
 
                   {/* Action */}
                   <td className="px-6 py-4">
-                    <Link
-                      href={`/src/manager/dashboard/VendorId?vendor_id=${v.vendor_id}`}
-                    >
+                    <Link to={`/manager/vendor-review/${v.vendor_id}`}>
                       <button className="flex items-center px-4 py-2 bg-[#852BAF] text-white rounded-lg hover:bg-[#73239c] transition text-sm">
                         <FaEye className="mr-2" /> Review
                       </button>

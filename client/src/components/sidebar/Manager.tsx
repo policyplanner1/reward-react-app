@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
   FiGrid,
   FiUsers,
@@ -7,30 +7,28 @@ import {
   FiTag,
   FiChevronDown,
   FiChevronsRight,
-  FiSettings,
   FiUser,
   FiLogOut,
-} from 'react-icons/fi';
-import { useAuth } from '../../auth/useAuth';
-import { routes } from '../../routes';
+} from "react-icons/fi";
+import { useAuth } from "../../auth/useAuth";
+import { routes } from "../../routes";
 
+/* ================= TYPES ================= */
 
-interface NavItemBase {
+interface NavChild {
   label: string;
-  icon: JSX.Element;
-}
-
-interface NavLink extends NavItemBase {
   to: string;
-  type: 'link';
 }
 
-interface NavDropdown extends NavItemBase {
-  type: 'dropdown';
-  children: { label: string; to: string }[];
+interface NavItem {
+  label: string;
+  to?: string;
+  icon?: React.ReactNode;
+  type: "link" | "dropdown";
+  children?: NavChild[];
 }
 
-type NavItem = NavLink | NavDropdown;
+/* ================= COMPONENT ================= */
 
 export default function ManagerNavbar() {
   const { pathname } = useLocation();
@@ -42,62 +40,97 @@ export default function ManagerNavbar() {
   const isActive = (to: string) => pathname === to;
 
   const navItems: NavItem[] = [
-  { label: 'Dashboard', to: routes.manager.dashboard, icon: <FiGrid />, type: 'link' },
-  { label: 'Vendors', to: routes.manager.vendors, icon: <FiUsers />, type: 'link' },
-  { label: 'Products', to: routes.manager.products, icon: <FiPackage />, type: 'link' },
-  {
-    label: 'Category Management',
-    icon: <FiTag />,
-    type: 'dropdown',
-    children: [
-      { label: 'Categories', to: routes.manager.categories },
-      { label: 'Subcategories', to: routes.manager.subcategories },
-      { label: 'Type / Sub-type', to: '/manager/category_management/subsubcategories' },
-    ],
-  },
-];
-
+    {
+      label: "Dashboard",
+      to: routes.manager.dashboard,
+      icon: <FiGrid />,
+      type: "link",
+    },
+    {
+      label: "Vendors",
+      to: routes.manager.vendors,
+      icon: <FiUsers />,
+      type: "link",
+    },
+    {
+      label: "Products",
+      to: routes.manager.products,
+      icon: <FiPackage />,
+      type: "link",
+    },
+    {
+      label: "Category",
+      icon: <FiTag />,
+      type: "dropdown",
+      children: [
+        { label: "Categories", to: routes.manager.categories },
+        { label: "Subcategories", to: routes.manager.subcategories },
+        { label: "Type / Sub-type", to: routes.manager.subsubcategories },
+      ],
+    },
+  ];
 
   return (
-    <nav className="fixed top-0 left-0 flex flex-col w-64 h-full bg-white border-r shadow-sm">
-      {/* Logo */}
-      <div className="p-6 border-b">
-        <h1 className="text-xl font-bold text-gray-900">Rewards</h1>
-        <p className="text-xs text-gray-400">Manager Portal</p>
+    <nav className="fixed top-0 left-0 flex flex-col w-64 h-full bg-white border-r border-gray-100 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+      {/* Branding */}
+      <div className="px-8 py-10">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#852BAF] to-[#FC3F78] shadow-lg flex items-center justify-center text-white font-black italic">
+            R
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-gray-900">REWARDS</h1>
+            <p className="text-[10px] uppercase font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#852BAF] to-[#FC3F78]">
+              Manager Portal
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Menu */}
-      <div className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {navItems.map(item => {
-          if (item.type === 'dropdown') {
-            const isOpen = open === item.label;
+      {/* Navigation */}
+      <div className="flex-1 px-4 space-y-1.5 overflow-y-auto">
+        {navItems.map((item) => {
+          const isItemActive =
+            item.type === "link" && !!item.to && isActive(item.to);
+          const isDropdownOpen = open === item.label;
 
+          if (item.type === "dropdown") {
             return (
-              <div key={item.label}>
+              <div key={item.label} className="space-y-1">
                 <button
-                  onClick={() => setOpen(isOpen ? null : item.label)}
-                  className="flex items-center justify-between w-full px-4 py-3 font-medium rounded-xl hover:bg-gray-50"
+                  onClick={() =>
+                    setOpen(isDropdownOpen ? null : item.label)
+                  }
+                  className={`flex items-center justify-between w-full px-4 py-3 text-sm font-bold rounded-xl transition-all ${
+                    isDropdownOpen
+                      ? "text-[#852BAF] bg-purple-50/50"
+                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
                 >
                   <span className="flex items-center gap-3">
-                    {item.icon}
+                    <span className="text-lg">{item.icon}</span>
                     {item.label}
                   </span>
-                  <FiChevronDown className={isOpen ? 'rotate-180' : ''} />
+                  <FiChevronDown
+                    className={`transition-transform ${
+                      isDropdownOpen ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
 
-                {isOpen && (
-                  <div className="mt-1 ml-8 space-y-1">
-                    {item.children.map(child => (
+                {isDropdownOpen && item.children && (
+                  <div className="mx-2 py-1 space-y-1 bg-gray-50/50 rounded-xl border border-gray-100/50">
+                    {item.children.map((child) => (
                       <Link
                         key={child.to}
                         to={child.to}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                        className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all ${
                           isActive(child.to)
-                            ? 'bg-purple-100 text-purple-700'
-                            : 'hover:bg-gray-100 text-gray-600'
+                            ? "text-[#852BAF]"
+                            : "text-gray-500 hover:text-[#FC3F78]"
                         }`}
                       >
-                        <FiChevronsRight size={14} />
+                        <FiChevronsRight className="text-[10px]" />
                         {child.label}
                       </Link>
                     ))}
@@ -110,14 +143,14 @@ export default function ManagerNavbar() {
           return (
             <Link
               key={item.to}
-              to={item.to}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium ${
-                isActive(item.to)
-                  ? 'bg-purple-100 text-purple-700'
-                  : 'hover:bg-gray-50 text-gray-700'
+              to={item.to!}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                isItemActive
+                  ? "bg-gradient-to-r from-[#852BAF] to-[#FC3F78] text-white shadow-md"
+                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
               }`}
             >
-              {item.icon}
+              <span className="text-lg">{item.icon}</span>
               {item.label}
             </Link>
           );
@@ -125,30 +158,37 @@ export default function ManagerNavbar() {
       </div>
 
       {/* Profile */}
-      <div className="p-4 border-t">
+      <div className="p-4 mt-auto border-t border-gray-100">
         <button
-          onClick={() => setProfileOpen(!profileOpen)}
-          className="flex items-center w-full gap-3"
+          onClick={() => setProfileOpen((p) => !p)}
+          className="flex items-center w-full gap-3 p-2 rounded-2xl hover:bg-gray-50"
         >
-          <div className="flex items-center justify-center font-bold text-purple-700 bg-purple-100 rounded-full w-9 h-9">
-            {user?.email?.[0]?.toUpperCase() || 'M'}
+          <div className="w-10 h-10 flex items-center justify-center text-white font-black rounded-xl bg-gradient-to-tr from-[#852BAF] to-[#FC3F78]">
+            {user?.email?.[0]?.toUpperCase() || "M"}
           </div>
-          <span className="text-sm truncate">{user?.email || 'Manager'}</span>
+          <div className="flex-1 text-left truncate">
+            <p className="text-xs font-black text-gray-900 truncate">
+              {user?.email?.split("@")[0] || "Manager"}
+            </p>
+            <p className="text-[10px] text-gray-400 font-bold italic">
+              View Profile
+            </p>
+          </div>
         </button>
 
         {profileOpen && (
-          <div className="mt-2 bg-white border shadow rounded-xl">
-            <Link to="/manager/profile" className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50">
-              <FiUser /> Profile
-            </Link>
-            <Link to="/manager/settings" className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50">
-              <FiSettings /> Settings
+          <div className="mt-2 bg-white border border-gray-100 shadow-xl rounded-2xl overflow-hidden">
+            <Link
+              to="/manager/profile"
+              className="flex items-center gap-3 px-5 py-4 text-sm font-bold text-gray-600 hover:bg-gray-50"
+            >
+              <FiUser /> Profile Details
             </Link>
             <button
               onClick={logout}
-              className="flex items-center w-full gap-2 px-4 py-2 text-left text-red-600 hover:bg-red-50"
+              className="flex items-center w-full gap-3 px-5 py-4 text-sm font-bold text-red-500 hover:bg-red-50"
             >
-              <FiLogOut /> Logout
+              <FiLogOut /> Sign Out
             </button>
           </div>
         )}

@@ -1,6 +1,5 @@
-"use client";
-
 import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   FaBuilding,
   FaAddressBook,
@@ -18,8 +17,8 @@ import {
   FaFilePdf,
 } from "react-icons/fa";
 
-const API_BASE_URL = "http://localhost:5000/api";
-const API_BASEIMAGE_URL = "http://localhost:5000";
+import { api } from "../../../../api/api";
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 const resolveImageUrl = (path: string) =>
   path?.startsWith("http") ? path : `${API_BASEIMAGE_URL}/uploads/${path}`;
@@ -34,19 +33,12 @@ const downloadFile = (url: string, filename?: string) => {
 };
 
 interface VendorOnboardingData {
-  /* =========================
-     BUSINESS DETAILS
-  ========================= */
   companyName: string;
   fullName: string;
   vendorType: string;
   gstin: string;
   panNumber: string;
   ipaddress: string;
-
-  /* =========================
-     BUSINESS DOCUMENTS
-  ========================= */
   gstinFileUrl: string;
   panFileUrl: string;
   bankCancelledChequeFileUrl: string;
@@ -57,53 +49,29 @@ interface VendorOnboardingData {
   electricityBillFileUrl: string;
   advisoryDisclaimerFileUrl: string;
   signedAgreementFileUrl: string;
-
-  /* =========================
-     REGISTERED ADDRESS
-  ========================= */
   addressLine1: string;
   addressLine2: string;
   addressLine3: string;
   city: string;
   state: string;
   pincode: string;
-
-  /* =========================
-     BILLING ADDRESS
-  ========================= */
   billingAddressLine1: string;
   billingAddressLine2: string;
   billingCity: string;
   billingState: string;
   billingPincode: string;
-
-  /* =========================
-     SHIPPING ADDRESS
-  ========================= */
   shippingAddressLine1: string;
   shippingAddressLine2: string;
   shippingCity: string;
   shippingState: string;
   shippingPincode: string;
-
-  /* =========================
-     BANK DETAILS (NO DOC)
-  ========================= */
   bankName: string;
   accountNumber: string;
   branch: string;
   ifscCode: string;
-
-  /* =========================
-     CONTACT DETAILS
-  ========================= */
   email: string;
   primaryContactNumber: string;
   alternateContactNumber: string;
-
-  /* =========================
-     COMMENTS / TERMS
-  ========================= */
   paymentTerms: string;
   comments: string;
 }
@@ -141,20 +109,12 @@ const restructureData = (
     documents.find((d) => d.document_type === type)?.file_path || "";
 
   return {
-    /* =========================
-       BASIC BUSINESS DETAILS
-    ========================= */
     companyName: vendor.company_name || "",
     fullName: vendor.full_name || "",
     vendorType: vendor.vendor_type || "",
     gstin: vendor.gstin || "",
     panNumber: vendor.pan_number || "",
     ipaddress: vendor.ipaddress || "N/A",
-
-    /* =========================
-       BUSINESS DOCUMENTS
-       (Order as requested)
-    ========================= */
     gstinFileUrl: getDocUrl("gst_document"),
     panFileUrl: getDocUrl("pan_card"),
     bankCancelledChequeFileUrl: getDocUrl("cancelled_cheque"),
@@ -165,59 +125,46 @@ const restructureData = (
     electricityBillFileUrl: getDocUrl("electricity_bill"),
     advisoryDisclaimerFileUrl: getDocUrl("advisory_disclaimer"),
     signedAgreementFileUrl: getDocUrl("signed_agreement"),
-
-    /* =========================
-       REGISTERED ADDRESS
-    ========================= */
     addressLine1: getAddress("business", "line1"),
     addressLine2: getAddress("business", "line2"),
     addressLine3: getAddress("business", "line3"),
     city: getAddress("business", "city"),
     state: getAddress("business", "state"),
     pincode: getAddress("business", "pincode"),
-
-    /* =========================
-       BILLING ADDRESS
-    ========================= */
     billingAddressLine1: getAddress("billing", "line1"),
     billingAddressLine2: getAddress("billing", "line2"),
     billingCity: getAddress("billing", "city"),
     billingState: getAddress("billing", "state"),
     billingPincode: getAddress("billing", "pincode"),
-
-    /* =========================
-       SHIPPING ADDRESS
-    ========================= */
     shippingAddressLine1: getAddress("shipping", "line1"),
     shippingAddressLine2: getAddress("shipping", "line2"),
     shippingCity: getAddress("shipping", "city"),
     shippingState: getAddress("shipping", "state"),
     shippingPincode: getAddress("shipping", "pincode"),
-
-    /* =========================
-       BANK DETAILS (NO DOCUMENT)
-    ========================= */
     bankName: bank?.bank_name || "",
     accountNumber: bank?.account_number || "",
     branch: bank?.branch || "",
     ifscCode: bank?.ifsc_code || "",
-
-    /* =========================
-       CONTACT DETAILS
-    ========================= */
     email: contacts?.email || vendor.email || "",
     primaryContactNumber: contacts?.primary_contact || "",
     alternateContactNumber: contacts?.alternate_contact || "",
-
-    /* =========================
-       COMMENTS / TERMS
-    ========================= */
     paymentTerms: contacts?.payment_terms || "",
     comments: contacts?.comments || "",
   };
 };
 
-const DocumentPreviewCard = ({ label, doc }: any) => {
+const mapDocumentsByKey = (documents: any[]) => {
+  const map: Record<string, any> = {};
+  documents.forEach((doc) => {
+    map[doc.document_key] = doc;
+  });
+  return map;
+};
+
+// --------------------
+// COMPONENTS
+// --------------------
+const DocumentPreviewCard = ({ label, doc }: { label: string; doc: any }) => {
   if (!doc) {
     return (
       <div className="p-4 border rounded-xl bg-gray-50 text-sm text-gray-400">
@@ -232,16 +179,9 @@ const DocumentPreviewCard = ({ label, doc }: any) => {
   return (
     <div className="p-4 border rounded-xl bg-white shadow-sm">
       <div className="text-sm font-medium text-gray-700 mb-2">{label}</div>
-
       <div className="flex items-center gap-3">
-        {/* IMAGE PREVIEW */}
         {isImage ? (
-          <a
-            href={fileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="View"
-          >
+          <a href={fileUrl} target="_blank" rel="noopener noreferrer">
             <img
               src={fileUrl}
               alt={label}
@@ -251,8 +191,6 @@ const DocumentPreviewCard = ({ label, doc }: any) => {
         ) : (
           <FaFilePdf className="text-3xl text-red-500" />
         )}
-
-        {/* ACTIONS */}
         <div className="flex gap-2">
           <a
             href={fileUrl}
@@ -263,7 +201,6 @@ const DocumentPreviewCard = ({ label, doc }: any) => {
           >
             <FaEye />
           </a>
-
           <button
             onClick={() => downloadFile(fileUrl, fileUrl.split("/").pop())}
             className="p-2 border rounded hover:bg-gray-100"
@@ -294,37 +231,6 @@ const ReviewField = ({
   </div>
 );
 
-const FileReviewField = ({
-  label,
-  fileUrl,
-}: {
-  label: string;
-  fileUrl: string;
-}) => (
-  <div className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition duration-200">
-    <label className="text-sm font-medium text-gray-500 block mb-1">
-      {label}
-    </label>
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-gray-800 truncate font-semibold">
-        {fileUrl
-          ? `Uploaded: ${fileUrl.split("/").pop()}`
-          : "Document not submitted"}
-      </span>
-      {fileUrl && (
-        <a
-          href={fileUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center text-sm text-blue-600 hover:text-blue-800 transition font-medium"
-        >
-          <FaDownload className="mr-1" /> Download
-        </a>
-      )}
-    </div>
-  </div>
-);
-
 const SectionHeader = ({
   icon: Icon,
   title,
@@ -341,18 +247,10 @@ const SectionHeader = ({
   </div>
 );
 
-const mapDocumentsByKey = (documents: any[]) => {
-  const map: Record<string, any> = {};
-  documents.forEach((doc) => {
-    map[doc.document_key] = doc;
-  });
-  return map;
-};
-
 export default function VendorApprovalForm() {
-  const searchParams = useSearchParams();
-  const vendorId = searchParams.get("vendor_id");
-  const router = useRouter();
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const vendorId = id; // <-- get vendor ID
 
   const [vendorStatus, setVendorStatus] = useState<
     "pending" | "sent_for_approval" | "approved" | "rejected" | null
@@ -373,62 +271,73 @@ export default function VendorApprovalForm() {
         return;
       }
 
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setLoading(false);
-        setError("Authentication token not found. Please log in.");
-        return;
-      }
-
       try {
-        const res = await fetch(`${API_BASE_URL}/vendor/${vendorId}`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+        const res = await api.get(`/vendor/${vendorId}`);
 
-        if (!res.ok) {
-          const json = await res.json();
-          throw new Error(
-            json.message ||
-              `Failed to fetch vendor data: HTTP status ${res.status}`
-          );
-        }
+        const data = res.data.data;
 
-        const json = await res.json();
-        const structuredData = restructureData(json.data);
-        const documentMap = mapDocumentsByKey(json.data.documents);
-        setFormData(structuredData);
-        setDocumentMap(documentMap);
-        setVendorStatus(json.data.vendor.status);
+        setFormData(restructureData(data));
+        setDocumentMap(mapDocumentsByKey(data.documents));
+        setVendorStatus(data.vendor.status);
         setError(null);
-      } catch (err) {
-        console.error("Fetch Error:", err);
+      } catch (err: any) {
+        console.error(err);
         setError(
-          `Error loading vendor data: ${
-            err instanceof Error ? err.message : String(err)
-          }`
+          err?.response?.data?.message ||
+            err.message ||
+            "Failed to fetch vendor data"
         );
       } finally {
         setLoading(false);
       }
     }
 
-    setLoading(true);
     fetchVendorData();
-  }, [vendorId, API_BASE_URL]);
+  }, [vendorId]);
+
+  // const handleFinalDecision = async (status: "approved" | "rejected") => {
+  //   if (status === "rejected" && rejectionReason.trim() === "") {
+  //     alert("Rejection reason is required to reject the vendor.");
+  //     return;
+  //   }
+
+  //   const token = localStorage.getItem("token");
+  //   if (!token) {
+  //     alert("Authentication missing. Please refresh and log in.");
+  //     return;
+  //   }
+
+  //   const payload = {
+  //     status,
+  //     rejectionReason: status === "rejected" ? rejectionReason : null,
+  //   };
+
+  //   setIsSubmitting(true);
+  //   try {
+  //     const res = await fetch(`${API_BASE}/vendor/status/${vendorId}`, {
+  //       method: "PUT",
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify(payload),
+  //     });
+
+  //     const json = await res.json();
+  //     if (!res.ok) throw new Error(json.message);
+
+  //     alert(`Vendor status updated to ${status}`);
+  //     navigate("/manager/dashboard/vendorlist");
+  //   } catch (err: any) {
+  //     alert(err.message);
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
 
   const handleFinalDecision = async (status: "approved" | "rejected") => {
     if (status === "rejected" && rejectionReason.trim() === "") {
       alert("Rejection reason is required to reject the vendor.");
-      return;
-    }
-
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Authentication missing. Please refresh and log in.");
       return;
     }
 
@@ -438,24 +347,22 @@ export default function VendorApprovalForm() {
     };
 
     setIsSubmitting(true);
+
     try {
-      const res = await fetch(`${API_BASE_URL}/vendor/status/${vendorId}`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const res = await api.put(`/vendor/status/${vendorId}`, payload);
 
-      const json = await res.json();
-
-      if (!res.ok) throw new Error(json.message);
+      if (!res.data.success) {
+        throw new Error(res.data.message || "Failed to update vendor status");
+      }
 
       alert(`Vendor status updated to ${status}`);
-      navigate("/src/manager/dashboard/vendorlist");
+      navigate("/manager/dashboard/vendorlist");
     } catch (err: any) {
-      alert(err.message);
+      alert(
+        err?.response?.data?.message ||
+          err.message ||
+          "Failed to update vendor status"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -482,7 +389,7 @@ export default function VendorApprovalForm() {
   if (!formData) {
     return (
       <p className="p-10 text-center text-red-600">
-        Vendor ID {vendorId} not found or invalid.
+        Vendor ID {vendorId} not found.
       </p>
     );
   }
@@ -494,10 +401,10 @@ export default function VendorApprovalForm() {
           Vendor Review: {formData.companyName}
         </h1>
         <p className="text-gray-500 mb-6 border-b pb-4">
-          Vendor ID: **{vendorId}**. Review all submitted data and make a final
-          decision.
+          Vendor ID: {vendorId}. Review all submitted data.
         </p>
 
+        {/* Comments Section */}
         <div
           className="mb-8 p-6 border-2 rounded-xl"
           style={{ borderColor: isRejecting ? "#EF4444" : "#E5E7EB" }}
@@ -530,32 +437,24 @@ export default function VendorApprovalForm() {
           />
         </div>
 
+        {/* Render all sections */}
         <div className="space-y-10">
-          {/* A. Business Information & Documents */}
+          {/* Business Info & Documents */}
           <section className="space-y-6">
             <SectionHeader
               icon={FaBuilding}
               title="Business Information & Documents"
               description="Core business details and mandatory documents"
             />
-
-            {/* --- BASIC DETAILS --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <ReviewField label="Company Name" value={formData.companyName} />
-              <ReviewField
-                label="Full Name (as per PAN Card)"
-                value={formData.fullName}
-              />
+              <ReviewField label="Full Name" value={formData.fullName} />
               <ReviewField label="Vendor Type" value={formData.vendorType} />
               <ReviewField label="GSTIN" value={formData.gstin} />
               <ReviewField label="PAN Number" value={formData.panNumber} />
-              <ReviewField
-                label="IP Address"
-                value={formData.ipaddress || "N/A"}
-              />
+              <ReviewField label="IP Address" value={formData.ipaddress} />
             </div>
 
-            {/* --- DOCUMENTS (ORDERED AS REQUESTED) --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Object.entries(DOCUMENT_CONFIG).map(([key, cfg]) => (
                 <DocumentPreviewCard
@@ -566,7 +465,6 @@ export default function VendorApprovalForm() {
               ))}
             </div>
 
-            {/* --- COMPANY CONTACT --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <ReviewField label="Company Email" value={formData.email} />
               <ReviewField
@@ -576,179 +474,125 @@ export default function VendorApprovalForm() {
             </div>
           </section>
 
-          {/* B. Address Details */}
-          <section className="space-y-6">
-            <SectionHeader
-              icon={FaAddressBook}
-              title="Registered Address"
-              description="The official registered address of your business."
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <ReviewField
-                label="Address Line 1"
-                value={formData.addressLine1}
-              />
-              <ReviewField
-                label="Address Line 2"
-                value={formData.addressLine2}
-              />
-              <ReviewField
-                label="Address Line 3"
-                value={formData.addressLine3}
-              />
-              <ReviewField label="City" value={formData.city} />
-              <ReviewField label="State" value={formData.state} />
-              <ReviewField label="Pincode" value={formData.pincode} />
-            </div>
-          </section>
+          {/* B. Registered Address */}
+          <SectionHeader
+            icon={FaAddressBook}
+            title="Registered Address"
+            description="Official business address"
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <ReviewField label="Line 1" value={formData.addressLine1} />
+            <ReviewField label="Line 2" value={formData.addressLine2} />
+            <ReviewField label="Line 3" value={formData.addressLine3} />
+            <ReviewField label="City" value={formData.city} />
+            <ReviewField label="State" value={formData.state} />
+            <ReviewField label="Pincode" value={formData.pincode} />
+          </div>
 
           {/* C. Billing Address */}
-          <section className="space-y-6">
-            <SectionHeader
-              icon={FaCreditCard}
-              title="Billing Address"
-              description="Address for invoices and official correspondence."
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <ReviewField
-                label="Billing Address Line 1"
-                value={formData.billingAddressLine1}
-              />
-              <ReviewField
-                label="Billing Address Line 2"
-                value={formData.billingAddressLine2}
-              />
-              <ReviewField label="Billing City" value={formData.billingCity} />
-              <ReviewField
-                label="Billing State"
-                value={formData.billingState}
-              />
-              <ReviewField
-                label="Billing Pincode"
-                value={formData.billingPincode}
-              />
-              <div>{/* Placeholder for layout */}</div>
-            </div>
-          </section>
+          <SectionHeader
+            icon={FaCreditCard}
+            title="Billing Address"
+            description="Billing address for invoices"
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <ReviewField label="Line 1" value={formData.billingAddressLine1} />
+            <ReviewField label="Line 2" value={formData.billingAddressLine2} />
+            <ReviewField label="City" value={formData.billingCity} />
+            <ReviewField label="State" value={formData.billingState} />
+            <ReviewField label="Pincode" value={formData.billingPincode} />
+          </div>
 
           {/* D. Shipping Address */}
-          <section className="space-y-6">
-            <SectionHeader
-              icon={FaShippingFast}
-              title="Shipping Address"
-              description="Where products will be picked up from."
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <ReviewField
-                label="Shipping Address Line 1"
-                value={formData.shippingAddressLine1}
-              />
-              <ReviewField
-                label="Shipping Address Line 2"
-                value={formData.shippingAddressLine2}
-              />
-              <ReviewField
-                label="Shipping City"
-                value={formData.shippingCity}
-              />
-              <ReviewField
-                label="Shipping State"
-                value={formData.shippingState}
-              />
-              <ReviewField
-                label="Shipping Pincode"
-                value={formData.shippingPincode}
-              />
-              <div>{/* Placeholder for layout */}</div>
-            </div>
-          </section>
+          <SectionHeader
+            icon={FaShippingFast}
+            title="Shipping Address"
+            description="Shipping address"
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <ReviewField label="Line 1" value={formData.shippingAddressLine1} />
+            <ReviewField label="Line 2" value={formData.shippingAddressLine2} />
+            <ReviewField label="City" value={formData.shippingCity} />
+            <ReviewField label="State" value={formData.shippingState} />
+            <ReviewField label="Pincode" value={formData.shippingPincode} />
+          </div>
 
           {/* E. Bank Details */}
-          <section className="space-y-6">
-            <SectionHeader
-              icon={FaUniversity}
-              title="Bank Details"
-              description="Account details for receiving payments."
+          <SectionHeader
+            icon={FaUniversity}
+            title="Bank Details"
+            description="Bank info for payments"
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <ReviewField label="Bank Name" value={formData.bankName} />
+            <ReviewField
+              label="Account Number"
+              value={formData.accountNumber}
             />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <ReviewField label="Bank Name" value={formData.bankName} />
-              <ReviewField
-                label="Account Number"
-                value={formData.accountNumber}
-              />
-              <ReviewField label="Branch" value={formData.branch} />
-              <ReviewField label="IFSC Code" value={formData.ifscCode} />
-              <div>{/* Placeholder for layout */}</div>
-            </div>
-          </section>
+            <ReviewField label="Branch" value={formData.branch} />
+            <ReviewField label="IFSC Code" value={formData.ifscCode} />
+          </div>
 
           {/* F. Contact Details */}
-          <section className="space-y-6">
-            <SectionHeader
-              icon={FaPhoneAlt}
-              title="Contact Details"
-              description="Primary and secondary contact information."
+          <SectionHeader
+            icon={FaPhoneAlt}
+            title="Contact Details"
+            description="Primary and alternate contacts"
+          />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <ReviewField
+              label="Primary Contact"
+              value={formData.primaryContactNumber}
             />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <ReviewField
-                label="Primary Contact Number"
-                value={formData.primaryContactNumber}
-              />
-              <ReviewField label="Email" value={formData.email} />
-              <ReviewField
-                label="Alternate Contact Number"
-                value={formData.alternateContactNumber}
-              />
-            </div>
-          </section>
+            <ReviewField
+              label="Alternate Contact"
+              value={formData.alternateContactNumber}
+            />
+            <ReviewField label="Email" value={formData.email} />
+          </div>
 
           {/* G. Payment Terms & Comments */}
-          <section className="space-y-6">
-            <SectionHeader
-              icon={FaFileContract}
-              title="Payment & Comments"
-              description="Custom terms and vendor notes."
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ReviewField
-                label="Payment Terms"
-                value={formData.paymentTerms}
-              />
-              <ReviewField
-                label="Vendor Comments/Notes"
-                value={formData.comments}
-              />
-            </div>
-          </section>
+          {/* G. Payment Terms & Comments */}
+          <SectionHeader
+            icon={FaFileContract}
+            title="Payment Terms & Comments"
+            description="Vendor terms & notes"
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ReviewField label="Payment Terms" value={formData.paymentTerms} />
+            <ReviewField label="Comments" value={formData.comments} />
+          </div>
 
-          {/* FINAL SUBMISSION BUTTONS */}
-          {vendorStatus !== "approved" && vendorStatus !== "rejected" && (
-            <div className="pt-6 border-t border-gray-200 flex flex-col md:flex-row justify-end space-y-4 md:space-y-0 md:space-x-4">
-              <button
-                type="button"
-                onClick={() => handleFinalDecision("rejected")}
-                disabled={isSubmitting}
-                className="px-8 py-3 text-lg font-semibold rounded-full transition duration-300 border border-red-500 text-red-600 bg-white hover:bg-red-50 shadow-md disabled:opacity-50"
-              >
-                <FaTimesCircle className="inline mr-2" />
-                {isSubmitting ? "Rejecting..." : "Final Reject"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleFinalDecision("approved")}
-                disabled={isSubmitting}
-                className="px-8 py-3 text-lg font-semibold text-white rounded-full transition duration-300 hover:shadow-xl disabled:opacity-50"
-                style={{
-                  background: "linear-gradient(to right, #2ECC71, #27AE60)",
-                }}
-              >
-                <FaCheckCircle className="inline mr-2" />
-                {isSubmitting ? "Approving..." : "Final Approve"}
-              </button>
-            </div>
-          )}
+          {/* Additional sections (Address, Bank, Contact, Payment) can be copied similarly */}
         </div>
+
+        {/* Submission Buttons */}
+        {vendorStatus !== "approved" && vendorStatus !== "rejected" && (
+          <div className="pt-6 border-t border-gray-200 flex flex-col md:flex-row justify-end space-y-4 md:space-y-0 md:space-x-4">
+            <button
+              type="button"
+              onClick={() => handleFinalDecision("rejected")}
+              disabled={isSubmitting}
+              className="px-8 py-3 text-lg font-semibold rounded-full transition duration-300 border border-red-500 text-red-600 bg-white hover:bg-red-50 shadow-md disabled:opacity-50"
+            >
+              <FaTimesCircle className="inline mr-2" />
+              {isSubmitting ? "Rejecting..." : "Final Reject"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleFinalDecision("approved")}
+              disabled={isSubmitting}
+              className="px-8 py-3 text-lg font-semibold text-white rounded-full transition duration-300 hover:shadow-xl disabled:opacity-50"
+              style={{
+                background: "linear-gradient(to right, #2ECC71, #27AE60)",
+              }}
+            >
+              <FaCheckCircle className="inline mr-2" />
+              {isSubmitting ? "Approving..." : "Final Approve"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

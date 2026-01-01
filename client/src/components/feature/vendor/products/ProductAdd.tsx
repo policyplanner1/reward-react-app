@@ -1,18 +1,37 @@
 import React, { useState, useEffect } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import type { ComponentType } from "react";
+import { api } from "../../../../api/api";
 
 type IconComp = ComponentType<any>;
 
-function SectionHeader({ icon: Icon, title, description }: { icon: IconComp; title: string; description?: string; }) {
+interface ImagePreview {
+  file: File;
+  url: string;
+}
+
+function SectionHeader({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: IconComp;
+  title: string;
+  description?: string;
+}) {
   return (
     <div className="flex items-start space-x-3">
-      <div className="p-3 text-white rounded-md" style={{ background: "linear-gradient(to right, #852BAF, #FC3F78)" }}>
+      <div
+        className="p-3 text-white rounded-md"
+        style={{ background: "linear-gradient(to right, #852BAF, #FC3F78)" }}
+      >
         <Icon />
       </div>
       <div>
         <h3 className="text-lg font-semibold">{title}</h3>
-        {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+        {description && (
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        )}
       </div>
     </div>
   );
@@ -22,13 +41,24 @@ function FormInput(props: {
   id: string;
   label: string;
   value?: string | number;
-  onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  onChange: (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => void;
   type?: string;
   required?: boolean;
   placeholder?: string;
   error?: string;
 }) {
-  const { id, label, value = "", onChange, type = "text", required, placeholder, error } = props;
+  const {
+    id,
+    label,
+    value = "",
+    onChange,
+    type = "text",
+    required,
+    placeholder,
+    error,
+  } = props;
   return (
     <div className="flex flex-col space-y-1">
       <label htmlFor={id} className="text-sm font-medium text-gray-700">
@@ -52,17 +82,12 @@ function FormInput(props: {
 import {
   FaTag,
   FaBox,
-  FaDollarSign,
   FaImages,
   FaFileUpload,
   FaPlus,
   FaTrash,
-  FaTimes,
-  FaCheck,
   FaSpinner,
 } from "react-icons/fa";
-
-const API_BASE_URL = "http://localhost:5000/api";
 
 // --- Interfaces matching your backend ---
 interface Category {
@@ -83,13 +108,6 @@ interface SubSubCategory {
   subcategory_id: number;
   name: string;
   attributes?: any;
-}
-
-interface DocumentType {
-  document_id: number;
-  document_name: string;
-  status: number;
-  document_key?: string;
 }
 
 interface RequiredDocument {
@@ -126,7 +144,7 @@ interface ProductData {
   subSubCategoryId: number | null;
   gstIn?: string;
   variants: Variant[];
-  productImages: File[];
+  productImages: ImagePreview[];
 }
 
 const initialProductData: ProductData = {
@@ -160,42 +178,9 @@ const initialProductData: ProductData = {
   productImages: [],
 };
 
-// field validator
-const numberValidators = {
-  positiveNumber: (v: string) => /^\d+(\.\d+)?$/.test(v),
-  nonNegativeInt: (v: string) => /^\d+$/.test(v),
-  gst: (v: string) => {
-    const n = Number(v);
-    return !isNaN(n) && n >= 0 && n <= 100;
-  },
-};
-
 // --- UI Components ---
-
-
-const allowOnlyNumbers = (value: string, allowDecimal = false) => {
-  const regex = allowDecimal ? /^[0-9]*\.?[0-9]*$/ : /^[0-9]*$/;
-  return regex.test(value);
-};
-
-const allowOnlyDecimal = (value: string) => {
-  // allows: "", "1", "1.", "1.5"
-  // blocks: letters, symbols, multiple dots
-  return /^\d*\.?\d*$/.test(value);
-};
-
-const gstValidator = (value: string) => {
-  if (!/^\d*\.?\d*$/.test(value)) return false;
-  const num = Number(value);
-  return !isNaN(num) && num >= 0 && num <= 100;
-};
-
 const allowOnlyAlphabets = (value: string) => {
   return /^[A-Za-z ]*$/.test(value);
-};
-
-const allowOnlyDimensionFormat = (value: string) => {
-  return /^[0-9.*]*$/.test(value);
 };
 
 export default function ProductListingDynamic() {
@@ -230,14 +215,10 @@ export default function ProductListingDynamic() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/category`);
-      const json = await res.json();
-      if (json.success) {
-        setCategories(json.data);
-      }
-    } catch (err) {
-      console.error("Error fetching categories:", err);
-      setError("Failed to load categories. Please try again.");
+      const res = await api.get("/category");
+      if (res.data.success) setCategories(res.data.data);
+    } catch {
+      setError("Failed to load categories");
     } finally {
       setLoading(false);
     }
@@ -259,15 +240,21 @@ export default function ProductListingDynamic() {
     }
 
     setImageError("");
+
+    const previews = files.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
+
     setProduct((prev) => ({
       ...prev,
-      productImages: files,
+      productImages: previews,
     }));
   };
 
   useEffect(() => {
     return () => {
-      product.productImages.forEach((file) => URL.revokeObjectURL(file));
+      product.productImages.forEach((img) => URL.revokeObjectURL(img.url));
     };
   }, [product.productImages]);
 
@@ -295,65 +282,21 @@ export default function ProductListingDynamic() {
   }, [product.subCategoryId]);
 
   const fetchSubCategories = async (categoryId: number) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/subcategory/${categoryId}`);
-
-      const json = await res.json();
-      console.log("Subcategories response:", json);
-      if (json.success) {
-        setSubCategories(json.data);
-      }
-    } catch (err) {
-      console.error("Error fetching subcategories:", err);
-    }
+    const res = await api.get(`/subcategory/${categoryId}`);
+    if (res.data.success) setSubCategories(res.data.data);
   };
 
   const fetchSubSubCategories = async (subcategoryId: number) => {
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/subsubcategory/${subcategoryId}`
-      );
-      const json = await res.json();
-      console.log("Sub-subcategories response:", json.data);
-      if (json.success) {
-        setSubSubCategories(json.data);
-      }
-    } catch (err) {
-      console.error("Error fetching sub-subcategories:", err);
-    }
+    const res = await api.get(`/subsubcategory/${subcategoryId}`);
+    if (res.data.success) setSubSubCategories(res.data.data);
   };
 
   // FIXED: Using correct endpoint for required documents
   const fetchRequiredDocuments = async (categoryId: number) => {
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/product/category/required_docs/${categoryId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      const json = await res.json();
-      console.log("Required documents response:", json);
-
-      if (json.success) {
-        setRequiredDocs(json.data || []);
-        // Clear any previously selected doc files
-        setDocFiles({});
-      } else {
-        console.error("Failed to fetch documents:", json.message);
-        setRequiredDocs([]);
-      }
-    } catch (err) {
-      console.error("Error fetching category documents:", err);
-      setRequiredDocs([]);
+    const res = await api.get(`/product/category/required_docs/${categoryId}`);
+    if (res.data.success) {
+      setRequiredDocs(res.data.data || []);
+      setDocFiles({});
     }
   };
 
@@ -748,7 +691,7 @@ export default function ProductListingDynamic() {
       }
 
       // Add main product images
-      product.productImages.forEach((file, index) => {
+      product.productImages.forEach(({ file }) => {
         formData.append("images", file);
       });
 
@@ -760,7 +703,7 @@ export default function ProductListingDynamic() {
       });
 
       // Add variants as JSON
-      const variantsPayload = product.variants.map((variant, index) => ({
+      const variantsPayload = product.variants.map((variant) => ({
         // sku: variant.sku || generateSKU(index),
         expiryDate: variant.expiryDate,
         manufacturingYear: variant.manufacturingYear,
@@ -785,23 +728,14 @@ export default function ProductListingDynamic() {
       });
 
       // Submit to backend
-      const response = await fetch(`${API_BASE_URL}/product/create-product`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
+      const res = await api.post("/product/create-product", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
-      const data = await response.json();
+      if (!res.data.success)
+        throw new Error(res.data.message || "Failed to create product");
 
-      if (!data.success) {
-        throw new Error(data.message || "Failed to create product");
-      }
-
-      setSuccess(`Product created successfully! Product ID: ${data.productId}`);
-
-      // Reset form
+      setSuccess("Product created successfully");
       setProduct(initialProductData);
       setDocFiles({});
       setRequiredDocs([]);
@@ -1448,7 +1382,6 @@ export default function ProductListingDynamic() {
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
               <FormInput
                 id="productName"
-                name="productName"
                 label="Product Name"
                 value={product.productName}
                 onChange={handleFieldChange}
@@ -1456,7 +1389,6 @@ export default function ProductListingDynamic() {
               />
               <FormInput
                 id="brandName"
-                name="brandName"
                 label="Brand"
                 required
                 value={product.brandName}
@@ -1466,7 +1398,6 @@ export default function ProductListingDynamic() {
 
               <FormInput
                 id="manufacturer"
-                name="manufacturer"
                 label="Manufacturer"
                 required
                 value={product.manufacturer}
@@ -1476,7 +1407,6 @@ export default function ProductListingDynamic() {
 
               <FormInput
                 id="barCode"
-                name="barCode"
                 label="Barcode"
                 value={product.barCode}
                 onChange={handleFieldChange}
@@ -1485,7 +1415,6 @@ export default function ProductListingDynamic() {
 
               <FormInput
                 id="gstIn"
-                name="gstIn"
                 label="GST"
                 value={product.gstIn}
                 onChange={handleFieldChange}
@@ -1500,7 +1429,6 @@ export default function ProductListingDynamic() {
 
             <FormInput
               id="description"
-              name="description"
               label="Detailed Description"
               type="textarea"
               required
@@ -1512,7 +1440,6 @@ export default function ProductListingDynamic() {
             <div className="mt-4">
               <FormInput
                 id="shortDescription"
-                name="shortDescription"
                 label="Short Description"
                 required
                 value={product.shortDescription}
@@ -1559,21 +1486,18 @@ export default function ProductListingDynamic() {
             {/* Image Previews */}
             {product.productImages.length > 0 && (
               <div className="mt-3 flex gap-2 flex-wrap">
-                {product.productImages.map((file, index) => {
-                  const url = URL.createObjectURL(file);
-                  return (
-                    <div
-                      key={index}
-                      className="w-20 h-20 border rounded overflow-hidden"
-                    >
-                      <img
-                        src={url}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  );
-                })}
+                {product.productImages.map((img, index) => (
+                  <div
+                    key={index}
+                    className="w-20 h-20 border rounded overflow-hidden"
+                  >
+                    <img
+                      src={img.url}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
               </div>
             )}
           </section>

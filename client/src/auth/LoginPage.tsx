@@ -113,7 +113,7 @@ export default function LoginPage() {
             </div>
 
             {/* Role */}
-            <div>
+            {/* <div>
               <label
                 htmlFor="role"
                 className="block mb-1 text-xs font-semibold tracking-wide text-gray-700 uppercase"
@@ -133,7 +133,7 @@ export default function LoginPage() {
                 <option value="admin">Admin</option>
                 <option value="warehouse_manager">Warehouse Manager</option>
               </select>
-            </div>
+            </div> */}
 
             {/* Password */}
             <div>

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { FiPlus, FiTrash2, FiEye, FiX, FiFileText } from "react-icons/fi";
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 /* =========================
         TYPES
@@ -43,7 +43,7 @@ export default function DocumentManagement() {
         FETCH DATA
   ========================= */
   const fetchCategories = async () => {
-    const res = await fetch(`${API_BASE_URL}/category`, {
+    const res = await fetch(`${API_BASE}/category`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
     const json = await res.json();
@@ -51,7 +51,7 @@ export default function DocumentManagement() {
   };
 
   const fetchDocuments = async () => {
-    const res = await fetch(`${API_BASE_URL}/manager/documents`, {
+    const res = await fetch(`${API_BASE}/manager/documents`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
     const json = await res.json();
@@ -59,7 +59,7 @@ export default function DocumentManagement() {
   };
 
   const fetchMappings = async () => {
-    const res = await fetch(`${API_BASE_URL}/manager/category-documents`, {
+    const res = await fetch(`${API_BASE}/manager/category-documents`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
     const json = await res.json();
@@ -81,7 +81,7 @@ export default function DocumentManagement() {
       return;
     }
 
-    await fetch(`${API_BASE_URL}/manager/create-category-documents`, {
+    await fetch(`${API_BASE}/manager/create-category-documents`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -103,7 +103,7 @@ export default function DocumentManagement() {
   ========================= */
   const handleView = async (id: number) => {
     const res = await fetch(
-      `${API_BASE_URL}/manager/category-documents/${id}`,
+      `${API_BASE}/manager/category-documents/${id}`,
       {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       }
@@ -120,7 +120,7 @@ export default function DocumentManagement() {
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this record?")) return;
 
-    await fetch(`${API_BASE_URL}/manager/category-documents/${id}`, {
+    await fetch(`${API_BASE}/manager/category-documents/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });

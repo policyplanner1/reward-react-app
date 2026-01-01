@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FiEdit,
   FiTrash2,
@@ -11,7 +11,7 @@ import {
   FiFileText,
 } from "react-icons/fi";
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 interface DocumentItem {
   document_id: number;
@@ -36,7 +36,7 @@ export default function DocumentManagement() {
   ============================== */
   const fetchDocuments = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/manager/documents`, {
+      const res = await fetch(`${API_BASE}/manager/documents`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
           "Content-Type": "application/json",
@@ -65,7 +65,7 @@ export default function DocumentManagement() {
     try {
       setLoading(true);
 
-      const res = await fetch(`${API_BASE_URL}/manager/create-document`, {
+      const res = await fetch(`${API_BASE}/manager/create-document`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
@@ -91,7 +91,7 @@ export default function DocumentManagement() {
   const handleView = async (document_id: number) => {
     try {
       const res = await fetch(
-        `${API_BASE_URL}/manager/document/${document_id}`,
+        `${API_BASE}/manager/document/${document_id}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
@@ -118,7 +118,7 @@ export default function DocumentManagement() {
 
     try {
       const res = await fetch(
-        `${API_BASE_URL}/manager/update-document/${selected.document_id}`,
+        `${API_BASE}/manager/update-document/${selected.document_id}`,
         {
           method: "PUT",
           headers: {
@@ -147,7 +147,7 @@ export default function DocumentManagement() {
 
     try {
       const res = await fetch(
-        `${API_BASE_URL}/manager/delete-document/${document_id}`,
+        `${API_BASE}/manager/delete-document/${document_id}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token") || ""}`,

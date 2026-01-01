@@ -8,6 +8,29 @@ const fs = require("fs");
 const path = require("path");
 
 // helper function to upload the images and docs
+// async function moveVendorFiles(vendorId, files) {
+//   const targetDir = path.join(
+//     __dirname,
+//     "../uploads/vendors",
+//     vendorId.toString(),
+//     "documents"
+//   );
+
+//   if (!fs.existsSync(targetDir)) {
+//     fs.mkdirSync(targetDir, { recursive: true });
+//   }
+
+//   for (const key of Object.keys(files)) {
+//     const file = files[key][0];
+
+//     const newPath = path.join(targetDir, file.filename);
+//     fs.renameSync(file.path, newPath);
+
+//     file.path = newPath;
+//   }
+// }
+
+
 async function moveVendorFiles(vendorId, files) {
   const targetDir = path.join(
     __dirname,
@@ -16,16 +39,27 @@ async function moveVendorFiles(vendorId, files) {
     "documents"
   );
 
+  // Ensure target directory exists
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
-  for (const key of Object.keys(files)) {
-    const file = files[key][0];
+  for (const fieldName in files) {
+    const fileArr = files[fieldName];
+    if (!fileArr || !fileArr.length) continue; // Skip if no file
+
+    const file = fileArr[0];
+
+    // Safety check
+    if (!fs.existsSync(file.path)) {
+      console.error("File not found:", file.path);
+      continue;
+    }
 
     const newPath = path.join(targetDir, file.filename);
     fs.renameSync(file.path, newPath);
 
+    // Update file path for DB storage
     file.path = newPath;
   }
 }
