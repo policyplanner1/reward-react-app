@@ -10,6 +10,9 @@ import {
   FiUser,
   FiLogOut,
 } from "react-icons/fi";
+
+import { FaFileAlt } from "react-icons/fa";
+
 import { useAuth } from "../../auth/useAuth";
 import { routes } from "../../routes";
 
@@ -70,7 +73,7 @@ export default function ManagerNavbar() {
     },
     {
       label: "Document",
-      icon: <FiTag />,
+      icon: <FaFileAlt />,
       type: "dropdown",
       children: [
         { label: "Add Document", to: routes.manager.addDocument },
