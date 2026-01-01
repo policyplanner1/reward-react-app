@@ -16,24 +16,24 @@ import {
   FaRedo,
   FaCheck,
   FaTimes,
-  FaPaperPlane,
   FaTrash,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { routes } from "../../../../routes";
 
-// const API_BASE = import.meta.env.VITE_API_URL;
 import { api } from "../../../../api/api";
 
 /* ================================
        TYPES
 ================================ */
-type ProductStatus =
+type BackendProductStatus =
   | "pending"
+  | "sent_for_approval"
   | "approved"
   | "rejected"
-  | "resubmission"
-  | "sent_for_approval";
+  | "resubmission";
+
+type ProductStatus = "pending" | "approved" | "rejected" | "resubmission";
 
 interface ProductDocument {
   document_id: number;
@@ -53,7 +53,7 @@ interface ProductItem {
   sale_price: number;
   vendor_price: number;
   stock: number;
-  status: ProductStatus;
+  status: BackendProductStatus;
   rejection_reason: string | null;
   created_at: string;
   updated_at: string;
@@ -70,12 +70,11 @@ interface ProductItem {
 }
 
 interface Stats {
+  total: number;
   pending: number;
-  sent_for_approval: number;
   approved: number;
   rejected: number;
   resubmission: number;
-  total: number;
 }
 
 interface ApiResponse {
@@ -120,11 +119,6 @@ const StatusChip = ({ status }: { status: ProductStatus }) => {
       color: "bg-yellow-100 text-yellow-800 border-yellow-200",
       icon: FaClock,
       text: "Pending",
-    },
-    sent_for_approval: {
-      color: "bg-blue-100 text-blue-800 border-blue-200",
-      icon: FaPaperPlane,
-      text: "Sent for Approval",
     },
   };
 
@@ -298,7 +292,9 @@ const ActionModal = ({
        MAIN COMPONENT
 ================================ */
 export default function ProductManagerList() {
-  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [products, setProducts] = useState<
+    (Omit<ProductItem, "status"> & { status: ProductStatus })[]
+  >([]);
   const [loading, setLoading] = useState(true);
   // const [actionLoading, setActionLoading] = useState<number | null>(null);
 
@@ -313,15 +309,6 @@ export default function ProductManagerList() {
     totalItems: 0,
     itemsPerPage: 10,
   });
-
-  // const [stats, setStats] = useState<Stats>({
-  //   total: 0,
-  //   pending: 0,
-  //   sent_for_approval: 0,
-  //   approved: 0,
-  //   rejected: 0,
-  //   resubmission: 0,
-  // });
 
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -342,6 +329,18 @@ export default function ProductManagerList() {
     );
   };
 
+  const normalizeManagerStatus = (
+    status: BackendProductStatus
+  ): ProductStatus => {
+    if (status === "sent_for_approval") return "pending";
+    return status;
+  };
+
+  const normalizeStatusForApi = (status: string) => {
+    if (status === "pending") return "sent_for_approval";
+    return status;
+  };
+
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
@@ -349,7 +348,8 @@ export default function ProductManagerList() {
       const params = {
         page: pagination.currentPage,
         limit: pagination.itemsPerPage,
-        status: statusFilter !== "all" ? statusFilter : "",
+        status:
+          statusFilter !== "all" ? normalizeStatusForApi(statusFilter) : "",
         search: searchQuery,
         sortBy,
         sortOrder,
@@ -357,10 +357,14 @@ export default function ProductManagerList() {
 
       const res = await api.get("/product/all-products", { params });
       const data: ApiResponse = res.data;
-      console.log(data,"Data")
 
       if (data.success) {
-        setProducts(data.products);
+        const normalizedProducts = data.products.map((p) => ({
+          ...p,
+          status: normalizeManagerStatus(p.status),
+        }));
+
+        setProducts(normalizedProducts);
         setPagination((prev) => ({
           ...prev,
           totalPages: data.totalPages || 1,
@@ -406,7 +410,7 @@ export default function ProductManagerList() {
         throw new Error(res.data.message || "Action failed");
       }
 
-      fetchProducts(); 
+      fetchProducts();
       alert(res.data.message || "Success");
     } catch (error: any) {
       alert(error.message);
@@ -465,12 +469,17 @@ export default function ProductManagerList() {
 
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPagination((p) => ({ ...p, currentPage: 1 }));
+            }}
             className="p-3 border rounded-lg"
           >
-            <option value="all">All Status</option>
+            <option value="all">All</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="resubmission">Resubmission</option>
           </select>
         </div>
 
@@ -544,6 +553,19 @@ export default function ProductManagerList() {
                             className="p-2 bg-red-100 text-red-700 rounded"
                           >
                             <FaTimes />
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              setModalState({
+                                isOpen: true,
+                                product,
+                                actionType: "request_resubmission",
+                              })
+                            }
+                            className="p-2 bg-blue-100 text-blue-700 rounded"
+                          >
+                            <FaRedo />
                           </button>
                         </>
                       )}
