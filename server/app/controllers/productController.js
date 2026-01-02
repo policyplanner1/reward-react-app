@@ -86,8 +86,15 @@ class ProductController {
       const offset = (page - 1) * limit;
 
       const search = req.query.search || "";
+
+      // Sorting
       const sortBy = req.query.sortBy || "created_at";
       const sortOrder = req.query.sortOrder || "DESC";
+
+      // Price filters
+      const priceMin = req.query.priceMin ? Number(req.query.priceMin) : null;
+
+      const priceMax = req.query.priceMax ? Number(req.query.priceMax) : null;
 
       const { products, category_name, totalItems } =
         await ProductModel.getProductsByCategory({
@@ -97,6 +104,8 @@ class ProductController {
           limit,
           offset,
           categoryId,
+          priceMin,
+          priceMax,
         });
 
       const processedProducts = products.map((product) => ({

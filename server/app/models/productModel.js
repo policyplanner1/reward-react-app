@@ -151,6 +151,8 @@ class ProductModel {
     limit,
     offset,
     categoryId = null,
+    priceMin = null,
+    priceMax = null,
   }) {
     try {
       const conditions = [];
@@ -168,6 +170,16 @@ class ProductModel {
       if (search) {
         conditions.push("p.product_name LIKE ?");
         params.push(`%${search}%`);
+      }
+
+      if (priceMin !== null) {
+        conditions.push("v.sale_price >= ?");
+        params.push(priceMin);
+      }
+
+      if (priceMax !== null) {
+        conditions.push("v.sale_price <= ?");
+        params.push(priceMax);
       }
 
       const whereClause = conditions.length
@@ -282,15 +294,33 @@ class ProductModel {
       const [[{ total }]] = await db.execute(
         `
           SELECT COUNT(DISTINCT p.product_id) AS total
-          FROM products p
-          ${whereClause}
+            FROM products p
+            LEFT JOIN (
+              SELECT pv.*
+              FROM product_variants pv
+              INNER JOIN (
+                SELECT product_id, MIN(sale_price) AS min_sale_price
+                FROM product_variants
+                WHERE sale_price IS NOT NULL
+                GROUP BY product_id
+              ) minv
+                ON pv.product_id = minv.product_id
+              AND pv.sale_price = minv.min_sale_price
+              INNER JOIN (
+                SELECT product_id, MIN(variant_id) AS min_variant_id
+                FROM product_variants
+                GROUP BY product_id
+              ) tie
+                ON pv.product_id = tie.product_id
+            ) v ON p.product_id = v.product_id
+            ${whereClause}
         `,
         params
       );
 
       return {
         products,
-        category_name: rows[0]?.category_name || null, 
+        category_name: rows[0]?.category_name || null,
         totalItems: total,
       };
     } catch (error) {
