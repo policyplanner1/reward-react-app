@@ -148,6 +148,71 @@ class ProductController {
     }
   }
 
+  // Get Products by Subcategory
+  async getProductsBySubcategory(req, res) {
+    try {
+      const subcategoryId = Number(req.params.subcategoryId);
+      if (!subcategoryId) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid subcategory id",
+        });
+      }
+
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const offset = (page - 1) * limit;
+
+      const search = req.query.search || "";
+
+      // Sorting
+      const sortBy = req.query.sortBy || "created_at";
+      const sortOrder = req.query.sortOrder || "DESC";
+
+      const priceMin = req.query.priceMin ? Number(req.query.priceMin) : null;
+
+      const priceMax = req.query.priceMax ? Number(req.query.priceMax) : null;
+
+      const { products, subcategory_name, totalItems } =
+        await ProductModel.getProductsBySubcategory({
+          search,
+          sortBy,
+          sortOrder,
+          limit,
+          offset,
+          subcategoryId,
+          priceMin,
+          priceMax,
+        });
+
+      const processedProducts = products.map((p) => ({
+        id: p.product_id,
+        title: p.product_name,
+        image: p.images.length ? p.images[0].image_url : null,
+        price: p.sale_price ? `₹${p.sale_price}` : null,
+        originalPrice: p.mrp ? `₹${p.mrp}` : null,
+        discount: "40%",
+        rating: 4.6,
+        reviews: "18.9K",
+      }));
+
+      return res.json({
+        success: true,
+        subcategory_name,
+        products: processedProducts,
+        total: totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: page,
+      });
+    } catch (error) {
+      console.error("Get products by subcategory error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
   // product By ID
   async getProductById(req, res) {}
 

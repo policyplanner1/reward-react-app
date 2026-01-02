@@ -13,12 +13,18 @@ router.get("/by-category/:categoryId", ProductController.getProductsByCategory);
 // Get a Product by ID
 router.get("/by-product/:productId", ProductController.getProductById);
 
+// products by subcategory ID
+router.get(
+  "/by-subcategory/:subcategoryId",
+  ProductController.getProductsBySubcategory
+);
+
 /* ======================================================Categories============================================ */
 
 // categories
 router.get("/categories", ProductController.getCategories);
 
-// subcategories by category ID
+// subcategories list by category ID
 router.get(
   "/subcategories/:categoryId",
   ProductController.getSubcategoriesByCategory
@@ -35,10 +41,5 @@ router.get("/search/products", ProductController.loadProducts);
 // search history
 router.post("/search/history", ProductController.saveSearchHistory);
 router.get("/search/history", ProductController.getSearchHistory);
-
-
-
-
-
 
 module.exports = router;
