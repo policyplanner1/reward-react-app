@@ -283,5 +283,63 @@ class ProductController {
       });
     }
   }
+
+  // Save History
+  async saveSearchHistory(req, res) {
+    try {
+      const userId = req.user?.user_id;
+      const keyword = (req.body.keyword || "").trim();
+
+      if (!keyword) {
+        return res.json({ success: true });
+      }
+
+      await db.execute(
+        `
+      INSERT INTO search_history (user_id, keyword)
+      VALUES (?, ?)
+      ON DUPLICATE KEY UPDATE created_at = CURRENT_TIMESTAMP
+      `,
+        [userId, keyword]
+      );
+
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("Save search history error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
+  // Get Search History
+  async getSearchHistory(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      const [rows] = await db.execute(
+        `
+      SELECT keyword
+      FROM search_history
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+      LIMIT 10
+      `,
+        [userId]
+      );
+
+      return res.json({
+        success: true,
+        history: rows.map((r) => r.keyword),
+      });
+    } catch (error) {
+      console.error("Get search history error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
 }
 module.exports = new ProductController();
