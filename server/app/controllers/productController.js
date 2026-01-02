@@ -139,6 +139,33 @@ class ProductController {
 
   // product By ID
   async getProductById(req, res) {}
+
+  // categories
+  async getCategories(req, res) {
+    try {
+      const [rows] = await db.execute(
+        `SELECT 
+        c.category_id, 
+        c.category_name 
+        FROM categories c 
+        where c.status = 1
+        ORDER BY c.category_name ASC`
+      );
+
+      const processedCategories = rows.map((category) => ({
+        id: category.category_id,
+        name: category.category_name,
+        image: `https://via.placeholder.com/150?text=${encodeURIComponent(category.category_name)}`,  
+      }));
+
+      res.json({
+        success: true,
+        data: processedCategories,
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
 }
 
 module.exports = new ProductController();
