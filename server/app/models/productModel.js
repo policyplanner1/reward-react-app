@@ -172,6 +172,7 @@ class ProductModel {
         params.push(`%${search}%`);
       }
 
+      // price filters
       if (priceMin !== null) {
         conditions.push("v.sale_price >= ?");
         params.push(priceMin);
