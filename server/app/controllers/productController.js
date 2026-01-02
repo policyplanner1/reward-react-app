@@ -89,14 +89,15 @@ class ProductController {
       const sortBy = req.query.sortBy || "created_at";
       const sortOrder = req.query.sortOrder || "DESC";
 
-      const { products, totalItems } = await ProductModel.getAllProducts({
-        search,
-        sortBy,
-        sortOrder,
-        limit,
-        offset,
-        categoryId,
-      });
+      const { products, category_name, totalItems } =
+        await ProductModel.getProductsByCategory({
+          search,
+          sortBy,
+          sortOrder,
+          limit,
+          offset,
+          categoryId,
+        });
 
       const processedProducts = products.map((product) => ({
         id: product.product_id,
@@ -123,6 +124,7 @@ class ProductController {
 
       return res.json({
         success: true,
+        category_name,
         products: processedProducts,
         total: totalItems,
         totalPages: Math.ceil(totalItems / limit),
@@ -155,7 +157,9 @@ class ProductController {
       const processedCategories = rows.map((category) => ({
         id: category.category_id,
         name: category.category_name,
-        image: `https://via.placeholder.com/150?text=${encodeURIComponent(category.category_name)}`,  
+        image: `https://via.placeholder.com/150?text=${encodeURIComponent(
+          category.category_name
+        )}`,
       }));
 
       res.json({
