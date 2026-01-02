@@ -4,7 +4,14 @@ const path = require("path");
 
 class ProductModel {
   // Get all products
-  async getAllProducts({ search, sortBy, sortOrder, limit, offset }) {
+  async getAllProducts({
+    search,
+    sortBy,
+    sortOrder,
+    limit,
+    offset,
+    categoryId = null,
+  }) {
     try {
       const conditions = [];
       const params = [];
@@ -12,6 +19,12 @@ class ProductModel {
       /* ===============================
          SEARCH
       =============================== */
+
+      if (categoryId) {
+        conditions.push("p.category_id = ?");
+        params.push(categoryId);
+      }
+
       if (search) {
         conditions.push("p.product_name LIKE ?");
         params.push(`%${search}%`);
