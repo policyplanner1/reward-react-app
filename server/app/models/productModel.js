@@ -329,6 +329,67 @@ class ProductModel {
       throw error;
     }
   }
+
+  // Search Suggestions
+  async getSearchSuggestions({ search, limit }) {
+    const conditions = [];
+    const params = [];
+
+    if (search) {
+      conditions.push("p.product_name LIKE ?");
+      params.push(`%${search}%`);
+    }
+
+    const whereClause = conditions.length
+      ? `WHERE ${conditions.join(" AND ")}`
+      : "";
+
+    const query = `
+    SELECT 
+      p.product_id,
+      p.product_name,
+
+      GROUP_CONCAT(
+        DISTINCT CONCAT(
+          pi.image_id, '::',
+          pi.image_url, '::',
+          pi.sort_order
+        )
+        ORDER BY pi.sort_order ASC
+      ) AS images
+
+    FROM products p
+    LEFT JOIN product_images pi ON p.product_id = pi.product_id
+    ${whereClause}
+    GROUP BY p.product_id
+    ORDER BY p.created_at DESC
+    LIMIT ?
+  `;
+
+    const [rows] = await db.execute(query, [...params, limit]);
+
+    return rows.map((row) => ({
+      product_id: row.product_id,
+      product_name: row.product_name,
+      images: row.images
+        ? row.images.split(",").map((i) => {
+            const [, image_url] = i.split("::");
+            return { image_url };
+          })
+        : [],
+    }));
+  }
+
+  // Load Products
+  async loadProducts({ search, limit, offset }) {
+    return this.getAllProducts({
+      search,
+      sortBy: "created_at",
+      sortOrder: "DESC",
+      limit,
+      offset,
+    });
+  }
 }
 
 module.exports = new ProductModel();

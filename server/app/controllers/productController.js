@@ -217,5 +217,71 @@ class ProductController {
       res.status(500).json({ success: false, message: err.message });
     }
   }
+
+  // autosuggest products
+  async getSearchSuggestions(req, res) {
+    try {
+      const q = (req.query.q || "").trim();
+      const limit = 10;
+      const products = await ProductModel.getSearchSuggestions({
+        search: q,
+        limit,
+      });
+
+      const suggestions = products.map((p) => ({
+        id: p.product_id,
+        title: p.product_name,
+        image: p.images && p.images.length ? p.images[0].image_url : null,
+      }));
+
+      res.json({
+        success: true,
+        suggestions,
+      });
+    } catch (err) {
+      console.error("Search suggestion error:", err);
+      res
+        .status(500)
+        .json({ success: false, message: "Internal server error" });
+    }
+  }
+
+  async loadProducts(req, res) {
+    try {
+      const q = (req.query.q || "").trim();
+
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const offset = (page - 1) * limit;
+
+      const { products, totalItems } = await ProductModel.loadProducts({
+        search: q,
+        limit,
+        offset,
+      });
+
+      const result = products.map((p) => ({
+        id: p.product_id,
+        title: p.product_name,
+        image: p.images && p.images.length ? p.images[0].image_url : null,
+        price: p.sale_price ? `₹${Number(p.sale_price).toFixed(0)}` : null,
+        originalPrice: p.mrp ? `₹${Number(p.mrp).toFixed(0)}` : null,
+      }));
+
+      return res.json({
+        success: true,
+        products: result,
+        total: totalItems,
+        currentPage: page,
+        totalPages: Math.ceil(totalItems / limit),
+      });
+    } catch (error) {
+      console.error("Search products error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
 }
 module.exports = new ProductController();

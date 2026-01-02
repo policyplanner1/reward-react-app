@@ -18,4 +18,12 @@ router.get("/categories", ProductController.getCategories);
 router.get("/subcategories/:categoryId", ProductController.getSubcategoriesByCategory);
 
 
+// autosuggest products
+router.get("/search/suggestions", ProductController.getSearchSuggestions);
+
+// Load Products
+router.get("/search/products", ProductController.loadProducts);
+
+
+
 module.exports = router;
