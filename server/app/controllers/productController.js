@@ -170,6 +170,43 @@ class ProductController {
       res.status(500).json({ success: false, message: err.message });
     }
   }
-}
 
+  // subcategories by category ID
+  async getSubcategoriesByCategory(req, res) {
+    try {
+      const categoryId = Number(req.params.categoryId);
+
+      if (!categoryId) {
+        return res.status(400).json({
+          success: false,
+          message: "Error : Invalid category id",
+        });
+      }
+
+      const [data] = await db.execute(
+        `SELECT 
+          sc.subcategory_id, 
+          sc.subcategory_name
+        FROM sub_categories sc 
+        WHERE sc.category_id = ? AND sc.status = 1`,
+        [categoryId]
+      );
+
+      const processedSubCategories = data.map((subcategory) => ({
+        id: subcategory.subcategory_id,
+        name: subcategory.subcategory_name,
+        image: `https://via.placeholder.com/150?text=${encodeURIComponent(
+          subcategory.subcategory_name
+        )}`,
+      }));
+
+      res.json({
+        success: true,
+        data: processedSubCategories,
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+}
 module.exports = new ProductController();

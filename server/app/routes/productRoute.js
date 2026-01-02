@@ -14,4 +14,8 @@ router.get("/by-product/:productId", ProductController.getProductById);
 // categories
 router.get("/categories", ProductController.getCategories);
 
+// subcategories by category ID
+router.get("/subcategories/:categoryId", ProductController.getSubcategoriesByCategory);
+
+
 module.exports = router;
