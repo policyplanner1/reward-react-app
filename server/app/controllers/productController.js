@@ -214,7 +214,38 @@ class ProductController {
   }
 
   // product By ID
-  async getProductById(req, res) {}
+  async getProductById(req, res) {
+    try {
+      const productId = Number(req.params.productId);
+
+      if (!productId) {
+        return res.status(400).json({
+          success: false,
+          message: "Product ID is required",
+        });
+      }
+
+      const product = await ProductModel.getProductById(productId);
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      return res.json({
+        success: true,
+        product,
+      });
+    } catch (error) {
+      console.error("Get product by ID error:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
 
   // categories
   async getCategories(req, res) {

@@ -143,6 +143,63 @@ class ProductModel {
     }
   }
 
+  // Get Product By ID
+  async getProductById(productId) {
+    try {
+      const [productRows] = await db.execute(
+        `
+        SELECT
+          p.*,
+          v.full_name AS vendor_name,
+          c.category_name,
+          sc.subcategory_name,
+          ssc.name AS sub_subcategory_name
+        FROM products p
+        LEFT JOIN vendors v ON p.vendor_id = v.vendor_id
+        LEFT JOIN categories c ON p.category_id = c.category_id
+        LEFT JOIN sub_categories sc ON p.subcategory_id = sc.subcategory_id
+        LEFT JOIN sub_sub_categories ssc ON p.sub_subcategory_id = ssc.sub_subcategory_id
+        WHERE p.product_id = ?
+        `,
+        [productId]
+      );
+
+      if (!productRows.length) return null;
+      const product = productRows[0];
+
+      // 2 Get product images
+      const [images] = await db.execute(
+        `SELECT image_url FROM product_images WHERE product_id = ?`,
+        [productId]
+      );
+      product.images = images.map((img) => img.image_url);
+
+      // 3 Get product variants
+      const [variants] = await db.execute(
+        `SELECT * FROM product_variants WHERE product_id = ?`,
+        [productId]
+      );
+
+      // 4 Get images for each variant
+      for (const variant of variants) {
+        const [variantImages] = await db.execute(
+          `SELECT image_url FROM product_variant_images WHERE variant_id = ?`,
+          [variant.variant_id]
+        );
+        variant.images = variantImages.map((img) => img.image_url);
+        variant.customAttributes = JSON.parse(
+          variant.custom_attributes || "{}"
+        );
+      }
+      product.variants = variants;
+
+      return product;
+    } catch (error) {
+      console.error("Error fetching product by ID:", error);
+      throw error;
+    }
+  }
+
   // get Products by Category
   async getProductsByCategory({
     search,
