@@ -33,6 +33,7 @@ class ProductController {
         return {
           id: product.product_id,
           title: product.product_name,
+          brand: product.brand_name,
           image: mainImage,
 
           // Variant pricing
