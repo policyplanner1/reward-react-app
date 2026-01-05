@@ -237,7 +237,11 @@ const ActionModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+    <div
+  className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+  style={{ background: "rgba(2, 6, 23, 0.45)" }}
+>
+
       <div className="w-full max-w-md p-6 bg-white shadow-xl rounded-2xl">
         <div className="flex items-center mb-4">
           <div
@@ -613,28 +617,28 @@ export default function ProductManagerList() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left text-gray-700 uppercase">
+                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase" >
                   Product
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left text-gray-700 uppercase">
+                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
                   Brand
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left text-gray-700 uppercase">
+                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
                   Category
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left text-gray-700 uppercase">
+                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
                   Subcategory
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left text-gray-700 uppercase">
+                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
                   SubType
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left text-gray-700 uppercase">
+                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
                   Status
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left text-gray-700 uppercase">
+                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
                   Rejection Reason
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left text-gray-700 uppercase">
+                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
                   Action
                 </th>
               </tr>
@@ -645,34 +649,33 @@ export default function ProductManagerList() {
                 <tr key={product.product_id} className="hover:bg-gray-50">
                   {/* PRODUCT NAME */}
                   <td className="px-4 py-4">
-                    <div className="flex items-start">
-                      {/* IMAGE OR FALLBACK ICON */}
-                      {product?.main_image ? (
-                        <div className="flex-shrink-0 w-12 h-12 mr-3 overflow-hidden bg-gray-100 rounded">
-                          <img
-                            src={
-                              product?.main_image
-                                ? `${API_BASEIMAGE_URL}/uploads/${product.main_image}`
-                                : undefined
-                            }
-                            alt={product?.product_name || "Product Image"}
-                            className="object-cover w-full h-full"
-                          />
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 mr-3 bg-gray-100 rounded">
-                          <FaBox className="text-gray-400 text-lg" />
-                        </div>
-                      )}
+  <div className="flex flex-col items-center">
+    {/* IMAGE OR FALLBACK ICON */}
+    {product?.main_image ? (
+      <div className="w-12 h-12 mb-2 overflow-hidden bg-gray-100 rounded">
+        <img
+          src={
+            product?.main_image
+              ? `${API_BASEIMAGE_URL}/uploads/${product.main_image}`
+              : undefined
+          }
+          alt={product?.product_name || "Product Image"}
+          className="object-cover w-full h-full"
+        />
+      </div>
+    ) : (
+      <div className="flex items-center justify-center w-12 h-12 mb-2 bg-gray-100 rounded">
+        <FaBox className="text-gray-400 text-lg" />
+      </div>
+    )}
 
-                      {/* PRODUCT NAME */}
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-700">
-                          {product?.product_name || "Unnamed Product"}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
+    {/* PRODUCT NAME */}
+    <div className="font-semibold text-gray-700 text-center text-sm">
+      {product?.product_name || "Unnamed Product"}
+    </div>
+  </div>
+</td>
+
 
                   {/*   Brand Name */}
                   <td className="px-4 py-4">

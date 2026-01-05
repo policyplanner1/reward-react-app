@@ -257,7 +257,7 @@ export default function SubSubCategoryManagement() {
           disabled={selectedSubcategoryId === ""}
         />
 
-        <button className="flex items-center justify-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200">
+        <button className="flex items-center justify-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200 cursor-pointer">
           <FiPlus /> Add Type
         </button>
       </form>
@@ -271,7 +271,7 @@ export default function SubSubCategoryManagement() {
               <th className="px-8 py-6 text-xs font-black tracking-widest text-left text-gray-400 uppercase">Parent Subcategory</th>
               <th className="px-8 py-6 text-xs font-black tracking-widest text-left text-gray-400 uppercase">Status</th>
               <th className="px-8 py-6 text-xs font-black tracking-widest text-left text-gray-400 uppercase">Created Date</th>
-              <th className="px-8 py-6 text-xs font-black tracking-widest text-right text-gray-400 uppercase">Actions</th>
+              <th className="px-22 py-6 text-xs font-black tracking-widest text-right text-gray-400 uppercase">Actions</th>
             </tr>
           </thead>
 
@@ -291,14 +291,15 @@ export default function SubSubCategoryManagement() {
                   {new Date(s.created_at).toLocaleDateString()}
                 </td>
                 <td className="px-8 py-5">
-                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleView(s.sub_subcategory_id)} className="p-2.5 text-gray-400 hover:text-[#852BAF] bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all">
+                  <div className="flex justify-end gap-2 opacity-100 transition-opacity duration-200">
+
+                    <button onClick={() => handleView(s.sub_subcategory_id)} className="p-2.5 text-gray-400 hover:text-[#852BAF] bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer">
                       <FiEye size={16} />
                     </button>
-                    <button onClick={() => { handleView(s.sub_subcategory_id); setIsEditing(true); }} className="p-2.5 text-gray-400 hover:text-[#FC3F78] bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all">
+                    <button onClick={() => { handleView(s.sub_subcategory_id); setIsEditing(true); }} className="p-2.5 text-gray-400 hover:text-[#FC3F78] bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer">
                       <FiEdit size={16} />
                     </button>
-                    <button onClick={() => handleDelete(s.sub_subcategory_id)} className="p-2.5 text-gray-400 hover:text-red-500 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all">
+                    <button onClick={() => handleDelete(s.sub_subcategory_id)} className="p-2.5 text-gray-400 hover:text-red-500 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer">
                       <FiTrash2 size={16} />
                     </button>
                   </div>
@@ -323,7 +324,7 @@ export default function SubSubCategoryManagement() {
                 <div className="w-12 h-12 bg-gradient-to-tr from-[#852BAF] to-[#FC3F78] rounded-2xl flex items-center justify-center text-white text-xl shadow-lg shadow-purple-200">
                   <FiTag />
                 </div>
-                <button onClick={() => setDrawerOpen(false)} className="p-2 text-gray-400 hover:bg-gray-50 rounded-xl transition-colors">
+                <button onClick={() => setDrawerOpen(false)} className="p-2 text-gray-400 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer">
                   <FiX size={24} />
                 </button>
               </div>
@@ -344,7 +345,7 @@ export default function SubSubCategoryManagement() {
                     className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl hover:bg-gray-800 transition-all active:scale-95 shadow-xl shadow-gray-200"
                     onClick={() => setIsEditing(true)}
                   >
-                    Modify Classification
+                     Edit
                   </button>
                 </div>
               ) : (

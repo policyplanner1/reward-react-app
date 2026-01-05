@@ -1067,7 +1067,7 @@ export default function EditProductPage() {
         <button
           type="button"
           onClick={addVariant}
-          className="flex items-center justify-center w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#852BAF] hover:bg-purple-50"
+          className="flex items-center justify-center w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#852BAF] hover:bg-purple-50 cursor-pointer"
         >
           <FaPlus className="mr-2 text-[#852BAF]" />
           Add Another Variant
@@ -1110,7 +1110,7 @@ export default function EditProductPage() {
   }
 
   return (
-    <div className="p-6" style={{ backgroundColor: "#FFFAFB" }}>
+    <div className="p-6 premium-form" style={{ backgroundColor: "#FFFAFB" }}>
       <div className="p-6 mx-auto bg-white border border-gray-100 shadow-xl rounded-2xl max-w-7xl">
         <h1 className="mb-6 text-3xl font-bold text-gray-900">
           Edit Product Details
@@ -1468,7 +1468,7 @@ export default function EditProductPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex items-center justify-center w-full px-6 py-3 text-lg font-bold text-white transition-all duration-200 rounded-full shadow-md disabled:opacity-50 hover:shadow-lg"
+              className="flex items-center justify-center w-full px-6 py-3 text-lg font-bold text-white transition-all duration-200 rounded-full shadow-md disabled:opacity-50 hover:shadow-lg cursor-pointer"
               style={{
                 background: "linear-gradient(to right, #852BAF, #FC3F78)",
               }}

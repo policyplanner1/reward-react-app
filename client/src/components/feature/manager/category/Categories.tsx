@@ -150,7 +150,7 @@ export default function CategoryManagement() {
       {/* ADD CATEGORY INPUT */}
       <form
         onSubmit={handleAdd}
-        className="flex gap-4 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-3xl"
+        className="flex gap-4 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-[60rem]"
       >
         <input
           value={newCategoryName}
@@ -161,7 +161,7 @@ export default function CategoryManagement() {
         <button
           type="submit"
           disabled={loading}
-          className="flex items-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200"
+          className="flex items-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200 cursor-pointer"
         >
           <FiPlus /> {loading ? "Adding..." : "Add Category"}
         </button>
@@ -181,7 +181,7 @@ export default function CategoryManagement() {
               <th className="px-8 py-6 text-xs font-black tracking-widest text-left text-gray-400 uppercase">
                 Created Date
               </th>
-              <th className="px-8 py-6 text-xs font-black tracking-widest text-right text-gray-400 uppercase">
+              <th className="px-24 py-6 text-xs font-black tracking-widest text-right text-gray-400 uppercase">
                 Actions
               </th>
             </tr>
@@ -222,10 +222,11 @@ export default function CategoryManagement() {
                   })}
                 </td>
                 <td className="px-8 py-5">
-                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex justify-end gap-2 opacity-100 transition-opacity duration-200">
+
                     <button
                       onClick={() => handleView(cat.category_id)}
-                      className="p-2.5 text-gray-400 hover:text-[#852BAF] bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all"
+                      className="p-2.5 text-gray-400 hover:text-[#852BAF] bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
                     >
                       <FiEye size={16} />
                     </button>
@@ -234,13 +235,13 @@ export default function CategoryManagement() {
                         handleView(cat.category_id);
                         setIsEditing(true);
                       }}
-                      className="p-2.5 text-gray-400 hover:text-[#FC3F78] bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all"
+                      className="p-2.5 text-gray-400 hover:text-[#FC3F78] bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
                     >
                       <FiEdit size={16} />
                     </button>
                     <button
                       onClick={() => handleDelete(cat.category_id)}
-                      className="p-2.5 text-gray-400 hover:text-red-500 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all"
+                      className="p-2.5 text-gray-400 hover:text-red-500 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
                     >
                       <FiTrash2 size={16} />
                     </button>
@@ -279,7 +280,7 @@ export default function CategoryManagement() {
                 </div>
                 <button
                   onClick={closeDrawer}
-                  className="p-2 text-gray-400 hover:bg-gray-50 rounded-xl transition-colors"
+                  className="p-2 text-gray-400 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer"
                 >
                   <FiX size={24} />
                 </button>
@@ -309,7 +310,7 @@ export default function CategoryManagement() {
                     className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl hover:bg-gray-800 transition-all active:scale-95 shadow-xl shadow-gray-200"
                     onClick={() => setIsEditing(true)}
                   >
-                    Modify Category
+                     Edit
                   </button>
                 </div>
               ) : (
