@@ -167,8 +167,8 @@ export default function VendorNavbar() {
         {/* PROFILE DROPDOWN MENU */}
         <div className={`overflow-hidden transition-all duration-300 ${isProfileOpen ? "max-h-24 mt-3 opacity-100" : "max-h-0 opacity-0"}`}>
           <div className="space-y-1">
-            <Link to="/vendor/profile" className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-white rounded-lg transition-colors">
-              <HiOutlineUserCircle className="text-lg text-gray-400" /> My Profile
+            <Link to="/vendor/change-password" className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-white rounded-lg transition-colors">
+              <HiOutlineUserCircle className="text-lg text-gray-400" /> change Password
             </Link>
             <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors">
               <FiLogOut className="text-lg" /> Sign Out

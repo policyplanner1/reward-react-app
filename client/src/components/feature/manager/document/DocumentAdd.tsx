@@ -11,7 +11,8 @@ import {
   FiFileText,
 } from "react-icons/fi";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+// const API_BASE = import.meta.env.VITE_API_URL;
+import { api } from "../../../../api/api";
 
 interface DocumentItem {
   document_id: number;
@@ -36,16 +37,8 @@ export default function DocumentManagement() {
   ============================== */
   const fetchDocuments = async () => {
     try {
-      const res = await fetch(`${API_BASE}/manager/documents`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      const response = await res.json();
-
-      setDocuments(response.data || []);
+      const res = await api.get("/manager/documents");
+      setDocuments(res.data?.data || []);
     } catch (err) {
       console.error("Failed to fetch documents", err);
       setDocuments([]);
@@ -65,21 +58,14 @@ export default function DocumentManagement() {
     try {
       setLoading(true);
 
-      const res = await fetch(`${API_BASE}/manager/create-document`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name:document_name }),
+      await api.post("/manager/create-document", {
+        name: document_name,
       });
-
-      if (!res.ok) throw new Error("Failed to add document");
 
       setDocumentName("");
       fetchDocuments();
     } catch (err) {
-      console.error(err);
+      console.error("Failed to add document", err);
     } finally {
       setLoading(false);
     }
@@ -90,19 +76,10 @@ export default function DocumentManagement() {
   ============================== */
   const handleView = async (document_id: number) => {
     try {
-      const res = await fetch(
-        `${API_BASE}/manager/document/${document_id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      const data = await res.json();
+      const res = await api.get(`/manager/document/${document_id}`);
 
-      setSelected(data.data);
-      setEditName(data.data.document_name);
+      setSelected(res.data.data);
+      setEditName(res.data.data.document_name);
       setEditMode(false);
       setDrawerOpen(true);
     } catch (err) {
@@ -117,25 +94,15 @@ export default function DocumentManagement() {
     if (!selected || !editName.trim()) return;
 
     try {
-      const res = await fetch(
-        `${API_BASE}/manager/update-document/${selected.document_id}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ name: editName }),
-        }
-      );
-
-      if (!res.ok) throw new Error("Failed to update document");
+      await api.put(`/manager/update-document/${selected.document_id}`, {
+        name: editName,
+      });
 
       fetchDocuments();
       setSelected({ ...selected, document_name: editName });
       setEditMode(false);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to update document", err);
     }
   };
 
@@ -146,22 +113,10 @@ export default function DocumentManagement() {
     if (!confirm("Delete this document?")) return;
 
     try {
-      const res = await fetch(
-        `${API_BASE}/manager/delete-document/${document_id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-            "Content-Type": "application/json",
-          },
-          method: "DELETE",
-        }
-      );
-
-      if (!res.ok) throw new Error("Failed to delete document");
-
+      await api.delete(`/manager/delete-document/${document_id}`);
       fetchDocuments();
     } catch (err) {
-      console.error(err);
+      console.error("Failed to delete document", err);
     }
   };
 

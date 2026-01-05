@@ -288,6 +288,15 @@ export default function Onboarding() {
 
   /* ================= VALIDATORS ================= */
 
+  const allowOnlyAlphabets = (value: string) => /^[A-Za-z ]*$/.test(value);
+
+  const allowOnlyNumbers = (value: string) => /^[0-9]*$/.test(value);
+
+  const allowAddressChars = (value: string) =>
+    /^[A-Za-z0-9\s,./-]*$/.test(value);
+
+  const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+
   const validators = {
     fullName: (value: string) => /^[A-Za-z ]+$/.test(value),
     panNumber: (value: string) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value),
@@ -444,20 +453,131 @@ export default function Onboarding() {
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    const target = e.target as HTMLInputElement;
-    const { name, value, type, checked, files } = target;
+    const { name, value, type, checked, files } = e.target as HTMLInputElement;
 
+    /* FILE */
     if (type === "file") {
       setFormData((p) => ({ ...p, [name]: files?.[0] || null }));
       return;
     }
 
+    /* CHECKBOX */
     if (type === "checkbox") {
       setFormData((p) => ({ ...p, [name]: checked }));
       return;
     }
 
-    setFormData((p) => ({ ...p, [name]: value }));
+    /* ================= HARD BLOCK RULES ================= */
+
+    // Alphabet-only fields
+    const alphabetOnlyFields = [
+      "fullName",
+      "companyName",
+      "city",
+      "state",
+      "billingCity",
+      "billingState",
+      "shippingCity",
+      "shippingState",
+      "bankName",
+      "branch",
+    ];
+
+    if (alphabetOnlyFields.includes(name)) {
+      if (!allowOnlyAlphabets(value)) return;
+    }
+
+    // Address fields (allow text + numbers, no special chars)
+    const addressFields = [
+      "addressLine1",
+      "addressLine2",
+      "addressLine3",
+      "billingAddressLine1",
+      "billingAddressLine2",
+      "shippingAddressLine1",
+      "shippingAddressLine2",
+    ];
+
+    if (addressFields.includes(name)) {
+      if (!allowAddressChars(value)) return;
+    }
+
+    // Numbers-only fields
+    const numberOnlyFields = [
+      "pincode",
+      "billingPincode",
+      "shippingPincode",
+      "accountNumber",
+      "primaryContactNumber",
+      "alternateContactNumber",
+      "companyPhone",
+    ];
+
+    if (numberOnlyFields.includes(name)) {
+      if (!allowOnlyNumbers(value)) return;
+
+      // length limits
+      if (
+        [
+          "primaryContactNumber",
+          "alternateContactNumber",
+          "companyPhone",
+        ].includes(name) &&
+        value.length > 10
+      )
+        return;
+
+      if (
+        ["pincode", "billingPincode", "shippingPincode"].includes(name) &&
+        value.length > 6
+      )
+        return;
+    }
+
+    // PAN – uppercase + length control
+    if (name === "panNumber") {
+      if (!/^[A-Za-z0-9]*$/.test(value)) return;
+      if (value.length > 10) return;
+    }
+
+    /* ================= SOFT VALIDATION ================= */
+
+    let error = "";
+
+    if (name === "fullName" && value && !allowOnlyAlphabets(value)) {
+      error = "Only alphabets allowed";
+    }
+
+    if (name === "panNumber" && value && !panRegex.test(value.toUpperCase())) {
+      error = "PAN must be in format ABCDE1234F";
+    }
+
+    if (
+      ["pincode", "billingPincode", "shippingPincode"].includes(name) &&
+      value.length === 6 &&
+      !/^[0-9]{6}$/.test(value)
+    ) {
+      error = "Pincode must be 6 digits";
+    }
+
+    if (
+      [
+        "primaryContactNumber",
+        "alternateContactNumber",
+        "companyPhone",
+      ].includes(name) &&
+      value.length === 10 &&
+      !/^[0-9]{10}$/.test(value)
+    ) {
+      error = "Contact number must be 10 digits";
+    }
+
+    setErrors((prev) => ({ ...prev, [name]: error }));
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "panNumber" ? value.toUpperCase() : value,
+    }));
   };
 
   const handleVendorTypeChange = (e: ChangeEvent<HTMLSelectElement>) => {

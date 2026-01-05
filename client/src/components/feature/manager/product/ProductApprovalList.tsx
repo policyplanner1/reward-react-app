@@ -16,24 +16,24 @@ import {
   FaRedo,
   FaCheck,
   FaTimes,
-  FaPaperPlane,
   FaTrash,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { routes } from "../../../../routes";
 
-// const API_BASE = import.meta.env.VITE_API_URL;
 import { api } from "../../../../api/api";
 
 /* ================================
        TYPES
 ================================ */
-type ProductStatus =
+type BackendProductStatus =
   | "pending"
+  | "sent_for_approval"
   | "approved"
   | "rejected"
-  | "resubmission"
-  | "sent_for_approval";
+  | "resubmission";
+
+type ProductStatus = "pending" | "approved" | "rejected" | "resubmission";
 
 interface ProductDocument {
   document_id: number;
@@ -53,7 +53,7 @@ interface ProductItem {
   sale_price: number;
   vendor_price: number;
   stock: number;
-  status: ProductStatus;
+  status: BackendProductStatus;
   rejection_reason: string | null;
   created_at: string;
   updated_at: string;
@@ -70,12 +70,11 @@ interface ProductItem {
 }
 
 interface Stats {
+  total: number;
   pending: number;
-  sent_for_approval: number;
   approved: number;
   rejected: number;
   resubmission: number;
-  total: number;
 }
 
 interface ApiResponse {
@@ -120,11 +119,6 @@ const StatusChip = ({ status }: { status: ProductStatus }) => {
       color: "bg-yellow-100 text-yellow-800 border-yellow-200",
       icon: FaClock,
       text: "Pending",
-    },
-    sent_for_approval: {
-      color: "bg-blue-100 text-blue-800 border-blue-200",
-      icon: FaPaperPlane,
-      text: "Sent for Approval",
     },
   };
 
@@ -294,12 +288,52 @@ const ActionModal = ({
   );
 };
 
+// Stats
+interface StatCardProps {
+  title: string;
+  value: number;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}
+
+const StatCard = ({ title, value, icon: Icon, color }: StatCardProps) => {
+  return (
+    <div
+      className={`relative overflow-hidden rounded-2xl p-5 text-white shadow-lg bg-gradient-to-br ${color}`}
+    >
+      <div className="absolute top-0 right-0 w-24 h-24 -mt-10 -mr-10 bg-white opacity-20 rounded-full" />
+
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold tracking-wide uppercase opacity-90">
+            {title}
+          </p>
+          <p className="mt-2 text-2xl font-bold">{value}</p>
+        </div>
+
+        <div className="p-3 bg-white/20 rounded-xl">
+          <Icon className="text-xl" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ================================
        MAIN COMPONENT
 ================================ */
 export default function ProductManagerList() {
-  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [products, setProducts] = useState<
+    (Omit<ProductItem, "status"> & { status: ProductStatus })[]
+  >([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<Stats>({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    resubmission: 0,
+  });
   // const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -313,15 +347,6 @@ export default function ProductManagerList() {
     totalItems: 0,
     itemsPerPage: 10,
   });
-
-  // const [stats, setStats] = useState<Stats>({
-  //   total: 0,
-  //   pending: 0,
-  //   sent_for_approval: 0,
-  //   approved: 0,
-  //   rejected: 0,
-  //   resubmission: 0,
-  // });
 
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -342,6 +367,18 @@ export default function ProductManagerList() {
     );
   };
 
+  const normalizeManagerStatus = (
+    status: BackendProductStatus
+  ): ProductStatus => {
+    if (status === "sent_for_approval") return "pending";
+    return status;
+  };
+
+  const normalizeStatusForApi = (status: string) => {
+    if (status === "pending") return "sent_for_approval";
+    return status;
+  };
+
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
@@ -349,7 +386,8 @@ export default function ProductManagerList() {
       const params = {
         page: pagination.currentPage,
         limit: pagination.itemsPerPage,
-        status: statusFilter !== "all" ? statusFilter : "",
+        status:
+          statusFilter !== "all" ? normalizeStatusForApi(statusFilter) : "",
         search: searchQuery,
         sortBy,
         sortOrder,
@@ -357,16 +395,22 @@ export default function ProductManagerList() {
 
       const res = await api.get("/product/all-products", { params });
       const data: ApiResponse = res.data;
-      console.log(data,"Data")
 
       if (data.success) {
-        setProducts(data.products);
+        const normalizedProducts = data.products.map((p) => ({
+          ...p,
+          status: normalizeManagerStatus(p.status),
+        }));
+
+        setProducts(normalizedProducts);
         setPagination((prev) => ({
           ...prev,
           totalPages: data.totalPages || 1,
           totalItems: data.total || 0,
         }));
-        // if (data.stats) setStats(data.stats);
+        if (data.stats) {
+          setStats(data.stats);
+        }
       }
     } catch (err) {
       console.error("Error loading products:", err);
@@ -406,7 +450,7 @@ export default function ProductManagerList() {
         throw new Error(res.data.message || "Action failed");
       }
 
-      fetchProducts(); 
+      fetchProducts();
       alert(res.data.message || "Success");
     } catch (error: any) {
       alert(error.message);
@@ -448,7 +492,43 @@ export default function ProductManagerList() {
       />
 
       <div className="p-4 bg-white border border-gray-200 shadow-lg rounded-2xl md:p-6">
-        {/* Header and Stats Omitted for brevity, kept same as your snippet */}
+        {/* STATS CARDS */}
+        <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-5">
+          <StatCard
+            title="Total Products"
+            value={stats.total}
+            icon={FaFileAlt}
+            color="from-purple-500 to-purple-700"
+          />
+
+          <StatCard
+            title="Pending for Review"
+            value={stats.pending}
+            icon={FaClock}
+            color="from-yellow-500 to-yellow-700"
+          />
+
+          <StatCard
+            title="Approved"
+            value={stats.approved}
+            icon={FaCheckCircle}
+            color="from-green-500 to-green-700"
+          />
+
+          <StatCard
+            title="Rejected"
+            value={stats.rejected}
+            icon={FaTimesCircle}
+            color="from-red-500 to-red-700"
+          />
+
+          <StatCard
+            title="Need Resubmission"
+            value={stats.resubmission}
+            icon={FaRedo}
+            color="from-blue-500 to-blue-700"
+          />
+        </div>
 
         {/* FILTERS + SEARCH */}
         <div className="flex flex-col gap-4 mb-6 md:flex-row">
@@ -465,12 +545,17 @@ export default function ProductManagerList() {
 
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPagination((p) => ({ ...p, currentPage: 1 }));
+            }}
             className="p-3 border rounded-lg"
           >
-            <option value="all">All Status</option>
+            <option value="all">All</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="resubmission">Resubmission</option>
           </select>
         </div>
 
@@ -544,6 +629,19 @@ export default function ProductManagerList() {
                             className="p-2 bg-red-100 text-red-700 rounded"
                           >
                             <FaTimes />
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              setModalState({
+                                isOpen: true,
+                                product,
+                                actionType: "request_resubmission",
+                              })
+                            }
+                            className="p-2 bg-blue-100 text-blue-700 rounded"
+                          >
+                            <FaRedo />
                           </button>
                         </>
                       )}

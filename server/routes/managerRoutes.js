@@ -11,45 +11,47 @@ router.get(
   authorizeRoles("vendor_manager", "admin"),
   async (req, res) => {
     try {
-      // Total Vendors
-      const [[vendors]] = await db.execute(
-        "SELECT COUNT(*) AS totalVendors FROM vendors"
-      );
+      const [[vendorStats]] = await db.execute(`
+        SELECT
+          COUNT(*) AS totalVendors,
+          SUM(status='pending') AS pendingApprovals,
+          SUM(status='sent_for_approval') AS sentForApproval,
+          SUM(status='approved') AS approvedVendors
+        FROM vendors
+      `);
 
-      // Pending vendor approvals
-      const [[pendingVendors]] = await db.execute(
-        "SELECT COUNT(*) AS pendingApprovals FROM vendors WHERE status='pending'"
-      );
+      // const [[productStats]] = await db.execute(`
+      //   SELECT
+      //     COUNT(*) AS totalProducts,
+      //     SUM(status='pending') AS pendingProducts,
+      //     SUM(status='sent_for_approval') AS sentForApproval,
+      //     SUM(status='resubmission') AS resubmissionProducts,
+      //     SUM(status='approved') AS approvedProducts
+      //   FROM products
+      // `);
 
-      // Active approved products
-      const [[activeProducts]] = await db.execute(
-        "SELECT COUNT(*) AS activeProducts FROM products WHERE status='approved'"
-      );
-
-      // Monthly revenue (Dummy for now; set to 0)
-      const [[revenue]] = await db.execute(`
-      SELECT IFNULL(SUM(sale_price), 0) AS totalRevenue FROM products WHERE status='approved'
-    `);
-
-      // For charts (dummy monthly)
-      const monthlyLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-      const monthlyRevenue = [50000, 60000, 45000, 80000, 75000, 90000];
-      const vendorCount = [5, 10, 12, 15, 20, 22];
-      const productCount = [20, 25, 28, 35, 40, 48];
+      const [[productStats]] = await db.execute(`
+        SELECT
+          COUNT(CASE WHEN status != 'pending' THEN 1 END) AS totalProducts,
+          SUM(status = 'pending') AS pendingProducts,
+          SUM(status = 'sent_for_approval') AS sentForApproval,
+          SUM(status = 'resubmission') AS resubmissionProducts,
+          SUM(status = 'approved') AS approvedProducts
+        FROM products
+      `);
 
       res.json({
         success: true,
         data: {
-          totalVendors: vendors.totalVendors,
-          pendingApprovals: pendingVendors.pendingApprovals,
-          activeProducts: activeProducts.activeProducts,
-          totalRevenue: revenue.totalRevenue,
-
-          // For Charts
-          monthlyLabels,
-          monthlyRevenue,
-          vendorCount,
-          productCount,
+          ...vendorStats,
+          ...productStats,
+          totalRevenue: 0,
+          charts: {
+            monthlyLabels: [],
+            monthlyRevenue: [],
+            vendorCount: [],
+            productCount: [],
+          },
         },
       });
     } catch (err) {

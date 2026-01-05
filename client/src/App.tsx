@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { routes } from "./routes";
 
 /* Auth */
@@ -20,15 +20,19 @@ import ManagerDashboard from "./pages/vendor_manager/Dashboard";
 import ProductApprovalList from "./components/feature/manager/product/ProductApprovalList";
 import CategoryManagement from "./components/feature/manager/category/Categories";
 import SubcategoryManagement from "./components/feature/manager/category/Subcategories";
+import DocumentManagement from "./components/feature/manager/document/DocumentAdd";
+import DocumentCategoryManagement from "./components/feature/manager/document/DocumentCategory";
 import SubSubCategoryManagement from "./components/feature/manager/category/Subsubcategories";
 import ProductViewPage from "./components/feature/manager/product/ProductViewPage";
 import Onboarding from "./components/feature/vendor/onboarding/Onboarding";
+import ChangePasswordPage from "./pages/changePassword";
 import ProductListingDynamic from "./components/feature/vendor/products/ProductAdd";
 import ProductManagerList from "./components/feature/vendor/products/ProductList";
 import EditProductPage from "./components/feature/vendor/products/ProductEdit";
 import ReviewProductPage from "./components/feature/vendor/products/ProductView";
 import VendorApprovalList from "./components/feature/manager/vendor/VendorApprovalList";
 import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprovalForm";
+import NotFoundPage from "./pages/NotFound";
 
 export default function App() {
   return (
@@ -43,64 +47,63 @@ export default function App() {
 
       {/* ========== VENDOR ========== */}
       <Route element={<VendorLayout />}>
+        <Route path={routes.vendor.dashboard} element={<VendorDashboard />} />
 
-  <Route
-    path={routes.vendor.dashboard}
-    element={<VendorDashboard />}
-  />
+        <Route path={routes.vendor.onboarding} element={<Onboarding />} />
 
-  <Route
-    path={routes.vendor.onboarding}
-    element={<Onboarding />}
-  />
+        <Route
+          path={routes.vendor.changePassword}
+          element={<ChangePasswordPage />}
+        />
 
-  <Route
-    path={routes.vendor.products.add}
-    element={<ProductListingDynamic />}
-  />
+        <Route
+          path={routes.vendor.products.add}
+          element={<ProductListingDynamic />}
+        />
 
-  <Route
-    path={routes.vendor.products.list}
-    element={<ProductManagerList />}
-  />
+        <Route
+          path={routes.vendor.products.list}
+          element={<ProductManagerList />}
+        />
 
-<Route
-  path={routes.vendor.products.review}   
-  element={<ReviewProductPage/>}
-/>
+        <Route
+          path={routes.vendor.products.review}
+          element={<ReviewProductPage />}
+        />
 
-<Route
-  path={routes.vendor.products.edit}     
-  element={<EditProductPage />}
-/>
+        <Route
+          path={routes.vendor.products.edit}
+          element={<EditProductPage />}
+        />
 
-
-
-  <Route
-    path={routes.vendor.productManagerList}
-    element={<ProductManagerList />}
-  />
-
-</Route>
-
+        <Route
+          path={routes.vendor.productManagerList}
+          element={<ProductManagerList />}
+        />
+      </Route>
 
       {/* ========== MANAGER ========== */}
       <Route element={<ManagerLayout />}>
         <Route path={routes.manager.dashboard} element={<ManagerDashboard />} />
         <Route path={routes.manager.vendors} element={<VendorApprovalList />} />
         <Route
+          path={routes.manager.changePassword}
+          element={<ChangePasswordPage />}
+        />
+        <Route
           path={routes.manager.products}
           element={<ProductApprovalList />}
         />
-
-     <Route path={routes.manager.productView} element={<ProductViewPage />} />
-
-
+        <Route
+          path={routes.manager.productView}
+          element={<ProductViewPage />}
+        />
         <Route
           path={routes.manager.vendorReview}
           element={<VendorApprovalForm />}
         />
 
+        {/* Category */}
         <Route
           path={routes.manager.categories}
           element={<CategoryManagement />}
@@ -113,12 +116,21 @@ export default function App() {
           path={routes.manager.subsubcategories}
           element={<SubSubCategoryManagement />}
         />
+
+        {/* Document */}
+        <Route
+          path={routes.manager.addDocument}
+          element={<DocumentManagement />}
+        />
+
+      <Route
+          path={routes.manager.linkDocument}
+          element={<DocumentCategoryManagement />}
+        />
       </Route>
 
-      {/* ========== WAREHOUSE ========== */}
-
       {/* ========== FALLBACK ========== */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

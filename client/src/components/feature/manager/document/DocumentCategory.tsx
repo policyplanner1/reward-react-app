@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { FiPlus, FiTrash2, FiEye, FiX, FiFileText } from "react-icons/fi";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+// const API_BASE = import.meta.env.VITE_API_URL;
+import { api } from "../../../../api/api";
 
 /* =========================
         TYPES
@@ -27,7 +28,7 @@ interface Mapping {
 /* =========================
         COMPONENT
 ========================= */
-export default function DocumentManagement() {
+export default function DocumentCategoryManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [records, setRecords] = useState<Mapping[]>([]);
@@ -43,27 +44,33 @@ export default function DocumentManagement() {
         FETCH DATA
   ========================= */
   const fetchCategories = async () => {
-    const res = await fetch(`${API_BASE}/category`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
-    const json = await res.json();
-    setCategories(json.data || []);
+    try {
+      const res = await api.get("/category");
+      setCategories(res.data?.data || []);
+    } catch (err) {
+      console.error("Failed to fetch categories", err);
+      setCategories([]);
+    }
   };
 
   const fetchDocuments = async () => {
-    const res = await fetch(`${API_BASE}/manager/documents`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
-    const json = await res.json();
-    setDocuments(json.data || []);
+    try {
+      const res = await api.get("/manager/documents");
+      setDocuments(res.data?.data || []);
+    } catch (err) {
+      console.error("Failed to fetch documents", err);
+      setDocuments([]);
+    }
   };
 
   const fetchMappings = async () => {
-    const res = await fetch(`${API_BASE}/manager/category-documents`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
-    const json = await res.json();
-    setRecords(json.data || []);
+    try {
+      const res = await api.get("/manager/category-documents");
+      setRecords(res.data?.data || []);
+    } catch (err) {
+      console.error("Failed to fetch mappings", err);
+      setRecords([]);
+    }
   };
 
   useEffect(() => {
@@ -81,37 +88,31 @@ export default function DocumentManagement() {
       return;
     }
 
-    await fetch(`${API_BASE}/manager/create-category-documents`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify({
+    try {
+      await api.post("/manager/create-category-documents", {
         category_id: categoryId,
         document_id: documentId,
-      }),
-    });
+      });
 
-    setCategoryId("");
-    setDocumentId("");
-    fetchMappings();
+      setCategoryId("");
+      setDocumentId("");
+      fetchMappings();
+    } catch (err) {
+      console.error("Failed to add mapping", err);
+    }
   };
 
   /* =========================
         VIEW (DRAWER)
   ========================= */
   const handleView = async (id: number) => {
-    const res = await fetch(
-      `${API_BASE}/manager/category-documents/${id}`,
-      {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      }
-    );
-
-    const json = await res.json();
-    setSelected(json.data);
-    setDrawerOpen(true);
+    try {
+      const res = await api.get(`/manager/category-documents/${id}`);
+      setSelected(res.data.data);
+      setDrawerOpen(true);
+    } catch (err) {
+      console.error("Failed to fetch mapping", err);
+    }
   };
 
   /* =========================
@@ -120,12 +121,12 @@ export default function DocumentManagement() {
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this record?")) return;
 
-    await fetch(`${API_BASE}/manager/category-documents/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
-
-    fetchMappings();
+    try {
+      await api.delete(`/manager/category-documents/${id}`);
+      fetchMappings();
+    } catch (err) {
+      console.error("Failed to delete mapping", err);
+    }
   };
 
   /* =========================

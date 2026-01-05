@@ -6,6 +6,7 @@ const morgan = require("morgan");
 const path = require("path");
 require("dotenv").config();
 
+// dashboard Routes
 const authRoutes = require("./routes/auth");
 const vendorRoutes = require("./routes/vendorRoutes");
 const managerRoutes = require("./routes/managerRoutes");
@@ -14,6 +15,10 @@ const wareHouseRoutes = require("./routes/warehouseRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const subCategoryRoutes = require("./routes/subCategoryRoutes");
 const subSubCategoryRoutes = require("./routes/subSubCategoryRoutes");
+
+// App Routes
+const v1ProductRoutes = require("./app/routes/productRoute");
+
 
 const app = express();
 
@@ -56,7 +61,7 @@ app.get("/", (req, res) => {
 });
 
 // -----------------------------
-// API Routes
+// Dashboard Routes
 // -----------------------------
 app.use("/api/auth", authRoutes);
 app.use("/api/vendor", vendorRoutes);
@@ -66,6 +71,9 @@ app.use("/api/category", categoryRoutes);
 app.use("/api/warehouse", wareHouseRoutes);
 app.use("/api/subcategory", subCategoryRoutes);
 app.use("/api/subsubcategory", subSubCategoryRoutes);
+
+// App Routes
+app.use("/v1/product", v1ProductRoutes);
 
 // -----------------------------
 // Health check route
