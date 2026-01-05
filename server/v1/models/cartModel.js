@@ -162,6 +162,23 @@ class cartModel {
 
     return { updated: true };
   }
+
+  // delete cart item
+   async deleteCartItem({ userId, cartItemId }) {
+    const [result] = await db.execute(
+      `
+      DELETE FROM cart_items
+      WHERE cart_item_id = ? AND user_id = ?
+      `,
+      [cartItemId, userId]
+    );
+
+    if (result.affectedRows === 0) {
+      throw new Error("CART_ITEM_NOT_FOUND");
+    }
+
+    return true;
+  }
 }
 
 module.exports = new cartModel();

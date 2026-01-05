@@ -10,4 +10,10 @@ router.get("/cart", auth, CartController.getCart);
 // add to cart
 router.post("/cart", auth, CartController.addToCart);
 
+// update cart
+router.put("/cart/:cart_item_id", auth, CartController.updateCartItem);
+
+// delete cart 
+router.delete("/cart/:cart_item_id", auth, CartController.deleteCartItem);
+
 module.exports = router;

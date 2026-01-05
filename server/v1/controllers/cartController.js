@@ -141,6 +141,42 @@ class CartController {
       });
     }
   }
+
+  // delete cart item
+  async deleteCartItem(req, res) {
+    try {
+      const userId = req.user?.user_id;
+      const cartItemId = Number(req.params.cart_item_id);
+
+      if (!cartItemId) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid cart item id",
+        });
+      }
+
+      await CartModel.deleteCartItem({ userId, cartItemId });
+
+      return res.json({
+        success: true,
+        message: "Item removed from cart",
+      });
+    } catch (error) {
+      console.error("Delete cart item error:", error);
+
+      if (error.message === "CART_ITEM_NOT_FOUND") {
+        return res.status(404).json({
+          success: false,
+          message: "Cart item not found",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
 }
 
 module.exports = new CartController();
