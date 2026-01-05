@@ -115,6 +115,53 @@ class cartModel {
 
     return true;
   }
+
+  // update cart item
+  async updateCartItem({ userId, cartItemId, quantity }) {
+    // 1 Fetch cart item + variant stock
+    const [[row]] = await db.execute(
+      `
+      SELECT 
+        ci.cart_item_id,
+        ci.variant_id,
+        v.stock
+      FROM cart_items ci
+      JOIN product_variants v
+        ON ci.variant_id = v.variant_id
+      WHERE ci.cart_item_id = ? AND ci.user_id = ?
+      `,
+      [cartItemId, userId]
+    );
+
+    if (!row) {
+      throw new Error("CART_ITEM_NOT_FOUND");
+    }
+
+    // 2 Quantity = 0 → remove item
+    if (quantity === 0) {
+      await db.execute(`DELETE FROM cart_items WHERE cart_item_id = ?`, [
+        cartItemId,
+      ]);
+      return { removed: true };
+    }
+
+    // 3 Stock validation
+    if (quantity > row.stock) {
+      throw new Error("INSUFFICIENT_STOCK");
+    }
+
+    // 4 Update quantity
+    await db.execute(
+      `
+      UPDATE cart_items
+      SET quantity = ?
+      WHERE cart_item_id = ?
+      `,
+      [quantity, cartItemId]
+    );
+
+    return { updated: true };
+  }
 }
 
 module.exports = new cartModel();

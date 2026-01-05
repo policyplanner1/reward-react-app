@@ -84,6 +84,63 @@ class CartController {
       });
     }
   }
+
+  // update cart item
+  async updateCartItem(req, res) {
+    try {
+      const userId = req.user?.user_id;
+      const cartItemId = Number(req.params.cart_item_id);
+      const { quantity } = req.body;
+
+      if (!cartItemId || quantity === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid request",
+        });
+      }
+
+      if (quantity < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Quantity cannot be negative",
+        });
+      }
+
+      const result = await CartModel.updateCartItem({
+        userId,
+        cartItemId,
+        quantity,
+      });
+
+      return res.json({
+        success: true,
+        message: result.removed
+          ? "Item removed from cart"
+          : "Cart updated successfully",
+      });
+    } catch (error) {
+      console.error("Update cart error:", error);
+
+      if (error.message === "CART_ITEM_NOT_FOUND") {
+        return res.status(404).json({
+          success: false,
+          message: "Cart item not found",
+        });
+      }
+
+      if (error.message === "INSUFFICIENT_STOCK") {
+        return res.status(400).json({
+          success: false,
+          message: "Insufficient stock",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
 }
 
 module.exports = new CartController();
