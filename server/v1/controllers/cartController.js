@@ -24,7 +24,64 @@ class CartController {
       });
     } catch (error) {
       console.error("Get cart error:", error);
-      return res.status(500).json({ success: false, message: 'Internal server Error' });
+      return res
+        .status(500)
+        .json({ success: false, message: "Internal server Error" });
+    }
+  }
+
+  // add to cart
+  async addToCart(req, res) {
+    try {
+      const userId = req.user?.user_id;
+      const { product_id, variant_id, quantity = 1 } = req.body;
+
+      if (!product_id || !variant_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Product and variant are required",
+        });
+      }
+
+      if (quantity <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid quantity",
+        });
+      }
+
+      await CartModel.addToCart({
+        userId,
+        productId: product_id,
+        variantId: variant_id,
+        quantity,
+      });
+
+      return res.json({
+        success: true,
+        message: "Item added to cart",
+      });
+    } catch (error) {
+      console.error("Add to cart error:", error);
+
+      if (error.message === "INVALID_VARIANT") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid product variant",
+        });
+      }
+
+      if (error.message === "INSUFFICIENT_STOCK") {
+        return res.status(400).json({
+          success: false,
+          message: "Insufficient stock",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
     }
   }
 }
