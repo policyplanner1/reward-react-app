@@ -1,4 +1,4 @@
-const cartModel = require("../models/cartModel");
+const CartModel = require("../models/cartModel");
 const db = require("../../config/database");
 const fs = require("fs");
 const path = require("path");
@@ -7,16 +7,24 @@ class CartController {
   // Get cart items
   async getCart(req, res) {
     try {
-      const userId = req?.user.id;
+      const userId = req.user?.user_id;
 
-      if(!userId){
-        return res.status(400).json({ success: false, message: "User ID is required" });
+      if (!userId) {
+        return res
+          .status(400)
+          .json({ success: false, message: "User ID is required" });
       }
-      
-      const cartItems = await cartModel.getAllCartItems(userId);
-      res.status(200).json({ success: true, data: cartItems });
+
+      const cart = await CartModel.getUserCart(userId);
+
+      return res.json({
+        success: true,
+        items: cart.items,
+        cartTotal: cart.cartTotal,
+      });
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      console.error("Get cart error:", error);
+      return res.status(500).json({ success: false, message: 'Internal server Error' });
     }
   }
 }
