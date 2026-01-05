@@ -549,7 +549,7 @@ export default function ProductManagerList() {
               setStatusFilter(e.target.value);
               setPagination((p) => ({ ...p, currentPage: 1 }));
             }}
-            className="p-3 border rounded-lg"
+            className="p-3 border rounded-lg cursor-pointer"
           >
             <option value="all">All</option>
             <option value="pending">Pending</option>
@@ -589,62 +589,66 @@ export default function ProductManagerList() {
                   <td className="px-4 py-4 font-medium">
                     {product.product_name}
                   </td>
-                  <td className="px-4 py-4">{product.brand_name}</td>
-                  <td className="px-4 py-4">
+                  <td className="px-4 py-4 text-center">
+                    {product.brand_name}
+                  </td>
+                  <td className="px-4 py-4 text-center">
                     <StatusChip status={product.status} />
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="flex gap-2">
-                      <Link
-                        to={routes.manager.productView.replace(
-                          ":id",
-                          product.product_id.toString()
-                        )}
-                        className="p-2 bg-gray-100 rounded hover:bg-gray-200"
-                      >
-                        <FaEye />
-                      </Link>
-                      {product.status === "pending" && (
-                        <>
-                          <button
-                            onClick={() =>
-                              setModalState({
-                                isOpen: true,
-                                product,
-                                actionType: "approve",
-                              })
-                            }
-                            className="p-2 bg-green-100 text-green-700 rounded"
-                          >
-                            <FaCheck />
-                          </button>
-                          <button
-                            onClick={() =>
-                              setModalState({
-                                isOpen: true,
-                                product,
-                                actionType: "reject",
-                              })
-                            }
-                            className="p-2 bg-red-100 text-red-700 rounded"
-                          >
-                            <FaTimes />
-                          </button>
+                  <td className="px-4 py-4 align-top">
+                    <div className="flex justify-end pr-[32px]">
+                      <div className="flex gap-2 w-[120px] justify-end">
+                        <Link
+                          to={routes.manager.productView.replace(
+                            ":id",
+                            product.product_id.toString()
+                          )}
+                          className="p-2 bg-gray-100 rounded hover:bg-gray-200"
+                        >
+                          <FaEye />
+                        </Link>
+                        {product.status === "pending" && (
+                          <>
+                            <button
+                              onClick={() =>
+                                setModalState({
+                                  isOpen: true,
+                                  product,
+                                  actionType: "approve",
+                                })
+                              }
+                              className="p-2 bg-green-100 text-green-700 rounded cursor-pointer"
+                            >
+                              <FaCheck />
+                            </button>
+                            <button
+                              onClick={() =>
+                                setModalState({
+                                  isOpen: true,
+                                  product,
+                                  actionType: "reject",
+                                })
+                              }
+                              className="p-2 bg-red-100 text-red-700 rounded cursor-pointer"
+                            >
+                              <FaTimes />
+                            </button>
 
-                          <button
-                            onClick={() =>
-                              setModalState({
-                                isOpen: true,
-                                product,
-                                actionType: "request_resubmission",
-                              })
-                            }
-                            className="p-2 bg-blue-100 text-blue-700 rounded"
-                          >
-                            <FaRedo />
-                          </button>
-                        </>
-                      )}
+                            <button
+                              onClick={() =>
+                                setModalState({
+                                  isOpen: true,
+                                  product,
+                                  actionType: "request_resubmission",
+                                })
+                              }
+                              className="p-2 bg-blue-100 text-blue-700 rounded"
+                            >
+                              <FaRedo />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
