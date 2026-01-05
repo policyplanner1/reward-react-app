@@ -2,7 +2,6 @@ const cartModel = require("../models/cartModel");
 const db = require("../../config/database");
 const fs = require("fs");
 const path = require("path");
-const { use } = require("react");
 
 class CartController {
   // Get cart items
@@ -14,7 +13,7 @@ class CartController {
         return res.status(400).json({ success: false, message: "User ID is required" });
       }
       
-      const cartItems = await cartModel.getAllCartItems();
+      const cartItems = await cartModel.getAllCartItems(userId);
       res.status(200).json({ success: true, data: cartItems });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
