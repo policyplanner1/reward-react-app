@@ -17,7 +17,7 @@ const subCategoryRoutes = require("./routes/subCategoryRoutes");
 const subSubCategoryRoutes = require("./routes/subSubCategoryRoutes");
 
 // App Routes
-const v1ProductRoutes = require("./app/routes/productRoute");
+const v1ProductRoutes = require("./v1/routes/productRoute");
 
 
 const app = express();
