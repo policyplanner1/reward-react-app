@@ -1,2 +1,89 @@
 
 @import "tailwindcss";
+@layer components {
+  /* ===== PREMIUM FORM CONTAINER ===== */
+  .premium-form > div {
+    border-radius: 1.5rem;
+    box-shadow:
+      0 10px 30px rgba(133, 43, 175, 0.08),
+      0 1px 3px rgba(0, 0, 0, 0.04);
+    backdrop-filter: blur(10px);
+  }
+
+  /* ===== SECTION HEADERS ===== */
+  .premium-form h1 {
+    letter-spacing: -0.02em;
+  }
+
+  .premium-form h3 {
+    letter-spacing: -0.01em;
+  }
+
+  /* ===== INPUTS ===== */
+  .premium-form input,
+  .premium-form select,
+  .premium-form textarea {
+    background: linear-gradient(#fff, #fff) padding-box,
+      linear-gradient(135deg, #e9d5ff, #fbcfe8) border-box;
+    border: 1px solid transparent;
+    border-radius: 0.75rem;
+    transition: all 0.25s ease;
+  }
+
+  .premium-form input:focus,
+  .premium-form select:focus,
+  .premium-form textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(133, 43, 175, 0.25);
+    transform: translateY(-1px);
+  }
+
+  /* ===== BUTTONS ===== */
+  .premium-form button {
+    transition: all 0.25s ease;
+  }
+
+  .premium-form button:hover {
+    transform: translateY(-1px);
+  }
+
+  .premium-form button:active {
+    transform: translateY(0);
+  }
+
+  /* ===== FILE UPLOAD ===== */
+  .premium-form label.cursor-pointer {
+    box-shadow: 0 4px 12px rgba(133, 43, 175, 0.25);
+  }
+
+  /* ===== VARIANT CARDS ===== */
+  .premium-form .bg-gray-50 {
+    background: linear-gradient(180deg, #ffffff, #faf7ff);
+  }
+
+  /* ===== IMAGE PREVIEW ===== */
+  .premium-form img {
+    transition: transform 0.3s ease;
+  }
+
+  .premium-form img:hover {
+    transform: scale(1.05);
+  }
+}
+
+
+/* prodouctview.tsx */
+.premium-form input[readonly],
+.premium-form textarea[readonly] {
+  pointer-events: none;
+}
+
+.premium-form input,
+.premium-form textarea {
+  transition: all 0.2s ease;
+}
+
+.premium-form input:hover,
+.premium-form textarea:hover {
+  background-color: #f9fafb;
+}

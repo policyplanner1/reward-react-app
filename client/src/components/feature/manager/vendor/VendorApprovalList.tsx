@@ -114,7 +114,7 @@ export default function VendorApprovalList() {
           <button
             key={value}
             onClick={() => setFilter(value as any)}
-            className={`px-4 py-2 text-sm font-medium rounded-md ${
+            className={`px-4 py-2 text-sm font-medium rounded-md cursor-pointer ${
               filter === value
                 ? "bg-white text-[#852BAF] shadow"
                 : "text-gray-600 hover:text-gray-900"
@@ -181,7 +181,8 @@ export default function VendorApprovalList() {
                   {/* Action */}
                   <td className="px-6 py-4">
                     <Link to={`/manager/vendor-review/${v.vendor_id}`}>
-                      <button className="flex items-center px-4 py-2 bg-[#852BAF] text-white rounded-lg hover:bg-[#73239c] transition text-sm">
+                      <button className="flex items-center px-4 py-2 bg-[#852BAF] text-white rounded-lg hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition text-sm cursor-pointer">
+
                         <FaEye className="mr-2" /> Review
                       </button>
                     </Link>

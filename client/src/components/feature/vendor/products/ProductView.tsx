@@ -14,7 +14,8 @@ function SectionHeader({
   description?: string;
 }) {
   return (
-    <div className="flex items-start space-x-3">
+    <div className="flex items-center space-x-3 pb-4 mb-4 border-b border-gray-200">
+
       <div
         className="p-3 text-white rounded-md"
         style={{ background: "linear-gradient(to right, #852BAF, #FC3F78)" }}
@@ -70,7 +71,8 @@ function FormInput(props: {
           onChange={onChange}
           readOnly={readOnly}
           placeholder={placeholder}
-          className="p-3 border rounded-lg bg-gray-50"
+          className="p-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-800 shadow-sm cursor-default"
+
         />
       ) : (
         <input
@@ -81,7 +83,8 @@ function FormInput(props: {
           readOnly={readOnly}
           type="text"
           placeholder={placeholder}
-          className="p-3 border rounded-lg bg-gray-50"
+          className="p-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-800 shadow-sm cursor-default"
+
         />
       )}
 
@@ -277,7 +280,8 @@ export default function ReviewProductPage() {
 
   return (
     <div className="p-6" style={{ backgroundColor: "#FFFAFB" }}>
-      <div className="p-6 mx-auto bg-white border border-gray-100 shadow-xl rounded-2xl max-w-7xl">
+      <div className="p-6 mx-auto bg-white border border-gray-200 shadow-2xl rounded-2xl max-w-7xl">
+
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="mb-1 text-3xl font-bold text-gray-900">
@@ -291,7 +295,7 @@ export default function ReviewProductPage() {
           <div className="flex gap-2">
             <button
               onClick={() => navigate(-1)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50 cursor-pointer"
             >
               <FaArrowLeft /> Back
             </button>
@@ -402,11 +406,13 @@ export default function ReviewProductPage() {
             product.variants.map((v, idx) => (
               <div
                 key={idx}
-                className="p-6 mb-6 border shadow-sm rounded-xl bg-gray-50"
+                className="p-6 mb-6 border border-gray-200 rounded-xl bg-gray-50 shadow-inner"
+
               >
                 <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-3">
                   <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
+>
                       Size
                     </label>
                     <input
@@ -416,7 +422,8 @@ export default function ReviewProductPage() {
                     />
                   </div>
                   <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
+>
                       Color
                     </label>
                     <input
@@ -426,7 +433,8 @@ export default function ReviewProductPage() {
                     />
                   </div>
                   <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
+>
                       Material Type
                     </label>
                     <input
@@ -437,7 +445,8 @@ export default function ReviewProductPage() {
                   </div>
 
                   <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
+>
                       Dimension
                     </label>
                     <input
@@ -448,7 +457,8 @@ export default function ReviewProductPage() {
                   </div>
 
                   <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
+>
                       MRP
                     </label>
                     <input
@@ -459,7 +469,8 @@ export default function ReviewProductPage() {
                   </div>
 
                   <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
+>
                       Sales Price
                     </label>
                     <input
@@ -470,7 +481,8 @@ export default function ReviewProductPage() {
                   </div>
 
                   <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
+>
                       Stock
                     </label>
                     <input
@@ -481,7 +493,8 @@ export default function ReviewProductPage() {
                   </div>
 
                   <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
+>
                       Manufacturing Year
                     </label>
                     <input
@@ -492,7 +505,8 @@ export default function ReviewProductPage() {
                   </div>
 
                   <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
+>
                       Expiry Date
                     </label>
                     <input
@@ -513,7 +527,8 @@ export default function ReviewProductPage() {
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                         {Object.keys(v.customAttributes).map((key) => (
                           <div key={key}>
-                            <label className="block mb-1 text-sm font-medium text-gray-700">
+                            <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
+>
                               {key}
                             </label>
                             <input

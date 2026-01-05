@@ -466,7 +466,7 @@ export default function ProductManagerList() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="p-3 border rounded-lg"
+            className="p-3 border rounded-lg cursor-pointer"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
@@ -504,51 +504,71 @@ export default function ProductManagerList() {
                   <td className="px-4 py-4 font-medium">
                     {product.product_name}
                   </td>
-                  <td className="px-4 py-4">{product.brand_name}</td>
-                  <td className="px-4 py-4">
-                    <StatusChip status={product.status} />
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex gap-2">
-                      <Link
-                        to={routes.manager.productView.replace(
-                          ":id",
-                          product.product_id.toString()
-                        )}
-                        className="p-2 bg-gray-100 rounded hover:bg-gray-200"
-                      >
-                        <FaEye />
-                      </Link>
-                      {product.status === "pending" && (
-                        <>
-                          <button
-                            onClick={() =>
-                              setModalState({
-                                isOpen: true,
-                                product,
-                                actionType: "approve",
-                              })
-                            }
-                            className="p-2 bg-green-100 text-green-700 rounded"
-                          >
-                            <FaCheck />
-                          </button>
-                          <button
-                            onClick={() =>
-                              setModalState({
-                                isOpen: true,
-                                product,
-                                actionType: "reject",
-                              })
-                            }
-                            className="p-2 bg-red-100 text-red-700 rounded"
-                          >
-                            <FaTimes />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
+                 <td className="px-4 py-4 text-center">
+  {product.brand_name}
+</td>
+
+<td className="px-4 py-4 text-center">
+  <StatusChip status={product.status} />
+</td>
+
+<td className="px-4 py-4 align-top">
+  <div className="flex justify-end pr-[32px]">
+    {/* Fixed width container so layout never shifts */}
+    <div className="flex gap-2 w-[120px] justify-end">
+      
+      {/* VIEW – always visible, always same position */}
+      <Link
+        to={routes.manager.productView.replace(
+          ":id",
+          product.product_id.toString()
+        )}
+        className="p-2 bg-gray-100 rounded hover:bg-gray-200"
+      >
+        <FaEye />
+      </Link>
+
+      {/* APPROVE / REJECT – only for pending */}
+      {product.status === "pending" ? (
+        <>
+          <button
+            onClick={() =>
+              setModalState({
+                isOpen: true,
+                product,
+                actionType: "approve",
+              })
+            }
+            className="p-2 bg-green-100 text-green-700 rounded cursor-pointer"
+          >
+            <FaCheck />
+          </button>
+
+          <button
+            onClick={() =>
+              setModalState({
+                isOpen: true,
+                product,
+                actionType: "reject",
+              })
+            }
+            className="p-2 bg-red-100 text-red-700 rounded cursor-pointer"
+          >
+            <FaTimes />
+          </button>
+        </>
+      ) : (
+        /* Invisible placeholders to keep spacing */
+        <>
+          <div className="w-8 h-8"></div>
+          <div className="w-8 h-8"></div>
+        </>
+      )}
+    </div>
+  </div>
+</td>
+
+
                 </tr>
               ))}
             </tbody>

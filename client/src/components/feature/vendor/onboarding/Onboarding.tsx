@@ -21,11 +21,11 @@ interface VendorOnboardingData {
   companyName: string;
   fullName: string;
   vendorType:
-    | "Manufacturer"
-    | "Trader"
-    | "Distributor"
-    | "Service Provider"
-    | "";
+  | "Manufacturer"
+  | "Trader"
+  | "Distributor"
+  | "Service Provider"
+  | "";
   gstin: string;
   panNumber: string;
   ip_address: string;
@@ -153,9 +153,10 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center space-x-4 pb-4 border-b border-gray-100 mb-6">
-      <div className="p-3 text-white rounded-2xl shadow-lg shadow-[#852BAF]/20 bg-gradient-to-tr from-[#852BAF] to-[#FC3F78]">
-        <Icon className="text-xl" />
-      </div>
+      <div className="p-4 text-white rounded-2xl shadow-xl shadow-[#852BAF]/20 bg-gradient-to-tr from-[#852BAF] to-[#FC3F78]">
+  <Icon className="text-2xl sm:text-3xl" />
+</div>
+
       <div>
         <h3 className="text-xl font-bold text-gray-800">{title}</h3>
         {description && (
@@ -204,7 +205,7 @@ function FormInput(props: {
         type={type}
         placeholder={placeholder}
         required={required}
-        className="px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#852BAF]/10 focus:border-[#852BAF] focus:bg-white transition-all outline-none text-sm text-gray-800 placeholder:text-gray-400"
+className="px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-[#852BAF]/20 focus:border-[#852BAF] focus:bg-white transition-all outline-none text-sm text-gray-800 placeholder:text-gray-400"
       />
       {error && (
         <p className="text-[10px] font-bold text-[#FC3F78] mt-1 ml-1 uppercase">
@@ -241,16 +242,14 @@ function FileUploadInput(props: {
         />
         <div
           className={`p-3 border-2 border-dashed rounded-xl transition-all flex flex-col items-center justify-center bg-gray-50/50 
-          ${
-            file
+          ${file
               ? "border-emerald-200 bg-emerald-50/30"
               : "border-gray-200 group-hover:border-[#852BAF]/40 group-hover:bg-gray-50"
-          }`}
+            }`}
         >
           <FaFileUpload
-            className={`text-xl mb-1 ${
-              file ? "text-emerald-500" : "text-gray-400"
-            }`}
+            className={`text-xl mb-1 ${file ? "text-emerald-500" : "text-gray-400"
+              }`}
           />
           <span className="text-[11px] font-bold text-gray-500 text-center truncate w-full px-2">
             {file ? file.name : "Click to upload document"}
@@ -547,7 +546,7 @@ export default function Onboarding() {
 
   /* ================= UI ================= */
   return (
-    <div className="max-w-6xl mx-auto py-10 px-4">
+    <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-white">
       {/* Header Section */}
       <div className="mb-10 text-left ">
         <h1 className="text-4xl font-black text-gray-900 tracking-tight">
@@ -614,12 +613,12 @@ export default function Onboarding() {
         vendorStatus !== "approved" && (
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* A. Business Information */}
-            <section className="space-y-4">
-              <SectionHeader
-                icon={FaBuilding}
-                title="Business Information & Documents"
-                description="Upload only the common mandatory documents."
-              />
+            <section className="space-y-4 bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-2xl transition-shadow duration-300">
+  <SectionHeader
+    icon={FaBuilding}
+    title="Business Information & Documents"
+    description="Upload only the common mandatory documents."
+  />
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
                 <FormInput
                   id="companyName"
@@ -641,7 +640,7 @@ export default function Onboarding() {
                 <div className="flex flex-col space-y-1">
                   <label
                     htmlFor="vendorType"
-                    className="text-sm font-medium text-gray-700"
+                    className="text-sm font-medium text-gray-700 cursor-pointer"
                   >
                     Vendor Type <span className="text-red-500">*</span>
                   </label>
@@ -959,9 +958,8 @@ export default function Onboarding() {
               </div>
 
               <div
-                className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${
-                  isSameAsAddress ? "opacity-50 pointer-events-none" : ""
-                }`}
+                className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${isSameAsAddress ? "opacity-50 pointer-events-none" : ""
+                  }`}
               >
                 <FormInput
                   id="billingAddressLine1"
@@ -1028,9 +1026,8 @@ export default function Onboarding() {
               </div>
 
               <div
-                className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${
-                  isSameAsBilling ? "opacity-50 pointer-events-none" : ""
-                }`}
+                className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${isSameAsBilling ? "opacity-50 pointer-events-none" : ""
+                  }`}
               >
                 <FormInput
                   id="shippingAddressLine1"
@@ -1078,7 +1075,7 @@ export default function Onboarding() {
                 title="Bank Details & Proof"
                 description="Account details for receiving payments and required proof."
               />
-              <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-6">
                 <FormInput
                   id="bankName"
                   label="Bank Name"
@@ -1207,7 +1204,17 @@ export default function Onboarding() {
             <div className="flex justify-center pt-6">
               <button
                 type="submit"
-                className="px-12 py-4 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] text-white font-bold rounded-2xl shadow-xl shadow-[#852BAF]/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center gap-3 text-lg"
+                className="w-full 
+px-6 py-3 sm:px-8 sm:py-3.5 lg:px-12 lg:py-4
+bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+text-white font-bold rounded-2xl
+shadow-xl shadow-[#852BAF]/20
+hover:scale-[1.02] active:scale-[0.98]
+transition-all duration-300
+flex items-center justify-center gap-2 sm:gap-3
+text-base sm:text-lg
+cursor-pointer"
+
               >
                 Submit Application
               </button>
