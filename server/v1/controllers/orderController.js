@@ -11,8 +11,11 @@ class OrderController {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
 
+      const orderId = req.query.order_id ? Number(req.query.order_id) : null;
+
       const { orders, total } = await OrderModel.getOrderHistory({
         userId,
+        orderId,
         page,
         limit,
       });

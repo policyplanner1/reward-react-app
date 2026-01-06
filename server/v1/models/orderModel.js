@@ -3,8 +3,18 @@ const fs = require("fs");
 const path = require("path");
 
 class orderModel {
-  async getOrderHistory({ userId, page = 1, limit = 10 }) {
+  async getOrderHistory({ userId, orderId = null, page = 1, limit = 10 }) {
     const offset = (page - 1) * limit;
+
+    const conditions = ["o.user_id = ?"];
+    const params = [userId];
+
+    if (orderId) {
+      conditions.push("o.order_id = ?");
+      params.push(orderId);
+    }
+
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const [rows] = await db.execute(
       `
@@ -17,23 +27,23 @@ class orderModel {
         COUNT(oi.order_item_id) AS item_count
       FROM orders o
       LEFT JOIN order_items oi ON o.order_id = oi.order_id
-      WHERE o.user_id = ?
+      ${whereClause}
       GROUP BY o.order_id
       ORDER BY o.created_at DESC
       LIMIT ? OFFSET ?
       `,
-      [userId, limit, offset]
+      [...params, limit, offset]
     );
 
     const [[{ total }]] = await db.execute(
       `
       SELECT COUNT(*) AS total
-      FROM orders
-      WHERE user_id = ?
+      FROM orders o
+      ${whereClause}
       `,
-      [userId]
+      params
     );
-
+    
     return {
       orders: rows,
       total,
