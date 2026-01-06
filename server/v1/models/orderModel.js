@@ -3,7 +3,15 @@ const fs = require("fs");
 const path = require("path");
 
 class orderModel {
-  async getOrderHistory({ userId, orderId = null, page = 1, limit = 10 }) {
+  async getOrderHistory({
+    userId,
+    orderId = null,
+    status = null,
+    fromDate = null,
+    toDate = null,
+    page = 1,
+    limit = 10,
+  }) {
     const offset = (page - 1) * limit;
 
     const conditions = ["o.user_id = ?"];
@@ -12,6 +20,21 @@ class orderModel {
     if (orderId) {
       conditions.push("o.order_id = ?");
       params.push(orderId);
+    }
+
+    if (status) {
+      conditions.push("o.status = ?");
+      params.push(status);
+    }
+
+    if (fromDate) {
+      conditions.push("DATE(o.created_at) >= ?");
+      params.push(fromDate);
+    }
+
+    if (toDate) {
+      conditions.push("DATE(o.created_at) <= ?");
+      params.push(toDate);
     }
 
     const whereClause = `WHERE ${conditions.join(" AND ")}`;
@@ -43,7 +66,7 @@ class orderModel {
       `,
       params
     );
-    
+
     return {
       orders: rows,
       total,
