@@ -112,6 +112,49 @@ class CheckoutController {
       });
     }
   }
+
+  // get checkout buy now Details
+  async getBuyNowCheckout({ productId, variantId, quantity }) {
+    const [[row]] = await db.execute(
+      `
+    SELECT 
+      p.product_id,
+      p.product_name,
+      v.variant_id,
+      v.sale_price,
+      v.stock,
+      GROUP_CONCAT(pi.image_url ORDER BY pi.sort_order ASC) AS images
+    FROM product_variants v
+    JOIN products p ON v.product_id = p.product_id
+    LEFT JOIN product_images pi ON p.product_id = pi.product_id
+    WHERE v.variant_id = ? AND p.product_id = ?
+    GROUP BY v.variant_id
+    `,
+      [variantId, productId]
+    );
+
+    if (!row) {
+      throw new Error("INVALID_VARIANT");
+    }
+
+    if (quantity > row.stock) {
+      throw new Error("OUT_OF_STOCK");
+    }
+
+    return {
+      item: {
+        product_id: row.product_id,
+        variant_id: row.variant_id,
+        title: row.product_name,
+        image: row.images ? row.images.split(",")[0] : null,
+        price: row.sale_price,
+        quantity,
+        item_total: quantity * row.sale_price,
+        stock: row.stock,
+      },
+      totalAmount: quantity * row.sale_price,
+    };
+  }
 }
 
 module.exports = new CheckoutController();
