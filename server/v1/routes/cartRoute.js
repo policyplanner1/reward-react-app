@@ -5,22 +5,22 @@ const auth = require("../middlewares/auth");
 
 /* ======================================================cart============================================ */
 // get cart
-router.get("/cart", auth, CartController.getCart);
+router.get("/cart-items", auth, CartController.getCart);
 
 // add to cart
-router.post("/cart", auth, CartController.addToCart);
+router.post("/cart-item", auth, CartController.addToCart);
 
 // check quantity
-router.get("/cart/check-stock/:variantId", auth, CartController.checkStock);
+router.get("/cart-items/check-stock/:variantId", auth, CartController.checkStock);
 
 // update cart
-router.put("/cart/:cart_item_id", auth, CartController.updateCartItem);
+router.put("/cart-items/:cart_item_id", auth, CartController.updateCartItem);
 
 // delete cart
-router.delete("/cart/:cart_item_id", auth, CartController.deleteCartItem);
+router.delete("/cart-items/:cart_item_id", auth, CartController.deleteCartItem);
 
 // remove all cart items
-router.delete("/cart", auth, CartController.clearCart);
+router.delete("/cart-items", auth, CartController.clearCart);
 /* ======================================================cart============================================ */
 
 module.exports = router;
