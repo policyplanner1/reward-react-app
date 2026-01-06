@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 class CheckoutController {
+  // checkout cart Items
   async checkoutCart(req, res) {
     try {
       const userId = req.user?.user_id;
@@ -39,6 +40,7 @@ class CheckoutController {
     }
   }
 
+  // checkout buy now Items
   async buyNow(req, res) {
     try {
       const userId = req.user?.user_id;
@@ -70,6 +72,43 @@ class CheckoutController {
       return res.status(500).json({
         success: false,
         message: "Checkout failed",
+      });
+    }
+  }
+
+  // Get checkout cart Details
+  async getCheckoutCart(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      const checkoutData = await CheckoutModel.getCheckoutCart(userId);
+
+      return res.json({
+        success: true,
+        mode: "cart",
+        items: checkoutData.items,
+        totalAmount: checkoutData.totalAmount,
+      });
+    } catch (error) {
+      console.error("Checkout cart fetch error:", error);
+
+      if (error.message === "CART_EMPTY") {
+        return res.status(400).json({
+          success: false,
+          message: "Cart is empty",
+        });
+      }
+
+      if (error.message === "OUT_OF_STOCK") {
+        return res.status(400).json({
+          success: false,
+          message: "One or more items are out of stock",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to load checkout",
       });
     }
   }
