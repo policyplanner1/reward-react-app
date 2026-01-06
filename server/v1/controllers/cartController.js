@@ -85,6 +85,43 @@ class CartController {
     }
   }
 
+  // check Quantity
+  async checkStock(req, res) {
+    try {
+      const variantId = Number(req.params.variantId);
+
+      if (!variantId) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid variant id",
+        });
+      }
+
+      const stockInfo = await CartModel.checkVariantStock(variantId);
+
+      return res.json({
+        success: true,
+        variant_id: stockInfo.variant_id,
+        stock: stockInfo.stock,
+        inStock: stockInfo.inStock,
+      });
+    } catch (error) {
+      console.error("Check stock error:", error);
+
+      if (error.message === "VARIANT_NOT_FOUND") {
+        return res.status(404).json({
+          success: false,
+          message: "Variant not found",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
   // update cart item
   async updateCartItem(req, res) {
     try {

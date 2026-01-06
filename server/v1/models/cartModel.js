@@ -116,6 +116,30 @@ class cartModel {
     return true;
   }
 
+  // check quantity
+  async checkVariantStock(variantId) {
+    const [[row]] = await db.execute(
+      `
+      SELECT 
+        variant_id,
+        stock
+      FROM product_variants
+      WHERE variant_id = ?
+      `,
+      [variantId]
+    );
+
+    if (!row) {
+      throw new Error("VARIANT_NOT_FOUND");
+    }
+
+    return {
+      variant_id: row.variant_id,
+      stock: row.stock,
+      inStock: row.stock > 0,
+    };
+  }
+
   // update cart item
   async updateCartItem({ userId, cartItemId, quantity }) {
     // 1 Fetch cart item + variant stock
