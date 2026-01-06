@@ -177,6 +177,26 @@ class CartController {
       });
     }
   }
+
+  // remove all cart items
+  async clearCart(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      await CartModel.clearCart(userId);
+
+      return res.json({
+        success: true,
+        message: "Cart cleared successfully",
+      });
+    } catch (error) {
+      console.error("Clear cart error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
 }
 
 module.exports = new CartController();

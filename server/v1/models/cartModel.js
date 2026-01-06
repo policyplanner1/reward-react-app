@@ -164,7 +164,7 @@ class cartModel {
   }
 
   // delete cart item
-   async deleteCartItem({ userId, cartItemId }) {
+  async deleteCartItem({ userId, cartItemId }) {
     const [result] = await db.execute(
       `
       DELETE FROM cart_items
@@ -176,6 +176,19 @@ class cartModel {
     if (result.affectedRows === 0) {
       throw new Error("CART_ITEM_NOT_FOUND");
     }
+
+    return true;
+  }
+
+  // remove all car items
+  async clearCart(userId) {
+    await db.execute(
+      `
+      DELETE FROM cart_items
+      WHERE user_id = ?
+      `,
+      [userId]
+    );
 
     return true;
   }
