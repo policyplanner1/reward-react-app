@@ -17,6 +17,8 @@ class ProductModel {
         params.push(`%${search}%`);
       }
 
+      conditions.push("p.status = 'approved'");
+      
       const whereClause = conditions.length
         ? `WHERE ${conditions.join(" AND ")}`
         : "";
