@@ -48,8 +48,8 @@ class orderModel {
         o.created_at,
 
         COUNT(oi.order_item_id) AS item_count
-      FROM orders o
-      LEFT JOIN order_items oi ON o.order_id = oi.order_id
+      FROM eorders o
+      LEFT JOIN eorder_items oi ON o.order_id = oi.order_id
       ${whereClause}
       GROUP BY o.order_id
       ORDER BY o.created_at DESC
@@ -61,7 +61,7 @@ class orderModel {
     const [[{ total }]] = await db.execute(
       `
       SELECT COUNT(*) AS total
-      FROM orders o
+      FROM eorders o
       ${whereClause}
       `,
       params
@@ -83,7 +83,7 @@ class orderModel {
         total_amount,
         status,
         created_at
-      FROM orders
+      FROM eorders
       WHERE order_id = ? AND user_id = ?
       `,
       [orderId, userId]
@@ -109,7 +109,7 @@ class orderModel {
           DISTINCT pi.image_url
           ORDER BY pi.sort_order ASC
         ) AS images
-      FROM order_items oi
+      FROM eorder_items oi
       JOIN products p ON oi.product_id = p.product_id
       LEFT JOIN product_images pi ON p.product_id = pi.product_id
       WHERE oi.order_id = ?

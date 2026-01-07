@@ -3,6 +3,7 @@ const db = require("../../config/database");
 const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 class AuthController {
   // User Registration
@@ -56,6 +57,85 @@ class AuthController {
       });
     } catch (error) {
       console.error("Register Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
+  //   Login User
+  async loginUser(req, res) {
+    try {
+      const { email, password } = req.body;
+
+      /* ----------------------------
+         VALIDATION
+      ----------------------------- */
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and password are required",
+        });
+      }
+
+      /* ----------------------------
+         FETCH CUSTOMER
+      ----------------------------- */
+      const user = await AuthModel.findCustomerForLogin(email);
+
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid email or password",
+        });
+      }
+
+      // check status
+      if (Number(user.status) !== 1) {
+        return res.status(403).json({
+          success: false,
+          message: "Account is inactive",
+        });
+      }
+      /* ----------------------------Password check----------------------------- */
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid email or password",
+        });
+      }
+
+      /* ----------------------------
+         TOKEN GENERATION
+      ----------------------------- */
+      const token = jwt.sign(
+        {
+          user_id: user.user_id,
+          email: user.email,
+          role: "customer",
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      /* ----------------------------
+         RESPONSE
+      ----------------------------- */
+      return res.json({
+        success: true,
+        message: "Login successful",
+        token,
+        user: {
+          user_id: user.user_id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+        },
+      });
+    } catch (error) {
+      console.error("Login Error:", error);
       return res.status(500).json({
         success: false,
         message: "Internal server error",
