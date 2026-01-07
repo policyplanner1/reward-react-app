@@ -46,6 +46,17 @@ class authModel {
 
     return rows[0];
   }
+
+  async getUserById(userId) {
+    const [rows] = await db.execute(
+      `SELECT user_id, name, email, phone, status 
+     FROM customer 
+     WHERE user_id = ?`,
+      [userId]
+    );
+
+    return rows[0];
+  }
 }
 
 module.exports = new authModel();
