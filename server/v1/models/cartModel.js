@@ -31,7 +31,7 @@ class cartModel {
         ) AS images
 
       FROM cart_items ci
-      JOIN products p
+      JOIN eproducts p
         ON ci.product_id = p.product_id
       JOIN product_variants v
         ON ci.variant_id = v.variant_id

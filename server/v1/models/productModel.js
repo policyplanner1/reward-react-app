@@ -54,7 +54,7 @@ class ProductModel {
             ORDER BY pi.sort_order ASC
           ) AS images
 
-        FROM products p
+        FROM eproducts p
 
         /* ---- First Variant Only ---- */
        LEFT JOIN (
@@ -129,7 +129,7 @@ class ProductModel {
       const [[{ total }]] = await db.execute(
         `
           SELECT COUNT(DISTINCT p.product_id) AS total
-          FROM products p
+          FROM eproducts p
           ${whereClause}
         `,
         params
@@ -156,7 +156,7 @@ class ProductModel {
           c.category_name,
           sc.subcategory_name,
           ssc.name AS sub_subcategory_name
-        FROM products p
+        FROM eproducts p
         LEFT JOIN vendors v ON p.vendor_id = v.vendor_id
         LEFT JOIN categories c ON p.category_id = c.category_id
         LEFT JOIN sub_categories sc ON p.subcategory_id = sc.subcategory_id
@@ -277,7 +277,7 @@ class ProductModel {
             ORDER BY pi.sort_order ASC
           ) AS images
 
-        FROM products p
+        FROM eproducts p
 
         /* ---- First Variant Only ---- */
        LEFT JOIN (
@@ -354,7 +354,7 @@ class ProductModel {
       const [[{ total }]] = await db.execute(
         `
           SELECT COUNT(DISTINCT p.product_id) AS total
-            FROM products p
+            FROM eproducts p
             LEFT JOIN (
               SELECT pv.*
               FROM product_variants pv
@@ -454,7 +454,7 @@ class ProductModel {
           ORDER BY pi.sort_order ASC
         ) AS images
 
-      FROM products p
+      FROM eproducts p
 
       /* ---- Lowest price variant ---- */
       LEFT JOIN (
@@ -505,7 +505,7 @@ class ProductModel {
       const [[{ total }]] = await db.execute(
         `
       SELECT COUNT(DISTINCT p.product_id) AS total
-      FROM products p
+      FROM eproducts p
       LEFT JOIN (
         SELECT pv.*
         FROM product_variants pv
@@ -568,7 +568,7 @@ class ProductModel {
         ORDER BY pi.sort_order ASC
       ) AS images
 
-    FROM products p
+    FROM eproducts p
     LEFT JOIN product_images pi ON p.product_id = pi.product_id
     ${whereClause}
     GROUP BY p.product_id

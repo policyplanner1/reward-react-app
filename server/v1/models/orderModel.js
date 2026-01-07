@@ -110,7 +110,7 @@ class orderModel {
           ORDER BY pi.sort_order ASC
         ) AS images
       FROM eorder_items oi
-      JOIN products p ON oi.product_id = p.product_id
+      JOIN eproducts p ON oi.product_id = p.product_id
       LEFT JOIN product_images pi ON p.product_id = pi.product_id
       WHERE oi.order_id = ?
       GROUP BY oi.order_item_id

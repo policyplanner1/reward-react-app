@@ -184,7 +184,7 @@ class CheckoutModel {
         ) AS images
 
       FROM cart_items ci
-      JOIN products p ON ci.product_id = p.product_id
+      JOIN eproducts p ON ci.product_id = p.product_id
       JOIN product_variants v ON ci.variant_id = v.variant_id
       LEFT JOIN product_images pi ON p.product_id = pi.product_id
 
@@ -238,7 +238,7 @@ class CheckoutModel {
       v.stock,
       GROUP_CONCAT(pi.image_url ORDER BY pi.sort_order ASC) AS images
     FROM product_variants v
-    JOIN products p ON v.product_id = p.product_id
+    JOIN eproducts p ON v.product_id = p.product_id
     LEFT JOIN product_images pi ON p.product_id = pi.product_id
     WHERE v.variant_id = ? AND p.product_id = ?
     GROUP BY v.variant_id
