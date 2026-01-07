@@ -183,7 +183,9 @@ class AuthController {
   // Add address
   async addAddress(req, res) {
     try {
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId = 1; // Temporary hardcoded user ID for testing
+
       const data = req.body;
 
       if (
@@ -225,7 +227,9 @@ class AuthController {
   // Update address
   async updateAddress(req, res) {
     try {
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId = 1; // Temporary hardcoded user ID for testing
+
       const { address_id } = req.params;
       const data = req.body;
 
@@ -262,7 +266,9 @@ class AuthController {
   // Delete address
   async deleteAddress(req, res) {
     try {
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId = 1; // Temporary hardcoded user ID for testing
+
       const { address_id } = req.params;
 
       const deleted = await AddressModel.deleteAddress(address_id, userId);
@@ -290,7 +296,8 @@ class AuthController {
   // Fetch all addresses of the user
   async getMyAddresses(req, res) {
     try {
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId = 1; // Temporary hardcoded user ID for testing
 
       const addresses = await AddressModel.getAddressesByUser(userId);
 
@@ -310,7 +317,9 @@ class AuthController {
   // Fetch address by ID
   async getAddressById(req, res) {
     try {
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId = 1; // Temporary hardcoded user ID for testing
+
       const { address_id } = req.params;
 
       const address = await AddressModel.getAddressById(address_id, userId);
