@@ -10,7 +10,7 @@ auth = async (req, res, next) => {
         .json({ success: false, message: "No token provided" });
     }
 
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    const decodedToken = jwt.verify(token, process.env.CUSTOMER_JWT_SECRET);
 
     if (!decodedToken || !decodedToken.id) {
       return res.status(401).json({ success: false, message: "Invalid token" });
