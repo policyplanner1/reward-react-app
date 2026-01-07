@@ -135,10 +135,12 @@ class AuthController {
     }
   }
 
+  /*====================================Address============================================*/
+
   // Get all countries
   async getCountries(req, res) {
     try {
-      const countries = await AuthModel.getAllCountries();
+      const countries = await AddressModel.getAllCountries();
 
       return res.json({
         success: true,
@@ -165,7 +167,7 @@ class AuthController {
         });
       }
 
-      const states = await AuthModel.getStatesByCountry(country_id);
+      const states = await AddressModel.getStatesByCountry(country_id);
 
       return res.json({
         success: true,

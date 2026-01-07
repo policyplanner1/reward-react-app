@@ -56,35 +56,6 @@ class authModel {
     return rows[0];
   }
 
-  // Fetch Countries
-  async getAllCountries() {
-    const [rows] = await db.execute(
-      `SELECT 
-         country_id,
-         country_name,
-         country_code
-       FROM countries
-       WHERE status = 1
-       ORDER BY country_name`
-    );
-
-    return rows;
-  }
-
-  // Fetch States by Country ID
-  async getStatesByCountry(countryId) {
-    const [rows] = await db.execute(
-      `SELECT 
-         state_id,
-         state_name
-       FROM states
-       WHERE country_id = ? AND status = 1
-       ORDER BY state_name`,
-      [countryId]
-    );
-
-    return rows;
-  }
 }
 
 module.exports = new authModel();
