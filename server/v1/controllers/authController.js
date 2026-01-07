@@ -2,7 +2,7 @@ const AuthModel = require("../models/authModel");
 const db = require("../../config/database");
 const fs = require("fs");
 const path = require("path");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 class AuthController {
@@ -130,6 +130,51 @@ class AuthController {
       return res.status(500).json({
         success: false,
         message: "Internal server error",
+      });
+    }
+  }
+
+  // Get all countries
+  async getCountries(req, res) {
+    try {
+      const countries = await AuthModel.getAllCountries();
+
+      return res.json({
+        success: true,
+        data: countries,
+      });
+    } catch (error) {
+      console.error("Get Countries Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch countries",
+      });
+    }
+  }
+
+  // Get states by country ID
+  async getStatesByCountry(req, res) {
+    try {
+      const { country_id } = req.params;
+
+      if (!country_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Country ID is required",
+        });
+      }
+
+      const states = await AuthModel.getStatesByCountry(country_id);
+
+      return res.json({
+        success: true,
+        data: states,
+      });
+    } catch (error) {
+      console.error("Get States Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch states",
       });
     }
   }
