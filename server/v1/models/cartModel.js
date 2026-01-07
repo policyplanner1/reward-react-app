@@ -64,7 +64,7 @@ class cartModel {
         product_id: row.product_id,
         variant_id: row.variant_id,
 
-        title: row.product_name,
+        product_name: row.product_name,
         image: images.length ? images[0].image_url : null,
 
         size: row.size,

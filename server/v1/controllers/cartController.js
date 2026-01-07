@@ -7,7 +7,8 @@ class CartController {
   // Get cart items
   async getCart(req, res) {
     try {
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId = 1; // Temporary hardcoded user ID for testing
 
       if (!userId) {
         return res
@@ -33,7 +34,9 @@ class CartController {
   // add to cart
   async addToCart(req, res) {
     try {
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId = 1; // Temporary hardcoded user ID for testing
+
       const { product_id, variant_id, quantity = 1 } = req.body;
 
       if (!product_id || !variant_id) {
@@ -125,7 +128,9 @@ class CartController {
   // update cart item
   async updateCartItem(req, res) {
     try {
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId = 1; // Temporary hardcoded user ID for testing
+
       const cartItemId = Number(req.params.cart_item_id);
       const { quantity } = req.body;
 
@@ -182,7 +187,9 @@ class CartController {
   // delete cart item
   async deleteCartItem(req, res) {
     try {
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId = 1; // Temporary hardcoded user ID for testing
+
       const cartItemId = Number(req.params.cart_item_id);
 
       if (!cartItemId) {
@@ -218,7 +225,8 @@ class CartController {
   // remove all cart items
   async clearCart(req, res) {
     try {
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId = 1; // Temporary hardcoded user ID for testing
 
       await CartModel.clearCart(userId);
 
