@@ -7,6 +7,7 @@ const auth = require("../middlewares/auth");
 router.post("/register", authController.registerUser);
 
 // user Login   
+router.post("/login", authController.loginUser);
 
 // edit Profile
 

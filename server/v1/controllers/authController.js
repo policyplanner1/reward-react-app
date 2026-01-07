@@ -69,9 +69,6 @@ class AuthController {
     try {
       const { email, password } = req.body;
 
-      /* ----------------------------
-         VALIDATION
-      ----------------------------- */
       if (!email || !password) {
         return res.status(400).json({
           success: false,
@@ -98,7 +95,7 @@ class AuthController {
           message: "Account is inactive",
         });
       }
-      /* ----------------------------Password check----------------------------- */
+
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res.status(401).json({
@@ -107,22 +104,17 @@ class AuthController {
         });
       }
 
-      /* ----------------------------
-         TOKEN GENERATION
-      ----------------------------- */
+      // Token
       const token = jwt.sign(
         {
           user_id: user.user_id,
           email: user.email,
           role: "customer",
         },
-        process.env.JWT_SECRET,
+        process.env.CUSTOMER_JWT_SECRET,
         { expiresIn: "7d" }
       );
 
-      /* ----------------------------
-         RESPONSE
-      ----------------------------- */
       return res.json({
         success: true,
         message: "Login successful",
@@ -131,7 +123,6 @@ class AuthController {
           user_id: user.user_id,
           name: user.name,
           email: user.email,
-          phone: user.phone,
         },
       });
     } catch (error) {

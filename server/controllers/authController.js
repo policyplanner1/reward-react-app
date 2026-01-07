@@ -242,7 +242,7 @@ const authController = {
       }
 
       if (Number(user.is_verified) !== 1) {
-        // 🔁 Resend OTP
+        //  Resend OTP
         const otp = generateOTP();
         const otpHash = hashOTP(otp);
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -296,7 +296,7 @@ const authController = {
         }
       }
 
-      // ⭐ MUST include vendor_id in token
+      //  MUST include vendor_id in token
       const token = generateToken({
         user_id: user.user_id,
         vendor_id: vendorId,
