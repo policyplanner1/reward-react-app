@@ -1,4 +1,5 @@
 const AuthModel = require("../models/authModel");
+const AddressModel = require("../models/addressModel");
 const db = require("../../config/database");
 const fs = require("fs");
 const path = require("path");
@@ -175,6 +176,161 @@ class AuthController {
       return res.status(500).json({
         success: false,
         message: "Failed to fetch states",
+      });
+    }
+  }
+
+  // Add address
+  async addAddress(req, res) {
+    try {
+      const userId = req.user?.user_id;
+      const data = req.body;
+
+      if (
+        !data.address1 ||
+        !data.city ||
+        !data.zipcode ||
+        !data.country_id ||
+        !data.state_id
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Required address fields missing",
+        });
+      }
+
+      if (Number(data.is_default) === 1) {
+        await AddressModel.clearDefault(userId);
+      }
+
+      const addressId = await AddressModel.addAddress({
+        ...data,
+        user_id: userId,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Address added successfully",
+        address_id: addressId,
+      });
+    } catch (error) {
+      console.error("Add Address Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to add address",
+      });
+    }
+  }
+
+  // Update address
+  async updateAddress(req, res) {
+    try {
+      const userId = req.user?.user_id;
+      const { address_id } = req.params;
+      const data = req.body;
+
+      if (Number(data.is_default) === 1) {
+        await AddressModel.clearDefault(userId);
+      }
+
+      const updated = await AddressModel.updateAddress(
+        address_id,
+        userId,
+        data
+      );
+
+      if (!updated) {
+        return res.status(404).json({
+          success: false,
+          message: "Address not found",
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Address updated successfully",
+      });
+    } catch (error) {
+      console.error("Update Address Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update address",
+      });
+    }
+  }
+
+  // Delete address
+  async deleteAddress(req, res) {
+    try {
+      const userId = req.user?.user_id;
+      const { address_id } = req.params;
+
+      const deleted = await AddressModel.deleteAddress(address_id, userId);
+
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: "Address not found",
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Address deleted successfully",
+      });
+    } catch (error) {
+      console.error("Delete Address Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete address",
+      });
+    }
+  }
+
+  // Fetch all addresses of the user
+  async getMyAddresses(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      const addresses = await AddressModel.getAddressesByUser(userId);
+
+      return res.json({
+        success: true,
+        data: addresses,
+      });
+    } catch (error) {
+      console.error("Fetch Addresses Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch addresses",
+      });
+    }
+  }
+
+  // Fetch address by ID
+  async getAddressById(req, res) {
+    try {
+      const userId = req.user?.user_id;
+      const { address_id } = req.params;
+
+      const address = await AddressModel.getAddressById(address_id, userId);
+
+      if (!address) {
+        return res.status(404).json({
+          success: false,
+          message: "Address not found",
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: address,
+      });
+    } catch (error) {
+      console.error("Get Address Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch address",
       });
     }
   }

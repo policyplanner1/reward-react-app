@@ -21,13 +21,18 @@ router.get("/countries", authController.getCountries);
 router.get("/states/:country_id", authController.getStatesByCountry);
 
 // add address
+router.post("/address", auth, authController.addAddress);
 
 // update address
+router.put("/address/:address_id", auth, authController.updateAddress);
 
 // delete address
+router.delete("/address/:address_id", auth, authController.deleteAddress);
 
 // fetch addresses
+router.get("/addresses", auth, authController.getAddresses);
 
 // Get address By ID
+router.get("/address/:address_id", auth, authController.getAddressById);
 
 module.exports = router;
