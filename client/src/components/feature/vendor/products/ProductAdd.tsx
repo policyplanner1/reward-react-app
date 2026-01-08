@@ -1510,10 +1510,13 @@ export default function ProductListingDynamic() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex items-center justify-center w-full px-6 py-3 text-lg font-bold text-white transition-all duration-200 rounded-full shadow-md disabled:opacity-50 hover:shadow-lg cursor-pointer"
-              style={{
-                background: "linear-gradient(to right, #852BAF, #FC3F78)",
-              }}
+             className="flex items-center justify-center w-full px-6 py-3 text-lg font-bold text-white
+             rounded-full transition-all duration-300 cursor-pointer
+             bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+             hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+             shadow-lg shadow-[#852BAF]/25 hover:shadow-xl
+             active:scale-95
+             disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <>

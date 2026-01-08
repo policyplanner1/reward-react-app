@@ -13,6 +13,7 @@ import {
 
 // const API_BASE = import.meta.env.VITE_API_URL;
 import { api } from "../../../../api/api";
+import Swal from "sweetalert2";
 
 interface DocumentItem {
   document_id: number;
@@ -52,24 +53,69 @@ export default function DocumentManagement() {
   /* =============================
         ADD DOCUMENT (POST)
   ============================== */
-  const handleAdd = async () => {
-    if (!document_name.trim()) return;
+ const okBtnClass =
+  "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
+  "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95";
 
-    try {
-      setLoading(true);
 
-      await api.post("/manager/create-document", {
-        name: document_name,
-      });
+const handleAdd = async () => {
+  // ✅ empty input popup
+  if (!document_name.trim()) {
+    await Swal.fire({
+      title: "Document name required",
+      text: "Please enter a document name before adding.",
+      icon: "warning",
+      confirmButtonText: "OK",
+      buttonsStyling: false,
+      customClass: {
+        confirmButton: okBtnClass,
+        popup: "rounded-2xl",
+      },
+    });
+    return;
+  }
 
-      setDocumentName("");
-      fetchDocuments();
-    } catch (err) {
-      console.error("Failed to add document", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+
+    await api.post("/manager/create-document", {
+      name: document_name,
+    });
+
+    setDocumentName("");
+    fetchDocuments();
+
+    // ✅ success popup
+    Swal.fire({
+      title: "Added!",
+      text: "Document added successfully.",
+      icon: "success",
+      timer: 1400,
+      showConfirmButton: false,
+      customClass: { popup: "rounded-2xl" },
+    });
+  } catch (err: any) {
+    console.error("Failed to add document", err);
+
+    // ❌ error popup
+    Swal.fire({
+      title: "Failed",
+      text:
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        "Failed to add document. Please try again.",
+      icon: "error",
+      confirmButtonText: "OK",
+      buttonsStyling: false,
+      customClass: {
+        confirmButton: okBtnClass,
+        popup: "rounded-2xl",
+      },
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   /* =============================
         VIEW DOCUMENT (GET BY ID)
@@ -110,15 +156,46 @@ export default function DocumentManagement() {
         DELETE DOCUMENT
   ============================== */
   const handleDelete = async (document_id: number) => {
-    if (!confirm("Delete this document?")) return;
+  const result = await Swal.fire({
+    title: "Delete this document?",
+    text: "This action cannot be undone.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Yes, delete",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#EF4444",
+    cancelButtonColor: "#9CA3AF",
+    reverseButtons: true,
+  });
 
-    try {
-      await api.delete(`/manager/delete-document/${document_id}`);
-      fetchDocuments();
-    } catch (err) {
-      console.error("Failed to delete document", err);
-    }
-  };
+  if (!result.isConfirmed) return;
+
+  try {
+    await api.delete(`/manager/delete-document/${document_id}`);
+    fetchDocuments();
+
+    Swal.fire({
+      title: "Deleted!",
+      text: "Document deleted successfully.",
+      icon: "success",
+      timer: 1400,
+      showConfirmButton: false,
+    });
+  } catch (err: any) {
+    console.error("Failed to delete document", err);
+
+    Swal.fire({
+      title: "Delete failed",
+      text:
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        "Failed to delete document. Please try again.",
+      icon: "error",
+      confirmButtonText: "OK",
+      confirmButtonColor: "#EF4444",
+    });
+  }
+};
 
   return (
     <div className="min-h-screen p-6 bg-gray-50">
@@ -129,21 +206,24 @@ export default function DocumentManagement() {
 
       {/* ADD DOCUMENT */}
       <div className="flex flex-col gap-4 mb-6 md:flex-row">
-        <input
-          value={document_name}
-          onChange={(e) => setDocumentName(e.target.value)}
-          className="flex-1 px-4 py-3 border rounded-xl"
-          placeholder="Enter document name"
-        />
+  <input
+    value={document_name}
+    onChange={(e) => setDocumentName(e.target.value)}
+    className="flex-1 px-4 py-3 border rounded-xl"
+    placeholder="Enter document name"
+  />
 
-        <button
-          disabled={loading}
-          onClick={handleAdd}
-          className="flex items-center gap-2 px-6 py-3 text-white bg-purple-600 rounded-xl hover:bg-purple-700 disabled:opacity-50"
-        >
-          <FiPlus /> Add Document
-        </button>
-      </div>
+  <button
+    disabled={loading}
+    onClick={handleAdd}
+    className="flex items-center gap-2 px-6 py-3 text-white bg-purple-600 rounded-xl 
+               hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
+               disabled:opacity-50 cursor-pointer"
+  >
+    <FiPlus /> {loading ? "Adding..." : "Add Document"}
+  </button>
+</div>
+
 
       {/* TABLE */}
       <div className="bg-white shadow rounded-2xl">
@@ -173,11 +253,13 @@ export default function DocumentManagement() {
                     {new Date(doc.created_at).toLocaleDateString()}
                   </td>
                   <td className="flex justify-end gap-3 px-6 py-4">
-                    <button onClick={() => handleView(doc.document_id)}>
+                    <button onClick={() => handleView(doc.document_id)}
+                      className="cursor-pointer"
+                      >
                       <FiEye />
                     </button>
                     <button
-                      className="text-purple-600"
+                      className="text-purple-600 cursor-pointer"
                       onClick={() => {
                         handleView(doc.document_id);
                         setEditMode(true);
@@ -186,11 +268,12 @@ export default function DocumentManagement() {
                       <FiEdit />
                     </button>
                     <button
-                      className="text-red-600"
-                      onClick={() => handleDelete(doc.document_id)}
-                    >
-                      <FiTrash2 />
-                    </button>
+  className="text-red-600 cursor-pointer"
+  onClick={() => handleDelete(doc.document_id)}
+>
+  <FiTrash2 />
+</button>
+
                   </td>
                 </tr>
               ))
@@ -214,7 +297,7 @@ export default function DocumentManagement() {
               </h2>
               <button
                 onClick={() => setDrawerOpen(false)}
-                className="text-white"
+                className="text-white cursor-pointer"
               >
                 <FiX size={22} />
               </button>
@@ -223,7 +306,10 @@ export default function DocumentManagement() {
             <div className="p-6">
               {!editMode ? (
                 <button
-                  className="w-full py-3 mb-3 font-semibold text-white bg-purple-600 rounded-xl"
+                  className="w-full py-3 mb-3 font-semibold text-white bg-purple-600 rounded-xl 
+           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
+           transition-all duration-300 cursor-pointer"
+
                   onClick={() => setEditMode(true)}
                 >
                   <FiEdit className="inline-block mr-2" />
@@ -240,7 +326,10 @@ export default function DocumentManagement() {
 
                   <button
                     onClick={handleSaveEdit}
-                    className="w-full py-3 mb-3 text-white bg-purple-700 rounded-xl"
+                    className="w-full py-3 mb-3 text-white bg-purple-700 rounded-xl 
+           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
+           transition-all duration-300 cursor-pointer"
+
                   >
                     <FiSave className="inline-block mr-2" />
                     Save Changes
@@ -248,7 +337,10 @@ export default function DocumentManagement() {
 
                   <button
                     onClick={() => setEditMode(false)}
-                    className="w-full py-3 border rounded-xl"
+                    className="w-full py-3 border rounded-xl text-black hover:text-white 
+           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
+           transition-all duration-300 cursor-pointer"
+
                   >
                     Cancel
                   </button>

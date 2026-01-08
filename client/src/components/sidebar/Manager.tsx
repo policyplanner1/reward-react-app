@@ -196,7 +196,7 @@ export default function ManagerNavbar() {
             </Link>
             <button
               onClick={logout}
-              className="flex items-center w-full gap-3 px-5 py-4 text-sm font-bold text-red-500 hover:bg-red-50"
+              className="flex items-center w-full gap-3 px-5 py-4 text-sm font-bold text-red-500 hover:bg-red-50 cursor-pointer"
             >
               <FiLogOut /> Sign Out
             </button>

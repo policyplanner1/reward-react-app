@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   FaCheckCircle,
   FaTimesCircle,
@@ -18,11 +18,10 @@ import {
   FaTrash,
 } from "react-icons/fa";
 import { FiPackage } from "react-icons/fi";
-
 import { Link } from "react-router-dom";
 import { routes } from "../../../../routes";
-
 import { api } from "../../../../api/api";
+
 const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 /* ================================
@@ -138,7 +137,7 @@ const StatusChip = ({ status }: { status: ProductStatus }) => {
 
   return (
     <div
-      className={`inline-flex items-center px-3 py-1.5 rounded-full border text-xs font-medium ${cfg.color}`}
+      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium ${cfg.color}`}
     >
       <Icon size={12} />
       {cfg.text}
@@ -203,7 +202,7 @@ const ActionModal = ({
       buttonColor: "bg-blue-600 hover:bg-blue-700",
       iconBg: "bg-blue-100",
       iconColor: "text-blue-600",
-      Icon: FaCheck,
+      Icon: FaPaperPlane,
       showReason: false,
       placeholder: "",
     },
@@ -238,10 +237,9 @@ const ActionModal = ({
 
   return (
     <div
-  className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
-  style={{ background: "rgba(2, 6, 23, 0.45)" }}
->
-
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+      style={{ background: "rgba(2, 6, 23, 0.45)" }}
+    >
       <div className="w-full max-w-md p-6 bg-white shadow-xl rounded-2xl">
         <div className="flex items-center mb-4">
           <div
@@ -267,7 +265,7 @@ const ActionModal = ({
               onChange={(e) => setReason(e.target.value)}
               placeholder={config.placeholder}
               rows={4}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#852BAF] focus:border-transparent"
+              className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#852BAF] focus:border-transparent"
             />
           </div>
         )}
@@ -276,14 +274,14 @@ const ActionModal = ({
           <button
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className={`px-4 py-2 text-white rounded-lg ${config.buttonColor} disabled:opacity-50 flex items-center`}
+            className={`px-4 py-2 text-white rounded-lg ${config.buttonColor} disabled:opacity-50 flex items-center cursor-pointer`}
           >
             {loading ? (
               <>
@@ -306,8 +304,12 @@ const ActionModal = ({
 export default function ProductManagerList() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(false);
 
+  // ✅ IMPORTANT: input typing should not trigger fetch directly
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -328,6 +330,8 @@ export default function ProductManagerList() {
     sent_for_approval: 0,
   });
 
+  const debounceRef = useRef<number | null>(null);
+
   // Modal state
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -342,53 +346,90 @@ export default function ProductManagerList() {
   /* ================================
        FETCH PRODUCTS
   ================================= */
-  const fetchProducts = useCallback(async () => {
-    try {
-      setLoading(true);
+  const fetchProducts = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      const silent = !!opts?.silent;
 
-      const params = {
-        page: pagination.currentPage,
-        limit: pagination.itemsPerPage,
-        status: statusFilter !== "all" ? statusFilter : undefined,
-        search: searchQuery || undefined,
-        sortBy,
-        sortOrder,
-      };
+      try {
+        if (!silent) {
+          setTableLoading(true);
+        }
 
-      const res = await api.get("/product/my-listed-products", { params });
+        const params = {
+          page: pagination.currentPage,
+          limit: pagination.itemsPerPage,
+          status: statusFilter !== "all" ? statusFilter : undefined,
+          search: searchQuery ? searchQuery : undefined,
+          sortBy,
+          sortOrder,
+        };
 
-      const data: ApiResponse = res.data;
+        const res = await api.get("/product/my-listed-products", { params });
+        const data: ApiResponse = res.data;
 
-      if (data.success) {
-        setProducts(data.products);
-        setPagination((prev) => ({
-          ...prev,
-          totalPages: data.totalPages || 1,
-          totalItems: data.total || 0,
-        }));
-        if (data.stats) setStats(data.stats);
+        if (data.success) {
+          setProducts(data.products);
+          setPagination((prev) => ({
+            ...prev,
+            totalPages: data.totalPages || 1,
+            totalItems: data.total || 0,
+          }));
+          if (data.stats) setStats(data.stats);
+        }
+      } catch (err) {
+        console.error("Error loading products:", err);
+      } finally {
+        if (!silent) {
+          setTableLoading(false);
+        }
       }
-    } catch (err) {
-      console.error("Error loading products:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    pagination.currentPage,
-    pagination.itemsPerPage,
-    statusFilter,
-    searchQuery,
-    sortBy,
-    sortOrder,
-  ]);
+    },
+    [
+      pagination.currentPage,
+      pagination.itemsPerPage,
+      statusFilter,
+      searchQuery,
+      sortBy,
+      sortOrder,
+    ]
+  );
 
+  // ✅ first load
   useEffect(() => {
-    fetchProducts();
+    (async () => {
+      try {
+        setLoading(true);
+        await fetchProducts({ silent: true });
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [fetchProducts]);
 
-  // Optional auto-refresh every 30s
+  // ✅ whenever filters/sort/page/searchQuery changes -> fetch (debounced for searchQuery)
   useEffect(() => {
-    const id = setInterval(fetchProducts, 30000);
+    // page/sort/filter change should fetch immediately (not debounced)
+    fetchProducts();
+  }, [pagination.currentPage, pagination.itemsPerPage, sortBy, sortOrder, statusFilter, fetchProducts]);
+
+  // ✅ Debounce ONLY for searchQuery changes (not for typing)
+  useEffect(() => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      setPagination((p) => ({ ...p, currentPage: 1 }));
+      fetchProducts();
+    }, 450);
+
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, [searchQuery, fetchProducts]);
+
+  // Optional auto-refresh every 30s (silent so input focus never breaks)
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetchProducts({ silent: true });
+    }, 30000);
     return () => clearInterval(id);
   }, [fetchProducts]);
 
@@ -401,10 +442,6 @@ export default function ProductManagerList() {
     reason?: string
   ) => {
     try {
-      // const token = localStorage.getItem("token");
-      // if (!token) throw new Error("No token");
-
-      // --- DELETE branch (implemented) ---
       if (action === "delete") {
         await api.delete(`/product/delete-product/${productId}`);
 
@@ -419,7 +456,6 @@ export default function ProductManagerList() {
         alert("Product deleted successfully");
       }
 
-      // --- REQUEST RESUBMISSION ---
       if (action === "request_resubmission") {
         const res = await api.post(`/product/submission/${productId}`, {
           reason: reason || null,
@@ -427,9 +463,7 @@ export default function ProductManagerList() {
 
         setProducts((prev) =>
           prev.map((p) =>
-            p.product_id === productId
-              ? { ...p, status: "sent_for_approval" }
-              : p
+            p.product_id === productId ? { ...p, status: "sent_for_approval" } : p
           )
         );
 
@@ -455,10 +489,17 @@ export default function ProductManagerList() {
     });
   };
 
+  // ✅ IMPORTANT: Search submit should NOT fight typing focus
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
-    fetchProducts();
+    setSearchQuery(searchInput.trim());
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput("");
+    setSearchQuery("");
+    setPagination((p) => ({ ...p, currentPage: 1 }));
   };
 
   const handlePageChange = (page: number) => {
@@ -559,15 +600,28 @@ export default function ProductManagerList() {
             <div className="relative">
               <input
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search by product name..."
-                className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#852BAF] focus:border-transparent"
+                className="w-full p-3 pl-10 pr-[90px] border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#852BAF] focus:border-transparent"
               />
-              <FaSearch className="absolute left-3 top-3.5 text-gray-400" />
+              <FaSearch className="absolute left-3 top-3.5 text-gray-400 pointer-events-none" />
+
+              {searchInput?.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute right-[78px] top-2 px-2 py-1.5 text-gray-600 rounded-md text-sm bg-gray-100 hover:bg-gray-200 cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+
               <button
                 type="submit"
-                className="absolute right-2 top-2 px-3 py-1.5 bg-[#852BAF] text-white rounded-md text-sm hover:bg-[#76209e]"
+                className="absolute right-2 top-2 px-3 py-1.5 text-white rounded-md text-sm
+                           bg-[#852BAF] cursor-pointer transition-all duration-300 active:scale-95
+                           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]"
               >
                 Search
               </button>
@@ -582,7 +636,7 @@ export default function ProductManagerList() {
                   setStatusFilter(e.target.value);
                   setPagination((prev) => ({ ...prev, currentPage: 1 }));
                 }}
-                className="appearance-none pl-10 pr-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#852BAF] focus:border-transparent"
+                className="appearance-none pl-10 pr-8 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#852BAF] focus:border-transparent cursor-pointer"
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
@@ -591,7 +645,7 @@ export default function ProductManagerList() {
                 <option value="rejected">Rejected</option>
                 <option value="resubmission">Resubmission</option>
               </select>
-              <FaFilter className="absolute left-3 top-3.5 text-gray-400" />
+              <FaFilter className="absolute left-3 top-3.5 text-gray-400 pointer-events-none" />
             </div>
 
             <select
@@ -602,7 +656,7 @@ export default function ProductManagerList() {
                 setSortOrder(order as "asc" | "desc");
                 setPagination((prev) => ({ ...prev, currentPage: 1 }));
               }}
-              className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#852BAF] focus:border-transparent"
+              className="px-4 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#852BAF] focus:border-transparent cursor-pointer"
             >
               <option value="created_at:desc">Newest First</option>
               <option value="created_at:asc">Oldest First</option>
@@ -613,11 +667,17 @@ export default function ProductManagerList() {
         </div>
 
         {/* TABLE */}
-        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+        <div className="relative overflow-x-auto border border-gray-200 rounded-lg">
+          {tableLoading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-[1px]">
+              <FaSpinner className="animate-spin text-3xl text-[#852BAF]" />
+            </div>
+          )}
+
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase" >
+                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
                   Product
                 </th>
                 <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
@@ -647,44 +707,38 @@ export default function ProductManagerList() {
             <tbody className="bg-white divide-y divide-gray-200">
               {products.map((product) => (
                 <tr key={product.product_id} className="hover:bg-gray-50">
-                  {/* PRODUCT NAME */}
                   <td className="px-4 py-4">
-  <div className="flex flex-col items-center">
-    {/* IMAGE OR FALLBACK ICON */}
-    {product?.main_image ? (
-      <div className="w-12 h-12 mb-2 overflow-hidden bg-gray-100 rounded">
-        <img
-          src={
-            product?.main_image
-              ? `${API_BASEIMAGE_URL}/uploads/${product.main_image}`
-              : undefined
-          }
-          alt={product?.product_name || "Product Image"}
-          className="object-cover w-full h-full"
-        />
-      </div>
-    ) : (
-      <div className="flex items-center justify-center w-12 h-12 mb-2 bg-gray-100 rounded">
-        <FaBox className="text-gray-400 text-lg" />
-      </div>
-    )}
+                    <div className="flex flex-col items-center">
+                      {product?.main_image ? (
+                        <div className="w-12 h-12 mb-2 overflow-hidden bg-gray-100 rounded">
+                          <img
+                            src={
+                              product?.main_image
+                                ? `${API_BASEIMAGE_URL}/uploads/${product.main_image}`
+                                : undefined
+                            }
+                            alt={product?.product_name || "Product Image"}
+                            className="object-cover w-full h-full"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center w-12 h-12 mb-2 bg-gray-100 rounded">
+                          <FaBox className="text-gray-400 text-lg" />
+                        </div>
+                      )}
 
-    {/* PRODUCT NAME */}
-    <div className="font-semibold text-gray-700 text-center text-sm">
-      {product?.product_name || "Unnamed Product"}
-    </div>
-  </div>
-</td>
+                      <div className="font-semibold text-gray-700 text-center text-sm">
+                        {product?.product_name || "Unnamed Product"}
+                      </div>
+                    </div>
+                  </td>
 
-
-                  {/*   Brand Name */}
                   <td className="px-4 py-4">
                     <div className="text-sm text-gray-900">
                       {product?.brand_name || "N/A"}
                     </div>
                   </td>
 
-                  {/* CATEGORY */}
                   <td className="px-4 py-4">
                     <div className="text-sm text-gray-900">
                       {product?.category_name ||
@@ -693,7 +747,6 @@ export default function ProductManagerList() {
                     </div>
                   </td>
 
-                  {/* Subcategory Name */}
                   <td className="px-4 py-4">
                     <div className="text-sm text-gray-900">
                       {product?.subcategory_name ||
@@ -702,7 +755,6 @@ export default function ProductManagerList() {
                     </div>
                   </td>
 
-                  {/* Sub sub category */}
                   <td className="px-4 py-4">
                     <div className="text-sm text-gray-900">
                       {product?.sub_subcategory_name ||
@@ -711,34 +763,29 @@ export default function ProductManagerList() {
                     </div>
                   </td>
 
-                  {/* STATUS */}
                   <td className="px-4 py-4">
                     <StatusChip status={product?.status} />
                   </td>
 
-                  {/* Rejection */}
                   <td className="px-4 py-4">
                     <div className="text-sm text-gray-900">
                       {product?.rejection_reason || "N/A"}
                     </div>
                   </td>
 
-                  {/* ACTIONS */}
                   <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">
-                      {/* View Button*/}
                       <Link
                         to={routes.vendor.products.review.replace(
                           ":productId",
                           String(product.product_id)
                         )}
                       >
-                        <button className="p-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                        <button className="p-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 cursor-pointer">
                           <FaEye />
                         </button>
                       </Link>
 
-                      {/* Edit Button */}
                       {!["approved", "rejected", "sent_for_approval"].includes(
                         product.status
                       ) && (
@@ -749,34 +796,32 @@ export default function ProductManagerList() {
                           )}
                           target="_blank"
                         >
-                          <button className="p-2 text-purple-700 bg-purple-100 rounded hover:bg-purple-200">
+                          <button className="p-2 text-purple-700 bg-purple-100 rounded hover:bg-purple-200 cursor-pointer">
                             <FaEdit />
                           </button>
                         </Link>
                       )}
 
-                      {/* Delete */}
-                      {![
+                      {[
                         "approved",
                         "rejected",
                         "resubmission",
                         "sent_for_approval",
-                      ].includes(product.status) && (
+                      ].includes(product.status) ? null : (
                         <button
                           onClick={() => openActionModal(product, "delete")}
-                          className="p-2 text-red-700 bg-red-100 rounded hover:bg-red-200"
+                          className="p-2 text-red-700 bg-red-100 rounded hover:bg-red-200 cursor-pointer"
                         >
                           <FaTrash />
                         </button>
                       )}
 
-                      {/* Request Resubmission*/}
                       {["pending", "resubmission"].includes(product.status) && (
                         <button
                           onClick={() =>
                             openActionModal(product, "request_resubmission")
                           }
-                          className="p-2 text-green-700 bg-green-100 rounded hover:bg-green-200"
+                          className="p-2 text-green-700 bg-green-100 rounded hover:bg-green-200 cursor-pointer"
                         >
                           <FaPaperPlane />
                         </button>
@@ -819,10 +864,7 @@ export default function ProductManagerList() {
                     pageNum = i + 1;
                   } else if (pagination.currentPage <= 3) {
                     pageNum = i + 1;
-                  } else if (
-                    pagination.currentPage >=
-                    pagination.totalPages - 2
-                  ) {
+                  } else if (pagination.currentPage >= pagination.totalPages - 2) {
                     pageNum = pagination.totalPages - 4 + i;
                   } else {
                     pageNum = pagination.currentPage - 2 + i;

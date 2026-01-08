@@ -14,6 +14,7 @@ import {
   FiGrid,
 } from "react-icons/fi";
 import { api } from "../../../../api/api";
+import Swal from "sweetalert2";
 
 type Status = "active" | "inactive";
 
@@ -153,18 +154,104 @@ export default function SubSubCategoryManagement() {
     return subsub.filter((s) => s.subcategory_id === selectedSubcategoryId);
   }, [selectedSubcategoryId, subsub]);
 
-  const handleAdd = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!newName.trim() || selectedSubcategoryId === "") return;
-    try {
-      await api.post("/vendor/create-sub-subcategory", {
-        subcategory_id: selectedSubcategoryId,
-        name: newName,
-      });
-      setNewName("");
-      loadSubSubCategories();
-    } catch (e) { console.log("Add error", e); }
-  };
+ const handleAdd = async (e?: React.FormEvent) => {
+  e?.preventDefault();
+
+  const okBtnClass =
+    "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
+    "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer";
+
+  // ✅ POPUP: Category not selected
+  if (selectedCategoryId === "") {
+    await Swal.fire({
+      title: "Select Category",
+      text: "Please select a category first.",
+      icon: "warning",
+      confirmButtonText: "OK",
+      buttonsStyling: false,
+      customClass: {
+        confirmButton: okBtnClass,
+        popup: "rounded-2xl",
+      },
+    });
+    return;
+  }
+
+  // ✅ POPUP: Subcategory not selected
+  if (selectedSubcategoryId === "") {
+    await Swal.fire({
+      title: "Select Subcategory",
+      text: "Please select a subcategory first.",
+      icon: "warning",
+      confirmButtonText: "OK",
+      buttonsStyling: false,
+      customClass: {
+        confirmButton: okBtnClass,
+        popup: "rounded-2xl",
+      },
+    });
+    return;
+  }
+
+  // ✅ POPUP: Type name empty
+  if (!newName.trim()) {
+    await Swal.fire({
+      title: "Type name required",
+      text: "Please enter a Type name before adding.",
+      icon: "warning",
+      confirmButtonText: "OK",
+      buttonsStyling: false,
+      customClass: {
+        confirmButton: okBtnClass,
+        popup: "rounded-2xl",
+      },
+    });
+    return;
+  }
+
+  try {
+    await api.post("/vendor/create-sub-subcategory", {
+      subcategory_id: selectedSubcategoryId,
+      name: newName,
+    });
+
+    setNewName("");
+    loadSubSubCategories();
+
+    Swal.fire({
+      title: "Added!",
+      text: "Type added successfully.",
+      icon: "success",
+      timer: 1200,
+      showConfirmButton: false,
+      customClass: { popup: "rounded-2xl" },
+    });
+  } catch (err: any) {
+    console.log("Add error", err);
+
+    Swal.fire({
+      title: "Failed",
+      text:
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        "Failed to add Type. Please try again.",
+      icon: "error",
+      confirmButtonText: "OK",
+      buttonsStyling: false,
+      customClass: {
+        confirmButton: okBtnClass,
+        popup: "rounded-2xl",
+      },
+    });
+  }
+};
+
+
+
+
+
+
+
 
   const handleView = async (id: number) => {
     try {
@@ -199,14 +286,50 @@ export default function SubSubCategoryManagement() {
     } catch (e) { console.log("Update error", e); }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this Type / Sub-Type?")) return;
-    try {
-      await api.delete(`/vendor/delete-sub-subcategory/${id}`);
-      loadSubSubCategories();
-      setDrawerOpen(false);
-    } catch (e) { console.log("Delete error", e); }
-  };
+ const handleDelete = async (id: number) => {
+  const result = await Swal.fire({
+    title: "Delete this Type / Sub-Type?",
+    text: "This action cannot be undone.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Yes, delete",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#EF4444",
+    cancelButtonColor: "#9CA3AF",
+    reverseButtons: true,
+  });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    await api.delete(`/vendor/delete-sub-subcategory/${id}`);
+    loadSubSubCategories();
+    setDrawerOpen(false);
+
+    Swal.fire({
+      title: "Deleted!",
+      text: "Type / Sub-Type deleted successfully.",
+      icon: "success",
+      timer: 1400,
+      showConfirmButton: false,
+    });
+  } catch (err: any) {
+    console.log("Delete error", err);
+
+    const msg =
+      err?.response?.data?.error ||
+      err?.response?.data?.message ||
+      "Something went wrong while deleting.";
+
+    Swal.fire({
+      title: "Delete failed",
+      text: msg,
+      icon: "error",
+      confirmButtonText: "OK",
+      confirmButtonColor: "#EF4444",
+    });
+  }
+};
 
   return (
     <div className="min-h-screen p-8 bg-[#FAFAFE]">
@@ -222,45 +345,55 @@ export default function SubSubCategoryManagement() {
       </div>
 
       {/* ADD AREA */}
-      <form
-        onSubmit={handleAdd}
-        className="flex flex-col gap-3 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-5xl md:flex-row"
-      >
-        <select
-          value={selectedCategoryId}
-          onChange={(e) => setSelectedCategoryId(Number(e.target.value) || "")}
-          className="px-4 py-3 text-sm font-bold bg-gray-50 rounded-xl outline-none text-gray-700 md:w-1/4"
-        >
-          <option value="">Select Category</option>
-          {categories.map((c) => (
-            <option key={c.category_id} value={c.category_id}>{c.name}</option>
-          ))}
-        </select>
+     <form
+  onSubmit={handleAdd}
+  className="flex flex-col gap-3 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-5xl md:flex-row"
+>
+  <select
+    value={selectedCategoryId}
+    onChange={(e) => setSelectedCategoryId(Number(e.target.value) || "")}
+    className="px-4 py-3 text-sm font-bold bg-gray-50 rounded-xl outline-none text-gray-700 md:w-1/4"
+  >
+    <option value="">Select Category</option>
+    {categories.map((c) => (
+      <option key={c.category_id} value={c.category_id}>
+        {c.name}
+      </option>
+    ))}
+  </select>
 
-        <select
-          value={selectedSubcategoryId}
-          onChange={(e) => setSelectedSubcategoryId(Number(e.target.value) || "")}
-          className="px-4 py-3 text-sm font-bold bg-gray-50 rounded-xl outline-none text-gray-700 md:w-1/4 disabled:opacity-50"
-          disabled={selectedCategoryId === ""}
-        >
-          <option value="">Select Subcategory</option>
-          {filterSubcats.map((s) => (
-            <option key={s.subcategory_id} value={s.subcategory_id}>{s.subcategory_name}</option>
-          ))}
-        </select>
+  <select
+    value={selectedSubcategoryId}
+    onChange={(e) =>
+      setSelectedSubcategoryId(Number(e.target.value) || "")
+    }
+    className="px-4 py-3 text-sm font-bold bg-gray-50 rounded-xl outline-none text-gray-700 md:w-1/4 disabled:opacity-50"
+    disabled={selectedCategoryId === ""}
+  >
+    <option value="">Select Subcategory</option>
+    {filterSubcats.map((s) => (
+      <option key={s.subcategory_id} value={s.subcategory_id}>
+        {s.subcategory_name}
+      </option>
+    ))}
+  </select>
 
-        <input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Enter New Type Name..."
-          className="flex-1 px-5 py-3 text-sm font-semibold bg-transparent outline-none placeholder:text-gray-300"
-          disabled={selectedSubcategoryId === ""}
-        />
+  <input
+    value={newName}
+    onChange={(e) => setNewName(e.target.value)}
+    placeholder="Enter New Type Name..."
+    className="flex-1 px-5 py-3 text-sm font-semibold bg-transparent outline-none placeholder:text-gray-300"
+    disabled={selectedSubcategoryId === ""}
+  />
 
-        <button className="flex items-center justify-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200 cursor-pointer">
-          <FiPlus /> Add Type
-        </button>
-      </form>
+  <button
+    type="submit"
+    className="flex items-center justify-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200 cursor-pointer"
+  >
+    <FiPlus /> Add Type
+  </button>
+</form>
+
 
       {/* TABLE */}
       <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] border border-gray-100 overflow-hidden">
@@ -299,9 +432,13 @@ export default function SubSubCategoryManagement() {
                     <button onClick={() => { handleView(s.sub_subcategory_id); setIsEditing(true); }} className="p-2.5 text-gray-400 hover:text-[#FC3F78] bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer">
                       <FiEdit size={16} />
                     </button>
-                    <button onClick={() => handleDelete(s.sub_subcategory_id)} className="p-2.5 text-gray-400 hover:text-red-500 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer">
-                      <FiTrash2 size={16} />
-                    </button>
+                    <button
+  onClick={() => handleDelete(s.sub_subcategory_id)}
+  className="p-2.5 text-gray-400 hover:text-red-500 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
+>
+  <FiTrash2 size={16} />
+</button>
+
                   </div>
                 </td>
               </tr>
@@ -342,7 +479,8 @@ export default function SubSubCategoryManagement() {
                     <p className="text-lg font-bold text-gray-800">{selected.subcategory_name}</p>
                   </div>
                   <button
-                    className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl hover:bg-gray-800 transition-all active:scale-95 shadow-xl shadow-gray-200"
+                     className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
+           transition-all duration-300 cursor-pointer"
                     onClick={() => setIsEditing(true)}
                   >
                      Edit
@@ -374,13 +512,15 @@ export default function SubSubCategoryManagement() {
                   <div className="pt-4 space-y-3">
                     <button
                       onClick={handleSaveEdit}
-                      className="w-full py-4 font-black text-white bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-2xl shadow-lg shadow-purple-200 hover:opacity-90 transition-all"
+                      className="w-full py-4 font-black text-white bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-2xl shadow-lg shadow-purple-200 hover:opacity-90 transition-all cursor-pointer"
                     >
                       <FiSave className="inline-block mr-2" /> Save Changes
                     </button>
                     <button
                       onClick={() => setIsEditing(false)}
-                      className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl hover:bg-gray-50 transition-all"
+                     className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl 
+           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
+           hover:text-white transition-all duration-300 cursor-pointer"                    
                     >
                       Discard
                     </button>
