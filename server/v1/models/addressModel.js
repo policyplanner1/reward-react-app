@@ -18,6 +18,20 @@ class AddressModel {
     return rows;
   }
 
+    // Fetch States
+  async getAllStates() {
+    const [rows] = await db.execute(
+      `SELECT 
+         state_id,
+         state_name
+       FROM states
+       WHERE status = 1
+       ORDER BY state_name`
+    );
+
+    return rows;
+  }
+
   // Fetch States by Country ID
   async getStatesByCountry(countryId) {
     const [rows] = await db.execute(

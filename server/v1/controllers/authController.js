@@ -155,6 +155,24 @@ class AuthController {
     }
   }
 
+  // Get all states
+  async getStates(req, res) {
+    try {
+      const states = await AddressModel.getAllStates();
+
+      return res.json({
+        success: true,
+        data: states,
+      });
+    } catch (error) {
+      console.error("Get States Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch states",
+      });
+    }
+  }
+
   // Get states by country ID
   async getStatesByCountry(req, res) {
     try {

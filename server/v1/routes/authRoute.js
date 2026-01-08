@@ -13,12 +13,15 @@ router.post("/login", authController.loginUser);
 // edit Profile
 
 /*=============================================Address================================================*/
-
 // Fetch all the countries
-router.get("/countries", authController.getCountries);
+// router.get("/countries", authController.getCountries);
 
 // fetch all the state of the country
-router.get("/states/:country_id", authController.getStatesByCountry);
+// router.get("/states/:country_id", authController.getStatesByCountry);
+
+// Fetch all the states
+router.get("/states", authController.getStates);
+
 
 // add address
 // router.post("/address", auth, authController.addAddress);
