@@ -89,63 +89,87 @@ export default function ChangePasswordPage() {
         )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-          {/* Current password */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Current Password
-            </label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="mt-1 w-full p-3 border rounded-xl focus:ring-1 focus:ring-[#852BAF]"
-              placeholder="Enter current password"
-            />
-          </div>
+  {/* Current password */}
+  <div>
+    <label className="block text-sm font-semibold text-gray-800">
+      Current Password
+    </label>
+    <div className="mt-2 relative">
+      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-[#852BAF]/20 to-[#FC3F78]/20 blur-[10px] opacity-0 transition-opacity duration-300 group-focus-within:opacity-100" />
+      <input
+        type="password"
+        value={currentPassword}
+        onChange={(e) => setCurrentPassword(e.target.value)}
+        className="relative w-full px-4 py-3.5 rounded-2xl bg-white/90
+                   border border-gray-200 shadow-sm
+                   placeholder:text-gray-400 text-gray-900
+                   outline-none transition-all duration-300
+                   focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15
+                   focus:shadow-lg focus:shadow-[#852BAF]/10"
+        placeholder="Enter current password"
+      />
+    </div>
+  </div>
 
-          {/* New password */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              New Password
-            </label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="mt-1 w-full p-3 border rounded-xl focus:ring-1 focus:ring-[#852BAF]"
-              placeholder="Enter new password"
-            />
-          </div>
+  {/* New password */}
+  <div>
+    <label className="block text-sm font-semibold text-gray-800">
+      New Password
+    </label>
+    <div className="mt-2 relative">
+      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-[#852BAF]/20 to-[#FC3F78]/20 blur-[10px] opacity-0 transition-opacity duration-300 group-focus-within:opacity-100" />
+      <input
+        type="password"
+        value={newPassword}
+        onChange={(e) => setNewPassword(e.target.value)}
+        className="relative w-full px-4 py-3.5 rounded-2xl bg-white/90
+                   border border-gray-200 shadow-sm
+                   placeholder:text-gray-400 text-gray-900
+                   outline-none transition-all duration-300
+                   focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15
+                   focus:shadow-lg focus:shadow-[#852BAF]/10"
+        placeholder="Enter new password"
+      />
+    </div>
+  </div>
 
-          {/* Confirm password */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Confirm New Password
-            </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 w-full p-3 border rounded-xl focus:ring-1 focus:ring-[#852BAF]"
-              placeholder="Confirm new password"
-            />
-          </div>
+  {/* Confirm password */}
+  <div>
+    <label className="block text-sm font-semibold text-gray-800">
+      Confirm New Password
+    </label>
+    <div className="mt-2 relative">
+      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-[#852BAF]/20 to-[#FC3F78]/20 blur-[10px] opacity-0 transition-opacity duration-300 group-focus-within:opacity-100" />
+      <input
+        type="password"
+        value={confirmPassword}
+        onChange={(e) => setConfirmPassword(e.target.value)}
+        className="relative w-full px-4 py-3.5 rounded-2xl bg-white/90
+                   border border-gray-200 shadow-sm
+                   placeholder:text-gray-400 text-gray-900
+                   outline-none transition-all duration-300
+                   focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15
+                   focus:shadow-lg focus:shadow-[#852BAF]/10"
+        placeholder="Confirm new password"
+      />
+    </div>
+  </div>
 
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="
-              w-full mt-4 px-6 py-3 rounded-xl font-semibold text-white
-              bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-              hover:opacity-90 transition-all
-              shadow-lg shadow-purple-200
-              disabled:opacity-60
-            "
-          >
-            {loading ? "Updating..." : "Update Password"}
-          </button>
-        </form>
+  {/* Submit */}
+  <button
+    type="submit"
+    disabled={loading}
+    className="w-full mt-4 px-6 py-3.5 rounded-2xl font-bold text-white text-lg
+               bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+               transition-all duration-300 cursor-pointer active:scale-95
+               hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+               shadow-lg shadow-[#852BAF]/25 hover:shadow-xl
+               disabled:opacity-60 disabled:cursor-not-allowed"
+  >
+    {loading ? "Updating..." : "Update Password"}
+  </button>
+</form>
+
       </div>
     </div>
   );

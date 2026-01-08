@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FiPlus, FiTrash2, FiEye, FiX, FiFileText } from "react-icons/fi";
-
+import Swal from "sweetalert2";
 // const API_BASE = import.meta.env.VITE_API_URL;
 import { api } from "../../../../api/api";
 
@@ -82,25 +82,66 @@ export default function DocumentCategoryManagement() {
   /* =========================
         ADD MAPPING
   ========================= */
-  const handleAdd = async () => {
-    if (!categoryId || !documentId) {
-      alert("Please select both category and document");
-      return;
-    }
+  const okBtnClass =
+  "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
+  "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95";
 
-    try {
-      await api.post("/manager/create-category-documents", {
-        category_id: categoryId,
-        document_id: documentId,
-      });
+const handleAdd = async () => {
+  //  VALIDATION POPUP
+  if (!categoryId || !documentId) {
+    await Swal.fire({
+      title: "Required fields",
+      text: "Please select both category and document.",
+      icon: "warning",
+      confirmButtonText: "OK",
+      buttonsStyling: false,
+      customClass: {
+        confirmButton: okBtnClass,
+        popup: "rounded-2xl",
+      },
+    });
+    return;
+  }
 
-      setCategoryId("");
-      setDocumentId("");
-      fetchMappings();
-    } catch (err) {
-      console.error("Failed to add mapping", err);
-    }
-  };
+  try {
+    await api.post("/manager/create-category-documents", {
+      category_id: categoryId,
+      document_id: documentId,
+    });
+
+    setCategoryId("");
+    setDocumentId("");
+    fetchMappings();
+
+    //  SUCCESS POPUP
+    Swal.fire({
+      title: "Added!",
+      text: "Category & Document mapping added successfully.",
+      icon: "success",
+      timer: 1400,
+      showConfirmButton: false,
+      customClass: { popup: "rounded-2xl" },
+    });
+  } catch (err: any) {
+    console.error("Failed to add mapping", err);
+
+    //  ERROR POPUP
+    await Swal.fire({
+      title: "Failed",
+      text:
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        "Failed to add mapping. Please try again.",
+      icon: "error",
+      confirmButtonText: "OK",
+      buttonsStyling: false,
+      customClass: {
+        confirmButton: okBtnClass,
+        popup: "rounded-2xl",
+      },
+    });
+  }
+};
 
   /* =========================
         VIEW (DRAWER)
@@ -118,16 +159,47 @@ export default function DocumentCategoryManagement() {
   /* =========================
         DELETE
   ========================= */
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this record?")) return;
+ const handleDelete = async (id: number) => {
+  const result = await Swal.fire({
+    title: "Delete this record?",
+    text: "This action cannot be undone.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Yes, delete",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#EF4444",
+    cancelButtonColor: "#9CA3AF",
+    reverseButtons: true,
+  });
 
-    try {
-      await api.delete(`/manager/category-documents/${id}`);
-      fetchMappings();
-    } catch (err) {
-      console.error("Failed to delete mapping", err);
-    }
-  };
+  if (!result.isConfirmed) return;
+
+  try {
+    await api.delete(`/manager/category-documents/${id}`);
+    fetchMappings();
+
+    Swal.fire({
+      title: "Deleted!",
+      text: "Record deleted successfully.",
+      icon: "success",
+      timer: 1400,
+      showConfirmButton: false,
+    });
+  } catch (err: any) {
+    console.error("Failed to delete mapping", err);
+
+    Swal.fire({
+      title: "Delete failed",
+      text:
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        "Failed to delete record. Please try again.",
+      icon: "error",
+      confirmButtonText: "OK",
+      confirmButtonColor: "#EF4444",
+    });
+  }
+};
 
   /* =========================
         UI
@@ -139,40 +211,44 @@ export default function DocumentCategoryManagement() {
       </h1>
 
       {/* ADD SECTION */}
-      <div className="flex flex-col gap-4 p-6 bg-white shadow rounded-xl md:flex-row">
-        <select
-          value={categoryId}
-          onChange={(e) => setCategoryId(Number(e.target.value))}
-          className="p-3 border rounded-xl md:w-1/3"
-        >
-          <option value="">Select Category</option>
-          {categories.map((c) => (
-            <option key={c.category_id} value={c.category_id}>
-              {c.category_name}
-            </option>
-          ))}
-        </select>
+     <div className="flex flex-col gap-4 p-6 bg-white shadow rounded-xl md:flex-row md:items-center md:gap-6">
+  <select
+    value={categoryId}
+    onChange={(e) => setCategoryId(Number(e.target.value))}
+    className="p-3 border rounded-xl w-full md:flex-1"
+  >
+    <option value="">Select Category</option>
+    {categories.map((c) => (
+      <option key={c.category_id} value={c.category_id}>
+        {c.category_name}
+      </option>
+    ))}
+  </select>
 
-        <select
-          value={documentId}
-          onChange={(e) => setDocumentId(Number(e.target.value))}
-          className="p-3 border rounded-xl md:w-1/3"
-        >
-          <option value="">Select Document</option>
-          {documents.map((d) => (
-            <option key={d.document_id} value={d.document_id}>
-              {d.document_name}
-            </option>
-          ))}
-        </select>
+  <select
+    value={documentId}
+    onChange={(e) => setDocumentId(Number(e.target.value))}
+    className="p-3 border rounded-xl w-full md:flex-1"
+  >
+    <option value="">Select Document</option>
+    {documents.map((d) => (
+      <option key={d.document_id} value={d.document_id}>
+        {d.document_name}
+      </option>
+    ))}
+  </select>
 
-        <button
-          onClick={handleAdd}
-          className="flex items-center justify-center gap-2 px-6 py-3 text-white bg-purple-600 rounded-xl"
-        >
-          <FiPlus /> Add
-        </button>
-      </div>
+  <button
+    onClick={handleAdd}
+    className="md:ml-auto inline-flex items-center justify-center gap-2
+               px-6 py-3 text-white bg-purple-600 rounded-xl
+               hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+               transition-all duration-300 w-full md:w-[140px] cursor-pointer"
+  >
+    <FiPlus /> Add
+  </button>
+</div>
+
 
       {/* TABLE */}
       <div className="p-6 mt-6 bg-white shadow rounded-xl">
@@ -198,15 +274,18 @@ export default function DocumentCategoryManagement() {
                   <td className="p-3">{r.category_name}</td>
                   <td className="p-3">{r.document_name}</td>
                   <td className="p-3 text-right flex justify-end gap-3">
-                    <button onClick={() => handleView(r.id)}>
+                    <button
+                    className="cursor-pointer"
+                     onClick={() => handleView(r.id)}>
                       <FiEye />
                     </button>
                     <button
-                      className="text-red-600"
-                      onClick={() => handleDelete(r.id)}
-                    >
-                      <FiTrash2 />
-                    </button>
+  className="text-red-600 cursor-pointer"
+  onClick={() => handleDelete(r.id)}
+>
+  <FiTrash2 />
+</button>
+
                   </td>
                 </tr>
               ))
@@ -230,7 +309,7 @@ export default function DocumentCategoryManagement() {
               <h2 className="text-xl font-bold text-white">View Details</h2>
               <button
                 onClick={() => setDrawerOpen(false)}
-                className="text-white"
+                className="text-white cursor-pointer"
               >
                 <FiX size={22} />
               </button>

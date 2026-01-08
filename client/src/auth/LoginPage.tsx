@@ -1,6 +1,9 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "./useAuth";
+import logoImage from "../assets/logo.svg";
+// import { User, Lock, Facebook, Twitter, Chrome } from "lucide-react";
+import { User, Lock } from "lucide-react";
 
 type Role = "vendor" | "vendor_manager" | "admin" | "warehouse_manager";
 
@@ -31,7 +34,6 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
     try {
       await login(formData.email, formData.password, formData.role);
     } catch (err: unknown) {
@@ -41,140 +43,143 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen px-6 bg-gradient-to-br from-purple-50 via-white to-indigo-50">
-      <div className="relative w-full max-w-md rounded-3xl bg-white/80 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.08)] ring-1 ring-black/5">
-        <div className="p-10">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <div className="flex items-center justify-center w-16 h-16 shadow-lg rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600">
-              <svg
-                className="w-8 h-8 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
-              </svg>
-            </div>
-          </div>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-tr from-[#38bdf8] via-[#a855f7] to-[#ec4899] font-sans px-4">
+      <div className="w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
+<div className="relative hidden md:block bg-white">
+  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_20%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(900px_circle_at_85%_30%,rgba(168,85,247,0.10),transparent_55%),radial-gradient(900px_circle_at_50%_110%,rgba(236,72,153,0.08),transparent_55%)]" />
+  <div className="pointer-events-none absolute inset-0 opacity-[0.08] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:18px_18px]" />
 
-          {/* Heading */}
-          <div className="mb-10 text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-              Welcome Back
-            </h2>
-            <p className="mt-2 text-sm text-gray-500">
-              Sign in to continue to your dashboard
-            </p>
-          </div>
+  <div className="relative h-full w-full flex items-center justify-center p-10">
+    <img
+      src={logoImage}
+      alt="Login Illustration"
+      className="w-full max-w-md drop-shadow-2xl select-none mt-[-4em]"
 
-          {(error || authError) && (
-            <div className="flex items-start gap-3 p-4 mb-6 text-sm text-red-700 border border-red-100 rounded-xl bg-red-50">
-              <svg
-                className="w-4 h-4 mt-0.5 text-red-500"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                />
-              </svg>
-              {error || authError}
-            </div>
-          )}
+      draggable={false}
+    />
+  </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block mb-1 text-xs font-semibold tracking-wide text-gray-700 uppercase"
-              >
-                Email Address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                disabled={loading}
-                className="w-full px-4 py-3 text-gray-800 transition-all outline-none text-der-gray-200 boxrder tebg-white te rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-60"
-                placeholder="name@company.com"
-                value={formData.email}
-                onChange={handleChange} 
-              />
-            </div>
+  <div className="absolute bottom-8 left-8 right-8 text-slate-900">
+    <p className="text-2xl font-extrabold leading-tight">Welcome back 👋</p>
+    <p className="mt-2 text-sm text-slate-500">
+      Sign in and continue to your dashboard.
+    </p>
+  </div>
 
-            {/* Role */}
-            {/* <div>
-              <label
-                htmlFor="role"
-                className="block mb-1 text-xs font-semibold tracking-wide text-gray-700 uppercase"
-              >
-                Account Role
-              </label>
-              <select
-                id="role"
-                name="role"
-                disabled={loading}
-                className="w-full px-4 py-3 transition-all text-gray-700 bg-white border border-gray-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 disabled:opacity-60"
-                value={formData.role}
-                onChange={handleChange}
-              >
-                <option value="vendor">Vendor</option>
-                <option value="vendor_manager">Vendor Manager</option>
-                <option value="admin">Admin</option>
-                <option value="warehouse_manager">Warehouse Manager</option>
-              </select>
-            </div> */}
+  <div className="pointer-events-none absolute top-0 right-0 h-full w-[2px] bg-gradient-to-b from-transparent via-slate-200 to-transparent" />
+  <div className="pointer-events-none absolute top-0 right-[-10px] h-full w-[22px] bg-gradient-to-l from-[#852BAF]/10 via-[#FC3F78]/5 to-transparent blur-xl" />
+</div>
 
-            {/* Password */}
-            <div>
-              <label
-                htmlFor="password"
-                className="block mb-1 text-xs font-semibold tracking-wide text-gray-700 uppercase"
-              >
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                disabled={loading}
-                className="w-full px-4 py-3 transition-all text-gray-700 bg-white border border-gray-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-60"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={handleChange}
-              />
-            </div>
+<div className="w-full bg-white py-10 px-10 relative">
+  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_0%,rgba(133,43,175,0.05),transparent_45%)]" />
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 font-semibold text-white rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 shadow-lg hover:from-purple-700 hover:to-indigo-700 transition-all active:scale-[0.98] disabled:opacity-50"
-            >
-              {loading ? "Signing in..." : "Sign In"}
-            </button>
-          </form>
+  {/* Header */}
+  <h2 className="relative text-4xl font-extrabold text-center text-[#333] mb-10">
+    Login
+  </h2>
 
-          <p className="mt-10 text-sm text-center text-gray-500">
-            Don&apos;t have an account?{" "}
-            <Link
-              to="/register"
-              className="font-semibold text-purple-600 hover:text-purple-800 underline-offset-4 hover:underline"
-            >
-              Create Account
-            </Link>
-          </p>
-        </div>
+  {(error || authError) && (
+    <div className="relative mb-4 text-xs text-center text-red-500 font-medium">
+      {error || authError}
+    </div>
+  )}
+
+  <form onSubmit={handleSubmit} className="relative space-y-8">
+    {/* Email/Username Field */}
+    <div className="relative border-b-2 border-gray-200 focus-within:border-purple-500 transition-colors">
+      <label className="block text-sm text-gray-500 mb-1">Email</label>
+      <div className="flex items-center pb-2">
+        <User className="w-4 h-4 text-gray-400 mr-3" />
+        <input
+          name="email"
+          type="email"
+          required
+          className="w-full bg-transparent outline-none text-gray-700 placeholder-gray-300"
+          placeholder="name@company.com"
+          value={formData.email}
+          onChange={handleChange}
+        />
+      </div>
+    </div>
+
+    {/* Password Field */}
+    <div className="relative border-b-2 border-gray-200 focus-within:border-purple-500 transition-colors">
+      <label className="block text-sm text-gray-500 mb-1">Password</label>
+      <div className="flex items-center pb-2">
+        <Lock className="w-4 h-4 text-gray-400 mr-3" />
+        <input
+          name="password"
+          type="password"
+          required
+          className="w-full bg-transparent outline-none text-gray-700 placeholder-gray-300"
+          placeholder="********"
+          value={formData.password}
+          onChange={handleChange}
+        />
+      </div>
+    </div>
+
+    <div className="flex items-center justify-end">
+      {/*  Social icons (kept for later use) */}
+      {/*
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-[#3b5998] text-white hover:opacity-80 transition-opacity"
+        >
+          <Facebook size={16} fill="currentColor" />
+        </button>
+        <button
+          type="button"
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-[#1da1f2] text-white hover:opacity-80 transition-opacity"
+        >
+          <Twitter size={16} fill="currentColor" />
+        </button>
+        <button
+          type="button"
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-[#ea4335] text-white hover:opacity-80 transition-opacity"
+        >
+          <Chrome size={16} />
+        </button>
+      </div>
+      */}
+
+      <Link
+        to="/forgot-password"
+        className="text-xs text-gray-400 hover:text-purple-600 transition-colors"
+      >
+        Forgot password?
+      </Link>
+    </div>
+
+    {/* Login Button */}
+    <button
+      type="submit"
+      disabled={loading}
+      className="w-full mt-6 text-white font-bold py-3.5 rounded-2xl text-lg
+               bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+               shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer
+               hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+               hover:shadow-xl active:scale-95
+               disabled:opacity-60 disabled:cursor-not-allowed"
+    >
+      {loading ? "Logging in..." : "Login"}
+    </button>
+  </form>
+
+  <div className="relative mt-10 text-center">
+    <p className="mt-10 text-sm text-center text-gray-500">
+      Don&apos;t have an account?{" "}
+      <Link
+        to="/register"
+        className="font-semibold text-purple-600 hover:text-[#FC3F78] transition-all hover:underline"
+      >
+        Create Account
+      </Link>
+    </p>
+  </div>
+</div>
+
       </div>
     </div>
   );

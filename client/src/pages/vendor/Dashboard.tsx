@@ -136,8 +136,10 @@ export default function VendorDashboard() {
               <button
                 onClick={() => navigate("/vendor/products/list")}
                 className="flex items-center gap-2 px-5 py-2.5
-                   bg-black text-white font-semibold rounded-xl
-                   hover:bg-gray-900 transition-all shadow-sm cursor-pointer"
+           bg-black text-white font-semibold rounded-xl
+           transition-all duration-300 shadow-sm cursor-pointer
+           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]"
+
               >
                 My Products
               </button>
@@ -145,10 +147,13 @@ export default function VendorDashboard() {
               <button
                 onClick={() => navigate("/vendor/products/add")}
                 className="flex items-center gap-2 px-5 py-2.5
-                   bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-                   text-white font-semibold rounded-xl
-                   hover:opacity-90 transition-all
-                   shadow-lg shadow-purple-200 cursor-pointer"
+           bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+           text-white font-semibold rounded-xl
+           hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+           transition-all duration-300
+           shadow-lg shadow-[#852BAF]/25
+           active:scale-95
+           disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               >
                 <FaPlus size={14} />
                 Add Product

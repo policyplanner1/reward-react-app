@@ -170,7 +170,7 @@ export default function VendorNavbar() {
             <Link to="/vendor/change-password" className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-white rounded-lg transition-colors">
               <HiOutlineUserCircle className="text-lg text-gray-400" /> change Password
             </Link>
-            <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+            <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer">
               <FiLogOut className="text-lg" /> Sign Out
             </button>
           </div>

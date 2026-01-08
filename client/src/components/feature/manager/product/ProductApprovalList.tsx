@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import Swal from "sweetalert2";
 import {
   FaCheckCircle,
   FaTimesCircle,
@@ -16,11 +17,9 @@ import {
   FaRedo,
   FaCheck,
   FaTimes,
-  FaTrash,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { routes } from "../../../../routes";
-
 import { api } from "../../../../api/api";
 
 /* ================================
@@ -86,7 +85,7 @@ interface ApiResponse {
   stats: Stats;
 }
 
-type ActionType = "approve" | "reject" | "request_resubmission" | "delete";
+type ActionType = "approve" | "reject" | "request_resubmission";
 
 /* ================================
        STATUS CHIP
@@ -129,161 +128,13 @@ const StatusChip = ({ status }: { status: ProductStatus }) => {
   };
 
   const Icon = cfg.icon;
+
   return (
     <div
       className={`inline-flex items-center px-2.5 py-0.5 rounded-full border shadow-sm text-[11px] font-semibold tracking-wide uppercase ${cfg.color}`}
     >
       <Icon className="mr-1" size={12} />
       {cfg.text}
-    </div>
-  );
-};
-
-/* ================================
-       ACTION MODAL
-================================ */
-interface ActionModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (action: ActionType, reason?: string) => Promise<void>;
-  product: ProductItem | null;
-  actionType: ActionType;
-}
-
-const ActionModal = ({
-  isOpen,
-  onClose,
-  onSubmit,
-  product,
-  actionType,
-}: ActionModalProps) => {
-  const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) setReason("");
-  }, [isOpen]);
-
-  if (!isOpen || !product) return null;
-
-  const modalConfigs = {
-    approve: {
-      title: "Approve Product",
-      description: `Approve "${product.product_name}"?`,
-      buttonText: "Approve",
-      buttonColor: "bg-green-600 hover:bg-green-700",
-      iconBg: "bg-green-100",
-      iconColor: "text-green-600",
-      Icon: FaCheck,
-      showReason: false,
-      placeholder: "",
-    },
-    reject: {
-      title: "Reject Product",
-      description: `Reject "${product.product_name}"?`,
-      buttonText: "Reject",
-      buttonColor: "bg-red-600 hover:bg-red-700",
-      iconBg: "bg-red-100",
-      iconColor: "text-red-600",
-      Icon: FaTimes,
-      showReason: true,
-      placeholder: "Provide rejection reason...",
-    },
-    request_resubmission: {
-      title: "Allow Vendor to Resubmit",
-      description: `Do you want to allow the vendor to resubmit "${product.product_name}" for approval?`,
-      buttonText: "Allow Resubmission",
-      buttonColor: "bg-blue-600 hover:bg-blue-700",
-      iconBg: "bg-blue-100",
-      iconColor: "text-blue-600",
-      Icon: FaRedo,
-      showReason: true,
-      placeholder: "Reason for resubmission...",
-    },
-    delete: {
-      title: "Delete Product",
-      description: `Are you sure you want to delete "${product.product_name}"?`,
-      buttonText: "Delete",
-      buttonColor: "bg-red-600 hover:bg-red-700",
-      iconBg: "bg-red-100",
-      iconColor: "text-red-600",
-      Icon: FaTrash,
-      showReason: false,
-      placeholder: "",
-    },
-  };
-
-  const config = modalConfigs[actionType];
-
-  const handleSubmit = async () => {
-    if (config.showReason && !reason.trim()) {
-      alert("Please provide a reason.");
-      return;
-    }
-    setLoading(true);
-    try {
-      await onSubmit(actionType, config.showReason ? reason : undefined);
-      onClose();
-    } catch (err) {
-      console.error("Action failed:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <div className="w-full max-w-md p-6 bg-white shadow-xl rounded-2xl">
-        <div className="flex items-center mb-4">
-          <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${config.iconBg}`}
-          >
-            <config.Icon className={config.iconColor} />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              {config.title}
-            </h3>
-            <p className="text-sm text-gray-600">{config.description}</p>
-          </div>
-        </div>
-
-        {config.showReason && (
-          <div className="mb-8">
-            <label className="block mb-2.5 text-xs font-bold uppercase tracking-widest text-slate-500">
-              Reason / Comments *
-            </label>
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder={config.placeholder}
-              rows={4}
-              className="w-full p-4 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none transition-all focus:bg-white focus:ring-4 focus:ring-purple-100 focus:border-[#852BAF]"
-            />
-          </div>
-        )}
-
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="px-5 py-2.5 text-sm font-semibold text-slate-600 rounded-xl hover:bg-slate-100 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className={`px-6 py-2.5 text-sm font-bold text-white rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center min-w-[120px] ${config.buttonColor} disabled:opacity-50`}
-          >
-            {loading ? (
-              <FaSpinner className="animate-spin" />
-            ) : (
-              config.buttonText
-            )}
-          </button>
-        </div>
-      </div>
     </div>
   );
 };
@@ -326,7 +177,8 @@ export default function ProductManagerList() {
   const [products, setProducts] = useState<
     (Omit<ProductItem, "status"> & { status: ProductStatus })[]
   >([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+
   const [stats, setStats] = useState<Stats>({
     total: 0,
     pending: 0,
@@ -334,7 +186,6 @@ export default function ProductManagerList() {
     rejected: 0,
     resubmission: 0,
   });
-  // const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -348,15 +199,12 @@ export default function ProductManagerList() {
     itemsPerPage: 10,
   });
 
-  const [modalState, setModalState] = useState<{
-    isOpen: boolean;
-    product: ProductItem | null;
-    actionType: ActionType;
-  }>({
-    isOpen: false,
-    product: null,
-    actionType: "approve",
-  });
+  // ✅ Debounce ref (important for focus issue)
+  const debounceRef = useRef<number | null>(null);
+
+  const okBtnClass =
+    "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
+    "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95";
 
   const getSortIcon = (column: string) => {
     if (sortBy !== column) return <FaSort className="ml-1 opacity-30" />;
@@ -367,11 +215,9 @@ export default function ProductManagerList() {
     );
   };
 
-  const normalizeManagerStatus = (
-    status: BackendProductStatus
-  ): ProductStatus => {
+  const normalizeManagerStatus = (status: BackendProductStatus): ProductStatus => {
     if (status === "sent_for_approval") return "pending";
-    return status;
+    return status as ProductStatus;
   };
 
   const normalizeStatusForApi = (status: string) => {
@@ -408,9 +254,8 @@ export default function ProductManagerList() {
           totalPages: data.totalPages || 1,
           totalItems: data.total || 0,
         }));
-        if (data.stats) {
-          setStats(data.stats);
-        }
+
+        if (data.stats) setStats(data.stats);
       }
     } catch (err) {
       console.error("Error loading products:", err);
@@ -426,36 +271,139 @@ export default function ProductManagerList() {
     sortOrder,
   ]);
 
+  // ✅ First load only (no debounce)
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]);
+  }, [pagination.currentPage, pagination.itemsPerPage, sortBy, sortOrder, fetchProducts]);
 
-  const handleProductAction = async (
-    action: ActionType,
-    productId: number,
-    reason?: string
-  ) => {
-    // setActionLoading(productId);
+  //  Debounced search + filter (THIS FIXES TYPING FOCUS ISSUE)
+  useEffect(() => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+
+    debounceRef.current = window.setTimeout(() => {
+      setPagination((p) => ({ ...p, currentPage: 1 }));
+      fetchProducts();
+    }, 450);
+
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, [searchQuery, statusFilter, fetchProducts]);
+
+  const handleProductAction = async (action: ActionType, product: ProductItem) => {
+    const modalConfigs: Record<
+      ActionType,
+      {
+        title: string;
+        text: string;
+        icon: "warning" | "question" | "success" | "error" | "info";
+        confirmText: string;
+        confirmColor: string;
+        needsReason: boolean;
+        placeholder?: string;
+      }
+    > = {
+      approve: {
+        title: "Approve Product?",
+        text: `Do you want to approve "${product.product_name}"?`,
+        icon: "question",
+        confirmText: "Approve",
+        confirmColor: "#16A34A",
+        needsReason: false,
+      },
+      reject: {
+        title: "Reject Product?",
+        text: `Do you want to reject "${product.product_name}"?`,
+        icon: "warning",
+        confirmText: "Reject",
+        confirmColor: "#DC2626",
+        needsReason: true,
+        placeholder: "Provide rejection reason...",
+      },
+      request_resubmission: {
+        title: "Allow Resubmission?",
+        text: `Allow vendor to resubmit "${product.product_name}"?`,
+        icon: "warning",
+        confirmText: "Allow",
+        confirmColor: "#2563EB",
+        needsReason: true,
+        placeholder: "Reason for resubmission...",
+      },
+    };
+
+    const cfg = modalConfigs[action];
+
+    const result = await Swal.fire({
+      title: cfg.title,
+      text: cfg.text,
+      icon: cfg.icon,
+      showCancelButton: true,
+      confirmButtonText: cfg.confirmText,
+      cancelButtonText: "Cancel",
+      confirmButtonColor: cfg.confirmColor,
+      cancelButtonColor: "#9CA3AF",
+      reverseButtons: true,
+      input: cfg.needsReason ? "textarea" : undefined,
+      inputPlaceholder: cfg.needsReason ? cfg.placeholder : undefined,
+      inputAttributes: cfg.needsReason ? { "aria-label": "Reason" } : undefined,
+      preConfirm: (value) => {
+        if (cfg.needsReason && (!value || !String(value).trim())) {
+          Swal.showValidationMessage("Reason is required.");
+          return false;
+        }
+        return value;
+      },
+      buttonsStyling: false,
+      customClass: {
+        actions: "gap-[7px]",
+        confirmButton:
+          action === "approve"
+            ? "px-6 py-2 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 transition-all duration-300 cursor-pointer active:scale-95"
+            : action === "request_resubmission"
+            ? "px-6 py-2 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-300 cursor-pointer active:scale-95"
+            : "px-6 py-2 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-all duration-300 cursor-pointer active:scale-95",
+        cancelButton:
+          "px-6 py-2 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all duration-300 cursor-pointer",
+        popup: "rounded-2xl",
+      },
+    });
+
+    if (!result.isConfirmed) return;
+
+    const reason = cfg.needsReason ? String(result.value || "").trim() : undefined;
 
     try {
-      const endpoint =
-        action === "request_resubmission" ? "resubmission" : action;
+      const endpoint = action === "request_resubmission" ? "resubmission" : action;
 
       const res = await api.put(
-        `/manager/product/${endpoint}/${productId}`,
+        `/manager/product/${endpoint}/${product.product_id}`,
         reason ? { reason } : {}
       );
 
-      if (!res.data.success) {
-        throw new Error(res.data.message || "Action failed");
-      }
+      if (!res.data.success) throw new Error(res.data.message || "Action failed");
 
-      fetchProducts();
-      alert(res.data.message || "Success");
+      await fetchProducts();
+
+      await Swal.fire({
+        title: "Success!",
+        text: res.data.message || "Action completed successfully.",
+        icon: "success",
+        timer: 1400,
+        showConfirmButton: false,
+        customClass: { popup: "rounded-2xl" },
+      });
     } catch (error: any) {
-      alert(error.message);
-    } finally {
-      // setActionLoading(null);
+      await Swal.fire({
+        title: "Failed",
+        text: error?.message || "Something went wrong.",
+        icon: "error",
+        confirmButtonText: "OK",
+        buttonsStyling: false,
+        customClass: {
+          confirmButton: okBtnClass,
+          popup: "rounded-2xl",
+        },
+      });
     }
   };
 
@@ -469,28 +417,12 @@ export default function ProductManagerList() {
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
-  if (loading && products.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <FaSpinner className="animate-spin text-4xl text-[#852BAF]" />
-      </div>
-    );
-  }
+  const onSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  }, []);
 
   return (
     <div className="min-h-screen p-4 md:p-6 bg-gray-50">
-      <ActionModal
-        isOpen={modalState.isOpen}
-        onClose={() => setModalState((prev) => ({ ...prev, isOpen: false }))}
-        onSubmit={(action, reason) =>
-          modalState.product
-            ? handleProductAction(action, modalState.product.product_id, reason)
-            : Promise.resolve()
-        }
-        product={modalState.product}
-        actionType={modalState.actionType}
-      />
-
       <div className="p-4 bg-white border border-gray-200 shadow-lg rounded-2xl md:p-6">
         {/* STATS CARDS */}
         <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-5">
@@ -500,28 +432,24 @@ export default function ProductManagerList() {
             icon={FaFileAlt}
             color="from-purple-500 to-purple-700"
           />
-
           <StatCard
             title="Pending for Review"
             value={stats.pending}
             icon={FaClock}
             color="from-yellow-500 to-yellow-700"
           />
-
           <StatCard
             title="Approved"
             value={stats.approved}
             icon={FaCheckCircle}
             color="from-green-500 to-green-700"
           />
-
           <StatCard
             title="Rejected"
             value={stats.rejected}
             icon={FaTimesCircle}
             color="from-red-500 to-red-700"
           />
-
           <StatCard
             title="Need Resubmission"
             value={stats.resubmission}
@@ -536,11 +464,12 @@ export default function ProductManagerList() {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={onSearchChange}
               placeholder="Search products..."
-              className="w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#852BAF]"
+              className="w-full p-3 pl-10 border border-gray-300 rounded-lg outline-none
+                         focus:ring-2 focus:ring-[#852BAF] focus:border-transparent"
             />
-            <FaSearch className="absolute left-3 top-4 text-gray-400" />
+            <FaSearch className="absolute left-3 top-4 text-gray-400 pointer-events-none" />
           </div>
 
           <select
@@ -549,7 +478,8 @@ export default function ProductManagerList() {
               setStatusFilter(e.target.value);
               setPagination((p) => ({ ...p, currentPage: 1 }));
             }}
-            className="p-3 border rounded-lg cursor-pointer"
+            className="p-3 border border-gray-300 rounded-lg cursor-pointer outline-none
+                       focus:ring-2 focus:ring-[#852BAF] focus:border-transparent"
           >
             <option value="all">All</option>
             <option value="pending">Pending</option>
@@ -560,7 +490,14 @@ export default function ProductManagerList() {
         </div>
 
         {/* TABLE */}
-        <div className="overflow-x-auto border rounded-lg">
+        <div className="relative overflow-x-auto border rounded-lg">
+          {/* ✅ Loading overlay (focus never breaks) */}
+          {loading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-[1px]">
+              <FaSpinner className="animate-spin text-3xl text-[#852BAF]" />
+            </div>
+          )}
+
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -578,74 +515,70 @@ export default function ProductManagerList() {
                 <th className="px-4 py-3 text-xs font-bold uppercase text-gray-700">
                   Status
                 </th>
-                <th className="px-4 py-3 text-xs font-bold uppercase text-gray-700">
+                <th className="px-4 py-3 pl-0 text-xs font-bold uppercase text-gray-700">
                   Actions
                 </th>
               </tr>
             </thead>
+
             <tbody className="divide-y divide-gray-200">
               {products.map((product) => (
                 <tr key={product.product_id} className="hover:bg-gray-50">
                   <td className="px-4 py-4 font-medium">
                     {product.product_name}
                   </td>
-                  <td className="px-4 py-4 text-center">
-                    {product.brand_name}
-                  </td>
+                  <td className="px-4 py-4 text-center">{product.brand_name}</td>
                   <td className="px-4 py-4 text-center">
                     <StatusChip status={product.status} />
                   </td>
+
                   <td className="px-4 py-4 align-top">
-                    <div className="flex justify-end pr-[32px]">
-                      <div className="flex gap-2 w-[120px] justify-end">
+                    <div className="flex justify-end">
+                      <div className="grid grid-cols-4 gap-2 w-[176px] justify-items-center">
                         <Link
                           to={routes.manager.productView.replace(
                             ":id",
                             product.product_id.toString()
                           )}
-                          className="p-2 bg-gray-100 rounded hover:bg-gray-200"
+                          className="w-9 h-9 inline-flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
+                          title="View"
                         >
                           <FaEye />
                         </Link>
-                        {product.status === "pending" && (
+
+                        {product.status === "pending" ? (
                           <>
                             <button
-                              onClick={() =>
-                                setModalState({
-                                  isOpen: true,
-                                  product,
-                                  actionType: "approve",
-                                })
-                              }
-                              className="p-2 bg-green-100 text-green-700 rounded cursor-pointer"
+                              onClick={() => handleProductAction("approve", product)}
+                              className="w-9 h-9 inline-flex items-center justify-center bg-green-100 text-green-700 rounded cursor-pointer"
+                              title="Approve"
                             >
                               <FaCheck />
                             </button>
+
                             <button
-                              onClick={() =>
-                                setModalState({
-                                  isOpen: true,
-                                  product,
-                                  actionType: "reject",
-                                })
-                              }
-                              className="p-2 bg-red-100 text-red-700 rounded cursor-pointer"
+                              onClick={() => handleProductAction("reject", product)}
+                              className="w-9 h-9 inline-flex items-center justify-center bg-red-100 text-red-700 rounded cursor-pointer"
+                              title="Reject"
                             >
                               <FaTimes />
                             </button>
 
                             <button
                               onClick={() =>
-                                setModalState({
-                                  isOpen: true,
-                                  product,
-                                  actionType: "request_resubmission",
-                                })
+                                handleProductAction("request_resubmission", product)
                               }
-                              className="p-2 bg-blue-100 text-blue-700 rounded"
+                              className="w-9 h-9 inline-flex items-center justify-center bg-blue-100 text-blue-700 rounded cursor-pointer"
+                              title="Resubmission"
                             >
                               <FaRedo />
                             </button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-9 h-9 opacity-0 pointer-events-none" />
+                            <div className="w-9 h-9 opacity-0 pointer-events-none" />
+                            <div className="w-9 h-9 opacity-0 pointer-events-none" />
                           </>
                         )}
                       </div>
