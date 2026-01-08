@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import Swal from "sweetalert2";
 import {
   FiEdit,
   FiTrash2,
@@ -111,23 +112,88 @@ export default function SubcategoryManagement() {
     );
   }, [subcategories, selectedCategoryId]);
 
-  const handleAdd = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!newSubcategoryName.trim() || selectedCategoryId === "") return;
-    setLoadingAdd(true);
-    try {
-      await api.post("/vendor/create-subcategory", {
-        category_id: selectedCategoryId,
-        name: newSubcategoryName,
-      });
-      setNewSubcategoryName("");
-      fetchSubcategories();
-    } catch (err) {
-      console.log("Add error:", err);
-    } finally {
-      setLoadingAdd(false);
-    }
-  };
+const handleAdd = async (e?: React.FormEvent) => {
+  e?.preventDefault();
+
+  if (selectedCategoryId === "") {
+    await Swal.fire({
+      title: "Select a category",
+      text: "Please choose a category before adding a subcategory.",
+      icon: "warning",
+      confirmButtonText: "OK",
+
+      buttonsStyling: false,
+      customClass: {
+        confirmButton:
+          "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
+          "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
+        popup: "rounded-2xl",
+      },
+    });
+    return;
+  }
+
+  if (!newSubcategoryName.trim()) {
+    await Swal.fire({
+      title: "Subcategory name required",
+      text: "Please enter a subcategory name before adding.",
+      icon: "warning",
+      confirmButtonText: "OK",
+
+      buttonsStyling: false,
+      customClass: {
+        confirmButton:
+          "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
+          "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
+        popup: "rounded-2xl",
+      },
+    });
+    return;
+  }
+
+  setLoadingAdd(true);
+
+  try {
+    await api.post("/vendor/create-subcategory", {
+      category_id: selectedCategoryId,
+      name: newSubcategoryName,
+    });
+
+    setNewSubcategoryName("");
+    fetchSubcategories();
+
+    // ✅ SUCCESS POPUP (IMPORTANT: await)
+    await Swal.fire({
+      title: "Added!",
+      text: "Subcategory added successfully.",
+      icon: "success",
+      timer: 1200,
+      showConfirmButton: false,
+      customClass: { popup: "rounded-2xl" },
+    });
+  } catch (err: any) {
+    console.log("Add error:", err);
+
+    await Swal.fire({
+      title: "Failed",
+      text:
+        err?.response?.data?.error ||
+        "Failed to add subcategory. Please try again.",
+      icon: "error",
+      confirmButtonText: "OK",
+
+      buttonsStyling: false,
+      customClass: {
+        confirmButton:
+          "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
+          "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
+        popup: "rounded-2xl",
+      },
+    });
+  } finally {
+    setLoadingAdd(false);
+  }
+};
 
   const handleView = async (id: number) => {
     try {
@@ -176,29 +242,74 @@ export default function SubcategoryManagement() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this subcategory?")) return;
-    try {
-      await api.delete(`/vendor/delete-subcategory/${id}`);
-      fetchSubcategories();
-      setDrawerOpen(false);
-    } catch (err) {
-      console.error("Delete error:", err);
+ const handleDelete = async (id: number) => {
+  const result = await Swal.fire({
+    title: "Delete this subcategory?",
+    text: "This action cannot be undone.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Yes, delete",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#EF4444",
+    cancelButtonColor: "#9CA3AF",
+    reverseButtons: true,
+  });
 
-      if (axios.isAxiosError(err)) {
-        setError(
-          err.response?.data?.error ||
-            err.response?.data?.message ||
-            "Failed to delete subcategory"
-        );
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Failed to delete subcategory");
-      }
+  if (!result.isConfirmed) return;
+
+  try {
+    await api.delete(`/vendor/delete-subcategory/${id}`);
+    fetchSubcategories();
+    setDrawerOpen(false);
+
+    Swal.fire({
+      title: "Deleted!",
+      text: "Subcategory deleted successfully.",
+      icon: "success",
+      timer: 1200,
+      showConfirmButton: false,
+    });
+  } catch (err) {
+    console.error("Delete error:", err);
+
+    if (axios.isAxiosError(err)) {
+      const msg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        "Failed to delete subcategory";
+
+      setError(msg);
+
+      Swal.fire({
+        title: "Delete failed",
+        text: msg,
+        icon: "error",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#EF4444",
+      });
+    } else if (err instanceof Error) {
+      setError(err.message);
+
+      Swal.fire({
+        title: "Delete failed",
+        text: err.message,
+        icon: "error",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#EF4444",
+      });
+    } else {
+      setError("Failed to delete subcategory");
+
+      Swal.fire({
+        title: "Delete failed",
+        text: "Failed to delete subcategory",
+        icon: "error",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#EF4444",
+      });
     }
-  };
-
+  }
+};
   const closeDrawer = () => {
     setDrawerOpen(false);
     setTimeout(() => setSelected(null), 300);
@@ -225,41 +336,42 @@ export default function SubcategoryManagement() {
       )}
       {/* ADD FORM */}
       <form
-        onSubmit={handleAdd}
-        className="flex flex-col gap-4 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-[60rem] md:flex-row"
-      >
-        <select
-          value={selectedCategoryId}
-          onChange={(e) =>
-            setSelectedCategoryId(
-              e.target.value === "" ? "" : Number(e.target.value)
-            )
-          }
-          className="px-5 py-3 text-sm font-bold bg-gray-50 rounded-xl outline-none text-gray-700 md:w-1/3"
-        >
-          <option value="">Filter by Category</option>
-          {categories.map((c) => (
-            <option key={c.category_id} value={c.category_id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+  onSubmit={handleAdd}
+  className="flex flex-col gap-4 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-[60rem] md:flex-row"
+>
+  <select
+    value={selectedCategoryId}
+    onChange={(e) =>
+      setSelectedCategoryId(
+        e.target.value === "" ? "" : Number(e.target.value)
+      )
+    }
+    className="px-5 py-3 text-sm font-bold bg-gray-50 rounded-xl outline-none text-gray-700 md:w-1/3"
+  >
+    <option value="">Filter by Category</option>
+    {categories.map((c) => (
+      <option key={c.category_id} value={c.category_id}>
+        {c.name}
+      </option>
+    ))}
+  </select>
 
-        <input
-          value={newSubcategoryName}
-          onChange={(e) => setNewSubcategoryName(e.target.value)}
-          className="flex-1 px-5 py-3 text-sm font-semibold bg-transparent outline-none placeholder:text-gray-300"
-          placeholder="Enter subcategory name..."
-        />
+  <input
+    value={newSubcategoryName}
+    onChange={(e) => setNewSubcategoryName(e.target.value)}
+    className="flex-1 px-5 py-3 text-sm font-semibold bg-transparent outline-none placeholder:text-gray-300"
+    placeholder="Enter subcategory name..."
+  />
 
-        <button
-          type="submit"
-          disabled={loadingAdd}
-          className="flex items-center justify-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200 cursor-pointer"
-        >
-          <FiPlus /> {loadingAdd ? "Adding…" : "Add Subcategory"}
-        </button>
-      </form>
+  <button
+    type="submit"
+    disabled={loadingAdd}
+    className="flex items-center justify-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200 cursor-pointer"
+  >
+    <FiPlus /> {loadingAdd ? "Adding…" : "Add Subcategory"}
+  </button>
+</form>
+
 
       {/* TABLE */}
       <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] border border-gray-100 overflow-hidden">
@@ -336,12 +448,13 @@ export default function SubcategoryManagement() {
                     >
                       <FiEdit size={16} />
                     </button>
-                    <button
-                      onClick={() => handleDelete(sub.subcategory_id)}
-                      className="p-2.5 text-gray-400 hover:text-red-500 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
-                    >
-                      <FiTrash2 size={16} />
-                    </button>
+                   <button
+  onClick={() => handleDelete(sub.subcategory_id)}
+  className="p-2.5 text-gray-400 hover:text-red-500 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
+>
+  <FiTrash2 size={16} />
+</button>
+
                   </div>
                 </td>
               </tr>
@@ -402,7 +515,8 @@ export default function SubcategoryManagement() {
                     </p>
                   </div>
                   <button
-                    className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl hover:bg-gray-800 transition-all active:scale-95 shadow-xl shadow-gray-200"
+                    className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
+           transition-all duration-300 cursor-pointer"
                     onClick={() => setIsEditing(true)}
                   >
                      Edit
@@ -444,15 +558,16 @@ export default function SubcategoryManagement() {
                     <button
                       onClick={handleSaveEdit}
                       disabled={loadingSave}
-                      className="w-full py-4 font-black text-white bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-2xl shadow-lg shadow-purple-200 hover:opacity-90 transition-all"
+                      className="w-full py-4 font-black text-white bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-2xl shadow-lg shadow-purple-200 hover:opacity-90 transition-all cursor-pointer"
                     >
                       <FiSave className="inline-block mr-2" />{" "}
                       {loadingSave ? "Saving…" : "Save Changes"}
                     </button>
                     <button
                       onClick={() => setIsEditing(false)}
-                      className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl hover:bg-gray-50 transition-all"
-                    >
+className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl 
+           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
+           hover:text-white transition-all duration-300 cursor-pointer"                    >
                       Discard
                     </button>
                   </div>

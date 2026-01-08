@@ -43,6 +43,7 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />
+        
       </Route>
 
       {/* ========== VENDOR ========== */}
