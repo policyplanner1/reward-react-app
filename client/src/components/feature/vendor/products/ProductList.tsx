@@ -305,8 +305,6 @@ export default function ProductManagerList() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
-
-  // ✅ IMPORTANT: input typing should not trigger fetch directly
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -394,7 +392,7 @@ export default function ProductManagerList() {
     ]
   );
 
-  // ✅ first load
+  //  first load
   useEffect(() => {
     (async () => {
       try {
@@ -406,13 +404,10 @@ export default function ProductManagerList() {
     })();
   }, [fetchProducts]);
 
-  // ✅ whenever filters/sort/page/searchQuery changes -> fetch (debounced for searchQuery)
   useEffect(() => {
-    // page/sort/filter change should fetch immediately (not debounced)
     fetchProducts();
   }, [pagination.currentPage, pagination.itemsPerPage, sortBy, sortOrder, statusFilter, fetchProducts]);
 
-  // ✅ Debounce ONLY for searchQuery changes (not for typing)
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
@@ -425,7 +420,6 @@ export default function ProductManagerList() {
     };
   }, [searchQuery, fetchProducts]);
 
-  // Optional auto-refresh every 30s (silent so input focus never breaks)
   useEffect(() => {
     const id = setInterval(() => {
       fetchProducts({ silent: true });
@@ -489,7 +483,6 @@ export default function ProductManagerList() {
     });
   };
 
-  // ✅ IMPORTANT: Search submit should NOT fight typing focus
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setPagination((prev) => ({ ...prev, currentPage: 1 }));

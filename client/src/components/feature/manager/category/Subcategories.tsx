@@ -162,7 +162,7 @@ const handleAdd = async (e?: React.FormEvent) => {
     setNewSubcategoryName("");
     fetchSubcategories();
 
-    // ✅ SUCCESS POPUP (IMPORTANT: await)
+    //  SUCCESS POPUP (IMPORTANT: await)
     await Swal.fire({
       title: "Added!",
       text: "Subcategory added successfully.",

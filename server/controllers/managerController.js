@@ -46,7 +46,7 @@ class ManagerController {
           u.name,
           u.role
         FROM vendors v
-        JOIN users u ON v.user_id = u.user_id
+        JOIN eusers u ON v.user_id = u.user_id
         WHERE v.status != 'pending'
           `,
         [role]
@@ -84,7 +84,7 @@ class ManagerController {
       }
 
       const [productRows] = await db.query(
-        `SELECT * FROM products WHERE product_id = ?`,
+        `SELECT * FROM eproducts WHERE product_id = ?`,
         [productId]
       );
 
@@ -99,7 +99,7 @@ class ManagerController {
 
       if (productRows.length > 0) {
         await db.query(
-          `UPDATE products
+          `UPDATE eproducts
          SET status = 'approved',rejection_reason=''
          WHERE product_id = ?`,
           [product.product_id]
@@ -131,7 +131,7 @@ class ManagerController {
       }
 
       const [productRows] = await db.query(
-        `SELECT * FROM products WHERE product_id = ?`,
+        `SELECT * FROM eproducts WHERE product_id = ?`,
         [productId]
       );
 
@@ -146,7 +146,7 @@ class ManagerController {
 
       if (productRows.length > 0) {
         await db.query(
-          `UPDATE products
+          `UPDATE eproducts
          SET status = 'rejected',rejection_reason = ?
          WHERE product_id = ?`,
           [reason, product.product_id]
@@ -178,7 +178,7 @@ class ManagerController {
       }
 
       const [productRows] = await db.query(
-        `SELECT * FROM products WHERE product_id = ?`,
+        `SELECT * FROM eproducts WHERE product_id = ?`,
         [productId]
       );
 
@@ -193,7 +193,7 @@ class ManagerController {
 
       if (productRows.length > 0) {
         await db.query(
-          `UPDATE products
+          `UPDATE eproducts
          SET status = 'resubmission',rejection_reason = ?
          WHERE product_id = ?`,
           [reason, product.product_id]

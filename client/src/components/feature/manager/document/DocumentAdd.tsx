@@ -59,7 +59,7 @@ export default function DocumentManagement() {
 
 
 const handleAdd = async () => {
-  // ✅ empty input popup
+  //  empty input popup
   if (!document_name.trim()) {
     await Swal.fire({
       title: "Document name required",
@@ -85,7 +85,7 @@ const handleAdd = async () => {
     setDocumentName("");
     fetchDocuments();
 
-    // ✅ success popup
+    //  success popup
     Swal.fire({
       title: "Added!",
       text: "Document added successfully.",
@@ -97,7 +97,7 @@ const handleAdd = async () => {
   } catch (err: any) {
     console.error("Failed to add document", err);
 
-    // ❌ error popup
+    //  error popup
     Swal.fire({
       title: "Failed",
       text:

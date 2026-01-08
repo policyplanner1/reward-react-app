@@ -30,7 +30,7 @@ const authController = {
       }
 
       const [existing] = await db.execute(
-        "SELECT user_id FROM users WHERE email = ?",
+        "SELECT user_id FROM eusers WHERE email = ?",
         [email.toLowerCase()]
       );
 
@@ -45,7 +45,7 @@ const authController = {
 
       // Create User
       const [insertUser] = await db.execute(
-        "INSERT INTO users (name, email, password, role, phone, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
+        "INSERT INTO eusers (name, email, password, role, phone, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
         [name, email.toLowerCase(), hashedPassword, role, phone || null]
       );
 
@@ -106,7 +106,7 @@ const authController = {
     const [rows] = await db.execute(
       `
       SELECT u.user_id, u.role, u.email
-        FROM users u
+        FROM eusers u
         JOIN user_otps o ON o.user_id = u.user_id
         WHERE u.email = ?
           AND o.otp_hash = ?
@@ -126,7 +126,7 @@ const authController = {
 
     const user = rows[0];
 
-    await db.execute("UPDATE users SET is_verified = 1 WHERE user_id = ?", [
+    await db.execute("UPDATE eusers SET is_verified = 1 WHERE user_id = ?", [
       user.user_id,
     ]);
 
@@ -180,7 +180,7 @@ const authController = {
     }
 
     const [users] = await db.execute(
-      "SELECT user_id FROM users WHERE email = ?",
+      "SELECT user_id FROM eusers WHERE email = ?",
       [email.toLowerCase()]
     );
 
@@ -220,7 +220,7 @@ const authController = {
     try {
       const { email, password } = req.body;
 
-      const [rows] = await db.execute("SELECT * FROM users WHERE email = ?", [
+      const [rows] = await db.execute("SELECT * FROM eusers WHERE email = ?", [
         email.toLowerCase(),
       ]);
 
@@ -242,7 +242,7 @@ const authController = {
       }
 
       if (Number(user.is_verified) !== 1) {
-        // 🔁 Resend OTP
+        //  Resend OTP
         const otp = generateOTP();
         const otpHash = hashOTP(otp);
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -296,7 +296,7 @@ const authController = {
         }
       }
 
-      // ⭐ MUST include vendor_id in token
+      //  MUST include vendor_id in token
       const token = generateToken({
         user_id: user.user_id,
         vendor_id: vendorId,
@@ -328,7 +328,7 @@ const authController = {
   getProfile: async (req, res) => {
     try {
       const [rows] = await db.execute(
-        "SELECT user_id, name, email, role, phone FROM users WHERE user_id = ?",
+        "SELECT user_id, name, email, role, phone FROM eusers WHERE user_id = ?",
         [req.user.user_id]
       );
 
@@ -381,7 +381,7 @@ const authController = {
       }
 
       const [rows] = await db.execute(
-        "SELECT password FROM users WHERE email = ?",
+        "SELECT password FROM eusers WHERE email = ?",
         [email]
       );
 
@@ -404,7 +404,7 @@ const authController = {
 
       const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-      await db.execute("UPDATE users SET password = ? WHERE email = ?", [
+      await db.execute("UPDATE eusers SET password = ? WHERE email = ?", [
         hashedPassword,
         email,
       ]);

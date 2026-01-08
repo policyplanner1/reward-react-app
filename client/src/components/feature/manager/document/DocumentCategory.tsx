@@ -87,7 +87,7 @@ export default function DocumentCategoryManagement() {
   "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95";
 
 const handleAdd = async () => {
-  // ✅ VALIDATION POPUP
+  //  VALIDATION POPUP
   if (!categoryId || !documentId) {
     await Swal.fire({
       title: "Required fields",
@@ -113,7 +113,7 @@ const handleAdd = async () => {
     setDocumentId("");
     fetchMappings();
 
-    // ✅ SUCCESS POPUP
+    //  SUCCESS POPUP
     Swal.fire({
       title: "Added!",
       text: "Category & Document mapping added successfully.",
@@ -125,7 +125,7 @@ const handleAdd = async () => {
   } catch (err: any) {
     console.error("Failed to add mapping", err);
 
-    // ❌ ERROR POPUP
+    //  ERROR POPUP
     await Swal.fire({
       title: "Failed",
       text:

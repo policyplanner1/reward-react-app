@@ -176,7 +176,7 @@ class VendorModel {
     const [[vendor]] = await db.execute(
       `SELECT v.*, u.email, u.phone
        FROM vendors v 
-       JOIN users u ON v.user_id = u.user_id
+       JOIN eusers u ON v.user_id = u.user_id
        WHERE v.vendor_id = ?`,
       [vendorId]
     );
@@ -213,7 +213,7 @@ class VendorModel {
     let sql = `
       SELECT v.*, u.email
       FROM vendors v
-      JOIN users u ON v.user_id = u.user_id
+      JOIN eusers u ON v.user_id = u.user_id
     `;
     const params = [];
 

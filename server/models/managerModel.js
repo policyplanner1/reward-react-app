@@ -9,11 +9,11 @@ class ManagerModel {
     const [[vendorCount]] = await db.execute(`SELECT COUNT(*) AS totalVendors FROM vendors`);
     const [[pendingVendors]] = await db.execute(`SELECT COUNT(*) AS pendingApprovals FROM vendors WHERE status='pending'`);
 
-    const [[activeProducts]] = await db.execute(`SELECT COUNT(*) AS activeProducts FROM products WHERE status='approved'`);
+    const [[activeProducts]] = await db.execute(`SELECT COUNT(*) AS activeProducts FROM eproducts WHERE status='approved'`);
 
     const [[revenue]] = await db.execute(`
       SELECT COALESCE(SUM(sale_price * stock), 0) AS totalRevenue 
-      FROM products 
+      FROM eproducts 
       WHERE status='approved'
     `);
 
@@ -35,7 +35,7 @@ class ManagerModel {
       SELECT 
         DATE_FORMAT(created_at, '%b') AS month,
         COALESCE(SUM(sale_price * stock), 0) AS revenue
-      FROM products
+      FROM eproducts
       WHERE status='approved'
       GROUP BY MONTH(created_at)
       ORDER BY MONTH(created_at)
@@ -56,7 +56,7 @@ class ManagerModel {
       SELECT 
         DATE_FORMAT(created_at, '%b') AS month,
         COUNT(*) AS total
-      FROM products
+      FROM eproducts
       GROUP BY MONTH(created_at)
       ORDER BY MONTH(created_at)
     `);
@@ -77,7 +77,7 @@ class ManagerModel {
       SELECT 
         DATE_FORMAT(created_at, '%a') AS day,
         COUNT(*) AS total
-      FROM products
+      FROM eproducts
       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
       GROUP BY DATE(created_at)
       ORDER BY created_at

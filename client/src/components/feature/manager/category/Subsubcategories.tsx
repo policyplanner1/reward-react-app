@@ -161,7 +161,7 @@ export default function SubSubCategoryManagement() {
     "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
     "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer";
 
-  // ✅ POPUP: Category not selected
+  //  POPUP: Category not selected
   if (selectedCategoryId === "") {
     await Swal.fire({
       title: "Select Category",
@@ -177,7 +177,7 @@ export default function SubSubCategoryManagement() {
     return;
   }
 
-  // ✅ POPUP: Subcategory not selected
+  //  POPUP: Subcategory not selected
   if (selectedSubcategoryId === "") {
     await Swal.fire({
       title: "Select Subcategory",
@@ -193,7 +193,7 @@ export default function SubSubCategoryManagement() {
     return;
   }
 
-  // ✅ POPUP: Type name empty
+  //  POPUP: Type name empty
   if (!newName.trim()) {
     await Swal.fire({
       title: "Type name required",
@@ -245,13 +245,6 @@ export default function SubSubCategoryManagement() {
     });
   }
 };
-
-
-
-
-
-
-
 
   const handleView = async (id: number) => {
     try {

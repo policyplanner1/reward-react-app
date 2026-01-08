@@ -61,7 +61,7 @@ export default function CategoryManagement() {
  const handleAdd = async (e?: React.FormEvent) => {
   e?.preventDefault();
 
-  // ✅ EMPTY INPUT CHECK WITH POPUP
+  //  EMPTY INPUT CHECK WITH POPUP
   if (!newCategoryName.trim()) {
     await Swal.fire({
       title: "Category name required",
@@ -91,7 +91,7 @@ export default function CategoryManagement() {
     setNewCategoryName("");
     fetchCategories();
 
-    // ✅ SUCCESS POPUP (IMPORTANT: await)
+    //  SUCCESS POPUP (IMPORTANT: await)
     await Swal.fire({
       title: "Added!",
       text: "Category added successfully.",
@@ -105,7 +105,7 @@ export default function CategoryManagement() {
 
     setError("Failed to add category. Make sure you are a vendor_manager.");
 
-    // ❌ ERROR POPUP (await + same hover gradient)
+    //  ERROR POPUP (await + same hover gradient)
     await Swal.fire({
       title: "Failed",
       text:

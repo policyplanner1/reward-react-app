@@ -70,7 +70,7 @@ class ProductModel {
     let custom_sub_subcategory = data.custom_sub_subcategory || null;
 
     const [result] = await connection.execute(
-      `INSERT INTO products 
+      `INSERT INTO eproducts 
      (vendor_id, category_id, subcategory_id, sub_subcategory_id, brand_name, manufacturer, barcode, gst,
       product_name, description, short_description,
       custom_category, custom_subcategory, custom_sub_subcategory, status)
@@ -199,7 +199,7 @@ class ProductModel {
           c.category_name,
           sc.subcategory_name,
           ssc.name AS sub_subcategory_name
-        FROM products p
+        FROM eproducts p
         LEFT JOIN vendors v ON p.vendor_id = v.vendor_id
         LEFT JOIN categories c ON p.category_id = c.category_id
         LEFT JOIN sub_categories sc ON p.subcategory_id = sc.subcategory_id
@@ -287,7 +287,7 @@ class ProductModel {
 
     // ---------- 1 UPDATE PRODUCT ----------
     await connection.execute(
-      `UPDATE products SET 
+      `UPDATE eproducts SET 
       category_id = ?, 
       subcategory_id = ?, 
       sub_subcategory_id = ?, 
@@ -504,7 +504,7 @@ class ProductModel {
 
       // Delete main product
       await connection.execute(
-        `DELETE FROM products WHERE product_id = ? AND vendor_id = ?`,
+        `DELETE FROM eproducts WHERE product_id = ? AND vendor_id = ?`,
         [productId, vendorId]
       );
 
@@ -580,7 +580,7 @@ class ProductModel {
           ORDER BY pi.sort_order ASC
         ) AS images
 
-      FROM products p
+      FROM eproducts p
       LEFT JOIN categories c ON p.category_id = c.category_id
       LEFT JOIN sub_categories sc ON p.subcategory_id = sc.subcategory_id
       LEFT JOIN sub_sub_categories ssc ON p.sub_subcategory_id = ssc.sub_subcategory_id
@@ -595,7 +595,7 @@ class ProductModel {
       const dataParams = [...params, limit, offset];
       const [rows] = await db.execute(query, dataParams);
 
-      // ✅ Parse images in Node.js
+      //  Parse images in Node.js
       const products = rows.map((row) => {
         let images = [];
 
@@ -618,7 +618,7 @@ class ProductModel {
       });
 
       const [[{ total }]] = await db.execute(
-        `SELECT COUNT(DISTINCT p.product_id) AS total FROM products p ${whereClause}`,
+        `SELECT COUNT(DISTINCT p.product_id) AS total FROM eproducts p ${whereClause}`,
         params
       );
 
@@ -678,7 +678,7 @@ class ProductModel {
           ORDER BY pi.sort_order ASC
         ) AS images
 
-      FROM products p
+      FROM eproducts p
       LEFT JOIN vendors v ON p.vendor_id = v.vendor_id
       LEFT JOIN categories c ON p.category_id = c.category_id
       LEFT JOIN sub_categories sc ON p.subcategory_id = sc.subcategory_id
@@ -718,7 +718,7 @@ class ProductModel {
 
       // Total count (no LIMIT/OFFSET)
       const [[{ total }]] = await db.execute(
-        `SELECT COUNT(*) AS total FROM products p ${where}`,
+        `SELECT COUNT(*) AS total FROM eproducts p ${where}`,
         params.slice(0, -2)
       );
 
@@ -744,7 +744,7 @@ class ProductModel {
   async getApprovedProductList(vendorId) {
     try {
       const [productRows] = await db.execute(
-        `SELECT product_id, product_name FROM products WHERE status = 'approved' AND vendor_id = ?`,
+        `SELECT product_id, product_name FROM eproducts WHERE status = 'approved' AND vendor_id = ?`,
         [vendorId]
       );
 
@@ -770,7 +770,7 @@ class ProductModel {
           )
           SEPARATOR ','
         ) AS variants
-      FROM products p
+      FROM eproducts p
       LEFT JOIN categories c ON p.category_id = c.category_id
       LEFT JOIN product_variants pv ON p.product_id = pv.product_id
       WHERE p.status = 'approved' AND p.product_id = ?
@@ -821,12 +821,12 @@ class ProductModel {
               pv.sku AS variantSku
 
           FROM stock_in_entries s
-          JOIN products p ON s.product_id = p.product_id
+          JOIN eproducts p ON s.product_id = p.product_id
           LEFT JOIN categories c ON p.category_id = c.category_id
           LEFT JOIN sub_categories sc ON p.subcategory_id = sc.subcategory_id
           LEFT JOIN sub_sub_categories ssc ON p.sub_subcategory_id = ssc.sub_subcategory_id
           JOIN vendors v ON p.vendor_id = v.vendor_id
-          JOIN users u ON s.warehousemanager_id = u.user_id
+          JOIN eusers u ON s.warehousemanager_id = u.user_id
 
           LEFT JOIN product_variants pv 
                 ON s.variant_id = pv.variant_id
@@ -855,7 +855,7 @@ class ProductModel {
         SUM(status = 'approved') AS approved,
         SUM(status = 'rejected') AS rejected,
         SUM(status = 'resubmission') AS resubmission
-      FROM products
+      FROM eproducts
       WHERE vendor_id = ?
     `;
 

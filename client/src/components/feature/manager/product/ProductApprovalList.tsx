@@ -276,7 +276,7 @@ export default function ProductManagerList() {
     fetchProducts();
   }, [pagination.currentPage, pagination.itemsPerPage, sortBy, sortOrder, fetchProducts]);
 
-  // ✅ Debounced search + filter (THIS FIXES TYPING FOCUS ISSUE)
+  //  Debounced search + filter (THIS FIXES TYPING FOCUS ISSUE)
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
 

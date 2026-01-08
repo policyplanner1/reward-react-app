@@ -20,7 +20,6 @@ function Field({ label, htmlFor, labelClass, children }: FieldProps) {
         {label}
       </label>
 
-      {/* ✅ FIX: overlay NEVER blocks typing/click */}
       <div className="relative mt-2">
         <div
           className="pointer-events-none absolute -inset-0.5 rounded-2xl opacity-0 blur-lg transition duration-300
@@ -80,7 +79,6 @@ export default function RegisterPage() {
     }
   };
 
-  // ✅ compact spacing so NO SCROLL
   const labelClass =
     "block text-[11px] font-bold tracking-widest text-slate-600 uppercase";
 
@@ -89,12 +87,9 @@ export default function RegisterPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden flex items-center justify-center bg-gradient-to-tr from-[#38bdf8] via-[#a855f7] to-[#ec4899] font-sans px-4">
-      {/* ✅ background texture must not block clicks */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.08] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:18px_18px]" />
 
-      {/* ✅ Card */}
       <div className="relative z-10 w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        {/* ✅ LEFT IMAGE PANEL */}
         <div className="relative hidden md:block bg-white">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_20%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(900px_circle_at_85%_30%,rgba(168,85,247,0.10),transparent_55%),radial-gradient(900px_circle_at_50%_110%,rgba(236,72,153,0.08),transparent_55%)]" />
           <div className="pointer-events-none absolute inset-0 opacity-[0.06] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:18px_18px]" />
@@ -122,9 +117,7 @@ export default function RegisterPage() {
           <div className="pointer-events-none absolute top-0 right-[-10px] h-full w-[22px] bg-gradient-to-l from-[#852BAF]/10 via-[#FC3F78]/5 to-transparent blur-xl" />
         </div>
 
-        {/* ✅ RIGHT FORM PANEL */}
         <div className="relative z-20 w-full bg-white py-8 px-8 md:px-10">
-          {/* Header */}
           <div className="pb-4 mb-4 border-b border-gray-100">
             <h2 className="text-3xl font-extrabold text-gray-900">
               Create Account

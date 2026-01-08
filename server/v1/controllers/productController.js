@@ -33,6 +33,7 @@ class ProductController {
         return {
           id: product.product_id,
           title: product.product_name,
+          brand: product.brand_name,
           image: mainImage,
 
           // Variant pricing
@@ -234,9 +235,18 @@ class ProductController {
         });
       }
 
+      const processedProduct = {
+        ...product,
+        discount: "40%", 
+        rating: 4.6,
+        reviews: "18.9K", 
+        pointsPrice: "₹3,736",
+        points: 264,
+      };
+
       return res.json({
         success: true,
-        product,
+        product: processedProduct,
       });
     } catch (error) {
       console.error("Get product by ID error:", error);

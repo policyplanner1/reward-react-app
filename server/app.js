@@ -18,6 +18,10 @@ const subSubCategoryRoutes = require("./routes/subSubCategoryRoutes");
 
 // App Routes
 const v1ProductRoutes = require("./v1/routes/productRoute");
+const v1CartRoutes = require("./v1/routes/cartRoute");
+const v1CheckoutRoutes = require("./v1/routes/checkoutRoute");
+const v1OrderRoutes = require("./v1/routes/ordersRoute");
+const v1AuthRoutes = require("./v1/routes/authRoute");
 
 
 const app = express();
@@ -73,7 +77,11 @@ app.use("/api/subcategory", subCategoryRoutes);
 app.use("/api/subsubcategory", subSubCategoryRoutes);
 
 // App Routes
+app.use("/v1/auth", v1AuthRoutes);
 app.use("/v1/product", v1ProductRoutes);
+app.use("/v1/cart", v1CartRoutes);
+app.use("/v1/checkout", v1CheckoutRoutes);
+app.use("/v1/orders", v1OrderRoutes);
 
 // -----------------------------
 // Health check route

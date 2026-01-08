@@ -123,11 +123,11 @@ class wareHouseController {
         u.name AS WarehousemanagerName,
         pv.sku AS sku
       FROM stock_in_entries s
-      JOIN products p ON s.product_id = p.product_id
+      JOIN eproducts p ON s.product_id = p.product_id
       LEFT JOIN categories c ON p.category_id = c.category_id
       LEFT JOIN product_variants pv ON s.variant_id = pv.variant_id
       JOIN vendors v ON p.vendor_id = v.vendor_id
-      JOIN users u ON s.warehousemanager_id = u.user_id
+      JOIN eusers u ON s.warehousemanager_id = u.user_id
       WHERE s.status = ?
     `;
 
@@ -181,7 +181,7 @@ class wareHouseController {
         v.full_name AS vendorName,
         COALESCE(c.category_name, p.custom_category) AS category
       FROM stock_in_entries s
-      JOIN products p ON s.product_id = p.product_id
+      JOIN eproducts p ON s.product_id = p.product_id
       LEFT JOIN categories c ON p.category_id = c.category_id
       LEFT JOIN product_variants pv ON s.variant_id = pv.variant_id
       JOIN vendors v ON p.vendor_id = v.vendor_id
@@ -407,7 +407,7 @@ class wareHouseController {
         v.full_name,
         w.name
       FROM inventory i
-      JOIN products p ON i.product_id = p.product_id
+      JOIN eproducts p ON i.product_id = p.product_id
       JOIN vendors v ON i.vendor_id = v.vendor_id
       JOIN warehouses w ON i.warehouse_id = w.warehouse_id
       LEFT JOIN product_variants pv ON i.variant_id = pv.variant_id
@@ -456,7 +456,7 @@ class wareHouseController {
         pv.sku,
         w.name AS warehouse_name
         FROM inventory i
-        JOIN products p ON p.product_id = i.product_id
+        JOIN eproducts p ON p.product_id = i.product_id
         LEFT JOIN vendors v ON v.vendor_id = i.vendor_id
         LEFT JOIN warehouses w ON w.warehouse_id = i.warehouse_id
         LEFT JOIN product_variants pv ON pv.variant_id = i.variant_id
@@ -582,7 +582,7 @@ class wareHouseController {
         iv.expiry_date
         FROM stock_adjustments sa
         JOIN inventory iv ON sa.inventory_id = iv.inventory_id
-        JOIN products p ON iv.product_id = p.product_id
+        JOIN eproducts p ON iv.product_id = p.product_id
         JOIN product_variants pv ON iv.variant_id = pv.variant_id
         JOIN vendors v ON iv.vendor_id = v.vendor_id
         JOIN warehouses w ON iv.warehouse_id = w.warehouse_id
