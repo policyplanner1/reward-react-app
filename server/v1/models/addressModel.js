@@ -18,7 +18,7 @@ class AddressModel {
     return rows;
   }
 
-    // Fetch States
+  // Fetch States
   async getAllStates() {
     const [rows] = await db.execute(
       `SELECT 
@@ -58,11 +58,11 @@ class AddressModel {
       city,
       zipcode,
       state_id,
-      landmark,
+      landmark = null,
       contact_name,
       contact_phone,
-      latitude,
-      longitude,
+      latitude = null,
+      longitude = null,
     } = data;
 
     const [result] = await db.execute(
@@ -81,7 +81,7 @@ class AddressModel {
       contact_phone,
       latitude,
       longitude
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 75, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 75, ?, ?, ?, ?, ?, ?)`,
       [
         user_id,
         address_type,
