@@ -212,7 +212,6 @@ class AuthController {
         !data.address1 ||
         !data.city ||
         !data.zipcode ||
-        !data.country_id ||
         !data.state_id
       ) {
         return res.status(400).json({
