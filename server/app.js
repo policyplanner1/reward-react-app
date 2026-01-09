@@ -22,6 +22,7 @@ const v1CartRoutes = require("./v1/routes/cartRoute");
 const v1CheckoutRoutes = require("./v1/routes/checkoutRoute");
 const v1OrderRoutes = require("./v1/routes/ordersRoute");
 const v1AuthRoutes = require("./v1/routes/authRoute");
+const v1WishlistRoutes = require("./v1/routes/wishlistRoute");
 
 
 const app = express();
@@ -82,6 +83,7 @@ app.use("/v1/product", v1ProductRoutes);
 app.use("/v1/cart", v1CartRoutes);
 app.use("/v1/checkout", v1CheckoutRoutes);
 app.use("/v1/orders", v1OrderRoutes);
+app.use("/v1/wishlist",v1WishlistRoutes)
 
 // -----------------------------
 // Health check route

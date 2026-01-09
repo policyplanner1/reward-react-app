@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const wishlistController = require("../controllers/wishListController");
 const auth = require("../middlewares/auth");
-const CartModel = require("../models/cartModel");
 
 /*=====================================WishList==================================*/
 
