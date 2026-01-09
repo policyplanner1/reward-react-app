@@ -45,7 +45,7 @@ class CheckoutModel {
       // 4 Create order
       const [orderRes] = await conn.execute(
         `
-        INSERT INTO orders (user_id, company_id, total_amount)
+        INSERT INTO eorders (user_id, company_id, total_amount)
         VALUES (?, ?, ?)
         `,
         [userId, companyId, totalAmount]
@@ -57,7 +57,7 @@ class CheckoutModel {
       for (const item of cartItems) {
         await conn.execute(
           `
-          INSERT INTO order_items
+          INSERT INTO eorder_items
             (order_id, product_id, variant_id, quantity, price)
           VALUES (?, ?, ?, ?, ?)
           `,
@@ -123,7 +123,7 @@ class CheckoutModel {
       // 2 Create order
       const [orderRes] = await conn.execute(
         `
-      INSERT INTO orders (user_id, company_id, total_amount)
+      INSERT INTO eorders (user_id, company_id, total_amount)
       VALUES (?, ?, ?)
       `,
         [userId, companyId, totalAmount]
@@ -134,7 +134,7 @@ class CheckoutModel {
       // 3 Create order item
       await conn.execute(
         `
-      INSERT INTO order_items
+      INSERT INTO eorder_items
         (order_id, product_id, variant_id, quantity, price)
       VALUES (?, ?, ?, ?, ?)
       `,
