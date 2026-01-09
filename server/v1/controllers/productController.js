@@ -324,6 +324,45 @@ class ProductController {
     }
   }
 
+  // Similar Products
+  async getSimilarProducts(req, res) {
+    try {
+      const productId = Number(req.params.productId);
+      const { category_id, subcategory_id, sub_subcategory_id } = req.query;
+
+      if (
+        !productId ||
+        !category_id ||
+        !subcategory_id ||
+        !sub_subcategory_id
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid request",
+        });
+      }
+
+      const products = await ProductModel.getSimilarProducts({
+        productId,
+        categoryId: Number(category_id),
+        subcategoryId: Number(subcategory_id),
+        sub_subcategoryId: Number(sub_subcategory_id),
+        limit: 10,
+      });
+
+      return res.json({
+        success: true,
+        products,
+      });
+    } catch (error) {
+      console.error("Get similar products error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch similar products",
+      });
+    }
+  }
+
   // autosuggest products
   async getSearchSuggestions(req, res) {
     try {

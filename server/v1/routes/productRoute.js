@@ -33,6 +33,12 @@ router.get(
 
 /* ======================================================Suggestion============================================ */
 
+// similar Products
+router.get(
+  "/similar/:productId",
+  ProductController.getSimilarProducts
+);
+
 // autosuggest products
 router.get("/search/suggestions", ProductController.getSearchSuggestions);
 

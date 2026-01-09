@@ -601,6 +601,241 @@ class ProductModel {
     });
   }
 
+  // Similar Products
+  // async getSimilarProducts({
+  //   productId,
+  //   categoryId,
+  //   subcategoryId,
+  //   sub_subcategoryId,
+  //   limit = 10,
+  // }) {
+  //   const query = `
+  //     SELECT
+  //       p.product_id,
+  //       p.product_name,
+  //       p.brand_id,
+
+  //       v.variant_id,
+  //       v.sale_price,
+  //       v.mrp,
+
+  //       b.brand_name,
+
+  //       GROUP_CONCAT(
+  //         DISTINCT CONCAT(
+  //           pi.image_id, '::',
+  //           pi.image_url, '::',
+  //           pi.sort_order
+  //         )
+  //         ORDER BY pi.sort_order ASC
+  //       ) AS images
+
+  //     FROM eproducts p
+
+  //     /* ---- Active category ---- */
+  //     INNER JOIN categories c
+  //       ON c.category_id = p.category_id
+  //       AND c.status = 1
+
+  //     /* ---- Active subcategory ---- */
+  //     INNER JOIN sub_categories sc
+  //       ON sc.subcategory_id = p.subcategory_id
+  //       AND sc.status = 1
+
+  //     /* ---- Active sub-subcategory ---- */
+  //     INNER JOIN sub_sub_categories ssc
+  //       ON ssc.sub_subcategory_id = p.sub_subcategory_id
+  //       AND ssc.status = 1
+
+  //     /* ---- Active brand ---- */
+  //     INNER JOIN brands b
+  //       ON b.brand_id = p.brand_id
+  //       AND b.status = 1
+
+  //     /* ---- Lowest price active variant ---- */
+  //     INNER JOIN (
+  //       SELECT pv.*
+  //       FROM product_variants pv
+  //       INNER JOIN (
+  //         SELECT product_id, MIN(sale_price) AS min_price
+  //         FROM product_variants
+  //         WHERE status = 1
+  //         GROUP BY product_id
+  //       ) mp
+  //         ON pv.product_id = mp.product_id
+  //        AND pv.sale_price = mp.min_price
+  //       WHERE pv.status = 1
+  //     ) v ON v.product_id = p.product_id
+
+  //     /* ---- Active images ---- */
+  //     LEFT JOIN product_images pi
+  //       ON pi.product_id = p.product_id
+  //      AND pi.status = 1
+
+  //     WHERE p.status = "approved"
+  //       AND p.product_id != ?
+  //       AND (
+  //         p.category_id = ?
+  //         OR p.subcategory_id = ?
+  //         OR p.sub_subcategory_id = ?
+  //       )
+
+  //     GROUP BY p.product_id
+  //     ORDER BY RAND()
+  //     LIMIT ?
+  //   `;
+
+  //   const [rows] = await db.execute(query, [
+  //     productId,
+  //     categoryId,
+  //     subcategoryId,
+  //     sub_subcategoryId,
+  //     limit,
+  //   ]);
+
+  //   return rows.map((row) => {
+  //     let images = [];
+
+  //     if (row.images) {
+  //       images = row.images.split(",").map((i) => {
+  //         const [, image_url] = i.split("::");
+  //         return { image_url };
+  //       });
+  //     }
+
+  //     return {
+  //       product_id: row.product_id,
+  //       product_name: row.product_name,
+  //       brand_name: row.brand_name,
+  //       variant_id: row.variant_id,
+  //       sale_price: row.sale_price,
+  //       mrp: row.mrp,
+  //       image: images.length ? images[0].image_url : null,
+  //     };
+  //   });
+  // }
+
+  async getSimilarProducts({
+    productId,
+    categoryId,
+    subcategoryId,
+    sub_subcategoryId,
+    limit = 10,
+  }) {
+    const query = `
+    SELECT
+      p.product_id,
+      p.product_name,
+      p.brand_name,
+
+      v.variant_id,
+      v.sale_price,
+      v.mrp,
+
+      GROUP_CONCAT(
+        DISTINCT CONCAT(
+          pi.image_id, '::',
+          pi.image_url, '::',
+          pi.sort_order
+        )
+        ORDER BY pi.sort_order ASC
+      ) AS images
+
+    FROM eproducts p
+
+    /* ---- Active category ---- */
+    INNER JOIN categories c
+      ON c.category_id = p.category_id
+     AND c.status = 1
+
+    /* ---- Active subcategory ---- */
+    INNER JOIN sub_categories sc
+      ON sc.subcategory_id = p.subcategory_id
+     AND sc.status = 1
+
+    /* ---- Active sub-subcategory ---- */
+    INNER JOIN sub_sub_categories ssc
+      ON ssc.sub_subcategory_id = p.sub_subcategory_id
+     AND ssc.status = 1
+
+    /* ---- Lowest price ACTIVE variant (1 per product) ---- */
+ INNER JOIN (
+  SELECT pv.*
+  FROM product_variants pv
+
+  /* ---- lowest sale price per product ---- */
+  INNER JOIN (
+    SELECT 
+      product_id,
+      MIN(sale_price) AS min_price
+    FROM product_variants
+    WHERE sale_price IS NOT NULL
+    GROUP BY product_id
+  ) mp
+    ON pv.product_id = mp.product_id
+   AND pv.sale_price = mp.min_price
+
+  /* ---- tie-breaker: lowest variant_id ---- */
+  INNER JOIN (
+    SELECT 
+      product_id,
+      MIN(variant_id) AS min_variant_id
+    FROM product_variants
+    WHERE sale_price IS NOT NULL
+    GROUP BY product_id
+  ) tie
+    ON pv.product_id = tie.product_id
+   AND pv.variant_id = tie.min_variant_id
+
+  ) v ON v.product_id = p.product_id
+
+
+    /* ---- Active images only ---- */
+    LEFT JOIN product_images pi
+      ON pi.product_id = p.product_id
+
+    WHERE p.status = "approved"
+      AND p.product_id != ?
+      AND (
+        p.category_id = ?
+        OR p.subcategory_id = ?
+        OR p.sub_subcategory_id = ?
+      )
+
+    GROUP BY p.product_id
+    ORDER BY RAND()
+    LIMIT ?
+  `;
+
+    const [rows] = await db.execute(query, [
+      productId,
+      categoryId,
+      subcategoryId,
+      sub_subcategoryId,
+      limit,
+    ]);
+
+    return rows.map((row) => {
+      let images = [];
+
+      if (row.images) {
+        images = row.images.split(",").map((i) => {
+          const [, image_url] = i.split("::");
+          return { image_url };
+        });
+      }
+
+      return {
+        product_id: row.product_id,
+        product_name: row.product_name,
+        brand_name: row.brand_name,
+        variant_id: row.variant_id,
+        sale_price: row.sale_price,
+        mrp: row.mrp,
+        image: images.length ? images[0].image_url : null,
+      };
+    });
+  }
 }
 
 module.exports = new ProductModel();
