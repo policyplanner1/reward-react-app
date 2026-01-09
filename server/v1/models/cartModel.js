@@ -204,7 +204,7 @@ class cartModel {
     return true;
   }
 
-  // remove all car items
+  // remove all cart items
   async clearCart(userId) {
     await db.execute(
       `

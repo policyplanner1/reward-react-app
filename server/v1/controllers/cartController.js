@@ -1,4 +1,5 @@
 const CartModel = require("../models/cartModel");
+const WishlistModel=require('../models/wishlistModel')
 const db = require("../../config/database");
 const fs = require("fs");
 const path = require("path");
@@ -239,6 +240,58 @@ class CartController {
       return res.status(500).json({
         success: false,
         message: "Internal server error",
+      });
+    }
+  }
+
+  // ===============================WishList============================
+  async moveToCart(req, res) {
+    try {
+      // const userId = req.user?.user_id;
+      const userId = 1; 
+      const { product_id, variant_id } = req.body;
+
+      if (!product_id || !variant_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Product and variant are required",
+        });
+      }
+
+      // add to cart
+      await CartModel.addToCart({
+        userId,
+        productId: product_id,
+        variantId: variant_id,
+        quantity: 1,
+      });
+
+      // Remove from wishlist
+      await WishlistModel.remove(userId, product_id, variant_id);
+
+      return res.json({
+        success: true,
+        message: "Item moved to cart successfully",
+      });
+    } catch (error) {
+      console.error("Wishlist Cart Error:", error);
+      if (error.message === "INVALID_VARIANT") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid product variant",
+        });
+      }
+
+      if (error.message === "INSUFFICIENT_STOCK") {
+        return res.status(400).json({
+          success: false,
+          message: "Product is out of stock",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to move item to cart",
       });
     }
   }

@@ -28,4 +28,12 @@ router.delete("/cart-items/:cart_item_id", CartController.deleteCartItem);
 router.delete("/cart-items", CartController.clearCart);
 /* ======================================================cart============================================ */
 
+/*=====================================WishList==================================*/
+router.post(
+  "/wishlist/move-to-cart",
+  // auth,
+  CartController.moveToCart
+);
+
+
 module.exports = router;
