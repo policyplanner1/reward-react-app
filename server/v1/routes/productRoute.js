@@ -43,25 +43,4 @@ router.get("/search/products", ProductController.loadProducts);
 router.post("/search/history", ProductController.saveSearchHistory);
 router.get("/search/history", ProductController.getSearchHistory);
 
-/*==================================================Wishlist======================================*/
-// add to wishlist
-router.post("/wishlist", auth, ProductController.addToWishlist);
-
-// remove from wishlist
-router.delete(
-  "/wishlist/:product_id/:variant_id",
-  auth,
-  ProductController.removeFromWishlist
-);
-
-// get my wishlist
-router.get("/wishlist", auth, ProductController.getMyWishlist);
-
-// check wishlist
-router.get(
-  "/wishlist/check/:product_id/:variant_id",
-  auth,
-  ProductController.checkWishlist
-);
-
 module.exports = router;
