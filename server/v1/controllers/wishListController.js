@@ -248,6 +248,27 @@ class wishlistController {
       });
     }
   }
+
+  // wishlist Badge
+  async getWishlistBadge(req, res) {
+    try {
+      // const userId = req.user?.user_id;
+      const userId = 1; 
+
+      const count = await WishlistModel.getWishlistCount(userId);
+
+      return res.json({
+        success: true,
+        count,
+      });
+    } catch (error) {
+      console.error("Wishlist Badge Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch wishlist count",
+      });
+    }
+  }
 }
 
 module.exports = new wishlistController();

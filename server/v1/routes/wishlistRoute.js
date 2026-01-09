@@ -40,4 +40,11 @@ router.post(
   wishlistController.moveToCart
 );
 
+// Get count of wishlist
+router.get(
+  "/badge",
+  // auth,
+  wishlistController.getWishlistBadge
+);
+
 module.exports = router;

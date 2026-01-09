@@ -78,6 +78,20 @@ class wishListModel {
 
     return rows;
   }
+
+  // wishlist Badging
+  async getWishlistCount(userId) {
+    const [[row]] = await db.execute(
+      `
+    SELECT COUNT(*) AS total
+    FROM customer_wishlist
+    WHERE user_id = ?
+    `,
+      [userId]
+    );
+
+    return row.total;
+  }
 }
 
 module.exports = new wishListModel();
