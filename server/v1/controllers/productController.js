@@ -237,9 +237,9 @@ class ProductController {
 
       const processedProduct = {
         ...product,
-        discount: "40%", 
+        discount: "40%",
         rating: 4.6,
-        reviews: "18.9K", 
+        reviews: "18.9K",
         pointsPrice: "₹3,736",
         points: 264,
       };
@@ -444,6 +444,107 @@ class ProductController {
       return res.status(500).json({
         success: false,
         message: "Internal server error",
+      });
+    }
+  }
+
+  // add to wishlist
+  async addToWishlist(req, res) {
+    try {
+      const userId = req.user.user_id;
+      const { product_id, variant_id } = req.body;
+
+      if (!product_id || !variant_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Product ID and Variant ID are required",
+        });
+      }
+
+      await ProductModel.add(userId, product_id, variant_id);
+
+      return res.json({
+        success: true,
+        message: "Variant added to wishlist",
+      });
+    } catch (error) {
+      console.error("Add Wishlist Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to add to wishlist",
+      });
+    }
+  }
+
+  // remove from wishlist
+  async removeFromWishlist(req, res) {
+    try {
+      const userId = req.user.user_id;
+      const { product_id, variant_id } = req.params;
+
+      const removed = await ProductModel.remove(
+        userId,
+        product_id,
+        variant_id
+      );
+
+      if (!removed) {
+        return res.status(404).json({
+          success: false,
+          message: "Wishlist item not found",
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Variant removed from wishlist",
+      });
+    } catch (error) {
+      console.error("Remove Wishlist Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to remove from wishlist",
+      });
+    }
+  }
+
+  // Fetch user wishlist
+  async getMyWishlist(req, res) {
+    try {
+      const userId = req.user.user_id;
+
+      const wishlist = await ProductModel.getByUser(userId);
+
+      return res.json({
+        success: true,
+        data: wishlist,
+      });
+    } catch (error) {
+      console.error("Fetch Wishlist Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch wishlist",
+      });
+    }
+  }
+
+  // search wishlist
+  async checkWishlist(req, res) {
+    try {
+      const userId = req.user.user_id;
+      const { product_id, variant_id } = req.params;
+
+      const exists = await ProductModel.exists(userId, product_id, variant_id);
+
+      return res.json({
+        success: true,
+        in_wishlist: exists,
+      });
+    } catch (error) {
+      console.error("Check Wishlist Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to check wishlist",
       });
     }
   }
