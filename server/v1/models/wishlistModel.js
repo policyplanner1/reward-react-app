@@ -46,14 +46,11 @@ class wishListModel {
         w.wishlist_id,
         w.product_id,
         w.variant_id,
-
         p.product_name,
-        p.thumbnail,
-
         v.sku,
-        v.price,
-        v.stock_quantity,
-
+        v.sales_price as price,
+        v.mrp,
+        v.stock,
         GROUP_CONCAT(
           CONCAT(o.option_name, ': ', ov.value)
           SEPARATOR ', '
