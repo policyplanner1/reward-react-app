@@ -4,19 +4,58 @@ const fs = require("fs");
 const path = require("path");
 const CartModel = require("../models/cartModel");
 
-
 class wishlistController {
   // add to Wishlist
+  // async addToWishlist(req, res) {
+  //   try {
+  //     //   const userId = req.user.user_id;
+  //     const userId = 1;
+  //     if (!userId) {
+  //       return res
+  //         .status(400)
+  //         .json({ success: false, message: "User ID is required" });
+  //     }
+
+  //     const { product_id, variant_id } = req.body;
+
+  //     if (!product_id || !variant_id) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: "Product ID and Variant ID are required",
+  //       });
+  //     }
+
+  //     // check stock quantity
+  //     const stockInfo = await CartModel.checkVariantStock(variant_id);
+
+  //     if (!stockInfo.inStock) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: "Product is out of stock",
+  //       });
+  //     }
+
+  //     await WishlistModel.add(userId, product_id, variant_id);
+
+  //     return res.json({
+  //       success: true,
+  //       message: "Variant added to wishlist",
+  //     });
+  //   } catch (error) {
+  //     console.error("Add Wishlist Error:", error);
+  //     return res.status(500).json({
+  //       success: false,
+  //       message: "Failed to add to wishlist",
+  //     });
+  //   }
+  // }
+
+  // Toggle List
+
   async addToWishlist(req, res) {
     try {
       //   const userId = req.user.user_id;
       const userId = 1;
-      if (!userId) {
-        return res
-          .status(400)
-          .json({ success: false, message: "User ID is required" });
-      }
-
       const { product_id, variant_id } = req.body;
 
       if (!product_id || !variant_id) {
@@ -26,17 +65,38 @@ class wishlistController {
         });
       }
 
-      await WishlistModel.add(userId, product_id, variant_id);
+      const exists = await WishlistModel.exists(userId, product_id, variant_id);
 
-      return res.json({
-        success: true,
-        message: "Variant added to wishlist",
-      });
+      if (exists) {
+        await WishlistModel.remove(userId, product_id, variant_id);
+        return res.json({
+          success: true,
+          message: "Removed from wishlist",
+          action: "removed",
+        });
+      } else {
+        // check stock quantity
+        const stockInfo = await CartModel.checkVariantStock(variant_id);
+
+        if (!stockInfo.inStock) {
+          return res.status(400).json({
+            success: false,
+            message: "Product is out of stock",
+          });
+        }
+
+        await WishlistModel.add(userId, product_id, variant_id);
+        return res.json({
+          success: true,
+          message: "Added to wishlist",
+          action: "added",
+        });
+      }
     } catch (error) {
-      console.error("Add Wishlist Error:", error);
+      console.error("Wishlist Toggle Error:", error);
       return res.status(500).json({
         success: false,
-        message: "Failed to add to wishlist",
+        message: "Wishlist toggle failed",
       });
     }
   }
