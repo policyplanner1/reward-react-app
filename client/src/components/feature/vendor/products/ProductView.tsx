@@ -311,7 +311,7 @@ export default function ReviewProductPage() {
               product.product_status ?? ""
             ) && (
               <Link
-                to={`/src/vendor/products/edit/${product.productId}`}
+                to={`/vendor/products/edit/${product.productId}`}
                 target="_blank"
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50"
               >
