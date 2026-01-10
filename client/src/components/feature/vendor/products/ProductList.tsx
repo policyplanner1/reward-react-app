@@ -114,7 +114,7 @@ const StatsCard = ({
       `}
     >
       {/* Decorative background circle */}
-      <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white/20" />
+      <div className="absolute -top-18 -right-14 w-30 h-30 rounded-full bg-white/20" />
 
       {/* CONTENT (must be relative + z-10) */}
       <div className="relative z-10 flex items-center justify-between">
