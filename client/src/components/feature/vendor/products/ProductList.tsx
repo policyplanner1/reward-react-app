@@ -86,6 +86,53 @@ interface ApiResponse {
   stats: Stats;
 }
 
+interface StatsCardProps {
+  label: string;
+  value: number;
+  icon: React.ElementType;
+  color: string;
+  active?: boolean;
+  onClick?: () => void;
+}
+
+const StatsCard = ({
+  label,
+  value,
+  icon: Icon,
+  color,
+  active,
+  onClick,
+}: StatsCardProps) => {
+  return (
+    <div
+      onClick={onClick}
+      className={`
+        relative overflow-hidden rounded-2xl p-5 cursor-pointer
+        text-white shadow-lg bg-gradient-to-br ${color}
+        transition-all
+        ${active ? "ring-2 ring-white/70 scale-[1.02]" : "hover:scale-[1.01]"}
+      `}
+    >
+      {/* Decorative background circle */}
+      <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white/20" />
+
+      {/* CONTENT (must be relative + z-10) */}
+      <div className="relative z-10 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold tracking-wide uppercase opacity-90">
+            {label}
+          </p>
+          <p className="mt-2 text-3xl font-bold leading-none">{value}</p>
+        </div>
+
+        <div className="p-3 rounded-xl bg-white/25">
+          <Icon className="text-xl" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 type ActionType = "approve" | "reject" | "request_resubmission" | "delete";
 
 /* ================================
@@ -406,7 +453,14 @@ export default function ProductManagerList() {
 
   useEffect(() => {
     fetchProducts();
-  }, [pagination.currentPage, pagination.itemsPerPage, sortBy, sortOrder, statusFilter, fetchProducts]);
+  }, [
+    pagination.currentPage,
+    pagination.itemsPerPage,
+    sortBy,
+    sortOrder,
+    statusFilter,
+    fetchProducts,
+  ]);
 
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
@@ -457,7 +511,9 @@ export default function ProductManagerList() {
 
         setProducts((prev) =>
           prev.map((p) =>
-            p.product_id === productId ? { ...p, status: "sent_for_approval" } : p
+            p.product_id === productId
+              ? { ...p, status: "sent_for_approval" }
+              : p
           )
         );
 
@@ -550,41 +606,60 @@ export default function ProductManagerList() {
         </div>
 
         {/* STATS */}
-        <div className="grid grid-cols-2 gap-3 mb-6 md:grid-cols-6">
-          <div className="p-3 border rounded-lg bg-gray-50">
-            <div className="text-xl font-bold text-gray-900">{stats.total}</div>
-            <div className="text-xs text-gray-600">Total</div>
-          </div>
-          <div className="p-3 border border-yellow-100 rounded-lg bg-yellow-50">
-            <div className="text-xl font-bold text-yellow-700">
-              {stats.pending}
-            </div>
-            <div className="text-xs text-yellow-600">Pending</div>
-          </div>
-          <div className="p-3 border border-indigo-100 rounded-lg bg-indigo-50">
-            <div className="text-xl font-bold text-indigo-700">
-              {stats.sent_for_approval ? stats.sent_for_approval : 0}
-            </div>
-            <div className="text-xs text-indigo-600">Sent for Approval</div>
-          </div>
-          <div className="p-3 border border-green-100 rounded-lg bg-green-50">
-            <div className="text-xl font-bold text-green-700">
-              {stats.approved}
-            </div>
-            <div className="text-xs text-green-600">Approved</div>
-          </div>
-          <div className="p-3 border border-red-100 rounded-lg bg-red-50">
-            <div className="text-xl font-bold text-red-700">
-              {stats.rejected}
-            </div>
-            <div className="text-xs text-red-600">Rejected</div>
-          </div>
-          <div className="p-3 border border-blue-100 rounded-lg bg-blue-50">
-            <div className="text-xl font-bold text-blue-700">
-              {stats.resubmission}
-            </div>
-            <div className="text-xs text-blue-600">Resubmission</div>
-          </div>
+        <div className="grid grid-cols-2 gap-4 mb-6 md:grid-cols-6">
+          <StatsCard
+            label="Total Products"
+            value={stats.total}
+            icon={FiPackage}
+            color="from-gray-500 to-gray-700"
+            active={statusFilter === "all"}
+            onClick={() => setStatusFilter("all")}
+          />
+
+          <StatsCard
+            label="Pending"
+            value={stats.pending}
+            icon={FaClock}
+            color="from-yellow-500 to-yellow-700"
+            active={statusFilter === "pending"}
+            onClick={() => setStatusFilter("pending")}
+          />
+
+          <StatsCard
+            label="Sent for Approval"
+            value={stats.sent_for_approval}
+            icon={FaPaperPlane}
+            color="from-indigo-500 to-indigo-700"
+            active={statusFilter === "sent_for_approval"}
+            onClick={() => setStatusFilter("sent_for_approval")}
+          />
+
+          <StatsCard
+            label="Approved"
+            value={stats.approved}
+            icon={FaCheckCircle}
+            color="from-green-500 to-green-700"
+            active={statusFilter === "approved"}
+            onClick={() => setStatusFilter("approved")}
+          />
+
+          <StatsCard
+            label="Rejected"
+            value={stats.rejected}
+            icon={FaTimesCircle}
+            color="from-red-500 to-red-700"
+            active={statusFilter === "rejected"}
+            onClick={() => setStatusFilter("rejected")}
+          />
+
+          <StatsCard
+            label="Resubmission"
+            value={stats.resubmission}
+            icon={FaRedo}
+            color="from-blue-500 to-blue-700"
+            active={statusFilter === "resubmission"}
+            onClick={() => setStatusFilter("resubmission")}
+          />
         </div>
 
         {/* FILTERS + SEARCH */}
@@ -857,7 +932,10 @@ export default function ProductManagerList() {
                     pageNum = i + 1;
                   } else if (pagination.currentPage <= 3) {
                     pageNum = i + 1;
-                  } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                  } else if (
+                    pagination.currentPage >=
+                    pagination.totalPages - 2
+                  ) {
                     pageNum = pagination.totalPages - 4 + i;
                   } else {
                     pageNum = pagination.currentPage - 2 + i;
