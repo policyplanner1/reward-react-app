@@ -33,7 +33,6 @@ interface ProductView {
   productName?: string;
   brandName?: string;
   manufacturer?: string;
-  barCode?: string;
   description?: string;
   shortDescription?: string;
   categoryId?: number | null;
@@ -42,7 +41,6 @@ interface ProductView {
   categoryName?: string | null;
   subCategoryName?: string | null;
   subSubCategoryName?: string | null;
-  gstIn?: string;
   product_status?: string;
   variants?: VariantView[];
   productImages?: string[];
@@ -147,8 +145,6 @@ export default function ReviewProductPage() {
         productName: raw.product_name ?? raw.productName,
         brandName: raw.brand_name ?? raw.brandName,
         manufacturer: raw.manufacturer ?? "",
-        barCode: raw.barcode ?? raw.barCode ?? "",
-        gstIn: raw.gst ?? "",
         description: raw.description ?? "",
         shortDescription: raw.short_description ?? raw.shortDescription ?? "",
         categoryId: raw.category_id ?? raw.categoryId ?? null,
@@ -327,8 +323,6 @@ export default function ReviewProductPage() {
               label="Manufacturer"
               value={product.manufacturer}
             />
-            <FormInput id="barCode" label="Barcode" value={product.barCode} />
-            <FormInput id="gst" label="GST" value={product.gstIn} />
           </div>
         </section>
 

@@ -136,13 +136,11 @@ interface ProductData {
   productName: string;
   brandName: string;
   manufacturer: string;
-  barCode: string;
   description: string;
   shortDescription: string;
   categoryId: number | null;
   subCategoryId: number | null;
   subSubCategoryId: number | null;
-  gstIn?: string;
   variants: Variant[];
   productImages: ImagePreview[];
 }
@@ -150,14 +148,12 @@ interface ProductData {
 const initialProductData: ProductData = {
   brandName: "",
   manufacturer: "",
-  barCode: "",
   productName: "",
   description: "",
   shortDescription: "",
   categoryId: null,
   subCategoryId: null,
   subSubCategoryId: null,
-  gstIn: "",
   variants: [
     {
       size: "",
@@ -305,7 +301,6 @@ export default function ProductListingDynamic() {
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    /* ================= GST % ================= */
 
     /* ================= PRODUCT TEXT FIELDS ================= */
 
@@ -313,21 +308,6 @@ export default function ProductListingDynamic() {
 
     if (productAlphabetFields.includes(name)) {
       if (!allowOnlyAlphabets(value)) return;
-    }
-
-    if (name === "gstIn") {
-      // Allow only digits and one decimal
-      if (!/^\d*\.?\d*$/.test(value)) return;
-
-      // Restrict range 0–100
-      const num = Number(value);
-      if (value && !isNaN(num) && num > 100) return;
-
-      setProduct((prev) => ({
-        ...prev,
-        gstIn: value,
-      }));
-      return;
     }
 
     /* ================= CATEGORY HANDLING ================= */
@@ -428,13 +408,6 @@ export default function ProductListingDynamic() {
 
     // ---------- Soft validation (error messages) ----------
     let error = "";
-
-    if (field === "gst") {
-      const gst = Number(value);
-      if (value && (isNaN(gst) || gst < 0 || gst > 100)) {
-        error = "GST must be between 0 and 100";
-      }
-    }
 
     setVariantErrors((prev) => ({
       ...prev,
@@ -656,12 +629,9 @@ export default function ProductListingDynamic() {
 
       formData.append("brandName", product.brandName);
       formData.append("manufacturer", product.manufacturer);
-      formData.append("barCode", product.barCode || "");
       formData.append("productName", product.productName);
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
-
-      if (product.gstIn) formData.append("gstIn", product.gstIn);
 
       // Add first variant data as main product data (for backward compatibility)
       if (product.variants.length > 0) {
@@ -1403,22 +1373,6 @@ export default function ProductListingDynamic() {
                 value={product.manufacturer}
                 onChange={handleFieldChange}
                 placeholder="Manufacturer name"
-              />
-
-              <FormInput
-                id="barCode"
-                label="Barcode"
-                value={product.barCode}
-                onChange={handleFieldChange}
-                placeholder="EAN/Code"
-              />
-
-              <FormInput
-                id="gstIn"
-                label="GST"
-                value={product.gstIn}
-                onChange={handleFieldChange}
-                placeholder="GST"
               />
             </div>
           </section>
