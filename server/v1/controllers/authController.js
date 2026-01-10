@@ -416,7 +416,7 @@ class AuthController {
       }
 
       // create Review
-      const reviewId = await ReviewModel.addReview({
+      const reviewId = await AuthModel.addReview({
         user_id: userId,
         product_id,
         variant_id,
@@ -435,7 +435,7 @@ class AuthController {
           media_type: file.mimetype.startsWith("video") ? "video" : "image",
         }));
 
-        await ReviewModel.addReviewMedia(reviewId, mediaData);
+        await AuthModel.addReviewMedia(reviewId, mediaData);
       }
 
       return res.json({
