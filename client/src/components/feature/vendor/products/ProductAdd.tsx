@@ -223,29 +223,31 @@ export default function ProductListingDynamic() {
   const handleMainImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
 
-    const files = Array.from(e.target.files);
+    const newFiles = Array.from(e.target.files);
 
-    if (files.length < 1) {
-      setImageError("Please select at least 1 image.");
-      return;
-    }
+    setProduct((prev) => {
+      const existingImages = prev.productImages;
 
-    if (files.length > 5) {
-      setImageError("You can select a maximum of 5 images.");
-      return;
-    }
+      if (existingImages.length + newFiles.length > 5) {
+        setImageError("You can select a maximum of 5 images.");
+        return prev;
+      }
+
+      const newPreviews = newFiles.map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
+      }));
+
+      return {
+        ...prev,
+        productImages: [...existingImages, ...newPreviews], // ✅ append
+      };
+    });
 
     setImageError("");
 
-    const previews = files.map((file) => ({
-      file,
-      url: URL.createObjectURL(file),
-    }));
-
-    setProduct((prev) => ({
-      ...prev,
-      productImages: previews,
-    }));
+    // reset input so same file can be selected again if needed
+    e.target.value = "";
   };
 
   // useEffect(() => {
@@ -1098,7 +1100,7 @@ export default function ProductListingDynamic() {
                           className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1
                    opacity-0 group-hover:opacity-100 transition cursor-pointer"
                         >
-                          <FaTrash size={10}/>
+                          <FaTrash size={10} />
                         </button>
                       </div>
                     );
@@ -1459,12 +1461,21 @@ export default function ProductListingDynamic() {
                   ? "No images chosen"
                   : `${product.productImages.length} image(s) selected`}
               </span>
-              <label className="cursor-pointer bg-[#852BAF] text-white px-3 py-1 text-xs rounded-full hover:bg-[#7a1c94]">
+              <label
+                className={`cursor-pointer px-3 py-1 text-xs rounded-full
+    ${
+      product.productImages.length >= 5
+        ? "bg-gray-400 cursor-not-allowed"
+        : "bg-[#852BAF] hover:bg-[#7a1c94] text-white"
+    }
+  `}
+              >
                 Choose Files
                 <input
                   type="file"
                   multiple
-                  className="hidden"
+                  hidden
+                  disabled={product.productImages.length >= 5}
                   accept="image/*"
                   onChange={handleMainImages}
                 />
