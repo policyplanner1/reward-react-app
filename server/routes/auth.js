@@ -33,6 +33,13 @@ router.post("/verify-otp", authController.verifyOtp);
 router.post("/resend-otp", authController.resendOtp);
 
 /* ============================================================
+    RESET PASSWORD
+   ============================================================ */
+router.post("/forgot-password", authController.forgotPassword);
+
+router.post("/verify-otp", authController.verifyOtp);
+
+/* ============================================================
    LOGIN (SEPARATE FOR EACH ROLE)
    ============================================================ */
 
@@ -55,10 +62,7 @@ router.post("/admin/login", (req, res) =>
 /* ============================================================
    PASSWORD RESET
    ============================================================ */
-router.post(
-  "/password/reset",
-  authController.passwordReset
-);
+router.post("/password/reset", authController.passwordReset);
 
 /* ============================================================
    USER PROFILE + LOGOUT (PROTECTED)

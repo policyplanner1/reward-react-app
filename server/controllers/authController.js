@@ -2,7 +2,8 @@ const bcrypt = require("bcryptjs");
 const db = require("../config/database");
 const { generateToken } = require("../utils/jwt");
 const { generateOTP, hashOTP } = require("../utils/optGenerate");
-const { sendOtpEmail } = require("../config/mail");
+const { sendOtpEmail, sendPasswordResetEmail } = require("../config/mail");
+const crypto = require("crypto");
 
 //
 
@@ -211,6 +212,60 @@ const authController = {
       success: true,
       message: "OTP resent successfully",
     });
+  },
+
+  /* ============================================================
+       Forgot Password
+     ============================================================ */
+
+  forgotPassword: async (req, res) => {
+    const { email } = req.body;
+
+    const genericResponse = {
+      success: true,
+      message: "If the email exists, a reset link has been sent",
+    };
+
+    if (!email) return res.json(genericResponse);
+
+    const [users] = await db.execute(
+      "SELECT user_id, email FROM eusers WHERE email = ?",
+      [email.toLowerCase()]
+    );
+
+    if (!users.length) {
+      return res.json(genericResponse);
+    }
+
+    const user = users[0];
+
+    // Invalidate old tokens
+    await db.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", [
+      user.user_id,
+    ]);
+
+    // Generate secure token
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await db.execute(
+      `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+     VALUES (?, ?, ?)`,
+      [user.user_id, tokenHash, expiresAt]
+    );
+
+    const resetLink = `${
+      process.env.CLIENT_URL || "http://localhost:5173"
+    }/reset-password?token=${rawToken}`;
+
+    await sendPasswordResetEmail(user.email, resetLink);
+
+    return res.json(genericResponse);
   },
 
   /* ============================================================
