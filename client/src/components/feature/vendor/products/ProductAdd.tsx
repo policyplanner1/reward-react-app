@@ -473,40 +473,37 @@ export default function ProductListingDynamic() {
     setProduct((prev) => ({ ...prev, variants: updatedVariants }));
   };
 
-  // const handleVariantImages = (
-  //   variantIndex: number,
-  //   e: ChangeEvent<HTMLInputElement>
-  // ) => {
-  //   if (!e.target.files) return;
-  //   const files = Array.from(e.target.files);
-  //   const updatedVariants = [...product.variants];
-  //   updatedVariants[variantIndex].images = files;
-  //   setProduct((prev) => ({ ...prev, variants: updatedVariants }));
-  // };
-
   const handleVariantImages = (
     variantIndex: number,
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     if (!e.target.files) return;
 
-    const files = Array.from(e.target.files);
-
-    if (files.length < 1) {
-      alert("Please select at least 1 image for this variant.");
-      return;
-    }
-
-    if (files.length > 5) {
-      alert("You can select a maximum of 5 images.");
-      return;
-    }
+    const newFiles = Array.from(e.target.files);
 
     setProduct((prev) => {
       const updatedVariants = [...prev.variants];
-      updatedVariants[variantIndex].images = files;
-      return { ...prev, variants: updatedVariants };
+      const existingImages = updatedVariants[variantIndex].images;
+
+      // enforce max 5
+      if (existingImages.length + newFiles.length > 5) {
+        alert("You can select a maximum of 5 images per variant.");
+        return prev;
+      }
+
+      updatedVariants[variantIndex] = {
+        ...updatedVariants[variantIndex],
+        images: [...existingImages, ...newFiles], // ✅ append
+      };
+
+      return {
+        ...prev,
+        variants: updatedVariants,
+      };
     });
+
+    // allow re-selecting the same file again
+    e.target.value = "";
   };
 
   const addVariant = () => {
@@ -1064,13 +1061,22 @@ export default function ProductListingDynamic() {
                     ? "No images chosen"
                     : `${variant.images.length} image(s) selected`}
                 </span>
-                <label className="cursor-pointer bg-[#852BAF] text-white px-3 py-1 text-xs rounded-full hover:bg-[#7a1c94]">
+                <label
+                  className={`cursor-pointer px-3 py-1 text-xs rounded-full
+    ${
+      variant.images.length >= 5
+        ? "bg-gray-400 cursor-not-allowed"
+        : "bg-[#852BAF] hover:bg-[#7a1c94] text-white"
+    }
+  `}
+                >
                   Choose Files
                   <input
                     type="file"
                     multiple
-                    className="hidden"
+                    hidden
                     accept="image/*"
+                    disabled={variant.images.length >= 5}
                     onChange={(e) => handleVariantImages(index, e)}
                   />
                 </label>
