@@ -124,10 +124,15 @@ export default function VendorDashboard() {
             <button
               onClick={() => navigate("/vendor/onboarding")}
               className="flex items-center gap-2 px-6 py-2.5
-                 bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-                 text-white font-semibold rounded-xl
-                 hover:opacity-90 transition-all
-                 shadow-lg shadow-purple-200 cursor-pointer"
+bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+text-white font-semibold rounded-xl
+transition-all
+shadow-lg shadow-[#852BAF]/25
+cursor-pointer
+hover:from-[#FC3F78] hover:to-[#852BAF] hover:shadow-xl hover:opacity-90
+active:scale-95
+disabled:opacity-60 disabled:cursor-not-allowed
+"
             >
               Complete Onboarding
             </button>

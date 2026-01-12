@@ -569,7 +569,7 @@ export default function ProductManagerList() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 bg-gray-50">
+    <div className="min-h-screen p-4 md:p-2 bg-gray-50">
       <ActionModal
         isOpen={modalState.isOpen}
         onClose={closeModal}
@@ -802,13 +802,13 @@ export default function ProductManagerList() {
                   </td>
 
                   <td className="px-4 py-4">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-[15px] font-medium text-gray-800 leading-relaxed">
                       {product?.brand_name || "N/A"}
                     </div>
                   </td>
 
                   <td className="px-4 py-4">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-[15px] font-medium text-gray-800 leading-relaxed">
                       {product?.category_name ||
                         product?.custom_category ||
                         "N/A"}
@@ -816,7 +816,7 @@ export default function ProductManagerList() {
                   </td>
 
                   <td className="px-4 py-4">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-[15px] font-medium text-gray-800 leading-relaxed">
                       {product?.subcategory_name ||
                         product?.custom_subcategory ||
                         "N/A"}
@@ -824,7 +824,7 @@ export default function ProductManagerList() {
                   </td>
 
                   <td className="px-4 py-4">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-[15px] font-medium text-gray-800 leading-relaxed">
                       {product?.sub_subcategory_name ||
                         product?.custom_sub_subcategory ||
                         "N/A"}
@@ -836,7 +836,7 @@ export default function ProductManagerList() {
                   </td>
 
                   <td className="px-4 py-4">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-[15px] font-medium text-gray-800 leading-relaxed">
                       {product?.rejection_reason || "N/A"}
                     </div>
                   </td>

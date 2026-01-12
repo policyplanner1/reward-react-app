@@ -740,7 +740,7 @@ export default function Onboarding() {
                 title="Business Information & Documents"
                 description="Upload only the common mandatory documents."
               />
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
                 <FormInput
                   id="companyName"
                   label="Company Name"
@@ -1327,16 +1327,13 @@ export default function Onboarding() {
             <div className="flex justify-center pt-6">
               <button
                 type="submit"
-                className="w-full 
-                  px-6 py-3 sm:px-8 sm:py-3.5 lg:px-12 lg:py-4
-                  bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-                  text-white font-bold rounded-2xl
-                  shadow-xl shadow-[#852BAF]/20
-                  hover:scale-[1.02] active:scale-[0.98]
-                  transition-all duration-300
-                  flex items-center justify-center gap-2 sm:gap-3
-                  text-base sm:text-lg
-                  cursor-pointer"
+                className="flex items-center justify-center w-full px-6 py-3 text-lg font-bold text-white
+             rounded-full transition-all duration-300 cursor-pointer
+             bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+             hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+             shadow-lg shadow-[#852BAF]/25 hover:shadow-xl
+             active:scale-95
+             disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Submit Application
               </button>

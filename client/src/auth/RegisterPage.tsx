@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { AxiosError } from "axios";
 import { useAuth } from "./useAuth";
 import logoImage from "../assets/logo.svg";
+import { Eye, EyeOff } from "lucide-react";
 
 type Role = "vendor" | "vendor_manager" | "admin" | "warehouse_manager";
 
@@ -34,6 +35,9 @@ function Field({ label, htmlFor, labelClass, children }: FieldProps) {
 
 export default function RegisterPage() {
   const { register, loading, error: authError } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
 
   const [formData, setFormData] = useState({
     name: "",
@@ -198,34 +202,56 @@ export default function RegisterPage() {
               </Field>
 
               <Field label="Password" htmlFor="password" labelClass={labelClass}>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  className={inputBase}
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                />
-              </Field>
+  <div className="relative">
+    <input
+      id="password"
+      name="password"
+      type={showPassword ? "text" : "password"}
+      placeholder="••••••••"
+      className={inputBase}
+      value={formData.password}
+      onChange={handleChange}
+      required
+    />
+
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+    >
+      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+    </button>
+  </div>
+</Field>
+
 
               <Field
-                label="Confirm Password"
-                htmlFor="confirmPassword"
-                labelClass={labelClass}
-              >
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  className={inputBase}
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  required
-                />
-              </Field>
+  label="Confirm Password"
+  htmlFor="confirmPassword"
+  labelClass={labelClass}
+>
+  <div className="relative">
+    <input
+      id="confirmPassword"
+      name="confirmPassword"
+      type={showConfirmPassword ? "text" : "password"}
+      placeholder="••••••••"
+      className={inputBase}
+      value={formData.confirmPassword}
+      onChange={handleChange}
+      required
+    />
+
+    <button
+      type="button"
+      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+    >
+      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+    </button>
+  </div>
+</Field>
+
             </div>
 
             <button

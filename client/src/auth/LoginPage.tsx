@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "./useAuth";
 import logoImage from "../assets/logo.svg";
 // import { User, Lock, Facebook, Twitter, Chrome } from "lucide-react";
-import { User, Lock } from "lucide-react";
+import { User, Lock, Eye, EyeOff  } from "lucide-react";
 
 type Role = "vendor" | "vendor_manager" | "admin" | "warehouse_manager";
 
@@ -15,6 +15,7 @@ interface LoginForm {
 
 export default function LoginPage() {
   const { login, loading, error: authError } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>("");
   const [formData, setFormData] = useState<LoginForm>({
     email: "",
@@ -104,20 +105,30 @@ export default function LoginPage() {
 
     {/* Password Field */}
     <div className="relative border-b-2 border-gray-200 focus-within:border-purple-500 transition-colors">
-      <label className="block text-sm text-gray-500 mb-1">Password</label>
-      <div className="flex items-center pb-2">
-        <Lock className="w-4 h-4 text-gray-400 mr-3" />
-        <input
-          name="password"
-          type="password"
-          required
-          className="w-full bg-transparent outline-none text-gray-700 placeholder-gray-300"
-          placeholder="********"
-          value={formData.password}
-          onChange={handleChange}
-        />
-      </div>
-    </div>
+  <label className="block text-sm text-gray-500 mb-1">Password</label>
+
+  <div className="flex items-center pb-2">
+    <Lock className="w-4 h-4 text-gray-400 mr-3" />
+
+    <input
+      name="password"
+      type={showPassword ? "text" : "password"}
+      required
+      className="w-full bg-transparent outline-none text-gray-700 placeholder-gray-300"
+      placeholder="********"
+      value={formData.password}
+      onChange={handleChange}
+    />
+
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="ml-3 text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer"
+    >
+      {showPassword ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
+    </button>
+  </div>
+</div>
 
     <div className="flex items-center justify-end">
       {/*  Social icons (kept for later use) */}
