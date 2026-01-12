@@ -682,11 +682,6 @@ export default function EditProductPage() {
     setSuccess(null);
 
     try {
-      // const token = localStorage.getItem("token");
-      // if (!token) {
-      //   throw new Error("Authentication required. Please login.");
-      // }
-
       // Validate required fields
       if (!product.categoryId && !custom_category.trim()) {
         throw new Error("Please select or enter a category");
@@ -754,6 +749,12 @@ export default function EditProductPage() {
         formData.append("images", file);
       });
 
+      formData.append(
+        "removedMainImages",
+        JSON.stringify(product.removedImages || [])
+      );
+
+      // Documents
       Object.entries(docFiles).forEach(([docId, file]) => {
         if (file) {
           formData.append(docId, file);
@@ -782,6 +783,12 @@ export default function EditProductPage() {
         variant.images.forEach((file, imgIndex) => {
           formData.append(`variant_${index}_${imgIndex}`, file);
         });
+
+        // removed variant images
+        formData.append(
+          `variantRemovedImages_${index}`,
+          JSON.stringify(variant.removedImages || [])
+        );
       });
 
       // Submit to backend
@@ -1075,7 +1082,7 @@ export default function EditProductPage() {
                         className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
                  opacity-0 group-hover:opacity-100 transition cursor-pointer"
                       >
-                        <FaTrash size={10}/>
+                        <FaTrash size={10} />
                       </button>
                     </div>
                   ))}
@@ -1534,7 +1541,7 @@ export default function EditProductPage() {
                       className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
                      opacity-0 group-hover:opacity-100 transition cursor-pointer"
                     >
-                      <FaTrash size={10}/>
+                      <FaTrash size={10} />
                     </button>
                   </div>
                 ))}
