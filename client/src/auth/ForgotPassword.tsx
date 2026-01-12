@@ -32,7 +32,7 @@ export default function ForgotPassword() {
 
     try {
       setLoading(true);
-      await api.post("/crm/auth/forgot-password", { email: email.trim() });
+      await api.post("/auth/forgot-password", { email: email.trim() });
       setSuccess(true);
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Failed to send reset email"));
@@ -71,7 +71,7 @@ export default function ForgotPassword() {
                 Forgot Password?
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Enter your email and we’ll send you a reset link.
+                Enter your email and we'll send you a reset link.
               </p>
             </div>
 

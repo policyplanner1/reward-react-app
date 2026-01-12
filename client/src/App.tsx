@@ -6,6 +6,7 @@ import AuthLayout from "./layouts/AuthLayout";
 import LoginPage from "./auth/LoginPage";
 import RegisterPage from "./auth/RegisterPage";
 import ForgotPassword from "./auth/ForgotPassword";
+import ResetPassword from "./auth/ResetPassword";
 import VerifyOtpPage from "./auth/VerifyOtpPage";
 
 /* Layouts */
@@ -42,8 +43,8 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />
-        
       </Route>
 
       {/* ========== VENDOR ========== */}
@@ -124,7 +125,7 @@ export default function App() {
           element={<DocumentManagement />}
         />
 
-      <Route
+        <Route
           path={routes.manager.linkDocument}
           element={<DocumentCategoryManagement />}
         />

@@ -2,9 +2,8 @@ const bcrypt = require("bcryptjs");
 const db = require("../config/database");
 const { generateToken } = require("../utils/jwt");
 const { generateOTP, hashOTP } = require("../utils/optGenerate");
-const { sendOtpEmail } = require("../config/mail");
-
-//
+const { sendOtpEmail, sendPasswordResetEmail } = require("../config/mail");
+const crypto = require("crypto");
 
 const authController = {
   /* ============================================================
@@ -210,6 +209,120 @@ const authController = {
     return res.json({
       success: true,
       message: "OTP resent successfully",
+    });
+  },
+
+  /* ============================================================
+       Forgot Password
+     ============================================================ */
+
+  forgotPassword: async (req, res) => {
+    const { email } = req.body;
+
+    const genericResponse = {
+      success: true,
+      message: "If the email exists, a reset link has been sent",
+    };
+
+    if (!email) return res.json(genericResponse);
+
+    const [users] = await db.execute(
+      "SELECT user_id, email FROM eusers WHERE email = ?",
+      [email.toLowerCase()]
+    );
+
+    if (!users.length) {
+      return res.json(genericResponse);
+    }
+
+    const user = users[0];
+
+    // Invalidate old tokens
+    await db.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", [
+      user.user_id,
+    ]);
+
+    // Generate secure token
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await db.execute(
+      `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+     VALUES (?, ?, ?)`,
+      [user.user_id, tokenHash, expiresAt]
+    );
+
+    const resetLink = `https://rewardplanners.com/crm/reset-password?token=${rawToken}`;
+
+    await sendPasswordResetEmail(user.email, resetLink);
+
+    return res.json(genericResponse);
+  },
+
+  resetPassword: async (req, res) => {
+    const { token, password, confirmPassword } = req.body;
+
+    if (!token || !password || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
+    }
+
+    if (password.length < 5) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 5 characters",
+      });
+    }
+
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const [rows] = await db.execute(
+      `
+    SELECT user_id
+    FROM password_reset_tokens
+    WHERE token_hash = ?
+      AND expires_at > NOW()
+    LIMIT 1
+    `,
+      [tokenHash]
+    );
+
+    if (!rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired reset link",
+      });
+    }
+
+    const userId = rows[0].user_id;
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    await db.execute("UPDATE eusers SET password = ? WHERE user_id = ?", [
+      hashedPassword,
+      userId,
+    ]);
+
+    await db.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", [
+      userId,
+    ]);
+
+    return res.json({
+      success: true,
+      message: "Password reset successfully",
     });
   },
 
