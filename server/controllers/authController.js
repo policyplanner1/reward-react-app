@@ -5,8 +5,6 @@ const { generateOTP, hashOTP } = require("../utils/optGenerate");
 const { sendOtpEmail, sendPasswordResetEmail } = require("../config/mail");
 const crypto = require("crypto");
 
-//
-
 const authController = {
   /* ============================================================
        REGISTER USER (Auto-create vendor if role = vendor)
@@ -259,9 +257,7 @@ const authController = {
       [user.user_id, tokenHash, expiresAt]
     );
 
-    const resetLink = `${
-      process.env.CLIENT_URL || "http://localhost:5173"
-    }/reset-password?token=${rawToken}`;
+    const resetLink = `https://rewardplanners.com/crm/reset-password?token=${rawToken}`;
 
     await sendPasswordResetEmail(user.email, resetLink);
 
