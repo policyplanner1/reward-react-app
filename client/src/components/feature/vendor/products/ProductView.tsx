@@ -295,7 +295,11 @@ export default function ReviewProductPage() {
           <div className="flex gap-2">
             <button
               onClick={() => navigate(-1)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50 cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg
+           bg-[#852BAF] text-white transition-all duration-300
+           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+           hover:text-white cursor-pointer"
+
             >
               <FaArrowLeft /> Back
             </button>
@@ -311,7 +315,7 @@ export default function ReviewProductPage() {
               product.product_status ?? ""
             ) && (
               <Link
-                to={`/src/vendor/products/edit/${product.productId}`}
+                to={`/vendor/products/edit/${product.productId}`}
                 target="_blank"
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50"
               >
