@@ -1498,8 +1498,8 @@ export default function ProductListingDynamic() {
                     <button
                       type="button"
                       onClick={() => removeMainImage(index)}
-                      className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1
-                     opacity-0 group-hover:opacity-100 transition"
+                      className="absolute top-1 right-1 bg-black/80 text-white rounded-full p-1
+                     opacity-0 group-hover:opacity-100 transition cursor-pointer"
                     >
                       <FaTrash size={10} />
                     </button>
