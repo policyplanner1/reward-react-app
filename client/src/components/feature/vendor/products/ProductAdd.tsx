@@ -248,11 +248,11 @@ export default function ProductListingDynamic() {
     }));
   };
 
-  useEffect(() => {
-    return () => {
-      product.productImages.forEach((img) => URL.revokeObjectURL(img.url));
-    };
-  }, [product.productImages]);
+  // useEffect(() => {
+  //   return () => {
+  //     product.productImages.forEach((img) => URL.revokeObjectURL(img.url));
+  //   };
+  // }, [product.productImages]);
 
   // Fetch subcategories when category changes
   useEffect(() => {
@@ -343,6 +343,37 @@ export default function ProductListingDynamic() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const removeMainImage = (index: number) => {
+    setProduct((prev) => {
+      const updatedImages = [...prev.productImages];
+
+      URL.revokeObjectURL(updatedImages[index].url);
+
+      updatedImages.splice(index, 1);
+
+      return {
+        ...prev,
+        productImages: updatedImages,
+      };
+    });
+  };
+
+  const removeVariantImage = (variantIndex: number, imageIndex: number) => {
+    setProduct((prev) => {
+      const updatedVariants = [...prev.variants];
+      const updatedImages = [...updatedVariants[variantIndex].images];
+
+      updatedImages.splice(imageIndex, 1);
+
+      updatedVariants[variantIndex] = {
+        ...updatedVariants[variantIndex],
+        images: updatedImages,
+      };
+
+      return { ...prev, variants: updatedVariants };
+    });
   };
 
   const handleVariantChange = (index: number, field: string, value: string) => {
@@ -1048,16 +1079,27 @@ export default function ProductListingDynamic() {
                 <div className="mt-3 flex gap-2 flex-wrap">
                   {variant.images.map((file, imgIndex) => {
                     const url = URL.createObjectURL(file);
+
                     return (
                       <div
                         key={imgIndex}
-                        className="w-20 h-20 border rounded overflow-hidden"
+                        className="relative w-20 h-20 border rounded overflow-hidden group"
                       >
                         <img
                           src={url}
                           alt={`Variant ${index + 1} - Image ${imgIndex + 1}`}
                           className="w-full h-full object-cover"
                         />
+
+                        {/* Remove button */}
+                        <button
+                          type="button"
+                          onClick={() => removeVariantImage(index, imgIndex)}
+                          className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1
+                   opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                        >
+                          <FaTrash size={10}/>
+                        </button>
                       </div>
                     );
                   })}
@@ -1438,18 +1480,29 @@ export default function ProductListingDynamic() {
             )}
 
             {/* Image Previews */}
+
             {product.productImages.length > 0 && (
               <div className="mt-3 flex gap-2 flex-wrap">
                 {product.productImages.map((img, index) => (
                   <div
                     key={index}
-                    className="w-20 h-20 border rounded overflow-hidden"
+                    className="relative w-20 h-20 border rounded overflow-hidden group"
                   >
                     <img
                       src={img.url}
                       alt={`Preview ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
+
+                    {/* Remove button */}
+                    <button
+                      type="button"
+                      onClick={() => removeMainImage(index)}
+                      className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1
+                     opacity-0 group-hover:opacity-100 transition"
+                    >
+                      <FaTrash size={10} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -1464,7 +1517,7 @@ export default function ProductListingDynamic() {
             <button
               type="submit"
               disabled={isSubmitting}
-             className="flex items-center justify-center w-full px-6 py-3 text-lg font-bold text-white
+              className="flex items-center justify-center w-full px-6 py-3 text-lg font-bold text-white
              rounded-full transition-all duration-300 cursor-pointer
              bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
              hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
