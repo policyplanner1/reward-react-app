@@ -10,7 +10,7 @@ class CheckoutController {
       // const userId = req.user?.user_id;
       const userId = 1; // Temporary hardcoded user ID for testing
 
-      const companyId = req.body.company_id || null;
+      const companyId = req.body?.company_id ?? null;
 
       const orderId = await CheckoutModel.checkoutCart(userId, companyId);
 

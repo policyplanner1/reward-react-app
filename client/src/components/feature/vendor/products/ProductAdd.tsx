@@ -223,36 +223,38 @@ export default function ProductListingDynamic() {
   const handleMainImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
 
-    const files = Array.from(e.target.files);
+    const newFiles = Array.from(e.target.files);
 
-    if (files.length < 1) {
-      setImageError("Please select at least 1 image.");
-      return;
-    }
+    setProduct((prev) => {
+      const existingImages = prev.productImages;
 
-    if (files.length > 5) {
-      setImageError("You can select a maximum of 5 images.");
-      return;
-    }
+      if (existingImages.length + newFiles.length > 5) {
+        setImageError("You can select a maximum of 5 images.");
+        return prev;
+      }
+
+      const newPreviews = newFiles.map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
+      }));
+
+      return {
+        ...prev,
+        productImages: [...existingImages, ...newPreviews], // ✅ append
+      };
+    });
 
     setImageError("");
 
-    const previews = files.map((file) => ({
-      file,
-      url: URL.createObjectURL(file),
-    }));
-
-    setProduct((prev) => ({
-      ...prev,
-      productImages: previews,
-    }));
+    // reset input so same file can be selected again if needed
+    e.target.value = "";
   };
 
-  useEffect(() => {
-    return () => {
-      product.productImages.forEach((img) => URL.revokeObjectURL(img.url));
-    };
-  }, [product.productImages]);
+  // useEffect(() => {
+  //   return () => {
+  //     product.productImages.forEach((img) => URL.revokeObjectURL(img.url));
+  //   };
+  // }, [product.productImages]);
 
   // Fetch subcategories when category changes
   useEffect(() => {
@@ -343,6 +345,37 @@ export default function ProductListingDynamic() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const removeMainImage = (index: number) => {
+    setProduct((prev) => {
+      const updatedImages = [...prev.productImages];
+
+      URL.revokeObjectURL(updatedImages[index].url);
+
+      updatedImages.splice(index, 1);
+
+      return {
+        ...prev,
+        productImages: updatedImages,
+      };
+    });
+  };
+
+  const removeVariantImage = (variantIndex: number, imageIndex: number) => {
+    setProduct((prev) => {
+      const updatedVariants = [...prev.variants];
+      const updatedImages = [...updatedVariants[variantIndex].images];
+
+      updatedImages.splice(imageIndex, 1);
+
+      updatedVariants[variantIndex] = {
+        ...updatedVariants[variantIndex],
+        images: updatedImages,
+      };
+
+      return { ...prev, variants: updatedVariants };
+    });
   };
 
   const handleVariantChange = (index: number, field: string, value: string) => {
@@ -440,40 +473,37 @@ export default function ProductListingDynamic() {
     setProduct((prev) => ({ ...prev, variants: updatedVariants }));
   };
 
-  // const handleVariantImages = (
-  //   variantIndex: number,
-  //   e: ChangeEvent<HTMLInputElement>
-  // ) => {
-  //   if (!e.target.files) return;
-  //   const files = Array.from(e.target.files);
-  //   const updatedVariants = [...product.variants];
-  //   updatedVariants[variantIndex].images = files;
-  //   setProduct((prev) => ({ ...prev, variants: updatedVariants }));
-  // };
-
   const handleVariantImages = (
     variantIndex: number,
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     if (!e.target.files) return;
 
-    const files = Array.from(e.target.files);
-
-    if (files.length < 1) {
-      alert("Please select at least 1 image for this variant.");
-      return;
-    }
-
-    if (files.length > 5) {
-      alert("You can select a maximum of 5 images.");
-      return;
-    }
+    const newFiles = Array.from(e.target.files);
 
     setProduct((prev) => {
       const updatedVariants = [...prev.variants];
-      updatedVariants[variantIndex].images = files;
-      return { ...prev, variants: updatedVariants };
+      const existingImages = updatedVariants[variantIndex].images;
+
+      // enforce max 5
+      if (existingImages.length + newFiles.length > 5) {
+        alert("You can select a maximum of 5 images per variant.");
+        return prev;
+      }
+
+      updatedVariants[variantIndex] = {
+        ...updatedVariants[variantIndex],
+        images: [...existingImages, ...newFiles], // ✅ append
+      };
+
+      return {
+        ...prev,
+        variants: updatedVariants,
+      };
     });
+
+    // allow re-selecting the same file again
+    e.target.value = "";
   };
 
   const addVariant = () => {
@@ -1031,13 +1061,22 @@ export default function ProductListingDynamic() {
                     ? "No images chosen"
                     : `${variant.images.length} image(s) selected`}
                 </span>
-                <label className="cursor-pointer bg-[#852BAF] text-white px-3 py-1 text-xs rounded-full hover:bg-[#7a1c94]">
+                <label
+                  className={`cursor-pointer px-3 py-1 text-xs rounded-full
+    ${
+      variant.images.length >= 5
+        ? "bg-gray-400 cursor-not-allowed"
+        : "bg-[#852BAF] hover:bg-[#7a1c94] text-white"
+    }
+  `}
+                >
                   Choose Files
                   <input
                     type="file"
                     multiple
-                    className="hidden"
+                    hidden
                     accept="image/*"
+                    disabled={variant.images.length >= 5}
                     onChange={(e) => handleVariantImages(index, e)}
                   />
                 </label>
@@ -1048,16 +1087,27 @@ export default function ProductListingDynamic() {
                 <div className="mt-3 flex gap-2 flex-wrap">
                   {variant.images.map((file, imgIndex) => {
                     const url = URL.createObjectURL(file);
+
                     return (
                       <div
                         key={imgIndex}
-                        className="w-20 h-20 border rounded overflow-hidden"
+                        className="relative w-20 h-20 border rounded overflow-hidden group"
                       >
                         <img
                           src={url}
                           alt={`Variant ${index + 1} - Image ${imgIndex + 1}`}
                           className="w-full h-full object-cover"
                         />
+
+                        {/* Remove button */}
+                        <button
+                          type="button"
+                          onClick={() => removeVariantImage(index, imgIndex)}
+                          className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1
+                   opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                        >
+                          <FaTrash size={10} />
+                        </button>
                       </div>
                     );
                   })}
@@ -1417,12 +1467,21 @@ export default function ProductListingDynamic() {
                   ? "No images chosen"
                   : `${product.productImages.length} image(s) selected`}
               </span>
-              <label className="cursor-pointer bg-[#852BAF] text-white px-3 py-1 text-xs rounded-full hover:bg-[#7a1c94]">
+              <label
+                className={`cursor-pointer px-3 py-1 text-xs rounded-full
+    ${
+      product.productImages.length >= 5
+        ? "bg-gray-400 cursor-not-allowed"
+        : "bg-[#852BAF] hover:bg-[#7a1c94] text-white"
+    }
+  `}
+              >
                 Choose Files
                 <input
                   type="file"
                   multiple
-                  className="hidden"
+                  hidden
+                  disabled={product.productImages.length >= 5}
                   accept="image/*"
                   onChange={handleMainImages}
                 />
@@ -1438,18 +1497,29 @@ export default function ProductListingDynamic() {
             )}
 
             {/* Image Previews */}
+
             {product.productImages.length > 0 && (
               <div className="mt-3 flex gap-2 flex-wrap">
                 {product.productImages.map((img, index) => (
                   <div
                     key={index}
-                    className="w-20 h-20 border rounded overflow-hidden"
+                    className="relative w-20 h-20 border rounded overflow-hidden group"
                   >
                     <img
                       src={img.url}
                       alt={`Preview ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
+
+                    {/* Remove button */}
+                    <button
+                      type="button"
+                      onClick={() => removeMainImage(index)}
+                      className="absolute top-1 right-1 bg-black/80 text-white rounded-full p-1
+                     opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                    >
+                      <FaTrash size={10} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -1464,7 +1534,7 @@ export default function ProductListingDynamic() {
             <button
               type="submit"
               disabled={isSubmitting}
-             className="flex items-center justify-center w-full px-6 py-3 text-lg font-bold text-white
+              className="flex items-center justify-center w-full px-6 py-3 text-lg font-bold text-white
              rounded-full transition-all duration-300 cursor-pointer
              bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
              hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
