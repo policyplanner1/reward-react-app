@@ -155,6 +155,24 @@ class AuthController {
     }
   }
 
+  // Get all states
+  async getStates(req, res) {
+    try {
+      const states = await AddressModel.getAllStates();
+
+      return res.json({
+        success: true,
+        data: states,
+      });
+    } catch (error) {
+      console.error("Get States Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch states",
+      });
+    }
+  }
+
   // Get states by country ID
   async getStatesByCountry(req, res) {
     try {
@@ -190,13 +208,7 @@ class AuthController {
 
       const data = req.body;
 
-      if (
-        !data.address1 ||
-        !data.city ||
-        !data.zipcode ||
-        !data.country_id ||
-        !data.state_id
-      ) {
+      if (!data.address1 || !data.city || !data.zipcode || !data.state_id) {
         return res.status(400).json({
           success: false,
           message: "Required address fields missing",
@@ -342,6 +354,126 @@ class AuthController {
       return res.status(500).json({
         success: false,
         message: "Failed to fetch address",
+      });
+    }
+  }
+
+  /* ==============================================Reviews==================================================*/
+
+  // Submit Review
+  async submitReview(req, res) {
+    try {
+      // const userId = req.user?.user_id;
+      const userId = 1;
+
+      const {
+        product_id,
+        variant_id,
+        order_id,
+        rating,
+        value_for_money,
+        good_quality,
+        smooth_experience,
+        review_text,
+      } = req.body;
+
+      const mediaFiles = req.files || [];
+
+      // validate
+      if (!product_id || !variant_id || !rating) {
+        return res.status(400).json({
+          success: false,
+          message: "Required fields missing",
+        });
+      }
+
+      if (rating < 1 || rating > 5) {
+        return res.status(400).json({
+          success: false,
+          message: "Rating must be between 1 and 5",
+        });
+      }
+
+      if (mediaFiles.length > 5) {
+        return res.status(400).json({
+          success: false,
+          message: "Maximum 5 images/videos allowed",
+        });
+      }
+
+      // check if review exist
+      const alreadyReviewed = await AuthModel.reviewExists(
+        userId,
+        variant_id,
+        order_id
+      );
+
+      if (alreadyReviewed) {
+        return res.status(400).json({
+          success: false,
+          message: "Review already submitted",
+        });
+      }
+
+      // create Review
+      const reviewId = await AuthModel.addReview({
+        user_id: userId,
+        product_id,
+        variant_id,
+        order_id,
+        rating,
+        value_for_money,
+        good_quality,
+        smooth_experience,
+        review_text,
+      });
+
+      // Media save
+      if (mediaFiles.length) {
+        const mediaData = mediaFiles.map((file) => ({
+          media_url: `/uploads/reviews/${file.filename}`,
+          media_type: file.mimetype.startsWith("video") ? "video" : "image",
+        }));
+
+        await AuthModel.addReviewMedia(reviewId, mediaData);
+      }
+
+      return res.json({
+        success: true,
+        message: "Review submitted successfully",
+      });
+    } catch (error) {
+      console.error("Submit Review Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to submit review",
+      });
+    }
+  }
+
+  // get reviews
+  async getProductReviews(req, res) {
+    try {
+      const productId = Number(req.params.product_id);
+
+      if (!productId) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid product ID",
+        });
+      }
+
+      const reviews = await AuthModel.getReviewsByProduct(productId);
+
+      return res.json({
+        success: true,
+        data: reviews,
+      });
+    } catch (error) {
+      console.error("Get Reviews Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch reviews",
       });
     }
   }

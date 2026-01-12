@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const ProductController = require("../controllers/productController");
+const auth = require("../middlewares/auth");
 
 /* ======================================================Product Listing============================================ */
 
@@ -32,14 +33,22 @@ router.get(
 
 /* ======================================================Suggestion============================================ */
 
+// similar Products
+router.get(
+  "/similar/:productId",
+  ProductController.getSimilarProducts
+);
+
 // autosuggest products
 router.get("/search/suggestions", ProductController.getSearchSuggestions);
 
 // Load Products
 router.get("/search/products", ProductController.loadProducts);
 
-// search history
+// save search history
 router.post("/search/history", ProductController.saveSearchHistory);
+
+//fetch search history
 router.get("/search/history", ProductController.getSearchHistory);
 
 module.exports = router;

@@ -71,9 +71,10 @@ class ProductModel {
 
     const [result] = await connection.execute(
       `INSERT INTO eproducts 
-     (vendor_id, category_id, subcategory_id, sub_subcategory_id, brand_name, manufacturer,product_name, description, short_description,
+     (vendor_id, category_id, subcategory_id, sub_subcategory_id, brand_name, manufacturer, barcode, gst,
+      product_name, description, short_description,
       custom_category, custom_subcategory, custom_sub_subcategory, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
       [
         safe(vendorId),
         safe(data.category_id),
@@ -81,6 +82,8 @@ class ProductModel {
         safe(data.sub_subcategory_id),
         safe(data.brandName),
         safe(data.manufacturer),
+        safe(data.barCode),
+        safe(data.gstIn),
         safe(data.productName),
         safe(data.description),
         safe(data.shortDescription),
@@ -155,6 +158,57 @@ class ProductModel {
     );
 
     return result.insertId;
+  }
+
+  async insertVariantOption(connection, productId, name) {
+    const [res] = await connection.execute(
+      `INSERT INTO product_variant_options (product_id, option_name)
+     VALUES (?, ?)`,
+      [productId, name]
+    );
+    return res.insertId;
+  }
+
+  async insertVariantOptionValue(connection, optionId, value) {
+    const [res] = await connection.execute(
+      `INSERT INTO product_variant_option_values (option_id, value)
+     VALUES (?, ?)`,
+      [optionId, value]
+    );
+    return res.insertId;
+  }
+
+  async insertSKU(connection, productId, sku) {
+    const safe = (v) => (v === undefined || v === "" ? null : v);
+
+    const skuCode = await generateUniqueSKU(connection, productId);
+
+    const [res] = await connection.execute(
+      `INSERT INTO product_variants
+     (product_id, sku, mrp, sale_price, stock,
+      manufacturing_date, expiry_date)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        productId,
+        skuCode,
+        safe(sku.price),
+        safe(sku.price), 
+        safe(sku.stock),
+        safe(sku.manufacturingYear),
+        safe(sku.expiryDate),
+      ]
+    );
+
+    return res.insertId;
+  }
+
+  async insertVariantAttribute(connection, variantId, optionId, valueId) {
+    await connection.execute(
+      `INSERT INTO product_variant_attributes
+     (variant_id, option_id, value_id)
+     VALUES (?, ?, ?)`,
+      [variantId, optionId, valueId]
+    );
   }
 
   async insertProductVariantImages(connection, variantId, files) {
@@ -290,6 +344,8 @@ class ProductModel {
       sub_subcategory_id = ?, 
       brand_name = ?, 
       manufacturer = ?, 
+      barcode = ?, 
+      gst = ?, 
       product_name = ?, 
       description = ?, 
       short_description = ?, 
@@ -303,6 +359,8 @@ class ProductModel {
         safe(data.sub_subcategory_id),
         safe(data.brandName),
         safe(data.manufacturer),
+        safe(data.barCode),
+        safe(data.gstIn),
         safe(data.productName),
         safe(data.description),
         safe(data.shortDescription),
@@ -551,6 +609,8 @@ class ProductModel {
         ssc.name AS sub_subcategory_name,
         p.brand_name,
         p.manufacturer,
+        p.barcode,
+        p.gst,
         p.product_name,
         p.description,
         p.short_description,

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
 const auth = require("../middlewares/auth");
+const uploadReviewMedia = require("../../middleware/productUpload");
 
 /*============================================Profile=================================================*/
 // User registration
@@ -13,12 +14,14 @@ router.post("/login", authController.loginUser);
 // edit Profile
 
 /*=============================================Address================================================*/
-
 // Fetch all the countries
-router.get("/countries", authController.getCountries);
+// router.get("/countries", authController.getCountries);
 
 // fetch all the state of the country
-router.get("/states/:country_id", authController.getStatesByCountry);
+// router.get("/states/:country_id", authController.getStatesByCountry);
+
+// Fetch all the states
+router.get("/states", authController.getStates);
 
 // add address
 // router.post("/address", auth, authController.addAddress);
@@ -40,6 +43,17 @@ router.get("/addresses", authController.getMyAddresses);
 // router.get("/address/:address_id", auth, authController.getAddressById);
 router.get("/address/:address_id", authController.getAddressById);
 
-/*===================================================Wishlist===========================================*/
+/*===================================================Review===========================================*/
+
+// Add review
+router.post(
+  "/reviews",
+  /* auth, */ 
+  uploadReviewMedia,
+  authController.submitReview
+);
+
+// fetch reviews
+router.get("/reviews/:product_id", authController.getProductReviews);
 
 module.exports = router;

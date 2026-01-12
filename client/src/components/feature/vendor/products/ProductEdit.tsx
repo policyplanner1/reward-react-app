@@ -141,13 +141,11 @@ interface ProductData {
   productName: string;
   brandName: string;
   manufacturer: string;
-  barCode: string;
   description: string;
   shortDescription: string;
   categoryId: number | null;
   subCategoryId: number | null;
   subSubCategoryId: number | null;
-  gstIn?: string;
   variants: Variant[];
   productImages: ImagePreview[];
   existingImages?: string[];
@@ -156,14 +154,12 @@ interface ProductData {
 const initialProductData: ProductData = {
   brandName: "",
   manufacturer: "",
-  barCode: "",
   productName: "",
   description: "",
   shortDescription: "",
   categoryId: null,
   subCategoryId: null,
   subSubCategoryId: null,
-  gstIn: "",
   variants: [
     {
       variant_id: "",
@@ -186,7 +182,6 @@ const initialProductData: ProductData = {
 };
 
 const allowOnlyAlphabets = (value: string) => /^[A-Za-z ]*$/.test(value);
-const allowOnlyDecimal = (value: string) => /^\d*\.?\d*$/.test(value);
 
 export default function EditProductPage() {
   const { id: productId } = useParams<{ id: string }>();
@@ -330,15 +325,6 @@ export default function EditProductPage() {
   ) => {
     const { name, value } = e.target;
 
-    /* ===== GST % ===== */
-    if (name === "gstIn") {
-      if (!allowOnlyDecimal(value)) return;
-      if (value && Number(value) > 100) return;
-
-      setProduct((prev) => ({ ...prev, gstIn: value }));
-      return;
-    }
-
     /* ===== PRODUCT TEXT (ALPHABETS ONLY) ===== */
     const productAlphabetFields = ["productName", "brandName", "manufacturer"];
 
@@ -429,8 +415,6 @@ export default function EditProductPage() {
         productName: p.product_name || "",
         brandName: p.brand_name || "",
         manufacturer: p.manufacturer || "",
-        barCode: p.barcode || "",
-        gstIn: p.gst || "",
         description: p.description || "",
         shortDescription: p.short_description || "",
         categoryId: p.category_id || null,
@@ -685,11 +669,9 @@ export default function EditProductPage() {
 
       formData.append("brandName", product.brandName);
       formData.append("manufacturer", product.manufacturer);
-      formData.append("barCode", product.barCode || "");
       formData.append("productName", product.productName);
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
-      if (product.gstIn) formData.append("gstIn", product.gstIn);
 
       // Add main product images
       product.productImages.forEach(({ file }) => {
@@ -1349,22 +1331,6 @@ export default function EditProductPage() {
                 value={product.manufacturer}
                 onChange={handleFieldChange}
                 placeholder="Manufacturer name"
-              />
-
-              <FormInput
-                id="barCode"
-                label="Barcode"
-                value={product.barCode}
-                onChange={handleFieldChange}
-                placeholder="EAN/Code"
-              />
-
-              <FormInput
-                id="gstIn"
-                label="GST"
-                value={product.gstIn}
-                onChange={handleFieldChange}
-                placeholder="GST"
               />
             </div>
           </section>

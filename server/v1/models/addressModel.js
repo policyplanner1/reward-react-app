@@ -18,6 +18,20 @@ class AddressModel {
     return rows;
   }
 
+  // Fetch States
+  async getAllStates() {
+    const [rows] = await db.execute(
+      `SELECT 
+         state_id,
+         state_name
+       FROM states
+       WHERE status = 1
+       ORDER BY state_name`
+    );
+
+    return rows;
+  }
+
   // Fetch States by Country ID
   async getStatesByCountry(countryId) {
     const [rows] = await db.execute(
@@ -43,13 +57,12 @@ class AddressModel {
       address2,
       city,
       zipcode,
-      country_id,
       state_id,
-      landmark,
+      landmark = null,
       contact_name,
       contact_phone,
-      latitude,
-      longitude,
+      latitude = null,
+      longitude = null,
     } = data;
 
     const [result] = await db.execute(
@@ -68,7 +81,7 @@ class AddressModel {
       contact_phone,
       latitude,
       longitude
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 75, ?, ?, ?, ?, ?, ?)`,
       [
         user_id,
         address_type,
@@ -77,7 +90,6 @@ class AddressModel {
         address2,
         city,
         zipcode,
-        country_id,
         state_id,
         landmark,
         contact_name,
@@ -110,7 +122,6 @@ class AddressModel {
         address2 = ?,
         city = ?,
         zipcode = ?,
-        country_id = ?,
         state_id = ?,
         landmark = ?,
         contact_name = ?,
@@ -121,12 +132,10 @@ class AddressModel {
       [
         data.address_type,
         data.is_default,
-        data.house_no,
-        data.area,
-        data.locality,
+        data.address1,
+        data.address2,
         data.city,
         data.zipcode,
-        data.country_id,
         data.state_id,
         data.landmark,
         data.contact_name,
