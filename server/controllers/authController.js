@@ -268,6 +268,68 @@ const authController = {
     return res.json(genericResponse);
   },
 
+  resetPassword: async (req, res) => {
+    const { token, password, confirmPassword } = req.body;
+
+    if (!token || !password || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
+    }
+
+    if (password.length < 5) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 5 characters",
+      });
+    }
+
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const [rows] = await db.execute(
+      `
+    SELECT user_id
+    FROM password_reset_tokens
+    WHERE token_hash = ?
+      AND expires_at > NOW()
+    LIMIT 1
+    `,
+      [tokenHash]
+    );
+
+    if (!rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired reset link",
+      });
+    }
+
+    const userId = rows[0].user_id;
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    await db.execute("UPDATE eusers SET password = ? WHERE user_id = ?", [
+      hashedPassword,
+      userId,
+    ]);
+
+    await db.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", [
+      userId,
+    ]);
+
+    return res.json({
+      success: true,
+      message: "Password reset successfully",
+    });
+  },
+
   /* ============================================================
        LOGIN USER (Loads correct vendor_id)
      ============================================================ */

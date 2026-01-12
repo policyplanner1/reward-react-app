@@ -32,7 +32,7 @@ export default function ForgotPassword() {
 
     try {
       setLoading(true);
-      await api.post("/crm/auth/forgot-password", { email: email.trim() });
+      await api.post("/auth/forgot-password", { email: email.trim() });
       setSuccess(true);
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Failed to send reset email"));
