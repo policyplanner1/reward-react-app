@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { useAuth } from "../auth/useAuth";
 import { api } from "../api/api";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function ChangePasswordPage() {
   const { user } = useAuth();
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -89,87 +93,110 @@ export default function ChangePasswordPage() {
         )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-  {/* Current password */}
-  <div>
-    <label className="block text-sm font-semibold text-gray-800">
-      Current Password
-    </label>
-    <div className="mt-2 relative">
-      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-[#852BAF]/20 to-[#FC3F78]/20 blur-[10px] opacity-0 transition-opacity duration-300 group-focus-within:opacity-100" />
-      <input
-        type="password"
-        value={currentPassword}
-        onChange={(e) => setCurrentPassword(e.target.value)}
-        className="relative w-full px-4 py-3.5 rounded-2xl bg-white/90
-                   border border-gray-200 shadow-sm
-                   placeholder:text-gray-400 text-gray-900
-                   outline-none transition-all duration-300
-                   focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15
-                   focus:shadow-lg focus:shadow-[#852BAF]/10"
-        placeholder="Enter current password"
-      />
-    </div>
-  </div>
+          {/* Current password */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-800">
+              Current Password
+            </label>
 
-  {/* New password */}
-  <div>
-    <label className="block text-sm font-semibold text-gray-800">
-      New Password
-    </label>
-    <div className="mt-2 relative">
-      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-[#852BAF]/20 to-[#FC3F78]/20 blur-[10px] opacity-0 transition-opacity duration-300 group-focus-within:opacity-100" />
-      <input
-        type="password"
-        value={newPassword}
-        onChange={(e) => setNewPassword(e.target.value)}
-        className="relative w-full px-4 py-3.5 rounded-2xl bg-white/90
-                   border border-gray-200 shadow-sm
-                   placeholder:text-gray-400 text-gray-900
-                   outline-none transition-all duration-300
-                   focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15
-                   focus:shadow-lg focus:shadow-[#852BAF]/10"
-        placeholder="Enter new password"
-      />
-    </div>
-  </div>
+            <div className="mt-2 relative">
+              <input
+                type={showCurrent ? "text" : "password"}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="relative w-full px-4 py-3.5 pr-12 rounded-2xl bg-white/90
+                 border border-gray-200 shadow-sm
+                 placeholder:text-gray-400 text-gray-900
+                 outline-none transition-all duration-300
+                 focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15
+                 focus:shadow-lg focus:shadow-[#852BAF]/10"
+                placeholder="Enter current password"
+              />
 
-  {/* Confirm password */}
-  <div>
-    <label className="block text-sm font-semibold text-gray-800">
-      Confirm New Password
-    </label>
-    <div className="mt-2 relative">
-      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-[#852BAF]/20 to-[#FC3F78]/20 blur-[10px] opacity-0 transition-opacity duration-300 group-focus-within:opacity-100" />
-      <input
-        type="password"
-        value={confirmPassword}
-        onChange={(e) => setConfirmPassword(e.target.value)}
-        className="relative w-full px-4 py-3.5 rounded-2xl bg-white/90
-                   border border-gray-200 shadow-sm
-                   placeholder:text-gray-400 text-gray-900
-                   outline-none transition-all duration-300
-                   focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15
-                   focus:shadow-lg focus:shadow-[#852BAF]/10"
-        placeholder="Confirm new password"
-      />
-    </div>
-  </div>
+              <button
+                type="button"
+                onClick={() => setShowCurrent(!showCurrent)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800  cursor-pointer"
+              >
+                {showCurrent ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
 
-  {/* Submit */}
-  <button
-    type="submit"
-    disabled={loading}
-    className="w-full mt-4 px-6 py-3.5 rounded-2xl font-bold text-white text-lg
+          {/* New password */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-800">
+              New Password
+            </label>
+
+            <div className="mt-2 relative">
+              <input
+                type={showNew ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="relative w-full px-4 py-3.5 pr-12 rounded-2xl bg-white/90
+                 border border-gray-200 shadow-sm
+                 placeholder:text-gray-400 text-gray-900
+                 outline-none transition-all duration-300
+                 focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15
+                 focus:shadow-lg focus:shadow-[#852BAF]/10"
+                placeholder="Enter new password"
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowNew(!showNew)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer"
+              >
+                {showNew ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Confirm password */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-800">
+              Confirm New Password
+            </label>
+
+            <div className="mt-2 relative">
+              <input
+                type={showConfirm ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="relative w-full px-4 py-3.5 pr-12 rounded-2xl bg-white/90
+                 border border-gray-200 shadow-sm
+                 placeholder:text-gray-400 text-gray-900
+                 outline-none transition-all duration-300
+                 focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15
+                 focus:shadow-lg focus:shadow-[#852BAF]/10"
+                placeholder="Confirm new password"
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowConfirm(!showConfirm)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800  cursor-pointer"
+              >
+                {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full mt-4 px-6 py-3.5 rounded-2xl font-bold text-white text-lg
                bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                transition-all duration-300 cursor-pointer active:scale-95
                hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
                shadow-lg shadow-[#852BAF]/25 hover:shadow-xl
                disabled:opacity-60 disabled:cursor-not-allowed"
-  >
-    {loading ? "Updating..." : "Update Password"}
-  </button>
-</form>
-
+          >
+            {loading ? "Updating..." : "Update Password"}
+          </button>
+        </form>
       </div>
     </div>
   );
