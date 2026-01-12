@@ -158,8 +158,14 @@ export default function VendorNavbar() {
             </div>
           </div>
           <div className="flex-1 text-left overflow-hidden">
-            <p className="text-xs font-bold text-gray-800 truncate">{user?.email}</p>
-            <p className="text-[10px] text-gray-500 font-medium uppercase tracking-tight">{user?.role}</p>
+            <p className="text-[14px] font-semibold text-gray-900 truncate">
+  {user?.email}
+</p>
+
+<p className="text-[12px] text-gray-500 font-medium uppercase tracking-wide">
+  {user?.role}
+</p>
+
           </div>
           <FiChevronDown className={`text-gray-400 transition-transform duration-300 ${isProfileOpen ? "rotate-180" : ""}`} />
         </button>
@@ -167,10 +173,10 @@ export default function VendorNavbar() {
         {/* PROFILE DROPDOWN MENU */}
         <div className={`overflow-hidden transition-all duration-300 ${isProfileOpen ? "max-h-24 mt-3 opacity-100" : "max-h-0 opacity-0"}`}>
           <div className="space-y-1">
-            <Link to="/vendor/change-password" className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-white rounded-lg transition-colors">
+            <Link to="/vendor/change-password" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-white rounded-lg transition-colors">
               <HiOutlineUserCircle className="text-lg text-gray-400" /> change Password
             </Link>
-            <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer">
+            <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer">
               <FiLogOut className="text-lg" /> Sign Out
             </button>
           </div>
