@@ -182,7 +182,6 @@ const initialProductData: ProductData = {
 };
 
 const allowOnlyAlphabets = (value: string) => /^[A-Za-z ]*$/.test(value);
-const allowOnlyDecimal = (value: string) => /^\d*\.?\d*$/.test(value);
 
 export default function EditProductPage() {
   const { id: productId } = useParams<{ id: string }>();
