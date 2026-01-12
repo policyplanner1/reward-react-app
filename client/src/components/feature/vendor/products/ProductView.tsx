@@ -313,8 +313,12 @@ export default function ReviewProductPage() {
               <Link
                 to={`/vendor/products/edit/${product.productId}`}
                 target="_blank"
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg
+           bg-[#852BAF] text-white transition-all duration-300
+           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+           hover:text-white cursor-pointer"
               >
+                Edit
                 <FaEdit />
               </Link>
             )}
