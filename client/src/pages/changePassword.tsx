@@ -140,7 +140,7 @@ export default function ChangePasswordPage() {
                   <button
                     type="button"
                     onClick={() => setShowCurrent(!showCurrent)}
-                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
+                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -165,7 +165,7 @@ export default function ChangePasswordPage() {
                   <button
                     type="button"
                     onClick={() => setShowNew(!showNew)}
-                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
+                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -190,7 +190,7 @@ export default function ChangePasswordPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
+                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
