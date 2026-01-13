@@ -84,10 +84,10 @@ export default function RegisterPage() {
     }
   };
 
-  const labelClass = "text-[18px] font-medium text-gray-800 leading-relaxed";
+  const labelClass = "text-sm font-semibold text-slate-700 tracking-wide";
 
   const inputBase =
-    "w-full px-4 py-3 rounded-2xl bg-white/90 text-slate-900 placeholder:text-slate-400 border border-slate-200 shadow-sm outline-none transition-all duration-300 focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15 focus:shadow-lg focus:shadow-[#852BAF]/10";
+    "w-full px-4 py-2.5 rounded-xl bg-white/90 text-slate-900 placeholder:text-slate-400 border border-slate-200 shadow-sm outline-none transition-all duration-300 focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15 focus:shadow-lg focus:shadow-[#852BAF]/10";
 
   return (
     <div className="relative min-h-screen overflow-hidden flex items-center justify-center bg-gradient-to-tr from-[#38bdf8] via-[#a855f7] to-[#ec4899] font-sans px-4">
@@ -126,20 +126,17 @@ export default function RegisterPage() {
             <h2 className="text-3xl font-extrabold text-gray-900">
               Create Account
             </h2>
-            {/* <p className="mt-1 text-sm text-gray-500">
-              Join our warehouse management system
-            </p> */}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Error Alert */}
             {(error || authError) && (
-              <div className="p-3 text-sm text-red-700 border-l-4 border-red-500 rounded-xl bg-red-50">
+              <div className="p-3 text-sm text-red-700 rounded-xl bg-red-50 border border-red-200 shadow-sm">
                 {error || (authError as string)}
               </div>
             )}
 
-            {/* ✅ 2 column on md+, 1 column mobile */}
+            {/*  2 column on md+, 1 column mobile */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field label="Full Name" htmlFor="name" labelClass={labelClass}>
                 <input
@@ -270,7 +267,14 @@ export default function RegisterPage() {
                          hover:shadow-xl active:scale-95
                          disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? "Creating Account..." : "Register Now"}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Creating account...
+                </span>
+              ) : (
+                "Register Now"
+              )}
             </button>
 
             <p className="text-md text-center text-gray-600">
