@@ -118,7 +118,7 @@ export default function ForgotPassword() {
 
                   <button
                     disabled={loading}
-                    className="w-full text-white font-bold py-3.5 rounded-2xl text-base
+                    className="w-full text-white font-bold py-3.5 rounded-full text-base
                                bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                                shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer
                                hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
