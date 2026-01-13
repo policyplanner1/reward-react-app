@@ -124,15 +124,15 @@ export default function VendorDashboard() {
             <button
               onClick={() => navigate("/vendor/onboarding")}
               className="flex items-center gap-2 px-6 py-2.5
-bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-text-white font-semibold rounded-xl
-transition-all
-shadow-lg shadow-[#852BAF]/25
-cursor-pointer
-hover:from-[#FC3F78] hover:to-[#852BAF] hover:shadow-xl hover:opacity-90
-active:scale-95
-disabled:opacity-60 disabled:cursor-not-allowed
-"
+                  bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+                  text-white font-semibold rounded-xl
+                  transition-all
+                  shadow-lg shadow-[#852BAF]/25
+                  cursor-pointer
+                  hover:from-[#FC3F78] hover:to-[#852BAF] hover:shadow-xl hover:opacity-90
+                  active:scale-95
+                  disabled:opacity-60 disabled:cursor-not-allowed
+              "
             >
               Complete Onboarding
             </button>
@@ -141,28 +141,28 @@ disabled:opacity-60 disabled:cursor-not-allowed
               <button
                 onClick={() => navigate("/vendor/products/list")}
                 className="
-    relative overflow-hidden flex items-center gap-2 px-5 py-2.5
-    rounded-2xl font-semibold text-white cursor-pointer
+                  relative overflow-hidden flex items-center gap-2 px-5 py-2.5
+                  rounded-2xl font-semibold text-white cursor-pointer
 
-    bg-gradient-to-br from-gray-700 to-gray-900
-    shadow-lg ring-2 ring-white/70 scale-[1.02]
+                  bg-gradient-to-br from-gray-700 to-gray-900
+                  shadow-lg ring-2 ring-white/70 scale-[1.02]
 
-    transition-all duration-300
+                  transition-all duration-300
 
-    hover:bg-gradient-to-br hover:from-black hover:to-gray-800
-    hover:ring-white/30 hover:shadow-xl hover:shadow-black/40
-    hover:scale-105
+                  hover:bg-gradient-to-br hover:from-black hover:to-gray-800
+                  hover:ring-white/30 hover:shadow-xl hover:shadow-black/40
+                  hover:scale-105
 
-    active:scale-95
-  "
+                  active:scale-95
+                "
               >
                 {/* Glossy highlight layer */}
                 <span
                   className="
-      absolute inset-0 pointer-events-none rounded-2xl
-      bg-gradient-to-t from-transparent via-white/10 to-white/25
-      opacity-70
-    "
+                    absolute inset-0 pointer-events-none rounded-2xl
+                    bg-gradient-to-t from-transparent via-white/10 to-white/25
+                    opacity-70
+                  "
                 />
                 My Products
               </button>
@@ -170,13 +170,13 @@ disabled:opacity-60 disabled:cursor-not-allowed
               <button
                 onClick={() => navigate("/vendor/products/add")}
                 className="flex items-center gap-2 px-5 py-2.5
-           bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-           text-white font-semibold rounded-xl
-           hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
-           transition-all duration-300
-           shadow-lg shadow-[#852BAF]/25
-           active:scale-95
-           disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+                  text-white font-semibold rounded-xl
+                  hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+                  transition-all duration-300
+                  shadow-lg shadow-[#852BAF]/25
+                  active:scale-95
+                  disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               >
                 <FaPlus size={15} />
                 Add Product
@@ -195,7 +195,7 @@ disabled:opacity-60 disabled:cursor-not-allowed
           >
             <div className="flex justify-between items-start">
               <div
-                className={`p-3 rounded-2xl ${item.bg} ${item.color} group-hover:scale-110 transition-transform`}
+                className={`p-3 rounded-2xl ${item.bg} ${item.color} group-hover:scale-110 transition-transform cursor-pointer`}
               >
                 <item.icon size={24} />
               </div>
