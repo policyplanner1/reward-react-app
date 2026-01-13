@@ -266,6 +266,71 @@ function FileUploadInput(props: {
   );
 }
 
+const mapBackendToForm = (data: any): VendorOnboardingData => {
+  const { vendor, addresses, bank, contacts } = data;
+
+  const getAddress = (type: string, key: string) =>
+    addresses?.find((a: any) => a.type === type)?.[key] || "";
+
+  return {
+    companyName: vendor.company_name || "",
+    fullName: vendor.full_name || "",
+    vendorType: vendor.vendor_type || "",
+    gstin: vendor.gstin || "",
+    panNumber: vendor.pan_number || "",
+    ip_address: vendor.ipaddress || "",
+
+    // FILES MUST BE NULL
+    gstinFile: null,
+    panFile: null,
+    bankProofFile: null,
+    signatoryIdFile: null,
+    businessProfileFile: null,
+    vendorAgreementFile: null,
+    brandLogoFile: null,
+    authorizationLetterFile: null,
+    electricityBillFile: null,
+    rightsAdvisoryFile: null,
+    nocFile: null,
+
+    agreementAccepted: false,
+
+    companyEmail: contacts?.email || "",
+    companyPhone: "",
+
+    addressLine1: getAddress("business", "line1"),
+    addressLine2: getAddress("business", "line2"),
+    addressLine3: getAddress("business", "line3"),
+    city: getAddress("business", "city"),
+    state: getAddress("business", "state"),
+    pincode: getAddress("business", "pincode"),
+
+    billingAddressLine1: getAddress("billing", "line1"),
+    billingAddressLine2: getAddress("billing", "line2"),
+    billingCity: getAddress("billing", "city"),
+    billingState: getAddress("billing", "state"),
+    billingPincode: getAddress("billing", "pincode"),
+
+    shippingAddressLine1: getAddress("shipping", "line1"),
+    shippingAddressLine2: getAddress("shipping", "line2"),
+    shippingCity: getAddress("shipping", "city"),
+    shippingState: getAddress("shipping", "state"),
+    shippingPincode: getAddress("shipping", "pincode"),
+
+    bankName: bank?.bank_name || "",
+    accountNumber: bank?.account_number || "",
+    branch: bank?.branch || "",
+    ifscCode: bank?.ifsc_code || "",
+
+    primaryContactNumber: contacts?.primary_contact || "",
+    email: contacts?.email || "",
+    alternateContactNumber: contacts?.alternate_contact || "",
+
+    paymentTerms: contacts?.payment_terms || "",
+    comments: contacts?.comments || "",
+  };
+};
+
 /* ================= MAIN COMPONENT ================= */
 
 export default function Onboarding() {
@@ -429,23 +494,34 @@ export default function Onboarding() {
 
   /* ================= FETCH STATUS ================= */
   useEffect(() => {
-    const fetchVendorStatus = async () => {
+    const fetchInitialData = async () => {
       try {
-        const res = await api.get("/vendor/my-details");
+        const statusRes = await api.get("/vendor/my-details");
 
-        if (res.data?.success) {
-          setVendorStatus(res.data.vendor.status);
-          setRejectionReason(res.data.vendor.rejection_reason || "");
+        if (statusRes.data?.success) {
+          const status = statusRes.data.vendor.status;
+          setVendorStatus(status);
+          setRejectionReason(statusRes.data.vendor.rejection_reason || "");
+
+          //  THIS IS THE IMPORTANT PART
+          if (status === "rejected") {
+            const detailRes = await api.get("/vendor/onboarding-data");
+
+            if (detailRes.data?.success) {
+              console.log(detailRes.data.data)
+              const mapped = mapBackendToForm(detailRes.data.data);
+              setFormData(mapped);
+            }
+          }
         }
       } catch (err) {
-        console.error("Failed to fetch vendor status", err);
-        setVendorStatus(null);
+        console.error("Failed to load onboarding data", err);
       } finally {
         setLoadingStatus(false);
       }
     };
 
-    fetchVendorStatus();
+    fetchInitialData();
   }, []);
 
   /* ================= HANDLERS ================= */

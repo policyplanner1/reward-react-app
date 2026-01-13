@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import type { ComponentType } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import QuillEditor from "../../../QuillEditor";
 
 type IconComp = ComponentType<any>;
 
@@ -413,6 +414,24 @@ export default function EditProductPage() {
     if (!productId) return;
     fetchProductDetails(productId);
   }, [productId]);
+
+  // character Limit
+  const CHAR_LIMIT = 150;
+
+  const handleShortDescriptionChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const value = e.target.value;
+
+    if (value.length <= CHAR_LIMIT) {
+      setProduct((prev) => ({
+        ...prev,
+        shortDescription: value,
+      }));
+    }
+  };
 
   const fetchProductDetails = async (id: string) => {
     try {
@@ -1442,25 +1461,46 @@ export default function EditProductPage() {
           <section>
             {renderVariantBuilder()}
 
-            <FormInput
-              id="description"
-              label="Detailed Description"
-              type="textarea"
-              required
-              value={product.description}
-              onChange={handleFieldChange}
-              placeholder="Write detailed product info..."
-            />
+            {/* ===================== DETAILED DESCRIPTION ===================== */}
+            <div className="mt-6">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Detailed Description <span className="text-red-500">*</span>
+              </label>
 
-            <div className="mt-4">
+              <QuillEditor
+                value={product.description}
+                placeholder="Describe the product, features, usage, specifications, etc."
+                minHeight={300}
+                onChange={(val) =>
+                  setProduct((prev) => ({
+                    ...prev,
+                    description: val,
+                  }))
+                }
+              />
+            </div>
+
+            {/* ===================== SHORT DESCRIPTION ===================== */}
+            <div className="mt-6">
               <FormInput
                 id="shortDescription"
                 label="Short Description"
+                type="textarea"
                 required
                 value={product.shortDescription}
-                onChange={handleFieldChange}
-                placeholder="Short one-line description"
+                onChange={handleShortDescriptionChange}
+                placeholder="Short description (max 150 characters)"
               />
+
+              <p
+                className={`mt-1 text-xs ${
+                  product.shortDescription.length >= CHAR_LIMIT
+                    ? "text-red-500"
+                    : "text-gray-500"
+                }`}
+              >
+                {product.shortDescription.length} / {CHAR_LIMIT} characters
+              </p>
             </div>
           </section>
 

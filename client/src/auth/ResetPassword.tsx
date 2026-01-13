@@ -1,4 +1,4 @@
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { api } from "../api/api";
 import { LoaderCircle, Lock, Eye, EyeOff, ShieldAlert, ArrowLeft } from "lucide-react";

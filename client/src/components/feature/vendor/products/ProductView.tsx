@@ -1,7 +1,8 @@
-import  { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import type { ChangeEvent } from "react";
 import type { ComponentType } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import QuillEditor from "../../../QuillEditor";
 type IconComp = ComponentType<any>;
 
 function SectionHeader({
@@ -15,7 +16,6 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center space-x-3 pb-4 mb-4 border-b border-gray-200">
-
       <div
         className="p-3 text-white rounded-md"
         style={{ background: "linear-gradient(to right, #852BAF, #FC3F78)" }}
@@ -72,7 +72,6 @@ function FormInput(props: {
           readOnly={readOnly}
           placeholder={placeholder}
           className="p-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-800 shadow-sm cursor-default"
-
         />
       ) : (
         <input
@@ -84,7 +83,6 @@ function FormInput(props: {
           type="text"
           placeholder={placeholder}
           className="p-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-800 shadow-sm cursor-default"
-
         />
       )}
 
@@ -277,7 +275,6 @@ export default function ReviewProductPage() {
   return (
     <div className="p-6" style={{ backgroundColor: "#FFFAFB" }}>
       <div className="p-6 mx-auto bg-white border border-gray-200 shadow-2xl rounded-2xl max-w-7xl">
-
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="mb-1 text-3xl font-bold text-gray-900">
@@ -295,7 +292,6 @@ export default function ReviewProductPage() {
            bg-[#852BAF] text-white transition-all duration-300
            hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
            hover:text-white cursor-pointer"
-
             >
               <FaArrowLeft /> Back
             </button>
@@ -409,12 +405,10 @@ export default function ReviewProductPage() {
               <div
                 key={idx}
                 className="p-6 mb-6 border border-gray-200 rounded-xl bg-gray-50 shadow-inner"
-
               >
                 <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-3">
                   <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
->
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
                       Size
                     </label>
                     <input
@@ -424,8 +418,7 @@ export default function ReviewProductPage() {
                     />
                   </div>
                   <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
->
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
                       Color
                     </label>
                     <input
@@ -435,8 +428,7 @@ export default function ReviewProductPage() {
                     />
                   </div>
                   <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
->
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
                       Material Type
                     </label>
                     <input
@@ -447,8 +439,7 @@ export default function ReviewProductPage() {
                   </div>
 
                   <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
->
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
                       Dimension
                     </label>
                     <input
@@ -459,8 +450,7 @@ export default function ReviewProductPage() {
                   </div>
 
                   <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
->
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
                       MRP
                     </label>
                     <input
@@ -471,8 +461,7 @@ export default function ReviewProductPage() {
                   </div>
 
                   <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
->
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
                       Sales Price
                     </label>
                     <input
@@ -483,8 +472,7 @@ export default function ReviewProductPage() {
                   </div>
 
                   <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
->
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
                       Stock
                     </label>
                     <input
@@ -495,8 +483,7 @@ export default function ReviewProductPage() {
                   </div>
 
                   <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
->
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
                       Manufacturing Year
                     </label>
                     <input
@@ -507,8 +494,7 @@ export default function ReviewProductPage() {
                   </div>
 
                   <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
->
+                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
                       Expiry Date
                     </label>
                     <input
@@ -529,8 +515,7 @@ export default function ReviewProductPage() {
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                         {Object.keys(v.customAttributes).map((key) => (
                           <div key={key}>
-                            <label className="block mb-1 text-xs font-semibold uppercase text-gray-500"
->
+                            <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
                               {key}
                             </label>
                             <input
@@ -576,12 +561,18 @@ export default function ReviewProductPage() {
 
           {/* Descriptions */}
           <div className="mt-6">
-            <FormInput
-              id="description"
-              label="Detailed Description"
-              type="textarea"
-              value={product.description}
-            />
+            <div className="mt-4">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Detailed Description
+              </label>
+
+              <QuillEditor
+                value={product.description || ""}
+                readOnly
+                minHeight={260}
+              />
+            </div>
+
             <div className="mt-4">
               <FormInput
                 id="shortDescription"

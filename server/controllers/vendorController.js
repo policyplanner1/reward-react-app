@@ -30,7 +30,6 @@ const path = require("path");
 //   }
 // }
 
-
 async function moveVendorFiles(vendorId, files) {
   const targetDir = path.join(
     __dirname,
@@ -694,6 +693,37 @@ class VendorController {
       return res.status(500).json({
         success: false,
         message: err.message,
+      });
+    }
+  }
+
+  // vendor onboarding data
+  async getMyOnboardingData(req, res) {
+    try {
+      const vendorId = req.user.vendor_id;
+
+      if (!vendorId) {
+        return res.status(404).json({
+          success: false,
+          message: "Vendor not found for user",
+        });
+      }
+
+      const data = await VendorModel.getVendorById(vendorId);
+
+      if (!data) {
+        return res.status(404).json({
+          success: false,
+          message: "Vendor not found",
+        });
+      }
+
+      return res.json({ success: true, data });
+    } catch (err) {
+      console.error("GET MY ONBOARDING DATA ERROR:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch onboarding data",
       });
     }
   }
