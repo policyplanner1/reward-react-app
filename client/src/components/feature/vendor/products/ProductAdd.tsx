@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import type { ComponentType } from "react";
 import { api } from "../../../../api/api";
+import QuillEditor from "../../../QuillEditor";
 
 type IconComp = ComponentType<any>;
 
@@ -1431,15 +1432,20 @@ export default function ProductListingDynamic() {
           <section>
             {renderVariantBuilder()}
 
-            <FormInput
-              id="description"
-              label="Detailed Description"
-              type="textarea"
-              required
-              value={product.description}
-              onChange={handleFieldChange}
-              placeholder="Write detailed product info..."
-            />
+            <div className="mt-4">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Detailed Description <span className="text-red-500">*</span>
+              </label>
+
+              <QuillEditor
+                value={product.description}
+                placeholder="Describe your product, features, benefits, specifications, and usage instructions..."
+                minHeight={260}
+                onChange={(val) =>
+                  setProduct((prev) => ({ ...prev, description: val }))
+                }
+              />
+            </div>
 
             <div className="mt-4">
               <FormInput

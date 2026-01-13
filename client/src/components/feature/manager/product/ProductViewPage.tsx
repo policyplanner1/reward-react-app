@@ -9,6 +9,7 @@ import {
   FaDownload,
 } from "react-icons/fa";
 import { useNavigate, useParams } from "react-router-dom";
+import QuillEditor from "../../../QuillEditor";
 
 // const API_BASE = import.meta.env.VITE_API_URL;
 import { api } from "../../../../api/api";
@@ -252,7 +253,6 @@ export default function ReviewProductPage() {
            bg-[#852BAF] text-white transition-all duration-300
            hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
            hover:text-white cursor-pointer"
-
             >
               <FaArrowLeft /> Back
             </button>
@@ -503,12 +503,17 @@ export default function ReviewProductPage() {
 
           {/* Descriptions */}
           <div className="mt-6">
-            <FormInput
-              id="description"
-              label="Detailed Description"
-              type="textarea"
-              value={product.description}
-            />
+            <div className="mt-4">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Detailed Description
+              </label>
+
+              <QuillEditor
+                value={product.description || ""}
+                readOnly
+                minHeight={260}
+              />
+            </div>
             <div className="mt-4">
               <FormInput
                 id="shortDescription"
