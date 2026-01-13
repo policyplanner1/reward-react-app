@@ -78,7 +78,7 @@ export default function ChangePasswordPage() {
   };
 
   const labelClass =
-    "block text-[13px] font-bold tracking-widest text-slate-600 ";
+    "block text-[14px] font-bold tracking-widest text-slate-600 ";
 
   const inputClass =
     "relative w-full pl-11 pr-12 py-3 rounded-2xl bg-white/90 text-slate-900 placeholder:text-slate-400 " +
@@ -200,7 +200,7 @@ export default function ChangePasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 text-white font-bold py-3.5 rounded-2xl text-lg
+                className="w-full mt-2 text-white font-bold py-3.5 rounded-full text-lg
                            bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                            shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer
                            hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]

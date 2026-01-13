@@ -109,7 +109,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
           <div className="absolute bottom-8 left-8 right-8 text-slate-900">
             <p className="text-2xl font-extrabold leading-tight">
-              Create your account ✨
+              Create your account 
             </p>
             <p className="mt-2 text-[14px] font-medium text-gray-700 leading-relaxed">
               Join us and manage everything in one place.
