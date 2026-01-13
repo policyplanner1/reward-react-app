@@ -29,13 +29,18 @@ router.post(
 );
 
 // vendor stats
-router.get('/stats',authenticateToken,authorizeRoles('vendor'),vendorController.getStats)
+router.get(
+  "/stats",
+  authenticateToken,
+  authorizeRoles("vendor"),
+  vendorController.getStats
+);
 
 // get approved vendor List
 router.get(
   "/approved-list",
   authenticateToken,
-  authorizeRoles("vendor_manager","admin","warehouse_manager"),
+  authorizeRoles("vendor_manager", "admin", "warehouse_manager"),
   VendorController.approvedVendorList
 );
 
@@ -188,6 +193,14 @@ router.get(
   VendorController.getMyDetails
 );
 
+// get vendor existing details
+router.get(
+  "/onboarding-data",
+  authenticateToken,
+  authorizeRoles("vendor"),
+  vendorController.getMyOnboardingData
+);
+
 // Get vendor by ID
 router.get(
   "/:vendorId",
@@ -195,7 +208,5 @@ router.get(
   authorizeRoles("admin", "vendor_manager"),
   VendorController.getVendor
 );
-
-
 
 module.exports = router;
