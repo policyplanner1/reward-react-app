@@ -78,7 +78,7 @@ export default function ChangePasswordPage() {
   };
 
   const labelClass =
-    "block text-[11px] font-bold tracking-widest text-slate-600 uppercase";
+    "block text-[13px] font-bold tracking-widest text-slate-600 ";
 
   const inputClass =
     "relative w-full pl-11 pr-12 py-3 rounded-2xl bg-white/90 text-slate-900 placeholder:text-slate-400 " +
