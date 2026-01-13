@@ -135,6 +135,7 @@ interface Variant {
   materialType: string;
   images: File[];
   existingImages?: string[];
+  removedImages?: string[];
 }
 
 interface ProductData {
@@ -149,6 +150,7 @@ interface ProductData {
   variants: Variant[];
   productImages: ImagePreview[];
   existingImages?: string[];
+  removedImages?: string[];
 }
 
 const initialProductData: ProductData = {
@@ -179,6 +181,8 @@ const initialProductData: ProductData = {
     },
   ],
   productImages: [],
+  existingImages: [],
+  removedImages: [],
 };
 
 const allowOnlyAlphabets = (value: string) => /^[A-Za-z ]*$/.test(value);
@@ -202,6 +206,9 @@ export default function EditProductPage() {
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [isCustomSubcategory, setIsCustomSubcategory] = useState(false);
   const [isCustomSubSubcategory, setIsCustomSubSubcategory] = useState(false);
+  const [variantImageErrors, setVariantImageErrors] = useState<
+    Record<number, string>
+  >({});
   const [imageError, setImageError] = useState("");
   const [custom_category, setCustomCategory] = useState("");
   const [custom_subcategory, setCustomSubCategory] = useState("");
@@ -231,29 +238,64 @@ export default function EditProductPage() {
   const handleMainImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
 
-    const files = Array.from(e.target.files);
+    const newFiles = Array.from(e.target.files);
 
-    if (files.length > 5) {
-      setImageError("You can select a maximum of 5 images.");
-      return;
-    }
+    setProduct((prev) => {
+      const existingCount = prev.existingImages?.length || 0;
+      const newCount = prev.productImages.length;
 
-    const previews = files.map((file) => ({
-      file,
-      url: URL.createObjectURL(file),
-    }));
+      if (existingCount + newCount + newFiles.length > 5) {
+        setImageError("Maximum 5 images allowed (existing + new).");
+        return prev;
+      }
 
+      const previews = newFiles.map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
+      }));
+
+      return {
+        ...prev,
+        productImages: [...prev.productImages, ...previews],
+      };
+    });
+
+    e.target.value = "";
+    setImageError("");
+  };
+
+  const removeExistingMainImage = (img: string) => {
     setProduct((prev) => ({
       ...prev,
-      productImages: previews,
+      existingImages: prev.existingImages?.filter((i) => i !== img),
+      removedImages: [...(prev.removedImages || []), img],
     }));
   };
 
-  useEffect(() => {
-    return () => {
-      product.productImages.forEach((img) => URL.revokeObjectURL(img.url));
-    };
-  }, [product.productImages]);
+  const removeNewMainImage = (index: number) => {
+    setProduct((prev) => {
+      const imgs = [...prev.productImages];
+      URL.revokeObjectURL(imgs[index].url);
+      imgs.splice(index, 1);
+      return { ...prev, productImages: imgs };
+    });
+  };
+
+  const removeVariantImage = (variantIndex: number, imageIndex: number) => {
+    setProduct((prev) => {
+      const variants = [...prev.variants];
+      const imgs = [...variants[variantIndex].images];
+      imgs.splice(imageIndex, 1);
+      variants[variantIndex].images = imgs;
+      return { ...prev, variants };
+    });
+  };
+
+  // useEffect(() => {
+  //   return () => {
+  //     product.productImages.forEach((img) => URL.revokeObjectURL(img.url));
+  //   };
+  // }, [product.productImages]);
 
   // Fetch subcategories when category changes
   useEffect(() => {
@@ -532,24 +574,58 @@ export default function EditProductPage() {
       variants: updatedVariants,
     }));
   };
-
   const handleVariantImages = (
     variantIndex: number,
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     if (!e.target.files) return;
 
-    const files = Array.from(e.target.files);
-
-    if (files.length > 5) {
-      alert("You can select a maximum of 5 images.");
-      return;
-    }
+    const newFiles = Array.from(e.target.files);
 
     setProduct((prev) => {
-      const updatedVariants = [...prev.variants];
-      updatedVariants[variantIndex].images = files;
-      return { ...prev, variants: updatedVariants };
+      const variants = [...prev.variants];
+      const v = variants[variantIndex];
+
+      const existingCount = v.existingImages?.length || 0;
+      const newCount = v.images.length;
+
+      if (existingCount + newCount + newFiles.length > 5) {
+        setVariantImageErrors((prevErr) => ({
+          ...prevErr,
+          [variantIndex]: "Maximum 5 images allowed (existing + new).",
+        }));
+        return prev;
+      }
+
+      variants[variantIndex] = {
+        ...v,
+        images: [...v.images, ...newFiles],
+      };
+
+      return { ...prev, variants };
+    });
+
+    // Clear error on success
+    setVariantImageErrors((prevErr) => ({
+      ...prevErr,
+      [variantIndex]: "",
+    }));
+
+    e.target.value = "";
+  };
+
+  const removeExistingVariantImage = (variantIndex: number, img: string) => {
+    setProduct((prev) => {
+      const variants = [...prev.variants];
+      const v = variants[variantIndex];
+
+      variants[variantIndex] = {
+        ...v,
+        existingImages: v.existingImages?.filter((i) => i !== img),
+        removedImages: [...(v.removedImages || []), img],
+      };
+
+      return { ...prev, variants };
     });
   };
 
@@ -606,11 +682,6 @@ export default function EditProductPage() {
     setSuccess(null);
 
     try {
-      // const token = localStorage.getItem("token");
-      // if (!token) {
-      //   throw new Error("Authentication required. Please login.");
-      // }
-
       // Validate required fields
       if (!product.categoryId && !custom_category.trim()) {
         throw new Error("Please select or enter a category");
@@ -678,6 +749,12 @@ export default function EditProductPage() {
         formData.append("images", file);
       });
 
+      formData.append(
+        "removedMainImages",
+        JSON.stringify(product.removedImages || [])
+      );
+
+      // Documents
       Object.entries(docFiles).forEach(([docId, file]) => {
         if (file) {
           formData.append(docId, file);
@@ -706,6 +783,12 @@ export default function EditProductPage() {
         variant.images.forEach((file, imgIndex) => {
           formData.append(`variant_${index}_${imgIndex}`, file);
         });
+
+        // removed variant images
+        formData.append(
+          `variantRemovedImages_${index}`,
+          JSON.stringify(variant.removedImages || [])
+        );
       });
 
       // Submit to backend
@@ -986,13 +1069,22 @@ export default function EditProductPage() {
               <div className="mt-3">
                 <p className="text-xs text-gray-500 mb-1">Existing images</p>
                 <div className="flex gap-2 flex-wrap">
-                  {variant.existingImages.map((img, imgIndex) => (
-                    <img
-                      key={imgIndex}
-                      src={`${API_BASEIMAGE_URL}/uploads/${img}`}
-                      alt={`Variant ${index + 1} image ${imgIndex + 1}`}
-                      className="w-16 h-16 object-cover border rounded"
-                    />
+                  {variant.existingImages?.map((img) => (
+                    <div key={img} className="relative w-16 h-16 group">
+                      <img
+                        src={`${API_BASEIMAGE_URL}/uploads/${img}`}
+                        className="w-full h-full object-cover border rounded"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => removeExistingVariantImage(index, img)}
+                        className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
+                 opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                      >
+                        <FaTrash size={10} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1030,17 +1122,28 @@ export default function EditProductPage() {
                     return (
                       <div
                         key={imgIndex}
-                        className="w-20 h-20 border rounded overflow-hidden"
+                        className="relative w-20 h-20 border rounded overflow-hidden group"
                       >
-                        <img
-                          src={url}
-                          alt={`Variant ${index + 1} - Image ${imgIndex + 1}`}
-                          className="w-full h-full object-cover"
-                        />
+                        <img src={url} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeVariantImage(index, imgIndex)}
+                          className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
+                       opacity-0 group-hover:opacity-100 cursor-pointer"
+                        >
+                          <FaTrash size={10} />
+                        </button>
                       </div>
                     );
                   })}
                 </div>
+              )}
+
+              {/* Variant image error */}
+              {variantImageErrors[index] && (
+                <p className="mt-1 text-xs text-red-500">
+                  {variantImageErrors[index]}
+                </p>
               )}
             </div>
           </div>
@@ -1371,12 +1474,22 @@ export default function EditProductPage() {
 
             {product.existingImages && product.existingImages.length > 0 && (
               <div className="mb-3 flex gap-2 flex-wrap">
-                {product.existingImages.map((img, i) => (
-                  <img
-                    key={i}
-                    src={`${API_BASEIMAGE_URL}/uploads/${img}`}
-                    className="w-20 h-20 object-cover border rounded"
-                  />
+                {product.existingImages?.map((img) => (
+                  <div key={img} className="relative w-20 h-20 group">
+                    <img
+                      src={`${API_BASEIMAGE_URL}/uploads/${img}`}
+                      className="w-full h-full object-cover border rounded"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => removeExistingMainImage(img)}
+                      className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
+                 opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                    >
+                      <FaTrash size={10} />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -1412,14 +1525,24 @@ export default function EditProductPage() {
               <div className="mt-3 flex gap-2 flex-wrap">
                 {product.productImages.map((img, index) => (
                   <div
-                    key={index}
-                    className="w-20 h-20 border rounded overflow-hidden"
+                    key={img.url}
+                    className="relative w-20 h-20 border rounded overflow-hidden group"
                   >
                     <img
                       src={img.url}
                       alt={`Preview ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
+
+                    {/* Remove NEW main image */}
+                    <button
+                      type="button"
+                      onClick={() => removeNewMainImage(index)}
+                      className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
+                     opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                    >
+                      <FaTrash size={10} />
+                    </button>
                   </div>
                 ))}
               </div>

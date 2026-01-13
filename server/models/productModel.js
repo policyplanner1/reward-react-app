@@ -282,7 +282,7 @@ class ProductModel {
       "variants"
     );
 
-    // ---------- 1 UPDATE PRODUCT ----------
+    // ---------- 1. UPDATE PRODUCT ----------
     await connection.execute(
       `UPDATE eproducts SET 
       category_id = ?, 
@@ -313,7 +313,7 @@ class ProductModel {
       ]
     );
 
-    // ---------- 2 PROCESS FILES ----------
+    // ---------- 2. PROCESS FILES ----------
     const movedFiles = await processUploadedFiles(files, {
       vendorId,
       productId,
@@ -322,24 +322,54 @@ class ProductModel {
       variantFolder,
     });
 
-    // ---------- 3 MAIN IMAGES & DOCUMENTS ----------
+    // ============================================================
+    // 3. REMOVE MAIN PRODUCT IMAGES (EDIT MODE)
+    // ============================================================
+    if (data.removedMainImages) {
+      const removedImagesRaw = JSON.parse(data.removedMainImages || "[]");
+
+      //  FILTER INVALID VALUES
+      const removedImages = removedImagesRaw.filter(
+        (img) => typeof img === "string" && img.trim() !== ""
+      );
+
+      if (removedImages.length > 0) {
+        const placeholders = removedImages.map(() => "?").join(",");
+
+        await connection.execute(
+          `DELETE FROM product_images
+       WHERE product_id = ? AND image_url IN (${placeholders})`,
+          [productId, ...removedImages]
+        );
+
+        for (const imgUrl of removedImages) {
+          const imgPath = path.join(UPLOAD_BASE, imgUrl);
+          if (fs.existsSync(imgPath)) {
+            fs.unlinkSync(imgPath);
+          }
+        }
+      }
+    }
+
+    // ============================================================
+    // 4. INSERT NEW MAIN IMAGES + DOCUMENTS
+    // ============================================================
     if (movedFiles.length) {
       const mainImages = movedFiles.filter((f) => f.fieldname === "images");
       const otherFiles = movedFiles.filter((f) => f.fieldname !== "images");
 
+      //  Append new images only
       if (mainImages.length) {
-        await connection.execute(
-          `DELETE FROM product_images WHERE product_id = ?`,
-          [productId]
-        );
         await this.insertProductImages(connection, productId, mainImages);
       }
 
+      // Documents are still full replace (category-based)
       if (otherFiles.length && data.category_id) {
         await connection.execute(
           `DELETE FROM product_documents WHERE product_id = ?`,
           [productId]
         );
+
         await this.insertProductDocuments(
           connection,
           productId,
@@ -349,113 +379,136 @@ class ProductModel {
       }
     }
 
-    // ---------- 4 VARIANTS ----------
-    if (data.variants) {
-      const variants = JSON.parse(data.variants);
-      if (!Array.isArray(variants)) return true;
+    // ============================================================
+    // 5. VARIANTS
+    // ============================================================
+    if (!data.variants) return true;
 
-      //  A. FETCH EXISTING VARIANTS (FOR DELETE DIFF)
-      const [existing] = await connection.execute(
-        `SELECT variant_id FROM product_variants WHERE product_id = ?`,
-        [productId]
+    const variants = JSON.parse(data.variants);
+    if (!Array.isArray(variants)) return true;
+
+    // ---------- A. FETCH EXISTING VARIANTS ----------
+    const [existing] = await connection.execute(
+      `SELECT variant_id FROM product_variants WHERE product_id = ?`,
+      [productId]
+    );
+
+    const existingVariantIds = existing.map((v) => v.variant_id);
+    const incomingVariantIds = variants
+      .map((v) => v.variant_id)
+      .filter(Boolean);
+
+    // ---------- B. DELETE REMOVED VARIANTS ----------
+    const variantsToDelete = existingVariantIds.filter(
+      (id) => !incomingVariantIds.includes(id)
+    );
+
+    if (variantsToDelete.length) {
+      const placeholders = variantsToDelete.map(() => "?").join(",");
+
+      // Delete variant images
+      await connection.execute(
+        `DELETE FROM product_variant_images
+       WHERE variant_id IN (${placeholders})`,
+        variantsToDelete
       );
 
-      const existingVariantIds = existing.map((v) => v.variant_id);
-      const incomingVariantIds = variants
-        .map((v) => v.variant_id)
-        .filter(Boolean);
-
-      //  B. DELETE REMOVED VARIANTS
-      const variantsToDelete = existingVariantIds.filter(
-        (id) => !incomingVariantIds.includes(id)
+      // Delete variants
+      await connection.execute(
+        `DELETE FROM product_variants
+       WHERE variant_id IN (${placeholders})`,
+        variantsToDelete
       );
+    }
 
-      if (variantsToDelete.length) {
-        const placeholders = variantsToDelete.map(() => "?").join(",");
+    // ---------- C. UPDATE / INSERT VARIANTS ----------
+    for (let i = 0; i < variants.length; i++) {
+      const variant = variants[i];
+      let variantId = variant.variant_id;
 
+      // -------- UPDATE --------
+      if (variantId) {
         await connection.execute(
-          `DELETE FROM product_variant_images 
-     WHERE variant_id IN (${placeholders})`,
-          variantsToDelete
+          `UPDATE product_variants SET 
+          size = ?, 
+          color = ?, 
+          dimension = ?, 
+          weight = ?, 
+          mrp = ?, 
+          sale_price = ?, 
+          stock = ?, 
+          manufacturing_date = COALESCE(?, manufacturing_date),
+          expiry_date = COALESCE(?, expiry_date),
+          material_type = ?
+         WHERE variant_id = ?`,
+          [
+            safe(variant.size),
+            safe(variant.color),
+            safe(variant.dimension),
+            safe(variant.weight),
+            safe(variant.mrp),
+            safe(variant.salesPrice),
+            safe(variant.stock),
+            safe(variant.manufacturingYear),
+            safe(variant.expiryDate),
+            safe(variant.materialType),
+            variantId,
+          ]
         );
-
-        await connection.execute(
-          `DELETE FROM product_variants 
-     WHERE variant_id IN (${placeholders})`,
-          variantsToDelete
+      }
+      // -------- INSERT --------
+      else {
+        variantId = await this.createProductVariant(
+          connection,
+          productId,
+          variant
         );
       }
 
-      //  C. UPDATE / INSERT VARIANTS
-      for (let i = 0; i < variants.length; i++) {
-        const variant = variants[i];
+      // ========================================================
+      // REMOVE VARIANT IMAGES (EDIT MODE)
+      // ========================================================
+      const removedKey = `variantRemovedImages_${i}`;
 
-        if (variant.variant_id) {
-          // UPDATE
+      if (data[removedKey]) {
+        const removedImagesRaw = JSON.parse(data[removedKey] || "[]");
+
+        //  FILTER INVALID VALUES
+        const removedImages = removedImagesRaw.filter(
+          (img) => typeof img === "string" && img.trim() !== ""
+        );
+
+        if (removedImages.length > 0) {
+          const placeholders = removedImages.map(() => "?").join(",");
+
           await connection.execute(
-            `UPDATE product_variants SET 
-            size = ?, 
-            color = ?, 
-            dimension = ?, 
-            weight = ?, 
-            mrp = ?, 
-            sale_price = ?, 
-            stock = ?, 
-            manufacturing_date = COALESCE(?, manufacturing_date),
-            expiry_date = COALESCE(?, expiry_date),
-            material_type = ?
-           WHERE variant_id = ?`,
-            [
-              safe(variant.size),
-              safe(variant.color),
-              safe(variant.dimension),
-              safe(variant.weight),
-              safe(variant.mrp),
-              safe(variant.salesPrice),
-              safe(variant.stock),
-              safe(variant.manufacturingYear),
-              safe(variant.expiryDate),
-              safe(variant.materialType),
-              variant.variant_id,
-            ]
+            `DELETE FROM product_variant_images
+       WHERE variant_id = ? AND image_url IN (${placeholders})`,
+            [variantId, ...removedImages]
           );
 
-          const variantFiles = movedFiles.filter((f) =>
-            f.fieldname.startsWith(`variant_${i}_`)
-          );
-
-          if (variantFiles.length) {
-            await connection.execute(
-              `DELETE FROM product_variant_images WHERE variant_id = ?`,
-              [variant.variant_id]
-            );
-
-            await this.insertProductVariantImages(
-              connection,
-              variant.variant_id,
-              variantFiles
-            );
-          }
-        } else {
-          // INSERT
-          const newVariantId = await this.createProductVariant(
-            connection,
-            productId,
-            variant
-          );
-
-          const variantFiles = movedFiles.filter((f) =>
-            f.fieldname.startsWith(`variant_${i}_`)
-          );
-
-          if (variantFiles.length) {
-            await this.insertProductVariantImages(
-              connection,
-              newVariantId,
-              variantFiles
-            );
+          for (const imgUrl of removedImages) {
+            const imgPath = path.join(UPLOAD_BASE, imgUrl);
+            if (fs.existsSync(imgPath)) {
+              fs.unlinkSync(imgPath);
+            }
           }
         }
+      }
+
+      // ========================================================
+      // ADD NEW VARIANT IMAGES
+      // ========================================================
+      const variantFiles = movedFiles.filter((f) =>
+        f.fieldname.startsWith(`variant_${i}_`)
+      );
+
+      if (variantFiles.length) {
+        await this.insertProductVariantImages(
+          connection,
+          variantId,
+          variantFiles
+        );
       }
     }
 

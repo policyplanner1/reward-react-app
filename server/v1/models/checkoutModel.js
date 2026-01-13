@@ -173,6 +173,7 @@ class CheckoutModel {
         p.product_name,
 
         v.variant_id,
+        v.mrp,
         v.sale_price,
         v.stock,
 
@@ -213,6 +214,7 @@ class CheckoutModel {
         variant_id: row.variant_id,
         title: row.product_name,
         image: row.images ? row.images.split(",")[0] : null,
+        mrp: row.mrp,
         price: row.sale_price,
         quantity: row.quantity,
         item_total: row.item_total,
