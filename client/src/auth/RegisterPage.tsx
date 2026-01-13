@@ -84,7 +84,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   };
 
   const labelClass =
-    "block text-[11px] font-bold tracking-widest text-slate-600 uppercase";
+    "c";
 
   const inputBase =
     "w-full px-4 py-3 rounded-2xl bg-white/90 text-slate-900 placeholder:text-slate-400 border border-slate-200 shadow-sm outline-none transition-all duration-300 focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15 focus:shadow-lg focus:shadow-[#852BAF]/10";
@@ -111,7 +111,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
             <p className="text-2xl font-extrabold leading-tight">
               Create your account ✨
             </p>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-[14px] font-medium text-gray-700 leading-relaxed">
               Join us and manage everything in one place.
             </p>
           </div>
@@ -257,7 +257,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 text-white font-bold py-3.5 rounded-2xl text-lg
+              className="w-full mt-2 text-white font-bold py-3.5 rounded-full text-lg
                          bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                          shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer
                          hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
