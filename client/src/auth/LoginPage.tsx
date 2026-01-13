@@ -62,7 +62,7 @@ export default function LoginPage() {
 
   <div className="absolute bottom-8 left-8 right-8 text-slate-900">
     <p className="text-2xl font-extrabold leading-tight">Welcome back </p>
-    <p className="mt-2 text-[14px] font-medium text-gray-600 leading-relaxed">
+    <p className="mt-2 text-[16px] font-medium text-gray-600 leading-relaxed">
       Sign in and continue to your dashboard.
     </p>
   </div>
@@ -90,7 +90,7 @@ export default function LoginPage() {
     <div className="space-y-6">
   {/* Email Field */}
   <div className="relative">
-    <label className="text-[14px] font-medium text-gray-800 leading-relaxed">
+    <label className="text-[18px] font-medium text-gray-800 leading-relaxed">
       Email
     </label>
 
@@ -102,7 +102,7 @@ export default function LoginPage() {
                  focus-within:ring-4 focus-within:ring-[#852BAF]/15
                  focus-within:shadow-lg focus-within:shadow-[#852BAF]/10"
     >
-      <User className="w-4 h-4 text-gray-600" />
+      <User className="w-5 h-5 text-gray-600" />
 
       <input
         name="email"
@@ -118,7 +118,7 @@ export default function LoginPage() {
 
   {/* Password Field */}
   <div className="relative">
-    <label className="text-[14px] font-medium text-gray-800 leading-relaxed">
+    <label className="text-[18px] font-medium text-gray-800 leading-relaxed">
       Password
     </label>
 
@@ -130,7 +130,7 @@ export default function LoginPage() {
                  focus-within:ring-4 focus-within:ring-[#852BAF]/15
                  focus-within:shadow-lg focus-within:shadow-[#852BAF]/10"
     >
-      <Lock className="w-4 h-4 text-gray-600" />
+      <Lock className="w-5 h-5 text-gray-600" />
 
       <input
         name="password"
@@ -184,7 +184,7 @@ export default function LoginPage() {
 
       <Link
         to="/forgot-password"
-        className="text-sm text-purple-600 hover:text-[#FC3F78] transition-colors"
+        className="text-md text-purple-600 hover:text-[#FC3F78] transition-colors"
       >
         Forgot password?
       </Link>
@@ -194,7 +194,7 @@ export default function LoginPage() {
     <button
       type="submit"
       disabled={loading}
-      className="w-full mt-6 text-white font-bold py-3.5 rounded-full text-lg
+      className="w-full mt-6 text-white font-bold py-3.5 rounded-full text-xl
                bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer
                hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
@@ -206,7 +206,7 @@ export default function LoginPage() {
   </form>
 
   <div className="relative mt-10 text-center">
-    <p className="mt-10 text-sm text-center text-gray-700">
+    <p className="mt-10 text-md text-center text-gray-700">
       Don&apos;t have an account?{" "}
       <Link
         to="/register"

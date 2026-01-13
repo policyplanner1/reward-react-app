@@ -36,8 +36,7 @@ function Field({ label, htmlFor, labelClass, children }: FieldProps) {
 export default function RegisterPage() {
   const { register, loading, error: authError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -76,15 +75,16 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
       );
     } catch (err: unknown) {
       if (err instanceof AxiosError) {
-        setError(err.response?.data?.message ?? err.message ?? "Register failed");
+        setError(
+          err.response?.data?.message ?? err.message ?? "Register failed"
+        );
       } else {
         setError("An unexpected error occurred");
       }
     }
   };
 
-  const labelClass =
-    "c";
+  const labelClass = "text-[18px] font-medium text-gray-800 leading-relaxed";
 
   const inputBase =
     "w-full px-4 py-3 rounded-2xl bg-white/90 text-slate-900 placeholder:text-slate-400 border border-slate-200 shadow-sm outline-none transition-all duration-300 focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15 focus:shadow-lg focus:shadow-[#852BAF]/10";
@@ -93,7 +93,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     <div className="relative min-h-screen overflow-hidden flex items-center justify-center bg-gradient-to-tr from-[#38bdf8] via-[#a855f7] to-[#ec4899] font-sans px-4">
       <div className="pointer-events-none absolute inset-0 opacity-[0.08] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:18px_18px]" />
 
-      <div className="relative z-10 w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
+      <div className="relative z-10 w-full max-w-6xl min-h-[78vh] bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
         <div className="relative hidden md:block bg-white">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_20%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(900px_circle_at_85%_30%,rgba(168,85,247,0.10),transparent_55%),radial-gradient(900px_circle_at_50%_110%,rgba(236,72,153,0.08),transparent_55%)]" />
           <div className="pointer-events-none absolute inset-0 opacity-[0.06] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:18px_18px]" />
@@ -109,9 +109,9 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
           <div className="absolute bottom-8 left-8 right-8 text-slate-900">
             <p className="text-2xl font-extrabold leading-tight">
-              Create your account 
+              Create your account
             </p>
-            <p className="mt-2 text-[14px] font-medium text-gray-700 leading-relaxed">
+            <p className="mt-2 text-[16px] font-medium text-gray-700 leading-relaxed">
               Join us and manage everything in one place.
             </p>
           </div>
@@ -126,9 +126,9 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
             <h2 className="text-3xl font-extrabold text-gray-900">
               Create Account
             </h2>
-            <p className="mt-1 text-sm text-gray-500">
+            {/* <p className="mt-1 text-sm text-gray-500">
               Join our warehouse management system
-            </p>
+            </p> */}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -201,63 +201,69 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
                 </select>
               </Field>
 
-              <Field label="Password" htmlFor="password" labelClass={labelClass}>
-  <div className="relative">
-    <input
-      id="password"
-      name="password"
-      type={showPassword ? "text" : "password"}
-      placeholder="••••••••"
-      className={inputBase}
-      value={formData.password}
-      onChange={handleChange}
-      required
-    />
+              <Field
+                label="Password"
+                htmlFor="password"
+                labelClass={labelClass}
+              >
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className={inputBase}
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                  />
 
-    <button
-      type="button"
-      onClick={() => setShowPassword(!showPassword)}
-      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
-    >
-      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-    </button>
-  </div>
-</Field>
-
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </Field>
 
               <Field
-  label="Confirm Password"
-  htmlFor="confirmPassword"
-  labelClass={labelClass}
->
-  <div className="relative">
-    <input
-      id="confirmPassword"
-      name="confirmPassword"
-      type={showConfirmPassword ? "text" : "password"}
-      placeholder="••••••••"
-      className={inputBase}
-      value={formData.confirmPassword}
-      onChange={handleChange}
-      required
-    />
+                label="Confirm Password"
+                htmlFor="confirmPassword"
+                labelClass={labelClass}
+              >
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className={inputBase}
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    required
+                  />
 
-    <button
-      type="button"
-      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
-    >
-      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-    </button>
-  </div>
-</Field>
-
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff size={18} />
+                    ) : (
+                      <Eye size={18} />
+                    )}
+                  </button>
+                </div>
+              </Field>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 text-white font-bold py-3.5 rounded-full text-lg
+              className="w-full mt-15 text-white font-bold py-3.5 rounded-full text-xl
                          bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                          shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer
                          hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
@@ -267,7 +273,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
               {loading ? "Creating Account..." : "Register Now"}
             </button>
 
-            <p className="text-sm text-center text-gray-600">
+            <p className="text-md text-center text-gray-600">
               Already have an account?{" "}
               <Link
                 to="/login"
