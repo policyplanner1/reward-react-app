@@ -1001,7 +1001,7 @@ export default function Onboarding() {
             </section>
 
             {/* Address Sections */}
-            <section className="space-y-4">
+            <section className="space-y-4 bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-2xl transition-shadow duration-300">
               <SectionHeader
                 icon={FaAddressBook}
                 title="Registered Address"
@@ -1054,7 +1054,7 @@ export default function Onboarding() {
             </section>
 
             {/* Billing Address */}
-            <section className="space-y-4">
+            <section className="space-y-4 bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-2xl transition-shadow duration-300">
               <SectionHeader
                 icon={FaCreditCard}
                 title="Billing Address"
@@ -1123,7 +1123,7 @@ export default function Onboarding() {
             </section>
 
             {/* Shipping Address */}
-            <section className="space-y-4">
+            <section className="space-y-4 bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-2xl transition-shadow duration-300">
               <SectionHeader
                 icon={FaShippingFast}
                 title="Shipping Address"
@@ -1192,49 +1192,48 @@ export default function Onboarding() {
             </section>
 
             {/* Bank Details */}
-            <section className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-gray-100">
+            <section className="space-y-4 bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-2xl transition-shadow duration-300">
               <SectionHeader
                 icon={FaUniversity}
                 title="Bank Details & Proof"
                 description="Account details for receiving payments and required proof."
               />
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-6">
-                <FormInput
-                  id="bankName"
-                  label="Bank Name"
-                  value={formData.bankName}
-                  onChange={handleChange}
-                  required
-                />
-                <FormInput
-                  id="accountNumber"
-                  label="Account Number"
-                  value={formData.accountNumber}
-                  onChange={handleChange}
-                  type="text"
-                  required
-                />
-                <div className="hidden lg:block" />
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+  <FormInput
+    id="bankName"
+    label="Bank Name"
+    value={formData.bankName}
+    onChange={handleChange}
+    required
+  />
+  <FormInput
+    id="accountNumber"
+    label="Account Number"
+    value={formData.accountNumber}
+    onChange={handleChange}
+    type="text"
+    required
+  />
+  <FormInput
+    id="branch"
+    label="Branch"
+    value={formData.branch}
+    onChange={handleChange}
+    required
+  />
+  <FormInput
+    id="ifscCode"
+    label="IFSC Code"
+    value={formData.ifscCode}
+    onChange={handleChange}
+    required
+  />
+</div>
 
-                <FormInput
-                  id="branch"
-                  label="Branch"
-                  value={formData.branch}
-                  onChange={handleChange}
-                  required
-                />
-                <FormInput
-                  id="ifscCode"
-                  label="IFSC Code"
-                  value={formData.ifscCode}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
             </section>
 
             {/* Contact Details */}
-            <section className="space-y-4">
+            <section className="space-y-4 bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-2xl transition-shadow duration-300">
               <SectionHeader
                 icon={FaAddressBook}
                 title="Registered Address"
@@ -1271,7 +1270,7 @@ export default function Onboarding() {
             </section>
 
             {/* Payment Terms */}
-            <section className="space-y-4">
+            <section className="space-y-4 bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-2xl transition-shadow duration-300">
               <SectionHeader
                 icon={FaFileContract}
                 title="Payment & Comments"

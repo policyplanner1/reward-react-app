@@ -79,7 +79,7 @@ export default function ChangePasswordPage() {
   };
 
   const labelClass =
-    "block text-[11px] font-bold tracking-widest text-slate-600 uppercase";
+    "text-base text-slate-900 text-gray-800 ";
 
   const inputClass =
     "relative w-full pl-11 pr-12 py-3 rounded-2xl bg-white/90 text-slate-900 placeholder:text-slate-400 " +
@@ -100,7 +100,7 @@ export default function ChangePasswordPage() {
                 <h1 className="mt-4 text-2xl font-extrabold text-slate-900">
                   Change Password
                 </h1>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-700">
                   Update your account password securely.
                 </p>
               </div>
@@ -128,7 +128,7 @@ export default function ChangePasswordPage() {
                 <label className={labelClass}>Current Password</label>
                 <div className="relative group mt-2">
                   <Lock
-                    className="absolute left-4 top-3.5 text-slate-400 pointer-events-none"
+                    className="absolute left-4 top-3.5 text-slate-700 pointer-events-none"
                     size={18}
                   />
                   <input
@@ -141,7 +141,7 @@ export default function ChangePasswordPage() {
                   <button
                     type="button"
                     onClick={() => setShowCurrent(!showCurrent)}
-                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
+                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -153,7 +153,7 @@ export default function ChangePasswordPage() {
                 <label className={labelClass}>New Password</label>
                 <div className="relative group mt-2">
                   <Lock
-                    className="absolute left-4 top-3.5 text-slate-400 pointer-events-none"
+                    className="absolute left-4 top-3.5 text-slate-700 pointer-events-none"
                     size={18}
                   />
                   <input
@@ -166,7 +166,7 @@ export default function ChangePasswordPage() {
                   <button
                     type="button"
                     onClick={() => setShowNew(!showNew)}
-                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
+                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -178,7 +178,7 @@ export default function ChangePasswordPage() {
                 <label className={labelClass}>Confirm New Password</label>
                 <div className="relative group mt-2">
                   <Lock
-                    className="absolute left-4 top-3.5 text-slate-400 pointer-events-none"
+                    className="absolute left-4 top-3.5 text-slate-700 pointer-events-none"
                     size={18}
                   />
                   <input
@@ -191,7 +191,7 @@ export default function ChangePasswordPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
+                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -201,7 +201,7 @@ export default function ChangePasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 text-white font-bold py-3.5 rounded-2xl text-lg
+                className="w-full mt-2 text-white font-bold py-3.5 rounded-full text-lg
                            bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                            shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer
                            hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]

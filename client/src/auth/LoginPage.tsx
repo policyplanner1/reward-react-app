@@ -62,7 +62,7 @@ export default function LoginPage() {
 
   <div className="absolute bottom-8 left-8 right-8 text-slate-900">
     <p className="text-2xl font-extrabold leading-tight">Welcome back 👋</p>
-    <p className="mt-2 text-sm text-slate-500">
+    <p className="mt-2 text-[14px] font-medium text-gray-600 leading-relaxed">
       Sign in and continue to your dashboard.
     </p>
   </div>
@@ -87,46 +87,73 @@ export default function LoginPage() {
 
   <form onSubmit={handleSubmit} className="relative space-y-8">
     {/* Email/Username Field */}
-    <div className="relative border-b-2 border-gray-200 focus-within:border-purple-500 transition-colors">
-      <label className="block text-sm text-gray-500 mb-1">Email</label>
-      <div className="flex items-center pb-2">
-        <User className="w-4 h-4 text-gray-400 mr-3" />
-        <input
-          name="email"
-          type="email"
-          required
-          className="w-full bg-transparent outline-none text-gray-700 placeholder-gray-300"
-          placeholder="name@company.com"
-          value={formData.email}
-          onChange={handleChange}
-        />
-      </div>
-    </div>
+    <div className="space-y-6">
+  {/* Email Field */}
+  <div className="relative">
+    <label className="text-[14px] font-medium text-gray-800 leading-relaxed">
+      Email
+    </label>
 
-    {/* Password Field */}
-    <div className="relative border-b-2 border-gray-200 focus-within:border-purple-500 transition-colors">
-  <label className="block text-sm text-gray-500 mb-1">Password</label>
-
-  <div className="flex items-center pb-2">
-    <Lock className="w-4 h-4 text-gray-400 mr-3" />
-
-    <input
-      name="password"
-      type={showPassword ? "text" : "password"}
-      required
-      className="w-full bg-transparent outline-none text-gray-700 placeholder-gray-300"
-      placeholder="********"
-      value={formData.password}
-      onChange={handleChange}
-    />
-
-    <button
-      type="button"
-      onClick={() => setShowPassword(!showPassword)}
-      className="ml-3 text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer"
+    <div
+      className="mt-2 flex items-center gap-3 w-full px-4 py-3 rounded-2xl bg-white
+                 border border-slate-200 shadow-sm
+                 transition-all duration-300
+                 focus-within:border-transparent
+                 focus-within:ring-4 focus-within:ring-[#852BAF]/15
+                 focus-within:shadow-lg focus-within:shadow-[#852BAF]/10"
     >
-      {showPassword ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
-    </button>
+      <User className="w-4 h-4 text-gray-600" />
+
+      <input
+        name="email"
+        type="email"
+        required
+        className="w-full bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
+        placeholder="name@company.com"
+        value={formData.email}
+        onChange={handleChange}
+      />
+    </div>
+  </div>
+
+  {/* Password Field */}
+  <div className="relative">
+    <label className="text-[14px] font-medium text-gray-800 leading-relaxed">
+      Password
+    </label>
+
+    <div
+      className="mt-2 flex items-center gap-3 w-full px-4 py-3 rounded-2xl bg-white
+                 border border-slate-200 shadow-sm
+                 transition-all duration-300
+                 focus-within:border-transparent
+                 focus-within:ring-4 focus-within:ring-[#852BAF]/15
+                 focus-within:shadow-lg focus-within:shadow-[#852BAF]/10"
+    >
+      <Lock className="w-4 h-4 text-gray-600" />
+
+      <input
+        name="password"
+        type={showPassword ? "text" : "password"}
+        required
+        className="w-full bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
+        placeholder="********"
+        value={formData.password}
+        onChange={handleChange}
+      />
+
+      <button
+        type="button"
+        onClick={() => setShowPassword(!showPassword)}
+        className="text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer"
+      >
+        {showPassword ? (
+          <EyeOff className="w-5 h-5" />
+        ) : (
+          <Eye className="w-5 h-5" />
+        )}
+      </button>
+    </div>
   </div>
 </div>
 
@@ -157,7 +184,7 @@ export default function LoginPage() {
 
       <Link
         to="/forgot-password"
-        className="text-xs text-gray-400 hover:text-purple-600 transition-colors"
+        className="text-sm text-purple-600 hover:text-[#FC3F78] transition-colors"
       >
         Forgot password?
       </Link>
@@ -167,7 +194,7 @@ export default function LoginPage() {
     <button
       type="submit"
       disabled={loading}
-      className="w-full mt-6 text-white font-bold py-3.5 rounded-2xl text-lg
+      className="w-full mt-6 text-white font-bold py-3.5 rounded-full text-lg
                bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer
                hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
@@ -179,7 +206,7 @@ export default function LoginPage() {
   </form>
 
   <div className="relative mt-10 text-center">
-    <p className="mt-10 text-sm text-center text-gray-500">
+    <p className="mt-10 text-sm text-center text-gray-700">
       Don&apos;t have an account?{" "}
       <Link
         to="/register"

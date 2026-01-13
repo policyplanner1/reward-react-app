@@ -231,7 +231,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 text-white font-bold py-3.5 rounded-2xl text-lg
+                className="w-full mt-2 text-white font-bold py-3.5 rounded-full text-lg
                            bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                            shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer
                            hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]

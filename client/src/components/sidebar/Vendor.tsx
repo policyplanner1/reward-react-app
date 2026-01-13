@@ -113,10 +113,10 @@ export default function VendorNavbar() {
                         <Link
                           key={child.to}
                           to={child.to}
-                          className={`block py-2 px-4 text-sm transition-all duration-200 rounded-r-lg border-l-2 -ml-[2px]
+                          className={`block py-2 px-4 text-[15px] transition-all duration-200 rounded-r-lg border-l-2 -ml-[2px]
                             ${isActive(child.to) 
                               ? "border-[#852BAF] text-[#852BAF] font-semibold bg-[#852BAF]/5" 
-                              : "border-transparent text-gray-500 hover:text-[#852BAF] hover:bg-gray-50"}`}
+                              : "border-transparent text-gray-900 hover:text-[#852BAF] hover:bg-gray-50"}`}
                         >
                           {child.label}
                         </Link>
