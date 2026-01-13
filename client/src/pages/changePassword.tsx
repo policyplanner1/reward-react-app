@@ -8,7 +8,6 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 
 export default function ChangePasswordPage() {
   const { user } = useAuth();
