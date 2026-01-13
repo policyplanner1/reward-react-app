@@ -61,7 +61,7 @@ export default function LoginPage() {
   </div>
 
   <div className="absolute bottom-8 left-8 right-8 text-slate-900">
-    <p className="text-2xl font-extrabold leading-tight">Welcome back 👋</p>
+    <p className="text-2xl font-extrabold leading-tight">Welcome back </p>
     <p className="mt-2 text-[14px] font-medium text-gray-600 leading-relaxed">
       Sign in and continue to your dashboard.
     </p>
