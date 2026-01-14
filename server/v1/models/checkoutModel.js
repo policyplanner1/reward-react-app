@@ -327,10 +327,31 @@ class CheckoutModel {
       `
     SELECT 
       o.order_id,
+      o.address_id,
       o.total_amount,
       o.created_at,
-      o.status
+      o.status,
+      ca.address_type,
+      ca.address1,
+      ca.address2,
+      ca.city,
+      cu.name AS customer_name,
+      ca.zipcode,
+      ca.landmark,
+      s.state_name,
+      c.country_name
     FROM eorders o
+      JOIN customer_addresses ca 
+      ON o.address_id = ca.address_id
+
+      JOIN customer cu
+      on o.user_id = cu.user_id
+
+      LEFT JOIN states s
+      ON ca.state_id = s.state_id
+
+      LEFT JOIN countries c
+      ON ca.country_id = c.country_id
     WHERE o.order_id = ?
       AND o.user_id = ?
     `,
@@ -377,8 +398,18 @@ class CheckoutModel {
       orderId: order.order_id,
       orderDate: order.created_at,
       status: order.status,
-
+      username: order.customer_name,
       deliveryDate: "Saturday, Nov 29",
+      address: {
+        type: order.address_type,
+        line1: order.address1,
+        line2: order.address2,
+        city: order.city,
+        state: order.state_name,
+        country: order.country_name,
+        zipcode: order.zipcode,
+        landmark: order.landmark,
+      },
       items: items.map((i) => ({
         product_name: i.product_name,
         image: i.image,
