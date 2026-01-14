@@ -9,10 +9,15 @@ class CheckoutController {
     try {
       // const userId = req.user?.user_id;
       const userId = 1; // Temporary hardcoded user ID for testing
+      const { address_id } = req.body;
 
       const companyId = req.body?.company_id ?? null;
 
-      const orderId = await CheckoutModel.checkoutCart(userId, companyId);
+      const orderId = await CheckoutModel.checkoutCart(
+        userId,
+        address_id,
+        companyId
+      );
 
       return res.json({
         success: true,
@@ -48,13 +53,20 @@ class CheckoutController {
       // const userId = req.user?.user_id;
       const userId = 1; // Temporary hardcoded user ID for testing
 
-      const { product_id, variant_id, quantity = 1, company_id } = req.body;
+      const {
+        product_id,
+        variant_id,
+        quantity = 1,
+        company_id,
+        address_id,
+      } = req.body;
 
       const orderId = await CheckoutModel.buyNow({
         userId,
         productId: product_id,
         variantId: variant_id,
         quantity,
+        address_id,
         companyId: company_id || null,
       });
 
@@ -148,6 +160,39 @@ class CheckoutController {
       return res.status(500).json({
         success: false,
         message: "Unable to load checkout",
+      });
+    }
+  }
+
+  // Order Success
+  async getOrderReceipt(req, res) {
+    try {
+      // const userId = req.user.user_id;
+      const userId = 1;
+      const orderId = Number(req.params.orderId);
+
+      const receipt = await CheckoutModel.getOrderReceipt({
+        userId,
+        orderId,
+      });
+
+      return res.json({
+        success: true,
+        receipt,
+      });
+    } catch (error) {
+      console.error("Order receipt error:", error);
+
+      if (error.message === "ORDER_NOT_FOUND") {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch order receipt",
       });
     }
   }
