@@ -312,5 +312,84 @@ class CheckoutModel {
       totalAmount: quantity * row.sale_price,
     };
   }
+
+  // Order Receipt
+  async getOrderReceipt({ userId, orderId }) {
+    // 1 Fetch order
+    const [[order]] = await db.execute(
+      `
+    SELECT 
+      o.order_id,
+      o.total_amount,
+      o.created_at,
+      o.status
+    FROM eorders o
+    WHERE o.order_id = ?
+      AND o.user_id = ?
+    `,
+      [orderId, userId]
+    );
+
+    if (!order) {
+      throw new Error("ORDER_NOT_FOUND");
+    }
+
+    // 2 Fetch order items
+    const [items] = await db.execute(
+      `
+    SELECT
+      oi.product_id,
+      oi.variant_id,
+      oi.quantity,
+      oi.price,
+      p.product_name,
+
+      (
+        SELECT pi.image_url
+        FROM product_images pi
+        WHERE pi.product_id = p.product_id
+        ORDER BY pi.sort_order ASC
+        LIMIT 1
+      ) AS image
+
+    FROM eorder_items oi
+    JOIN eproducts p ON oi.product_id = p.product_id
+    WHERE oi.order_id = ?
+    `,
+      [orderId]
+    );
+
+    const itemTotal = items.reduce((sum, i) => sum + i.quantity * i.price, 0);
+
+    // static for Now
+    const deliveryFee = 50;
+    const bagDiscount = 1032;
+    const rewardDiscount = 500;
+
+    return {
+      orderId: order.order_id,
+      orderDate: order.created_at,
+      status: order.status,
+      
+      deliveryDate: "Saturday, Nov 29", 
+      items: items.map((i) => ({
+        product_name: i.product_name,
+        image: i.image,
+        quantity: i.quantity,
+        price: i.price,
+        item_total: i.quantity * i.price,
+      })),
+
+      bill: {
+        item_total: itemTotal,
+        delivery_fee: deliveryFee,
+        bag_discount: bagDiscount,
+        reward_discount: rewardDiscount,
+        order_total: order.total_amount,
+      },
+
+      rewardsEarned: 462,
+    };
+  }
 }
 module.exports = new CheckoutModel();

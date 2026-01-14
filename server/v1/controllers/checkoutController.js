@@ -151,6 +151,39 @@ class CheckoutController {
       });
     }
   }
+
+  // Order Success
+  async getOrderReceipt(req, res) {
+    try {
+      // const userId = req.user.user_id;
+      const userId = 1;
+      const orderId = Number(req.params.orderId);
+
+      const receipt = await CheckoutModel.getOrderReceipt({
+        userId,
+        orderId,
+      });
+
+      return res.json({
+        success: true,
+        receipt,
+      });
+    } catch (error) {
+      console.error("Order receipt error:", error);
+
+      if (error.message === "ORDER_NOT_FOUND") {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch order receipt",
+      });
+    }
+  }
 }
 
 module.exports = new CheckoutController();

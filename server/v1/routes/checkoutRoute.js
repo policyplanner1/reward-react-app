@@ -19,4 +19,8 @@ router.post("/cart", CheckoutController.checkoutCart);
 // router.post("/buy-now", auth, CheckoutController.buyNow);
 router.post("/buy-now", CheckoutController.buyNow);
 
+// order Receipt
+// router.get("/order-receipt/:orderId", auth, CheckoutController.getOrderReceipt);
+router.get("/order-receipt/:orderId", CheckoutController.getOrderReceipt);
+
 module.exports = router;
