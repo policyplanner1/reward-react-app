@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 class CheckoutModel {
-  async checkoutCart(userId, companyId = null) {
+  async checkoutCart(userId, address_id, companyId = null) {
     const conn = await db.getConnection();
 
     try {
@@ -45,10 +45,10 @@ class CheckoutModel {
       // 4 Create order
       const [orderRes] = await conn.execute(
         `
-        INSERT INTO eorders (user_id, company_id, total_amount)
-        VALUES (?, ?, ?)
+        INSERT INTO eorders (user_id, company_id, address_id, total_amount)
+        VALUES (?, ?, ?, ?)
         `,
-        [userId, companyId, totalAmount]
+        [userId, companyId, address_id, totalAmount]
       );
 
       const orderId = orderRes.insertId;
@@ -94,7 +94,14 @@ class CheckoutModel {
     }
   }
 
-  async buyNow({ userId, productId, variantId, quantity, companyId = null }) {
+  async buyNow({
+    userId,
+    productId,
+    variantId,
+    quantity,
+    address_id,
+    companyId = null,
+  }) {
     const conn = await db.getConnection();
 
     try {
@@ -123,10 +130,10 @@ class CheckoutModel {
       // 2 Create order
       const [orderRes] = await conn.execute(
         `
-      INSERT INTO eorders (user_id, company_id, total_amount)
-      VALUES (?, ?, ?)
+      INSERT INTO eorders (user_id, company_id,address_id, total_amount)
+      VALUES (?, ?, ?, ?)
       `,
-        [userId, companyId, totalAmount]
+        [userId, companyId, address_id, totalAmount]
       );
 
       const orderId = orderRes.insertId;
@@ -370,8 +377,8 @@ class CheckoutModel {
       orderId: order.order_id,
       orderDate: order.created_at,
       status: order.status,
-      
-      deliveryDate: "Saturday, Nov 29", 
+
+      deliveryDate: "Saturday, Nov 29",
       items: items.map((i) => ({
         product_name: i.product_name,
         image: i.image,
