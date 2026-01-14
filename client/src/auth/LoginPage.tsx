@@ -71,7 +71,7 @@ export default function LoginPage() {
   <div className="pointer-events-none absolute top-0 right-[-10px] h-full w-[22px] bg-gradient-to-l from-[#852BAF]/10 via-[#FC3F78]/5 to-transparent blur-xl" />
 </div>
 
-<div className="w-full bg-white py-10 px-10 relative">
+<div className="w-full bg-white py-8 px-10 relative">
   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_0%,rgba(133,43,175,0.05),transparent_45%)]" />
 
   {/* Header */}
