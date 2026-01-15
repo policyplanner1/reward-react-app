@@ -11,6 +11,7 @@ const authRoutes = require("./routes/auth");
 const vendorRoutes = require("./routes/vendorRoutes");
 const managerRoutes = require("./routes/managerRoutes");
 const productRoutes = require("./routes/productRoutes");
+const variantRoutes = require("./routes/productVariantRoute");
 const wareHouseRoutes = require("./routes/warehouseRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const subCategoryRoutes = require("./routes/subCategoryRoutes");
@@ -23,7 +24,6 @@ const v1CheckoutRoutes = require("./v1/routes/checkoutRoute");
 const v1OrderRoutes = require("./v1/routes/ordersRoute");
 const v1AuthRoutes = require("./v1/routes/authRoute");
 const v1WishlistRoutes = require("./v1/routes/wishlistRoute");
-
 
 const app = express();
 
@@ -39,7 +39,7 @@ app.use(
 app.use(
   cors({
     // origin: process.env.CLIENT_URL || "http://localhost:5173",
-        origin: process.env.CLIENT_URL || "https://rewardplanners.com",
+    origin: process.env.CLIENT_URL || "https://rewardplanners.com",
 
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -72,6 +72,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/vendor", vendorRoutes);
 app.use("/api/manager", managerRoutes);
 app.use("/api/product", productRoutes);
+app.use("/api/variant", variantRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/warehouse", wareHouseRoutes);
 app.use("/api/subcategory", subCategoryRoutes);
@@ -83,7 +84,7 @@ app.use("/v1/product", v1ProductRoutes);
 app.use("/v1/cart", v1CartRoutes);
 app.use("/v1/checkout", v1CheckoutRoutes);
 app.use("/v1/orders", v1OrderRoutes);
-app.use("/v1/wishlist",v1WishlistRoutes)
+app.use("/v1/wishlist", v1WishlistRoutes);
 
 // -----------------------------
 // Health check route

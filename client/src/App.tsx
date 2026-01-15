@@ -29,6 +29,9 @@ import Onboarding from "./components/feature/vendor/onboarding/Onboarding";
 import ChangePasswordPage from "./pages/changePassword";
 import ProductListingDynamic from "./components/feature/vendor/products/ProductAdd";
 import ProductManagerList from "./components/feature/vendor/products/ProductList";
+import ProductManage from "./components/feature/vendor/products/ProductManage";
+import ProductVariantEdit from "./components/feature/vendor/products/ProductVariantEdit";
+import ProductVariantImages from "./components/feature/vendor/products/ProductVariantImage";
 import EditProductPage from "./components/feature/vendor/products/ProductEdit";
 import ReviewProductPage from "./components/feature/vendor/products/ProductView";
 import VendorApprovalList from "./components/feature/manager/vendor/VendorApprovalList";
@@ -76,6 +79,24 @@ export default function App() {
         <Route
           path={routes.vendor.products.edit}
           element={<EditProductPage />}
+        />
+
+        {/* Manage Product page */}
+        <Route
+          path={routes.vendor.products.manageProduct}
+          element={<ProductManage />}
+        />
+
+        {/* Variant Edit */}
+        <Route
+          path={routes.vendor.products.variantEdit}
+          element={<ProductVariantEdit />}
+        />
+
+        {/* Variant Image */}
+        <Route
+          path={routes.vendor.products.variantImage}
+          element={<ProductVariantImages />}
         />
 
         <Route
