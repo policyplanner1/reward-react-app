@@ -12,6 +12,27 @@ function generateSKU(productId) {
 
 const UPLOAD_BASE = path.join(__dirname, "..", "uploads", "products");
 
+// Variant Combination Generator
+function generateCombinations(attributes) {
+  const keys = Object.keys(attributes);
+
+  return keys.reduce(
+    (acc, key) => {
+      const values = attributes[key];
+      const result = [];
+
+      acc.forEach((a) => {
+        values.forEach((v) => {
+          result.push({ ...a, [key]: v });
+        });
+      });
+
+      return result;
+    },
+    [{}]
+  );
+}
+
 // for image
 async function processUploadedFiles(
   files,
@@ -93,6 +114,106 @@ class ProductModel {
     return result.insertId;
   }
 
+  // product attributes
+  async saveProductAttributes(connection, productId, attributes) {
+    await connection.execute(
+      `INSERT INTO product_attributes (product_id, attributes)
+     VALUES (?, ?)`,
+      [productId, JSON.stringify(attributes)]
+    );
+  }
+
+  async getVariantAttributeKeys(connection, categoryId, subcategoryId) {
+    const [rows] = await connection.execute(
+      `
+    SELECT attribute_key
+    FROM category_attributes
+    WHERE is_variant = 1
+      AND (
+        subcategory_id = ?
+        OR (category_id = ? AND subcategory_id IS NULL)
+      )
+    ORDER BY sort_order
+    `,
+      [subcategoryId, categoryId]
+    );
+
+    return rows.map((r) => r.attribute_key);
+  }
+
+  // generate product variants
+  async generateProductVariants(
+    connection,
+    productId,
+    categoryId,
+    subcategoryId
+  ) {
+    const [[row]] = await connection.execute(
+      `SELECT attributes FROM product_attributes WHERE product_id = ?`,
+      [productId]
+    );
+
+    if (!row) return;
+
+    const allAttributes =
+      typeof row.attributes === "string"
+        ? JSON.parse(row.attributes)
+        : row.attributes;
+
+    const normalize = (arr) =>
+      arr.flatMap((v) =>
+        typeof v === "string"
+          ? v
+              .split(",")
+              .map((x) => x.trim())
+              .filter(Boolean)
+          : v
+      );
+
+    const variantKeys = await this.getVariantAttributeKeys(
+      connection,
+      categoryId,
+      subcategoryId
+    );
+
+    const variantAttributes = {};
+    variantKeys.forEach((k) => {
+      if (Array.isArray(allAttributes[k])) {
+        const normalized = normalize(allAttributes[k]);
+        if (normalized.length) {
+          variantAttributes[k] = normalized;
+        }
+      }
+    });
+
+    if (!Object.keys(variantAttributes).length) return;
+
+    const combinations = generateCombinations(variantAttributes);
+
+    for (const combo of combinations) {
+      const comboJson = JSON.stringify(combo);
+
+      const [exists] = await connection.execute(
+        `SELECT variant_id
+       FROM product_variants
+       WHERE product_id = ?
+         AND variant_attributes = ?`,
+        [productId, comboJson]
+      );
+
+      if (exists.length) continue;
+
+      const sku = await generateUniqueSKU(connection, productId);
+
+      await connection.execute(
+        `INSERT INTO product_variants
+       (product_id, variant_attributes, sku, stock)
+       VALUES (?, ?, ?, 0)`,
+        [productId, comboJson, sku]
+      );
+    }
+  }
+
   // insert product Images
   async insertProductImages(connection, productId, files) {
     for (const file of files) {
@@ -127,34 +248,6 @@ class ProductModel {
         [productId, docId, file.finalPath, file.mimetype]
       );
     }
-  }
-
-  async createProductVariant(connection, productId, variant) {
-    const safe = (v) => (v === undefined || v === "" ? null : v);
-
-    const sku = await generateUniqueSKU(connection, productId);
-
-    const [result] = await connection.execute(
-      `INSERT INTO product_variants
-      (product_id, size, color, dimension, weight, sku, mrp, sale_price, stock,manufacturing_date,expiry_date,material_type)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        productId,
-        safe(variant.size),
-        safe(variant.color),
-        safe(variant.dimension),
-        safe(variant.weight),
-        sku,
-        safe(variant.mrp),
-        safe(variant.salesPrice),
-        safe(variant.stock),
-        safe(variant.manufacturingYear),
-        safe(variant.expiryDate),
-        safe(variant.materialType),
-      ]
-    );
-
-    return result.insertId;
   }
 
   async insertProductVariantImages(connection, variantId, files) {

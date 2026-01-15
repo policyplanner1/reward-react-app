@@ -57,6 +57,20 @@ class ProductController {
         body
       );
 
+      // 1.5  Save product attributes (JSON)
+      if (body.attributes) {
+        const attributes =
+          typeof body.attributes === "string"
+            ? JSON.parse(body.attributes)
+            : body.attributes;
+
+        await ProductModel.saveProductAttributes(
+          connection,
+          productId,
+          attributes
+        );
+      }
+
       // 2️⃣ Prepare folder structure
       const baseFolder = path.join(
         __dirname,
@@ -127,33 +141,12 @@ class ProductController {
       }
 
       // 6️⃣ Handle variants
-      if (body.variants) {
-        const variants =
-          typeof body.variants === "string"
-            ? JSON.parse(body.variants)
-            : body.variants;
-
-        for (let i = 0; i < variants.length; i++) {
-          const variant = variants[i];
-          const variantId = await ProductModel.createProductVariant(
-            connection,
-            productId,
-            variant
-          );
-
-          // Variant images
-          const variantFiles = movedFiles.filter((f) =>
-            f.fieldname.startsWith(`variant_${i}_`)
-          );
-          if (variantFiles.length) {
-            await ProductModel.insertProductVariantImages(
-              connection,
-              variantId,
-              variantFiles
-            );
-          }
-        }
-      }
+      await ProductModel.generateProductVariants(
+        connection,
+        productId,
+        body.category_id  ,
+        body.subcategory_id
+      );
 
       await connection.commit();
       return res.json({ success: true, productId });
