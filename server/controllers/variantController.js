@@ -1,4 +1,6 @@
 const VariantModel = require("../models/variantModel");
+const db = require("../config/database");
+
 
 class VariantController {
   // 1. List all variants of a product
@@ -81,9 +83,17 @@ class VariantController {
   // 5. Delete variant image
   async deleteVariantImage(req, res) {
     try {
-      const imageId = Number(req.params.imageId);
+      const { variantId } = req.params;
+      const { image_url } = req.body;
 
-      await VariantModel.deleteVariantImage(imageId);
+      if (!image_url) {
+        return res.status(400).json({
+          success: false,
+          message: "image_url is required",
+        });
+      }
+
+      await VariantModel.deleteVariantImage(variantId, image_url);
 
       return res.json({
         success: true,
@@ -92,6 +102,30 @@ class VariantController {
     } catch (err) {
       console.error("DELETE VARIANT IMAGE ERROR:", err);
       res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  async getVariantImages(req, res) {
+    try {
+      const { variantId } = req.params;
+
+      const [rows] = await db.execute(
+        `SELECT image_url
+         FROM product_variant_images
+         WHERE variant_id = ?`,
+        [variantId]
+      );
+
+      return res.json({
+        success: true,
+        images: rows.map((r) => r.image_url),
+      });
+    } catch (error) {
+      console.error("GET VARIANT IMAGES ERROR:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch variant images",
+      });
     }
   }
 }

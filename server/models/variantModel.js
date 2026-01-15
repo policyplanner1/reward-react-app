@@ -92,10 +92,12 @@ class VariantModel {
   }
 
   // 5. Delete variant image
-  async deleteVariantImage(imageId) {
-    await db.execute(`DELETE FROM product_variant_images WHERE image_id = ?`, [
-      imageId,
-    ]);
+  async deleteVariantImage(variantId, image_url) {
+    await db.execute(
+      `DELETE FROM product_variant_images
+         WHERE variant_id = ? AND image_url = ?`,
+      [variantId, image_url]
+    );
   }
 }
 

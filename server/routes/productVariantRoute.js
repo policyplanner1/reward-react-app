@@ -4,7 +4,7 @@ const VariantController = require("../controllers/variantController");
 const { authenticateToken, authorizeRoles } = require("../middleware/auth");
 const { productUpload } = require("../middleware/productUpload");
 
-// routes/variant.routes.js
+// Get variants by product
 router.get(
   "/product/:productId",
   authenticateToken,
@@ -12,6 +12,7 @@ router.get(
   VariantController.getVariantsByProduct
 );
 
+// Get single variant
 router.get(
   "/:variantId",
   authenticateToken,
@@ -19,6 +20,7 @@ router.get(
   VariantController.getVariantById
 );
 
+// Update variant
 router.put(
   "/:variantId",
   authenticateToken,
@@ -26,6 +28,15 @@ router.put(
   VariantController.updateVariant
 );
 
+//  GET variant images 
+router.get(
+  "/:variantId/images",
+  authenticateToken,
+  authorizeRoles("vendor", "vendor_manager", "admin"),
+  VariantController.getVariantImages
+);
+
+// Upload variant images
 router.post(
   "/:variantId/images",
   authenticateToken,
@@ -34,8 +45,9 @@ router.post(
   VariantController.uploadVariantImages
 );
 
+//  Delete variant image 
 router.delete(
-  "/images/:imageId",
+  "/:variantId/images",
   authenticateToken,
   authorizeRoles("vendor"),
   VariantController.deleteVariantImage

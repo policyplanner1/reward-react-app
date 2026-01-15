@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 export default function ProductVariantImages() {
   const { variantId } = useParams();
@@ -99,7 +100,7 @@ export default function ProductVariantImages() {
         {images.map((img) => (
           <div key={img} className="relative group border rounded-lg">
             <img
-              src={`${import.meta.env.VITE_API_BASE_URL}/${img}`}
+              src={`${API_BASEIMAGE_URL}/uploads/${img}`}
               alt="variant"
               className="w-full h-40 object-cover rounded-lg"
             />
