@@ -41,7 +41,23 @@ export default function ProductVariantImages() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
 
-    const selected = Array.from(e.target.files).map((file) => ({
+    const selectedFiles = Array.from(e.target.files);
+
+    const remainingSlots = 5 - images.length;
+
+    if (remainingSlots <= 0) {
+      alert("Maximum 5 images already uploaded for this variant.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    if (selectedFiles.length > remainingSlots) {
+      alert(`You can upload only ${remainingSlots} more image(s).`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const selected = selectedFiles.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
     }));
@@ -53,22 +69,20 @@ export default function ProductVariantImages() {
   const handleUpload = async () => {
     if (!previews.length) return;
 
+    if (images.length + previews.length > 5) {
+      alert("Total variant images cannot exceed 5.");
+      return;
+    }
+
     const formData = new FormData();
     previews.forEach((p) => formData.append("images", p.file));
 
     try {
       setUploading(true);
-
-      await api.post(`/variant/${variantId}/images`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      // Cleanup preview URLs
+      await api.post(`/variant/${variantId}/images`, formData);
       previews.forEach((p) => URL.revokeObjectURL(p.preview));
       setPreviews([]);
-
       if (fileInputRef.current) fileInputRef.current.value = "";
-
       fetchImages();
     } finally {
       setUploading(false);
