@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
+import {
+  FaArrowLeft,
+} from "react-icons/fa";
 
 export default function ProductVariantEdit() {
   const { variantId } = useParams();
@@ -67,9 +70,9 @@ export default function ProductVariantEdit() {
         <h1 className="text-2xl font-semibold">Edit Variant</h1>
         <button
           onClick={() => navigate(-1)}
-          className="text-sm text-gray-600 hover:underline"
+          className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-900 disabled:opacity-60 cursor-pointer"
         >
-          ← Back
+          <FaArrowLeft /> Back
         </button>
       </div>
 
@@ -112,15 +115,11 @@ export default function ProductVariantEdit() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Sale Price
-            </label>
+            <label className="block text-sm font-medium mb-1">Sale Price</label>
             <input
               type="number"
               value={form.sale_price}
-              onChange={(e) =>
-                setForm({ ...form, sale_price: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, sale_price: e.target.value })}
               className="w-full p-2 border rounded-lg"
             />
           </div>
@@ -168,7 +167,7 @@ export default function ProductVariantEdit() {
         <div className="flex justify-end gap-3 mt-6">
           <button
             onClick={() => navigate(-1)}
-            className="px-4 py-2 border rounded-lg"
+            className="px-4 py-2 border rounded-lg cursor-pointer"
           >
             Cancel
           </button>
@@ -176,7 +175,7 @@ export default function ProductVariantEdit() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-900 disabled:opacity-60"
+            className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-900 disabled:opacity-60 cursor-pointer"
           >
             {saving ? "Saving..." : "Save Variant"}
           </button>
