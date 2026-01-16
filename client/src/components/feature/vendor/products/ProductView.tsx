@@ -106,20 +106,6 @@ import { Link } from "react-router-dom";
 import { api } from "../../../../api/api";
 const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
-interface VariantView {
-  size?: string;
-  color?: string;
-  dimension?: string;
-  customAttributes?: Record<string, any>;
-  MRP?: string | number;
-  salesPrice?: string | number;
-  stock?: string | number;
-  expiryDate?: string;
-  manufacturingYear?: string;
-  materialType?: string;
-  images?: string[]; // URLs
-}
-
 interface ProductView {
   productId?: number | string;
   productName?: string;
@@ -134,7 +120,6 @@ interface ProductView {
   subCategoryName?: string | null;
   subSubCategoryName?: string | null;
   product_status?: string;
-  variants?: VariantView[];
   productImages?: string[];
   requiredDocs?: Array<{
     id: number;
@@ -208,28 +193,6 @@ export default function ReviewProductPage() {
         productImages: Array.isArray(raw.productImages)
           ? raw.productImages
           : raw.images ?? [],
-
-        variants: Array.isArray(raw.variants)
-          ? raw.variants.map((v: any) => ({
-              size: v.size ?? "",
-              color: v.color ?? "",
-              dimension: v.dimension ?? "",
-              customAttributes: v.customAttributes ?? {},
-              MRP: v.mrp ?? "",
-              salesPrice: v.sale_price ?? "",
-              stock: v.stock ?? v.qty ?? "",
-              expiryDate:
-                v.expiry_date && isValidDate(v.expiry_date)
-                  ? new Date(v.expiry_date).toLocaleDateString()
-                  : "",
-              manufacturingYear:
-                v.manufacturing_date && isValidDate(v.manufacturing_date)
-                  ? new Date(v.manufacturing_date).toLocaleDateString()
-                  : "",
-              materialType: v.material_type ?? "",
-              images: Array.isArray(v.images) ? v.images : v.imageUrls ?? [],
-            }))
-          : [],
 
         requiredDocs: raw.documents ?? [],
       };
@@ -392,172 +355,13 @@ export default function ReviewProductPage() {
           </div>
         </section>
 
-        {/* Variants & Descriptions */}
+        {/*  Descriptions */}
         <section className="mt-6">
-          <SectionHeader
+            <SectionHeader
             icon={FaBox}
-            title="Product Variants"
-            description="Configured product variants"
+            title="Product Description"
+            description="Detailed and short Description"
           />
-
-          {product.variants && product.variants.length > 0 ? (
-            product.variants.map((v, idx) => (
-              <div
-                key={idx}
-                className="p-6 mb-6 border border-gray-200 rounded-xl bg-gray-50 shadow-inner"
-              >
-                <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-3">
-                  <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
-                      Size
-                    </label>
-                    <input
-                      readOnly
-                      value={v.size ?? ""}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
-                      Color
-                    </label>
-                    <input
-                      readOnly
-                      value={v.color ?? ""}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
-                      Material Type
-                    </label>
-                    <input
-                      readOnly
-                      value={v.materialType ?? ""}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
-                      Dimension
-                    </label>
-                    <input
-                      readOnly
-                      value={v.dimension ?? ""}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
-                      MRP
-                    </label>
-                    <input
-                      readOnly
-                      value={String(v.MRP ?? "")}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
-                      Sales Price
-                    </label>
-                    <input
-                      readOnly
-                      value={String(v.salesPrice ?? "")}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
-                      Stock
-                    </label>
-                    <input
-                      readOnly
-                      value={String(v.stock ?? "")}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
-                      Manufacturing Year
-                    </label>
-                    <input
-                      readOnly
-                      value={v.manufacturingYear ?? ""}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
-                      Expiry Date
-                    </label>
-                    <input
-                      readOnly
-                      value={v.expiryDate ?? ""}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                </div>
-
-                {/* Custom attributes (if any) */}
-                {v.customAttributes &&
-                  Object.keys(v.customAttributes).length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="mb-2 font-medium text-gray-700">
-                        Product Attributes
-                      </h4>
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                        {Object.keys(v.customAttributes).map((key) => (
-                          <div key={key}>
-                            <label className="block mb-1 text-xs font-semibold uppercase text-gray-500">
-                              {key}
-                            </label>
-                            <input
-                              readOnly
-                              value={String(v.customAttributes?.[key] ?? "")}
-                              className="w-full p-2 border rounded-lg"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                {/* Variant images thumbnails */}
-                <div className="mt-4">
-                  <label className="block mb-2 text-sm font-medium text-gray-700">
-                    Variant Images
-                  </label>
-                  <div className="flex gap-2 flex-wrap">
-                    {v.images && v.images.length > 0 ? (
-                      v.images.map((img, i) => (
-                        <div
-                          key={i}
-                          className="w-20 h-20 border rounded overflow-hidden"
-                        >
-                          <img
-                            src={resolveImageUrl(img)}
-                            alt={`Variant ${idx + 1} img ${i + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-xs text-gray-500">No images</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-sm text-gray-500">No variants configured.</div>
-          )}
 
           {/* Descriptions */}
           <div className="mt-6">

@@ -318,26 +318,7 @@ class ProductModel {
         [productId]
       );
       product.documents = documents;
-
-      // 4 Get product variants
-      const [variants] = await db.execute(
-        `SELECT * FROM product_variants WHERE product_id = ?`,
-        [productId]
-      );
-
-      // 5 Get images for each variant
-      for (const variant of variants) {
-        const [variantImages] = await db.execute(
-          `SELECT image_url FROM product_variant_images WHERE variant_id = ?`,
-          [variant.variant_id]
-        );
-        variant.images = variantImages.map((img) => img.image_url);
-        variant.customAttributes = JSON.parse(
-          variant.custom_attributes || "{}"
-        );
-      }
-      product.variants = variants;
-
+      
       return product;
     } catch (error) {
       console.error("Error fetching product by ID:", error);
