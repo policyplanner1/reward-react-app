@@ -120,25 +120,6 @@ interface RequiredDocument {
   status: number;
 }
 
-interface Variant {
-  variant_id: string | number;
-  size: string;
-  color: string;
-  dimension: string;
-  weight: string;
-  customAttributes: Record<string, any>;
-  MRP: string | number;
-  salesPrice: string | number;
-  stock: string | number;
-  sku: string;
-  expiryDate: string;
-  manufacturingYear: string;
-  materialType: string;
-  images: File[];
-  existingImages?: string[];
-  removedImages?: string[];
-}
-
 interface ProductData {
   productName: string;
   brandName: string;
@@ -148,7 +129,6 @@ interface ProductData {
   categoryId: number | null;
   subCategoryId: number | null;
   subSubCategoryId: number | null;
-  variants: Variant[];
   productImages: ImagePreview[];
   existingImages?: string[];
   removedImages?: string[];
@@ -163,24 +143,6 @@ const initialProductData: ProductData = {
   categoryId: null,
   subCategoryId: null,
   subSubCategoryId: null,
-  variants: [
-    {
-      variant_id: "",
-      size: "",
-      color: "",
-      dimension: "",
-      weight: "",
-      customAttributes: {},
-      MRP: "",
-      salesPrice: "",
-      stock: "",
-      sku: "",
-      expiryDate: "",
-      manufacturingYear: "",
-      materialType: "",
-      images: [],
-    },
-  ],
   productImages: [],
   existingImages: [],
   removedImages: [],
@@ -207,9 +169,6 @@ export default function EditProductPage() {
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [isCustomSubcategory, setIsCustomSubcategory] = useState(false);
   const [isCustomSubSubcategory, setIsCustomSubSubcategory] = useState(false);
-  const [variantImageErrors, setVariantImageErrors] = useState<
-    Record<number, string>
-  >({});
   const [imageError, setImageError] = useState("");
   const [custom_category, setCustomCategory] = useState("");
   const [custom_subcategory, setCustomSubCategory] = useState("");
@@ -282,15 +241,6 @@ export default function EditProductPage() {
     });
   };
 
-  const removeVariantImage = (variantIndex: number, imageIndex: number) => {
-    setProduct((prev) => {
-      const variants = [...prev.variants];
-      const imgs = [...variants[variantIndex].images];
-      imgs.splice(imageIndex, 1);
-      variants[variantIndex].images = imgs;
-      return { ...prev, variants };
-    });
-  };
 
   // useEffect(() => {
   //   return () => {
@@ -483,206 +433,12 @@ export default function EditProductPage() {
         subSubCategoryId: p.sub_subcategory_id || null,
         productImages: [],
         existingImages: p.images || [],
-        variants:
-          p.variants?.length > 0
-            ? p.variants.map((v: any) => ({
-                variant_id: v.variant_id,
-                size: v.size || "",
-                color: v.color || "",
-                dimension: v.dimension || "",
-                weight: v.weight || "",
-                MRP: v.mrp || "",
-                salesPrice: v.sale_price || "",
-                stock: v.stock || "",
-                sku: v.sku || "",
-                manufacturingYear:
-                  typeof v.manufacturing_date === "string"
-                    ? v.manufacturing_date.substring(0, 10)
-                    : "",
-
-                expiryDate:
-                  typeof v.expiry_date === "string"
-                    ? v.expiry_date.substring(0, 10)
-                    : "",
-
-                materialType: v.material_type || "",
-                customAttributes: v.custom_attributes || {},
-                images: [],
-                existingImages: v.images || [],
-              }))
-            : [...initialProductData.variants],
       });
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleVariantChange = (index: number, field: string, value: string) => {
-    /* ================= HARD BLOCK ================= */
-
-    // Decimal numbers
-    if (["MRP", "salesPrice", "weight"].includes(field)) {
-      if (!/^\d*\.?\d*$/.test(value)) return;
-    }
-
-    // Integers only
-    if (field === "stock") {
-      if (!/^\d*$/.test(value)) return;
-    }
-
-    // Alphabets only
-    if (field === "color" || field === "materialType") {
-      if (!/^[A-Za-z ]*$/.test(value)) return;
-    }
-
-    // Dimension (numbers + * + .)
-    if (field === "dimension") {
-      if (!/^[0-9.*]*$/.test(value)) return;
-    }
-
-    /* ================= DATE VALIDATION ================= */
-
-    // Manufacturing date
-    if (field === "manufacturingYear") {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const mfg = new Date(value);
-      mfg.setHours(0, 0, 0, 0);
-
-      if (mfg >= today) return;
-
-      const expiry = product.variants[index].expiryDate;
-      if (expiry) {
-        const exp = new Date(expiry);
-        exp.setHours(0, 0, 0, 0);
-        if (mfg >= exp) return;
-      }
-    }
-
-    // Expiry date
-    if (field === "expiryDate") {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const exp = new Date(value);
-      exp.setHours(0, 0, 0, 0);
-
-      if (exp <= today) return;
-
-      const mfg = product.variants[index].manufacturingYear;
-      if (mfg) {
-        const mfgDate = new Date(mfg);
-        mfgDate.setHours(0, 0, 0, 0);
-        if (exp <= mfgDate) return;
-      }
-    }
-
-    /* ================= STATE UPDATE ================= */
-
-    const updatedVariants = [...product.variants];
-    updatedVariants[index] = {
-      ...updatedVariants[index],
-      [field]: value,
-    };
-
-    setProduct((prev) => ({
-      ...prev,
-      variants: updatedVariants,
-    }));
-  };
-  const handleVariantImages = (
-    variantIndex: number,
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (!e.target.files) return;
-
-    const newFiles = Array.from(e.target.files);
-
-    setProduct((prev) => {
-      const variants = [...prev.variants];
-      const v = variants[variantIndex];
-
-      const existingCount = v.existingImages?.length || 0;
-      const newCount = v.images.length;
-
-      if (existingCount + newCount + newFiles.length > 5) {
-        setVariantImageErrors((prevErr) => ({
-          ...prevErr,
-          [variantIndex]: "Maximum 5 images allowed (existing + new).",
-        }));
-        return prev;
-      }
-
-      variants[variantIndex] = {
-        ...v,
-        images: [...v.images, ...newFiles],
-      };
-
-      return { ...prev, variants };
-    });
-
-    // Clear error on success
-    setVariantImageErrors((prevErr) => ({
-      ...prevErr,
-      [variantIndex]: "",
-    }));
-
-    e.target.value = "";
-  };
-
-  const removeExistingVariantImage = (variantIndex: number, img: string) => {
-    setProduct((prev) => {
-      const variants = [...prev.variants];
-      const v = variants[variantIndex];
-
-      variants[variantIndex] = {
-        ...v,
-        existingImages: v.existingImages?.filter((i) => i !== img),
-        removedImages: [...(v.removedImages || []), img],
-      };
-
-      return { ...prev, variants };
-    });
-  };
-
-  const addVariant = () => {
-    setProduct((prev) => ({
-      ...prev,
-      variants: [
-        ...prev.variants,
-        {
-          variant_id: "",
-          size: "",
-          color: "",
-          dimension: "",
-          weight: "",
-          customAttributes: {},
-          MRP: "",
-          salesPrice: "",
-          stock: "",
-          sku: "",
-          expiryDate: "",
-          manufacturingYear: "",
-          materialType: "",
-          images: [],
-          existingImages: [],
-        },
-      ],
-    }));
-  };
-
-  const removeVariant = (index: number) => {
-    if (product.variants.length <= 1) {
-      alert("At least one variant is required");
-      return;
-    }
-    setProduct((prev) => ({
-      ...prev,
-      variants: prev.variants.filter((_, i) => i !== index),
-    }));
   };
 
   const onDocInputChange = (
@@ -708,24 +464,6 @@ export default function EditProductPage() {
 
       if (!product.productName || !product.brandName || !product.manufacturer) {
         throw new Error("Please fill in all required product information");
-      }
-
-      // Validate variants
-      if (product.variants.length === 0) {
-        throw new Error("Please add at least one variant");
-      }
-
-      for (const variant of product.variants) {
-        if (
-          !variant.salesPrice ||
-          parseFloat(variant.salesPrice as string) <= 0
-        ) {
-          throw new Error("Please enter valid sales price for all variants");
-        }
-
-        if (!variant.stock || parseInt(variant.stock as string) < 0) {
-          throw new Error("Please enter valid stock quantity for all variants");
-        }
       }
 
       const formData = new FormData();
@@ -778,36 +516,6 @@ export default function EditProductPage() {
         if (file) {
           formData.append(docId, file);
         }
-      });
-
-      const variantsPayload = product.variants.map((variant) => ({
-        variant_id: variant.variant_id,
-        expiryDate: variant.expiryDate,
-        manufacturingYear: variant.manufacturingYear,
-        materialType: variant.materialType,
-        size: variant.size,
-        color: variant.color,
-        dimension: variant.dimension,
-        weight: variant.weight,
-        mrp: variant.MRP,
-        salesPrice: variant.salesPrice,
-        stock: variant.stock,
-        customAttributes: variant.customAttributes,
-      }));
-
-      formData.append("variants", JSON.stringify(variantsPayload));
-
-      // Add variant images
-      product.variants.forEach((variant, index) => {
-        variant.images.forEach((file, imgIndex) => {
-          formData.append(`variant_${index}_${imgIndex}`, file);
-        });
-
-        // removed variant images
-        formData.append(
-          `variantRemovedImages_${index}`,
-          JSON.stringify(variant.removedImages || [])
-        );
       });
 
       // Submit to backend
@@ -885,301 +593,6 @@ export default function EditProductPage() {
     );
   };
 
-  const renderVariantBuilder = () => {
-    return (
-      <section>
-        <SectionHeader
-          icon={FaBox}
-          title="Product Variants"
-          description="Configure product variants"
-        />
-
-        {product.variants.map((variant, index) => (
-          <div
-            key={index}
-            className="p-6 mb-6 border shadow-sm rounded-xl bg-gray-50"
-          >
-            <div className="flex items-center justify-between mb-4">
-              {product.variants.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeVariant(index)}
-                  className="p-2 text-red-600 hover:text-red-800"
-                >
-                  <FaTrash />
-                </button>
-              )}
-            </div>
-
-            {/* === ALWAYS SHOW SIMPLE INPUTS === */}
-            <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-3">
-              {/* Size */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Size
-                </label>
-                <input
-                  type="text"
-                  value={variant.size}
-                  onChange={(e) =>
-                    handleVariantChange(index, "size", e.target.value)
-                  }
-                  placeholder="Enter Size / capacity / volume"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Color */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Color
-                </label>
-                <input
-                  type="text"
-                  value={variant.color}
-                  onChange={(e) =>
-                    handleVariantChange(index, "color", e.target.value)
-                  }
-                  placeholder="Enter Color"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Material Type */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Material Type
-                </label>
-                <input
-                  type="text"
-                  value={variant.materialType}
-                  onChange={(e) =>
-                    handleVariantChange(index, "materialType", e.target.value)
-                  }
-                  placeholder="Enter Material Type"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Dimension */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Dimension
-                </label>
-                <input
-                  type="text"
-                  value={variant.dimension}
-                  onChange={(e) =>
-                    handleVariantChange(index, "dimension", e.target.value)
-                  }
-                  placeholder="12x10x5 cm"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Weight */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Weight (In Grams)
-                </label>
-                <input
-                  type="text"
-                  value={variant.weight}
-                  onChange={(e) =>
-                    handleVariantChange(index, "weight", e.target.value)
-                  }
-                  placeholder="1000g"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* MRP */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  MRP
-                </label>
-                <input
-                  type="number"
-                  value={variant.MRP}
-                  onChange={(e) =>
-                    handleVariantChange(index, "MRP", e.target.value)
-                  }
-                  placeholder="Enter MRP"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Sales Price */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Sales Price
-                </label>
-                <input
-                  type="number"
-                  value={variant.salesPrice}
-                  onChange={(e) =>
-                    handleVariantChange(index, "salesPrice", e.target.value)
-                  }
-                  placeholder="Enter Sales Price"
-                  className="w-full p-2 border rounded-lg"
-                  required
-                />
-              </div>
-
-              {/* Stock */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Stock
-                </label>
-                <input
-                  type="number"
-                  value={variant.stock}
-                  onChange={(e) =>
-                    handleVariantChange(index, "stock", e.target.value)
-                  }
-                  placeholder="Enter Stock / Unit"
-                  className="w-full p-2 border rounded-lg"
-                  required
-                />
-              </div>
-
-              {/* Manufacturing Year */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Manufacturing Year
-                </label>
-                <input
-                  type="date"
-                  value={variant.manufacturingYear || ""}
-                  max={new Date().toISOString().split("T")[0]}
-                  onChange={(e) =>
-                    handleVariantChange(
-                      index,
-                      "manufacturingYear",
-                      e.target.value
-                    )
-                  }
-                  placeholder="Enter Manufacturing Year"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Expiry Date */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Expiry Date
-                </label>
-                <input
-                  type="date"
-                  value={variant.expiryDate || ""}
-                  min={
-                    new Date(Date.now() + 86400000).toISOString().split("T")[0]
-                  }
-                  onChange={(e) =>
-                    handleVariantChange(index, "expiryDate", e.target.value)
-                  }
-                  placeholder="Enter Expiry Date"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-            </div>
-
-            {variant.existingImages && variant.existingImages.length > 0 && (
-              <div className="mt-3">
-                <p className="text-xs text-gray-500 mb-1">Existing images</p>
-                <div className="flex gap-2 flex-wrap">
-                  {variant.existingImages?.map((img) => (
-                    <div key={img} className="relative w-16 h-16 group">
-                      <img
-                        src={`${API_BASEIMAGE_URL}/uploads/${img}`}
-                        className="w-full h-full object-cover border rounded"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => removeExistingVariantImage(index, img)}
-                        className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
-                 opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                      >
-                        <FaTrash size={10} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Variant Images */}
-            <div className="mt-4">
-              <label className="block mb-2 text-sm font-medium text-gray-700">
-                Variant Images
-              </label>
-
-              <div className="flex items-center p-3 bg-white border border-gray-400 border-dashed rounded-lg">
-                <span className="flex-1 text-sm text-gray-600">
-                  {variant.images.length === 0
-                    ? "No images chosen"
-                    : `${variant.images.length} image(s) selected`}
-                </span>
-                <label className="cursor-pointer bg-[#852BAF] text-white px-3 py-1 text-xs rounded-full hover:bg-[#7a1c94]">
-                  Choose Files
-                  <input
-                    type="file"
-                    multiple
-                    className="hidden"
-                    accept="image/*"
-                    onChange={(e) => handleVariantImages(index, e)}
-                  />
-                </label>
-              </div>
-
-              {/* Image Previews */}
-              {variant.images.length > 0 && (
-                <div className="mt-3 flex gap-2 flex-wrap">
-                  {variant.images.map((file, imgIndex) => {
-                    const url = URL.createObjectURL(file);
-                    return (
-                      <div
-                        key={imgIndex}
-                        className="relative w-20 h-20 border rounded overflow-hidden group"
-                      >
-                        <img src={url} className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => removeVariantImage(index, imgIndex)}
-                          className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
-                       opacity-0 group-hover:opacity-100 cursor-pointer"
-                        >
-                          <FaTrash size={10} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Variant image error */}
-              {variantImageErrors[index] && (
-                <p className="mt-1 text-xs text-red-500">
-                  {variantImageErrors[index]}
-                </p>
-              )}
-            </div>
-          </div>
-        ))}
-
-        <button
-          type="button"
-          onClick={addVariant}
-          className="flex items-center justify-center w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#852BAF] hover:bg-purple-50 cursor-pointer"
-        >
-          <FaPlus className="mr-2 text-[#852BAF]" />
-          Add Another Variant
-        </button>
-      </section>
-    );
-  };
-
   // Get selected category name
   const getSelectedCategoryName = () => {
     const category = categories.find(
@@ -1250,6 +663,7 @@ export default function EditProductPage() {
 
                 <select
                   name="category_id"
+                  disabled
                   value={isCustomCategory ? "other" : product.categoryId || ""}
                   onChange={(e) => {
                     if (e.target.value === "other") {
@@ -1293,6 +707,7 @@ export default function EditProductPage() {
 
                 <select
                   name="subcategory_id"
+                  disabled
                   value={
                     isCustomSubcategory ? "other" : product.subCategoryId || ""
                   }
@@ -1306,7 +721,7 @@ export default function EditProductPage() {
                       handleFieldChange(e);
                     }
                   }}
-                  disabled={!product.categoryId && !isCustomCategory}
+                  // disabled={!product.categoryId && !isCustomCategory}
                   className="w-full p-3 border rounded-lg"
                 >
                   <option value="">Select Sub Category</option>
@@ -1339,6 +754,7 @@ export default function EditProductPage() {
 
                 <select
                   name="sub_subcategory_id"
+                  disabled
                   value={
                     isCustomSubSubcategory
                       ? "other"
@@ -1357,7 +773,7 @@ export default function EditProductPage() {
                       handleFieldChange(e);
                     }
                   }}
-                  disabled={!product.subCategoryId && !isCustomSubcategory}
+                  // disabled={!product.subCategoryId && !isCustomSubcategory}
                   className="w-full p-3 border rounded-lg"
                 >
                   <option value="">Select Type</option>
@@ -1459,7 +875,6 @@ export default function EditProductPage() {
 
           {/* Product Description */}
           <section>
-            {renderVariantBuilder()}
 
             {/* ===================== DETAILED DESCRIPTION ===================== */}
             <div className="mt-6">
