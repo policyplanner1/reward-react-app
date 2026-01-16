@@ -47,7 +47,7 @@ router.post(
 
 //  Delete variant image 
 router.delete(
-  "/:variantId/images",
+  "/images/:imageId",
   authenticateToken,
   authorizeRoles("vendor"),
   VariantController.deleteVariantImage
