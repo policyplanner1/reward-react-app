@@ -82,10 +82,8 @@ function FormInput(props: {
 
 import {
   FaTag,
-  FaBox,
   FaImages,
   FaFileUpload,
-  FaPlus,
   FaTrash,
   FaSpinner,
 } from "react-icons/fa";

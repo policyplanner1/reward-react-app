@@ -157,11 +157,6 @@ export default function ReviewProductPage() {
     return `${API_BASEIMAGE_URL}/uploads/${path.replace(/^\/+/, "")}`;
   };
 
-  const isValidDate = (date: any): boolean => {
-    const parsedDate = new Date(date);
-    return !isNaN(parsedDate.getTime());
-  };
-
   const fetchProduct = async (id: string) => {
     setLoading(true);
     setError(null);

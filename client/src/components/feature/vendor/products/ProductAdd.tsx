@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 import { api } from "../../../../api/api";
 import QuillEditor from "../../../QuillEditor";
 
+
 type IconComp = ComponentType<any>;
 
 interface ImagePreview {
@@ -85,7 +86,6 @@ import {
   FaBox,
   FaImages,
   FaFileUpload,
-  FaPlus,
   FaTrash,
   FaSpinner,
 } from "react-icons/fa";
