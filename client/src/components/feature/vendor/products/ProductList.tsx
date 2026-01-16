@@ -15,6 +15,7 @@ import {
   FaTimes,
   FaBox,
   FaPaperPlane,
+  FaCogs,
   FaTrash,
 } from "react-icons/fa";
 import { FiPackage } from "react-icons/fi";
@@ -851,6 +852,19 @@ export default function ProductManagerList() {
                       >
                         <button className="p-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 cursor-pointer">
                           <FaEye />
+                        </button>
+                      </Link>
+
+                      {/* Manage Product */}
+                      <Link
+                        to={routes.vendor.products.manageProduct.replace(
+                          ":productId",
+                          String(product.product_id)
+                        )}
+                        title="Manage product variants"
+                      >
+                        <button className="p-2 text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 cursor-pointer">
+                          <FaCogs />
                         </button>
                       </Link>
 

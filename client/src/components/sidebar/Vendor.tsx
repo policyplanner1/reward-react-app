@@ -81,11 +81,6 @@ export default function VendorNavbar() {
           to: "/vendor/products/add",
           Icon: FiPlusSquare,
         },
-        {
-          label: "Manage Product",
-          to: "/vendor/products/manage-product",
-          Icon: FiPlusSquare,
-        },
         { label: "Product List", to: "/vendor/products/list", Icon: FiPackage },
       ],
     },
