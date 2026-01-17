@@ -39,6 +39,7 @@ interface Variant {
   sale_price: number | null;
   stock: number;
   variant_attributes: Record<string, string>;
+  is_visible: boolean;
 }
 
 export default function ProductManage() {
@@ -88,6 +89,23 @@ export default function ProductManage() {
       table.destroy();
     };
   }, [variants]);
+
+  const toggleVisibility = async (variantId: number, current: boolean) => {
+    try {
+      await api.patch(`/variant/${variantId}/visibility`, {
+        is_visible: !current,
+      });
+
+      setVariants((prev) =>
+        prev.map((v) =>
+          v.variant_id === variantId ? { ...v, is_visible: !current } : v,
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to update visibility", error);
+      alert("Unable to update visibility");
+    }
+  };
 
   /* ================= LOADING ================= */
   if (loading) {
@@ -141,6 +159,7 @@ export default function ProductManage() {
                 <th>MRP</th>
                 <th>Price</th>
                 <th>Stock</th>
+                <th>Visibility</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -188,6 +207,25 @@ export default function ProductManage() {
                     >
                       {v.stock}
                     </span>
+                  </td>
+
+                  {/* VISIBILITY */}
+                  <td>
+                    <button
+                      onClick={() =>
+                        toggleVisibility(v.variant_id, v.is_visible)
+                      }
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                        v.is_visible ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                      title={v.is_visible ? "Visible" : "Hidden"}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                          v.is_visible ? "translate-x-6" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
                   </td>
 
                   {/* ACTIONS */}
