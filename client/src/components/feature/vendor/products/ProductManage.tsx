@@ -199,10 +199,18 @@ export default function ProductManage() {
                             `/vendor/products/variant-edit/${v.variant_id}`,
                           )
                         }
-                        className="text-blue-600 hover:underline text-sm font-medium cursor-pointer"
+                        className="
+                          inline-flex items-center justify-center
+                          w-9 h-9
+                          rounded-full
+                          bg-blue-50 text-blue-600
+                          hover:bg-blue-100
+                          transition
+                          cursor-pointer
+                        "
+                        title="Edit Variant"
                       >
-                        <FaEdit className="inline mr-1" />
-                        Edit
+                        <FaEdit size={14} />
                       </button>
 
                       <button
@@ -211,10 +219,18 @@ export default function ProductManage() {
                             `/vendor/products/variant-image/${v.variant_id}`,
                           )
                         }
-                        className="text-purple-600 hover:underline text-sm font-medium cursor-pointer"
+                        className="
+                          inline-flex items-center justify-center
+                          w-9 h-9
+                          rounded-full
+                          bg-purple-50 text-purple-600
+                          hover:bg-purple-100
+                          transition
+                          cursor-pointer
+                        "
+                        title="Manage Images"
                       >
-                        <FaImages className="inline mr-1" />
-                        Images
+                        <FaImages size={14} />
                       </button>
                     </div>
                   </td>
