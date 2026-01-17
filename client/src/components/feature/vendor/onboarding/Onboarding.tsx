@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import type { ComponentType } from "react";
 // import { useNavigate, useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import {
   FaBuilding,
   FaAddressBook,
@@ -710,18 +711,45 @@ export default function Onboarding() {
   };
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const validationErrors = validateForm(formData);
-    setErrors(validationErrors);
+  const validationErrors = validateForm(formData);
+  setErrors(validationErrors);
 
-    if (Object.keys(validationErrors).length > 0) {
-      return;
-    }
+  if (Object.keys(validationErrors).length > 0) {
+    await Swal.fire({
+      icon: "error",
+      title: "Please fix the errors",
+      text: "Some required fields are missing or invalid.",
+      confirmButtonText: "OK",
+      buttonsStyling: false,
+      customClass: {
+        popup: "rounded-full",
+        confirmButton:
+          "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
+      },
+    });
+    return;
+  }
 
-    const token = localStorage.getItem("token");
-    if (!token) return alert("Not logged in");
+  const token = localStorage.getItem("token");
+  if (!token) {
+    await Swal.fire({
+      icon: "warning",
+      title: "Not logged in",
+      text: "Please login first and try again.",
+      confirmButtonText: "OK",
+      buttonsStyling: false,
+      customClass: {
+        popup: "rounded-full",
+        confirmButton:
+          "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
+      },
+    });
+    return;
+  }
 
+  try {
     const form = new FormData();
     Object.entries(formData).forEach(([k, v]) => {
       if (v instanceof File) form.append(k, v);
@@ -733,13 +761,46 @@ export default function Onboarding() {
     });
 
     if (!res.data.success) {
-      alert(res.data.message);
+      await Swal.fire({
+        icon: "error",
+        title: "Submission Failed",
+        text: res.data.message || "Something went wrong.",
+        confirmButtonText: "OK",
+        buttonsStyling: false,
+        customClass: {
+          popup: "rounded-full",
+          confirmButton:
+            "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
+        },
+      });
       return;
     }
 
-    alert("Onboarding submitted successfully");
+    await Swal.fire({
+      icon: "success",
+      title: "Submitted Successfully!",
+      text: "Onboarding submitted successfully.",
+      timer: 1200,
+      showConfirmButton: false,
+      customClass: { popup: "rounded-full" },
+    });
+
     navigate("/vendor/dashboard");
-  };
+  } catch (err: any) {
+    await Swal.fire({
+      icon: "error",
+      title: "Server Error",
+      text: err?.response?.data?.message || err?.message || "Something went wrong.",
+      confirmButtonText: "OK",
+      buttonsStyling: false,
+      customClass: {
+        popup: "rounded-full",
+        confirmButton:
+          "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
+      },
+    });
+  }
+};
 
   /* ================= UI ================= */
   return (
