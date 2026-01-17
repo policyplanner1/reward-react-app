@@ -141,7 +141,7 @@ export default function ProductManage() {
                             `/vendor/products/variant-edit/${v.variant_id}`
                           )
                         }
-                        className="flex items-center gap-2 text-blue-600 hover:underline"
+                        className="flex items-center gap-2 text-blue-600 hover:underline cursor-pointer"
                       >
                         <FaEdit /> Edit
                       </button>
@@ -152,7 +152,7 @@ export default function ProductManage() {
                             `/vendor/products/variant-image/${v.variant_id}`
                           )
                         }
-                        className="flex items-center gap-2 text-purple-600 hover:underline"
+                        className="flex items-center gap-2 text-purple-600 hover:underline cursor-pointer"
                       >
                         <FaImages /> Images
                       </button>
