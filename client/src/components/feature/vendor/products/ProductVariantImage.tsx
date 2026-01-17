@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
 import { FaArrowLeft, FaImages, FaTrash } from "react-icons/fa";
+import Swal from "sweetalert2";
 
 const BASE_IMAGE_URL = "https://rewardplanners.com/api/crm/uploads";
 
@@ -51,14 +52,30 @@ export default function ProductVariantImages() {
     fetchImages();
   }, [variantId]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
 
     const selectedFiles = Array.from(e.target.files);
     const remainingSlots = 5 - images.length;
 
-    if (remainingSlots <= 0 || selectedFiles.length > remainingSlots) {
-      alert(`You can upload only ${remainingSlots} more image(s).`);
+    if (remainingSlots <= 0) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Image limit reached",
+        text: "You can upload a maximum of 5 images for a variant.",
+        confirmButtonText: "OK",
+      });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    if (selectedFiles.length > remainingSlots) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Too many images",
+        text: `You can upload only ${remainingSlots} more image(s).`,
+        confirmButtonText: "OK",
+      });
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -80,19 +97,61 @@ export default function ProductVariantImages() {
     try {
       setUploading(true);
       await api.post(`/variant/${variantId}/images`, formData);
+
       previews.forEach((p) => URL.revokeObjectURL(p.preview));
       setPreviews([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
       fetchImages();
+
+      await Swal.fire({
+        icon: "success",
+        title: "Images uploaded",
+        text: "Variant images have been uploaded successfully.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      await Swal.fire({
+        icon: "error",
+        title: "Upload failed",
+        text: "Unable to upload images. Please try again.",
+      });
     } finally {
       setUploading(false);
     }
   };
 
   const handleDelete = async (imageId: number) => {
-    if (!confirm("Delete this image?")) return;
-    await api.delete(`/variant/images/${imageId}`);
-    setImages((prev) => prev.filter((i) => i.image_id !== imageId));
+    const result = await Swal.fire({
+      title: "Delete image?",
+      text: "This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await api.delete(`/variant/images/${imageId}`);
+      setImages((prev) => prev.filter((i) => i.image_id !== imageId));
+
+      await Swal.fire({
+        icon: "success",
+        title: "Deleted",
+        text: "Image has been deleted successfully.",
+        timer: 1200,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      await Swal.fire({
+        icon: "error",
+        title: "Delete failed",
+        text: "Unable to delete image. Please try again.",
+      });
+    }
   };
 
   return (
