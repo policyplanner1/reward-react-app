@@ -1,5 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import { routes } from "./routes";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "./auth/useAuth";
 
 /* Auth */
 import AuthLayout from "./layouts/AuthLayout";
@@ -39,6 +41,11 @@ import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprov
 import NotFoundPage from "./pages/NotFound";
 
 export default function App() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return null;
+  }
   return (
     <Routes>
       {/* ========== AUTH ========== */}
@@ -153,7 +160,10 @@ export default function App() {
       </Route>
 
       {/* ========== FALLBACK ========== */}
-      <Route path="*" element={<NotFoundPage />} />
+      <Route
+        path="*"
+        element={user ? <NotFoundPage /> : <Navigate to="/login" replace />}
+      />
     </Routes>
   );
 }
