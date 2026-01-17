@@ -824,9 +824,9 @@ export default function ProductManagerList() {
                   "Subcategory",
                   "SubType",
                   "Status",
-                  "Rejection Reason",
                   "Visibility",
                   "Searchable",
+                  "Rejection Reason",
                   "Action",
                 ].map((head) => (
                   <th
@@ -900,11 +900,6 @@ export default function ProductManagerList() {
                     </div>
                   </td>
 
-                  {/* REJECTION REASON */}
-                  <td className="px-5 py-4 text-sm text-gray-700">
-                    {product.rejection_reason || "—"}
-                  </td>
-
                   {/* Visible */}
                   <td className="px-5 py-4">
                     <button
@@ -948,6 +943,11 @@ export default function ProductManagerList() {
                         }`}
                       />
                     </button>
+                  </td>
+
+                  {/* REJECTION REASON */}
+                  <td className="px-5 py-4 text-sm text-gray-700">
+                    {product.rejection_reason || "—"}
                   </td>
 
                   {/* ACTIONS */}
