@@ -901,7 +901,6 @@ export default function ProductManagerList() {
                             ":id",
                             String(product.product_id)
                           )}
-                          target="_blank"
                         >
                           <button title="Edit" className="p-2 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 focus:ring-2 focus:ring-purple-300 cursor-pointer">
                             <FaEdit />

@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import type { ComponentType } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import QuillEditor from "../../../QuillEditor";
+import { FaArrowLeft } from "react-icons/fa";
 
 type IconComp = ComponentType<any>;
 
@@ -43,7 +44,7 @@ function FormInput(props: {
   label: string;
   value?: string | number;
   onChange: (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => void;
   type?: string;
   required?: boolean;
@@ -157,7 +158,7 @@ export default function EditProductPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [subSubCategories, setSubSubCategories] = useState<SubSubCategory[]>(
-    []
+    [],
   );
   const [requiredDocs, setRequiredDocs] = useState<RequiredDocument[]>([]);
   const [docFiles, setDocFiles] = useState<Record<number, File | null>>({});
@@ -239,7 +240,6 @@ export default function EditProductPage() {
     });
   };
 
-
   // useEffect(() => {
   //   return () => {
   //     product.productImages.forEach((img) => URL.revokeObjectURL(img.url));
@@ -296,7 +296,7 @@ export default function EditProductPage() {
   const fetchRequiredDocuments = async (categoryId: number) => {
     try {
       const res = await api.get(
-        `/product/category/required_docs/${categoryId}`
+        `/product/category/required_docs/${categoryId}`,
       );
 
       if (res.data.success) {
@@ -312,7 +312,7 @@ export default function EditProductPage() {
   };
 
   const handleFieldChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
 
@@ -369,7 +369,7 @@ export default function EditProductPage() {
   const handleShortDescriptionChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const value = e.target.value;
 
@@ -441,7 +441,7 @@ export default function EditProductPage() {
 
   const onDocInputChange = (
     e: ChangeEvent<HTMLInputElement>,
-    documentId: number
+    documentId: number,
   ) => {
     const file = e.target.files?.[0] ?? null;
     setDocFiles((prev) => ({ ...prev, [documentId]: file }));
@@ -480,7 +480,7 @@ export default function EditProductPage() {
       if (product.subSubCategoryId) {
         formData.append(
           "sub_subcategory_id",
-          product.subSubCategoryId.toString()
+          product.subSubCategoryId.toString(),
         );
       }
       if (isCustomCategory) {
@@ -506,7 +506,7 @@ export default function EditProductPage() {
 
       formData.append(
         "removedMainImages",
-        JSON.stringify(product.removedImages || [])
+        JSON.stringify(product.removedImages || []),
       );
 
       // Documents
@@ -524,7 +524,7 @@ export default function EditProductPage() {
           headers: {
             "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
 
       const data = response.data;
@@ -594,7 +594,7 @@ export default function EditProductPage() {
   // Get selected category name
   const getSelectedCategoryName = () => {
     const category = categories.find(
-      (c) => c.category_id === product.categoryId
+      (c) => c.category_id === product.categoryId,
     );
     return category?.category_name || "Not selected";
   };
@@ -602,7 +602,7 @@ export default function EditProductPage() {
   // Get selected subcategory name
   const getSelectedSubCategoryName = () => {
     const subcategory = subCategories.find(
-      (s) => s.subcategory_id === product.subCategoryId
+      (s) => s.subcategory_id === product.subCategoryId,
     );
     return subcategory?.subcategory_name || "Not selected";
   };
@@ -610,7 +610,7 @@ export default function EditProductPage() {
   // Get selected sub-subcategory name
   const getSelectedSubSubCategoryName = () => {
     const subsubcategory = subSubCategories.find(
-      (ss) => ss.sub_subcategory_id === product.subSubCategoryId
+      (ss) => ss.sub_subcategory_id === product.subSubCategoryId,
     );
     return subsubcategory?.name || "Not selected";
   };
@@ -627,9 +627,27 @@ export default function EditProductPage() {
   return (
     <div className="p-6 premium-form" style={{ backgroundColor: "#FFFAFB" }}>
       <div className="p-6 mx-auto bg-white border border-gray-100 shadow-xl rounded-2xl max-w-7xl">
-        <h1 className="mb-6 text-3xl font-bold text-gray-900">
-          Edit Product Details
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="mb-1 text-3xl font-bold text-gray-900">
+              Edit Product Details
+            </h1>
+            <p className="text-sm text-gray-600">
+              Editing product ID: {productId}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg
+      bg-[#852BAF] text-white transition-all duration-300
+      hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+      cursor-pointer"
+          >
+            <FaArrowLeft /> Back
+          </button>
+        </div>
 
         {error && (
           <div className="p-4 mb-6 border border-red-200 rounded-lg bg-red-50">
@@ -873,7 +891,6 @@ export default function EditProductPage() {
 
           {/* Product Description */}
           <section>
-
             {/* ===================== DETAILED DESCRIPTION ===================== */}
             <div className="mt-6">
               <label className="block mb-2 text-sm font-medium text-gray-700">
