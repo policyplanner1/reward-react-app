@@ -1,9 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
-import { FaArrowLeft } from "react-icons/fa";
+import { FaArrowLeft, FaImages, FaTrash } from "react-icons/fa";
 
 const BASE_IMAGE_URL = "https://rewardplanners.com/api/crm/uploads";
+
+function SectionHeader({ icon: Icon, title, description }: any) {
+  return (
+    <div className="flex items-center space-x-4 pb-4 border-b border-gray-100 mb-6">
+      <div className="p-4 text-white rounded-2xl shadow-xl shadow-[#852BAF]/20 bg-gradient-to-tr from-[#852BAF] to-[#FC3F78]">
+        <Icon className="text-2xl" />
+      </div>
+      <div>
+        <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+        {description && (
+          <p className="text-sm text-gray-500 font-medium">{description}</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 type VariantImage = {
   image_id: number;
@@ -25,55 +41,38 @@ export default function ProductVariantImages() {
   const [previews, setPreviews] = useState<PreviewImage[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  // Fetch existing images
   const fetchImages = async () => {
     if (!variantId) return;
     const res = await api.get(`/variant/${variantId}/images`);
-    if (res.data.success) {
-      setImages(res.data.images);
-    }
+    if (res.data.success) setImages(res.data.images);
   };
 
   useEffect(() => {
     fetchImages();
   }, [variantId]);
 
-  // Handle file selection (PREVIEW STEP)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
 
     const selectedFiles = Array.from(e.target.files);
-
     const remainingSlots = 5 - images.length;
 
-    if (remainingSlots <= 0) {
-      alert("Maximum 5 images already uploaded for this variant.");
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-
-    if (selectedFiles.length > remainingSlots) {
+    if (remainingSlots <= 0 || selectedFiles.length > remainingSlots) {
       alert(`You can upload only ${remainingSlots} more image(s).`);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    const selected = selectedFiles.map((file) => ({
-      file,
-      preview: URL.createObjectURL(file),
-    }));
-
-    setPreviews(selected);
+    setPreviews(
+      selectedFiles.map((file) => ({
+        file,
+        preview: URL.createObjectURL(file),
+      }))
+    );
   };
 
-  // Upload selected images
   const handleUpload = async () => {
     if (!previews.length) return;
-
-    if (images.length + previews.length > 5) {
-      alert("Total variant images cannot exceed 5.");
-      return;
-    }
 
     const formData = new FormData();
     previews.forEach((p) => formData.append("images", p.file));
@@ -93,137 +92,131 @@ export default function ProductVariantImages() {
   const handleDelete = async (imageId: number) => {
     if (!confirm("Delete this image?")) return;
     await api.delete(`/variant/images/${imageId}`);
-    setImages((prev) => prev.filter((img) => img.image_id !== imageId));
+    setImages((prev) => prev.filter((i) => i.image_id !== imageId));
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FD] py-8 px-4">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Variant Images</h1>
-            <p className="text-gray-500 mt-1">
-              Upload and manage images for this variant (max 5)
-            </p>
-          </div>
-
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg
-           bg-[#852BAF] text-white transition-all duration-300
-           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
-           hover:text-white cursor-pointer"
-          >
-            <FaArrowLeft />
-            Back
-          </button>
+    <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-white">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-10">
+        <div>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">
+            Variant <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#852BAF] to-[#FC3F78]">Images</span>
+          </h1>
+          <p className="text-gray-500 mt-2 font-medium">
+            Upload and manage images for this variant (max 5)
+          </p>
         </div>
 
-        {/* Upload Card */}
-        <div className="bg-white rounded-2xl border shadow-sm p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800">Upload Images</h2>
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 px-5 py-2.5 bg-black text-white font-semibold rounded-xl hover:bg-gray-900 transition cursor-pointer"
+        >
+          <FaArrowLeft /> Back
+        </button>
+      </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileSelect}
-          />
+      {/* Upload Section */}
+      <section className="space-y-4 bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-lg">
+        <SectionHeader
+          icon={FaImages}
+          title="Upload Images"
+          description="Select and upload images for this variant"
+        />
 
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#852BAF] to-[#FC3F78] text-white font-semibold hover:opacity-90 transition cursor-pointer"
-              >
-                Select Images
-              </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
 
-              <span className="text-sm text-gray-500">
-                {images.length}/5 images uploaded
-              </span>
-            </div>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#852BAF] to-[#FC3F78] text-white font-semibold hover:opacity-90 transition cursor-pointer"
+            >
+              Select Images
+            </button>
 
-            {previews.length > 0 && (
-              <button
-                type="button"
-                onClick={handleUpload}
-                disabled={uploading}
-                className="px-5 py-2.5 rounded-xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 transition cursor-pointer"
-              >
-                {uploading ? "Uploading..." : "Upload Selected"}
-              </button>
-            )}
+            <span className="text-sm text-gray-500 font-medium">
+              {images.length}/5 uploaded
+            </span>
           </div>
-        </div>
 
-        {/* Preview Section */}
-        {previews.length > 0 && (
-          <div className="bg-white rounded-2xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              Preview Before Upload
-            </h3>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {previews.map((p, idx) => (
-                <div
-                  key={idx}
-                  className="relative rounded-xl overflow-hidden border bg-gray-50"
-                >
-                  <img
-                    src={p.preview}
-                    className="h-40 w-full object-cover"
-                    alt="Preview"
-                  />
-                  <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition" />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Uploaded Images */}
-        <div className="bg-white rounded-2xl border shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            Uploaded Images
-          </h3>
-
-          {images.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              No images uploaded for this variant yet.
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-              {images.map((img) => (
-                <div
-                  key={img.image_id}
-                  className="relative group rounded-xl overflow-hidden border bg-gray-100"
-                >
-                  <img
-                    src={`${BASE_IMAGE_URL}/${img.image_url}`}
-                    className="h-44 w-full object-cover"
-                    alt="Variant"
-                  />
-
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                    <button
-                      onClick={() => handleDelete(img.image_id)}
-                      className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition cursor-pointer"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+          {previews.length > 0 && (
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={uploading}
+              className="px-6 py-2.5 rounded-xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 transition cursor-pointer"
+            >
+              {uploading ? "Uploading..." : "Upload Selected"}
+            </button>
           )}
         </div>
-      </div>
+      </section>
+
+      {/* Preview Section */}
+      {previews.length > 0 && (
+        <section className="mt-8 space-y-4 bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-lg">
+          <SectionHeader
+            icon={FaImages}
+            title="Preview Before Upload"
+            description="Review selected images"
+          />
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {previews.map((p, idx) => (
+              <div key={idx} className="relative rounded-xl overflow-hidden border bg-gray-50">
+                <img src={p.preview} className="h-40 w-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Uploaded Images */}
+      <section className="mt-8 space-y-4 bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-lg">
+        <SectionHeader
+          icon={FaImages}
+          title="Uploaded Images"
+          description="Existing images for this variant"
+        />
+
+        {images.length === 0 ? (
+          <div className="py-12 text-center text-gray-500">
+            No images uploaded for this variant yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+            {images.map((img) => (
+              <div
+                key={img.image_id}
+                className="relative group rounded-xl overflow-hidden border bg-gray-100"
+              >
+                <img
+                  src={`${BASE_IMAGE_URL}/${img.image_url}`}
+                  className="h-44 w-full object-cover"
+                />
+
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                  <button
+                    onClick={() => handleDelete(img.image_id)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition cursor-pointer"
+                  >
+                    <FaTrash size={12} /> Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
