@@ -18,6 +18,7 @@ import {
   FaTrash,
 } from "react-icons/fa";
 import { FiPackage } from "react-icons/fi";
+import Swal from "sweetalert2";
 import { Link } from "react-router-dom";
 import { routes } from "../../../../routes";
 import { api } from "../../../../api/api";
@@ -266,21 +267,55 @@ const ActionModal = ({
     },
   }[actionType];
 
-  const handleSubmit = async () => {
-    if (config.showReason && !reason.trim()) {
-      alert("Please provide a reason.");
-      return;
-    }
-    setLoading(true);
-    try {
-      await onSubmit(actionType, config.showReason ? reason : undefined);
-      onClose();
-    } catch (err) {
-      console.error("Action failed:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+ const handleSubmit = async () => {
+  if (config.showReason && !reason.trim()) {
+    Swal.fire({
+      icon: "warning",
+      title: "Reason Required",
+      text: "Please provide a reason.",
+    });
+    return;
+  }
+
+  const result = await Swal.fire({
+    title: "Are you sure?",
+    text: "Do you want to proceed with this action?",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Yes, proceed",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+  });
+
+  if (!result.isConfirmed) return;
+
+  setLoading(true);
+  try {
+    await onSubmit(actionType, config.showReason ? reason : undefined);
+
+    Swal.fire({
+      icon: "success",
+      title: "Success",
+      text: "Action completed successfully!",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+
+    onClose();
+  } catch (err) {
+    console.error("Action failed:", err);
+
+    Swal.fire({
+      icon: "error",
+      title: "Failed",
+      text: "Something went wrong. Please try again.",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div

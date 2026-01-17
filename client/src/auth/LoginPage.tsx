@@ -46,60 +46,56 @@ export default function LoginPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-tr from-[#38bdf8] via-[#a855f7] to-[#ec4899] font-sans px-4">
       <div className="w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        <div className="relative hidden md:block bg-white">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_20%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(900px_circle_at_85%_30%,rgba(168,85,247,0.10),transparent_55%),radial-gradient(900px_circle_at_50%_110%,rgba(236,72,153,0.08),transparent_55%)]" />
-          <div className="pointer-events-none absolute inset-0 opacity-[0.08] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:18px_18px]" />
+<div className="relative hidden md:block bg-white">
+  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_20%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(900px_circle_at_85%_30%,rgba(168,85,247,0.10),transparent_55%),radial-gradient(900px_circle_at_50%_110%,rgba(236,72,153,0.08),transparent_55%)]" />
+  <div className="pointer-events-none absolute inset-0 opacity-[0.08] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:18px_18px]" />
 
-          <div className="relative h-full w-full flex items-center justify-center p-10">
-            <img
-              src={logoImage}
-              alt="Login Illustration"
-              className="w-full max-w-md drop-shadow-2xl select-none mt-[-4em]"
-              draggable={false}
-            />
-          </div>
+  <div className="relative h-full w-full flex items-center justify-center p-10">
+    <img
+      src={logoImage}
+      alt="Login Illustration"
+      className="w-full max-w-md drop-shadow-2xl select-none mt-[-4em]"
 
-          <div className="absolute bottom-8 left-8 right-8 text-slate-900">
-            <p className="text-2xl font-extrabold leading-tight">
-              Welcome back{" "}
-            </p>
-            <p className="mt-2 text-[16px] font-medium text-gray-600 leading-relaxed">
-              Sign in and continue to your dashboard.
-            </p>
-          </div>
+      draggable={false}
+    />
+  </div>
 
-          <div className="pointer-events-none absolute top-0 right-0 h-full w-[2px] bg-gradient-to-b from-transparent via-slate-200 to-transparent" />
-          <div className="pointer-events-none absolute top-0 right-[-10px] h-full w-[22px] bg-gradient-to-l from-[#852BAF]/10 via-[#FC3F78]/5 to-transparent blur-xl" />
-        </div>
+  <div className="absolute bottom-8 left-8 right-8 text-slate-900">
+    <p className="text-2xl font-extrabold leading-tight">Welcome back </p>
+    <p className="mt-2 text-[14px] font-medium text-gray-600 leading-relaxed">
+      Sign in and continue to your dashboard.
+    </p>
+  </div>
 
-        <div className="w-full bg-white py-10 px-10 relative">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_0%,rgba(133,43,175,0.05),transparent_45%)]" />
+  <div className="pointer-events-none absolute top-0 right-0 h-full w-[2px] bg-gradient-to-b from-transparent via-slate-200 to-transparent" />
+  <div className="pointer-events-none absolute top-0 right-[-10px] h-full w-[22px] bg-gradient-to-l from-[#852BAF]/10 via-[#FC3F78]/5 to-transparent blur-xl" />
+</div>
 
-          {/* Header */}
-          <h2 className="relative text-3xl font-extrabold text-center text-gray-900">
-            Hello!
-          </h2>
-          <p className="mt-1 text-xl text-center text-gray-500 mb-8">
-            Sign in to your Account
-          </p>
+<div className="w-full bg-white py-8 px-10 relative">
+  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_0%,rgba(133,43,175,0.05),transparent_45%)]" />
 
-          {(error || authError) && (
-            <div className="relative mb-4 p-3 text-sm text-red-700 rounded-xl bg-red-50 border border-red-200 shadow-sm">
-              {error || authError}
-            </div>
-          )}
+  {/* Header */}
+  <h2 className="relative text-4xl font-extrabold text-center text-[#333] mb-10">
+    Login
+  </h2>
 
-          <form onSubmit={handleSubmit} className="relative space-y-8">
-            {/* Email/Username Field */}
-            <div className="space-y-6">
-              {/* Email Field */}
-              <div className="relative">
-                <label className="text-sm font-semibold text-slate-700 tracking-wide">
-                  Email
-                </label>
+  {(error || authError) && (
+    <div className="relative mb-4 text-xs text-center text-red-500 font-medium">
+      {error || authError}
+    </div>
+  )}
 
-                <div
-                  className="mt-2 flex items-center gap-3 w-full px-4 py-2.5 rounded-xl bg-white
+  <form onSubmit={handleSubmit} className="relative space-y-8">
+    {/* Email/Username Field */}
+    <div className="space-y-6">
+  {/* Email Field */}
+  <div className="relative">
+    <label className="text-[14px] font-medium text-gray-800 leading-relaxed">
+      Email
+    </label>
+
+    <div
+      className="mt-2 flex items-center gap-3 w-full px-4 py-3 rounded-2xl bg-white
                  border border-slate-200 shadow-sm
                  transition-all duration-300
                  focus-within:border-transparent
