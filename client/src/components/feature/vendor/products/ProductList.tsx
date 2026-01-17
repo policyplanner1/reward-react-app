@@ -56,6 +56,8 @@ interface ProductItem {
   stock: number;
   status: ProductStatus;
   rejection_reason: string | null;
+  is_visible: boolean;
+  is_searchable: boolean;
   created_at: string;
   updated_at: string;
   main_image: string | null;
@@ -268,55 +270,88 @@ const ActionModal = ({
     },
   }[actionType];
 
- const handleSubmit = async () => {
-  if (config.showReason && !reason.trim()) {
-    Swal.fire({
-      icon: "warning",
-      title: "Reason Required",
-      text: "Please provide a reason.",
-    });
-    return;
-  }
+  const handleSubmit = async () => {
+    if (config.showReason && !reason.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Reason Required",
+        text: "Please provide a reason.",
+      });
+      return;
+    }
 
-  const result = await Swal.fire({
-    title: "Are you sure?",
-    text: "Do you want to proceed with this action?",
-    icon: "question",
-    showCancelButton: true,
-    confirmButtonText: "Yes, proceed",
-    cancelButtonText: "Cancel",
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
-  });
-
-  if (!result.isConfirmed) return;
-
-  setLoading(true);
-  try {
-    await onSubmit(actionType, config.showReason ? reason : undefined);
-
-    Swal.fire({
-      icon: "success",
-      title: "Success",
-      text: "Action completed successfully!",
-      timer: 2000,
-      showConfirmButton: false,
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to proceed with this action?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, proceed",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
     });
 
-    onClose();
-  } catch (err) {
-    console.error("Action failed:", err);
+    if (!result.isConfirmed) return;
 
-    Swal.fire({
-      icon: "error",
-      title: "Failed",
-      text: "Something went wrong. Please try again.",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    try {
+      await onSubmit(actionType, config.showReason ? reason : undefined);
 
+      Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Action completed successfully!",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
+      onClose();
+    } catch (err) {
+      console.error("Action failed:", err);
+
+      Swal.fire({
+        icon: "error",
+        title: "Failed",
+        text: "Something went wrong. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleVisibility = async (productId: number, current: boolean) => {
+    try {
+      await api.patch(`/product/${productId}/visibility`, {
+        is_visible: !current,
+      });
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.product_id === productId ? { ...p, is_visible: !current } : p,
+        ),
+      );
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update visibility");
+    }
+  };
+
+  const toggleSearchable = async (productId: number, current: boolean) => {
+    try {
+      await api.patch(`/product/${productId}/searchable`, {
+        is_searchable: !current,
+      });
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.product_id === productId ? { ...p, is_searchable: !current } : p,
+        ),
+      );
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update searchable status");
+    }
+  };
 
   return (
     <div
@@ -472,7 +507,7 @@ export default function ProductManagerList() {
       searchQuery,
       sortBy,
       sortOrder,
-    ]
+    ],
   );
 
   //  first load
@@ -523,7 +558,7 @@ export default function ProductManagerList() {
   const handleProductAction = async (
     action: ActionType,
     productId: number,
-    reason?: string
+    reason?: string,
   ) => {
     try {
       if (action === "delete") {
@@ -549,8 +584,8 @@ export default function ProductManagerList() {
           prev.map((p) =>
             p.product_id === productId
               ? { ...p, status: "sent_for_approval" }
-              : p
-          )
+              : p,
+          ),
         );
 
         alert(res.data.message || "Product sent for approval successfully");
@@ -790,6 +825,8 @@ export default function ProductManagerList() {
                   "SubType",
                   "Status",
                   "Rejection Reason",
+                  "Visibility",
+                  "Searchable",
                   "Action",
                 ].map((head) => (
                   <th
@@ -868,16 +905,64 @@ export default function ProductManagerList() {
                     {product.rejection_reason || "—"}
                   </td>
 
+                  {/* Visible */}
+                  <td className="px-5 py-4">
+                    <button
+                      onClick={() =>
+                        toggleVisibility(product.product_id, product.is_visible)
+                      }
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                        product.is_visible ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                      title={product.is_visible ? "Visible" : "Hidden"}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                          product.is_visible ? "translate-x-6" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                  </td>
+
+                  {/* Search */}
+                  <td className="px-5 py-4">
+                    <button
+                      onClick={() =>
+                        toggleSearchable(
+                          product.product_id,
+                          product.is_searchable,
+                        )
+                      }
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                        product.is_searchable ? "bg-indigo-500" : "bg-gray-300"
+                      }`}
+                      title={
+                        product.is_searchable ? "Searchable" : "Not searchable"
+                      }
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                          product.is_searchable
+                            ? "translate-x-6"
+                            : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                  </td>
+
                   {/* ACTIONS */}
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
                       <Link
                         to={routes.vendor.products.review.replace(
                           ":productId",
-                          String(product.product_id)
+                          String(product.product_id),
                         )}
                       >
-                        <button title="View" className="p-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-2 focus:ring-gray-300 cursor-pointer">
+                        <button
+                          title="View"
+                          className="p-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-2 focus:ring-gray-300 cursor-pointer"
+                        >
                           <FaEye />
                         </button>
                       </Link>
@@ -885,24 +970,30 @@ export default function ProductManagerList() {
                       <Link
                         to={routes.vendor.products.manageProduct.replace(
                           ":productId",
-                          String(product.product_id)
+                          String(product.product_id),
                         )}
                       >
-                        <button title="Manage" className="p-2 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 focus:ring-2 focus:ring-blue-300 cursor-pointer">
+                        <button
+                          title="Manage"
+                          className="p-2 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 focus:ring-2 focus:ring-blue-300 cursor-pointer"
+                        >
                           <FaCogs />
                         </button>
                       </Link>
 
                       {!["approved", "rejected", "sent_for_approval"].includes(
-                        product.status
+                        product.status,
                       ) && (
                         <Link
                           to={routes.vendor.products.edit.replace(
                             ":id",
-                            String(product.product_id)
+                            String(product.product_id),
                           )}
                         >
-                          <button title="Edit" className="p-2 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 focus:ring-2 focus:ring-purple-300 cursor-pointer">
+                          <button
+                            title="Edit"
+                            className="p-2 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 focus:ring-2 focus:ring-purple-300 cursor-pointer"
+                          >
                             <FaEdit />
                           </button>
                         </Link>
@@ -914,7 +1005,8 @@ export default function ProductManagerList() {
                         "resubmission",
                         "sent_for_approval",
                       ].includes(product.status) && (
-                        <button title="Delete"
+                        <button
+                          title="Delete"
                           onClick={() => openActionModal(product, "delete")}
                           className="p-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 focus:ring-2 focus:ring-red-300 cursor-pointer"
                         >
@@ -923,7 +1015,8 @@ export default function ProductManagerList() {
                       )}
 
                       {["pending", "resubmission"].includes(product.status) && (
-                        <button title="Send"
+                        <button
+                          title="Send"
                           onClick={() =>
                             openActionModal(product, "request_resubmission")
                           }
@@ -948,7 +1041,7 @@ export default function ProductManagerList() {
               {(pagination.currentPage - 1) * pagination.itemsPerPage + 1} to{" "}
               {Math.min(
                 pagination.currentPage * pagination.itemsPerPage,
-                pagination.totalItems
+                pagination.totalItems,
               )}{" "}
               of {pagination.totalItems} products
             </div>
@@ -992,7 +1085,7 @@ export default function ProductManagerList() {
                       {pageNum}
                     </button>
                   );
-                }
+                },
               )}
 
               <button
