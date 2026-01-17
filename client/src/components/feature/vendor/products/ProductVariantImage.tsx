@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
+import { FaArrowLeft } from "react-icons/fa";
 
 const BASE_IMAGE_URL = "https://rewardplanners.com/api/crm/uploads";
 
@@ -96,83 +97,128 @@ export default function ProductVariantImages() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Variant Images</h2>
-        <button onClick={() => navigate(-1)} className="text-sm underline">
-          ← Back
-        </button>
-      </div>
+    <div className="min-h-screen bg-[#F8F9FD] py-8 px-4">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Variant Images</h1>
+            <p className="text-gray-500 mt-1">
+              Upload and manage images for this variant (max 5)
+            </p>
+          </div>
 
-      {/* Upload Section */}
-      <div className="border p-4 rounded-lg space-y-3">
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
-
-        <div className="flex gap-3">
           <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-black text-white rounded"
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border bg-white hover:bg-gray-50 shadow-sm transition cursor-pointer"
           >
-            Select Images
+            <FaArrowLeft />
+            Back
           </button>
-
-          {previews.length > 0 && (
-            <button
-              type="button"
-              onClick={handleUpload}
-              disabled={uploading}
-              className="px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50"
-            >
-              {uploading ? "Uploading..." : "Upload"}
-            </button>
-          )}
         </div>
-      </div>
 
-      {/* Preview grid (BEFORE upload) */}
-      {previews.length > 0 && (
-        <div>
-          <h3 className="font-medium mb-2">Preview</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {previews.map((p, idx) => (
-              <img
-                key={idx}
-                src={p.preview}
-                className="h-40 w-full object-cover rounded border"
-                alt="Preview"
-              />
-            ))}
+        {/* Upload Card */}
+        <div className="bg-white rounded-2xl border shadow-sm p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-gray-800">Upload Images</h2>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#852BAF] to-[#FC3F78] text-white font-semibold hover:opacity-90 transition cursor-pointer"
+              >
+                Select Images
+              </button>
+
+              <span className="text-sm text-gray-500">
+                {images.length}/5 images uploaded
+              </span>
+            </div>
+
+            {previews.length > 0 && (
+              <button
+                type="button"
+                onClick={handleUpload}
+                disabled={uploading}
+                className="px-5 py-2.5 rounded-xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 transition cursor-pointer"
+              >
+                {uploading ? "Uploading..." : "Upload Selected"}
+              </button>
+            )}
           </div>
         </div>
-      )}
 
-      {/* Existing images */}
-      <div>
-        <h3 className="font-medium mb-2">Uploaded Images</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {images.map((img) => (
-            <div key={img.image_id} className="relative group">
-              <img
-                src={`${BASE_IMAGE_URL}/${img.image_url}`}
-                className="h-40 w-full object-cover rounded border"
-                alt="Variant"
-              />
-              <button
-                onClick={() => handleDelete(img.image_id)}
-                className="absolute top-2 right-2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100"
-              >
-                Delete
-              </button>
+        {/* Preview Section */}
+        {previews.length > 0 && (
+          <div className="bg-white rounded-2xl border shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              Preview Before Upload
+            </h3>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {previews.map((p, idx) => (
+                <div
+                  key={idx}
+                  className="relative rounded-xl overflow-hidden border bg-gray-50"
+                >
+                  <img
+                    src={p.preview}
+                    className="h-40 w-full object-cover"
+                    alt="Preview"
+                  />
+                  <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition" />
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+        )}
+
+        {/* Uploaded Images */}
+        <div className="bg-white rounded-2xl border shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+            Uploaded Images
+          </h3>
+
+          {images.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              No images uploaded for this variant yet.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+              {images.map((img) => (
+                <div
+                  key={img.image_id}
+                  className="relative group rounded-xl overflow-hidden border bg-gray-100"
+                >
+                  <img
+                    src={`${BASE_IMAGE_URL}/${img.image_url}`}
+                    className="h-44 w-full object-cover"
+                    alt="Variant"
+                  />
+
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                    <button
+                      onClick={() => handleDelete(img.image_id)}
+                      className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
