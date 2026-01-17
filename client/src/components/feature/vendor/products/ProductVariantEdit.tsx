@@ -75,7 +75,10 @@ export default function ProductVariantEdit() {
 
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border bg-white hover:bg-gray-50 shadow-sm transition cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg
+           bg-[#852BAF] text-white transition-all duration-300
+           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+           hover:text-white cursor-pointer"
           >
             <FaArrowLeft />
             Back
@@ -199,11 +202,12 @@ export default function ProductVariantEdit() {
           </div>
         </div>
 
+
         {/* Sticky Action Bar */}
         <div className="sticky bottom-0 bg-white border-t p-4 rounded-xl shadow-lg flex justify-end gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="px-5 py-2.5 rounded-xl border bg-white hover:bg-gray-50 transition cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 transition cursor-pointer"
           >
             Cancel
           </button>

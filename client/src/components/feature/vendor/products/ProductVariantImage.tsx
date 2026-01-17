@@ -110,7 +110,10 @@ export default function ProductVariantImages() {
 
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border bg-white hover:bg-gray-50 shadow-sm transition cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg
+           bg-[#852BAF] text-white transition-all duration-300
+           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+           hover:text-white cursor-pointer"
           >
             <FaArrowLeft />
             Back
