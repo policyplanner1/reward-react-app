@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "./useAuth";
 import logoImage from "../assets/logo.svg";
 // import { User, Lock, Facebook, Twitter, Chrome } from "lucide-react";
-import { User, Lock, Eye, EyeOff  } from "lucide-react";
+import { User, Lock, Eye, EyeOff } from "lucide-react";
 
 type Role = "vendor" | "vendor_manager" | "admin" | "warehouse_manager";
 
@@ -101,65 +101,65 @@ export default function LoginPage() {
                  focus-within:border-transparent
                  focus-within:ring-4 focus-within:ring-[#852BAF]/15
                  focus-within:shadow-lg focus-within:shadow-[#852BAF]/10"
-    >
-      <User className="w-4 h-4 text-gray-600" />
+                >
+                  <User className="w-5 h-5 text-gray-600" />
 
-      <input
-        name="email"
-        type="email"
-        required
-        className="w-full bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
-        placeholder="name@company.com"
-        value={formData.email}
-        onChange={handleChange}
-      />
-    </div>
-  </div>
+                  <input
+                    name="email"
+                    type="email"
+                    required
+                    className="w-full bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
+                    placeholder="name@company.com"
+                    value={formData.email}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
 
-  {/* Password Field */}
-  <div className="relative">
-    <label className="text-[14px] font-medium text-gray-800 leading-relaxed">
-      Password
-    </label>
+              {/* Password Field */}
+              <div className="relative">
+                <label className="text-sm font-semibold text-slate-700 tracking-wide">
+                  Password
+                </label>
 
-    <div
-      className="mt-2 flex items-center gap-3 w-full px-4 py-3 rounded-2xl bg-white
+                <div
+                  className="mt-2 flex items-center gap-3 w-full px-4 py-2.5 rounded-xl bg-white
                  border border-slate-200 shadow-sm
                  transition-all duration-300
                  focus-within:border-transparent
                  focus-within:ring-4 focus-within:ring-[#852BAF]/15
                  focus-within:shadow-lg focus-within:shadow-[#852BAF]/10"
-    >
-      <Lock className="w-4 h-4 text-gray-600" />
+                >
+                  <Lock className="w-5 h-5 text-gray-600" />
 
-      <input
-        name="password"
-        type={showPassword ? "text" : "password"}
-        required
-        className="w-full bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
-        placeholder="********"
-        value={formData.password}
-        onChange={handleChange}
-      />
+                  <input
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    className="w-full bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
+                    placeholder="********"
+                    value={formData.password}
+                    onChange={handleChange}
+                  />
 
-      <button
-        type="button"
-        onClick={() => setShowPassword(!showPassword)}
-        className="text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer"
-      >
-        {showPassword ? (
-          <EyeOff className="w-5 h-5" />
-        ) : (
-          <Eye className="w-5 h-5" />
-        )}
-      </button>
-    </div>
-  </div>
-</div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
 
-    <div className="flex items-center justify-end">
-      {/*  Social icons (kept for later use) */}
-      {/*
+            <div className="flex items-center justify-end">
+              {/*  Social icons (kept for later use) */}
+              {/*
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -182,42 +182,48 @@ export default function LoginPage() {
       </div>
       */}
 
-      <Link
-        to="/forgot-password"
-        className="text-sm text-purple-600 hover:text-[#FC3F78] transition-colors"
-      >
-        Forgot password?
-      </Link>
-    </div>
+              <Link
+                to="/forgot-password"
+                className="text-md text-purple-600 hover:text-[#FC3F78] transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
 
-    {/* Login Button */}
-    <button
-      type="submit"
-      disabled={loading}
-      className="w-full mt-6 text-white font-bold py-3.5 rounded-full text-lg
+            {/* Login Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-6 text-white font-bold py-3.5 rounded-full text-xl
                bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer
                hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
                hover:shadow-xl active:scale-95
                disabled:opacity-60 disabled:cursor-not-allowed"
-    >
-      {loading ? "Logging in..." : "Login"}
-    </button>
-  </form>
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Logging in...
+                </span>
+              ) : (
+                "Login"
+              )}
+            </button>
+          </form>
 
-  <div className="relative mt-10 text-center">
-    <p className="mt-10 text-sm text-center text-gray-700">
-      Don&apos;t have an account?{" "}
-      <Link
-        to="/register"
-        className="font-semibold text-purple-600 hover:text-[#FC3F78] transition-all hover:underline"
-      >
-        Create Account
-      </Link>
-    </p>
-  </div>
-</div>
-
+          <div className="relative mt-10 text-center">
+            <p className="mt-10 text-md text-center text-gray-700">
+              Don&apos;t have an account?{" "}
+              <Link
+                to="/register"
+                className="font-semibold text-purple-600 hover:text-[#FC3F78] transition-all hover:underline"
+              >
+                Create Account
+              </Link>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 class CheckoutModel {
-  async checkoutCart(userId, companyId = null) {
+  async checkoutCart(userId, address_id, companyId = null) {
     const conn = await db.getConnection();
 
     try {
@@ -45,10 +45,10 @@ class CheckoutModel {
       // 4 Create order
       const [orderRes] = await conn.execute(
         `
-        INSERT INTO eorders (user_id, company_id, total_amount)
-        VALUES (?, ?, ?)
+        INSERT INTO eorders (user_id, company_id, address_id, total_amount)
+        VALUES (?, ?, ?, ?)
         `,
-        [userId, companyId, totalAmount]
+        [userId, companyId, address_id, totalAmount]
       );
 
       const orderId = orderRes.insertId;
@@ -94,7 +94,14 @@ class CheckoutModel {
     }
   }
 
-  async buyNow({ userId, productId, variantId, quantity, companyId = null }) {
+  async buyNow({
+    userId,
+    productId,
+    variantId,
+    quantity,
+    address_id,
+    companyId = null,
+  }) {
     const conn = await db.getConnection();
 
     try {
@@ -123,10 +130,10 @@ class CheckoutModel {
       // 2 Create order
       const [orderRes] = await conn.execute(
         `
-      INSERT INTO eorders (user_id, company_id, total_amount)
-      VALUES (?, ?, ?)
+      INSERT INTO eorders (user_id, company_id,address_id, total_amount)
+      VALUES (?, ?, ?, ?)
       `,
-        [userId, companyId, totalAmount]
+        [userId, companyId, address_id, totalAmount]
       );
 
       const orderId = orderRes.insertId;
@@ -310,6 +317,116 @@ class CheckoutModel {
         stock: row.stock,
       },
       totalAmount: quantity * row.sale_price,
+    };
+  }
+
+  // Order Receipt
+  async getOrderReceipt({ userId, orderId }) {
+    // 1 Fetch order
+    const [[order]] = await db.execute(
+      `
+    SELECT 
+      o.order_id,
+      o.address_id,
+      o.total_amount,
+      o.created_at,
+      o.status,
+      ca.address_type,
+      ca.address1,
+      ca.address2,
+      ca.city,
+      cu.name AS customer_name,
+      ca.zipcode,
+      ca.landmark,
+      s.state_name,
+      c.country_name
+    FROM eorders o
+      JOIN customer_addresses ca 
+      ON o.address_id = ca.address_id
+
+      JOIN customer cu
+      on o.user_id = cu.user_id
+
+      LEFT JOIN states s
+      ON ca.state_id = s.state_id
+
+      LEFT JOIN countries c
+      ON ca.country_id = c.country_id
+    WHERE o.order_id = ?
+      AND o.user_id = ?
+    `,
+      [orderId, userId]
+    );
+
+    if (!order) {
+      throw new Error("ORDER_NOT_FOUND");
+    }
+
+    // 2 Fetch order items
+    const [items] = await db.execute(
+      `
+    SELECT
+      oi.product_id,
+      oi.variant_id,
+      oi.quantity,
+      oi.price,
+      p.product_name,
+
+      (
+        SELECT pi.image_url
+        FROM product_images pi
+        WHERE pi.product_id = p.product_id
+        ORDER BY pi.sort_order ASC
+        LIMIT 1
+      ) AS image
+
+    FROM eorder_items oi
+    JOIN eproducts p ON oi.product_id = p.product_id
+    WHERE oi.order_id = ?
+    `,
+      [orderId]
+    );
+
+    const itemTotal = items.reduce((sum, i) => sum + i.quantity * i.price, 0);
+
+    // static for Now
+    const deliveryFee = 50;
+    const bagDiscount = 1032;
+    const rewardDiscount = 500;
+
+    return {
+      orderId: order.order_id,
+      orderDate: order.created_at,
+      status: order.status,
+      username: order.customer_name,
+      deliveryDate: "Saturday, Nov 29",
+      address: {
+        type: order.address_type,
+        line1: order.address1,
+        line2: order.address2,
+        city: order.city,
+        state: order.state_name,
+        country: order.country_name,
+        zipcode: order.zipcode,
+        landmark: order.landmark,
+      },
+      items: items.map((i) => ({
+        product_name: i.product_name,
+        image: i.image,
+        quantity: i.quantity,
+        price: i.price,
+        item_total: i.quantity * i.price,
+      })),
+
+      bill: {
+        item_total: itemTotal,
+        delivery_fee: deliveryFee,
+        bag_discount: bagDiscount,
+        reward_discount: rewardDiscount,
+        order_total: order.total_amount,
+      },
+
+      rewardsEarned: 462,
     };
   }
 }
