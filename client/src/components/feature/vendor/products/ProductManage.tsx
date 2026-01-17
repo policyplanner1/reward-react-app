@@ -14,6 +14,24 @@ import $ from "jquery";
 import "datatables.net";
 import "datatables.net-responsive";
 
+/* ================= UI HELPERS (ONBOARDING THEME) ================= */
+
+function SectionHeader({ icon: Icon, title, description }: any) {
+  return (
+    <div className="flex items-center space-x-4 pb-4 border-b border-gray-100 mb-6">
+      <div className="p-4 text-white rounded-2xl shadow-xl shadow-[#852BAF]/20 bg-gradient-to-tr from-[#852BAF] to-[#FC3F78]">
+        <Icon className="text-2xl" />
+      </div>
+      <div>
+        <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+        {description && (
+          <p className="text-sm text-gray-500 font-medium">{description}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface Variant {
   variant_id: number;
   sku: string;
@@ -74,54 +92,47 @@ export default function ProductManage() {
   /* ================= LOADING ================= */
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-white">
         <FaSpinner className="animate-spin text-3xl text-[#852BAF]" />
         <span className="ml-3 text-gray-600 text-lg">Loading variants…</span>
       </div>
     );
   }
 
+  /* ================= UI ================= */
   return (
-    <div className="min-h-screen p-6 bg-gray-50">
-      <div className="max-w-7xl mx-auto bg-white rounded-xl border border-gray-200 shadow-sm">
-        <div className="flex flex-col gap-4 px-6 py-4 border-b md:flex-row md:items-center md:justify-between">
-          {/* LEFT: TITLE */}
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-full flex items-center justify-center mr-4">
-              <FiPackage className="text-xl text-white" />
-            </div>
-
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-                Manage Product Variants
-              </h1>
-              <p className="text-gray-600">
-                View and manage pricing, stock and images
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-end gap-2">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg
-           bg-[#852BAF] text-white transition-all duration-300
-           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
-           hover:text-white cursor-pointer"
-            >
-              <FaArrowLeft />
-              Back
-            </button>
-
-            <div className="mt-2 text-sm text-gray-600 font-medium flex items-center gap-2">
-              <FaBoxOpen className="text-gray-500" />
-              {variants.length} Variants
-            </div>
-          </div>
+    <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-white">
+      {/* HEADER */}
+      <div className="flex items-center justify-between mb-10">
+        <div>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">
+            Manage{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#852BAF] to-[#FC3F78]">
+              Product Variants
+            </span>
+          </h1>
+          <p className="text-gray-500 mt-2 font-medium">
+            View and manage pricing, stock, and images
+          </p>
         </div>
 
-        {/* TABLE */}
-        <div className="p-6 overflow-x-auto">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 px-5 py-2.5 bg-black text-white font-semibold rounded-xl hover:bg-gray-900 transition cursor-pointer"
+        >
+          <FaArrowLeft /> Back
+        </button>
+      </div>
+
+      {/* VARIANT LIST */}
+      <section className="space-y-4 bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-2xl transition-shadow">
+        <SectionHeader
+          icon={FiPackage}
+          title="Variants"
+          description={`${variants.length} variants available for this product`}
+        />
+
+        <div className="overflow-x-auto">
           <table ref={tableRef} className="display responsive nowrap w-full">
             <thead>
               <tr>
@@ -138,34 +149,22 @@ export default function ProductManage() {
               {variants.map((v) => (
                 <tr key={v.variant_id}>
                   {/* SKU */}
-                  <td className="font-medium text-gray-900">{v.sku}</td>
+                  <td className="font-semibold text-gray-900">{v.sku}</td>
 
-                  {/* ATTRIBUTES (compact, not cluttered) */}
+                  {/* ATTRIBUTES */}
                   <td>
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(v.variant_attributes).map(
                         ([key, val]) => (
                           <span
                             key={key}
-                            className="
-                              inline-flex items-center
-                              px-2.5 py-1
-                              text-xs font-medium
-                              text-gray-700
-                              bg-gray-100
-                              border border-gray-200
-                              rounded-md
-                              whitespace-nowrap
-                            "
+                            className="px-3 py-1 text-xs font-semibold rounded-full
+                         bg-purple-50 text-purple-700
+                         border border-purple-200"
                           >
-                            <span className="mr-1 text-gray-500 uppercase">
-                              {key}
-                            </span>
-                            <span className="font-semibold text-gray-800">
-                              {val}
-                            </span>
+                            {key.toUpperCase()}: {val}
                           </span>
-                        )
+                        ),
                       )}
                     </div>
                   </td>
@@ -174,14 +173,14 @@ export default function ProductManage() {
                   <td className="text-gray-600">{v.mrp ? `₹${v.mrp}` : "—"}</td>
 
                   {/* SALE PRICE */}
-                  <td className="font-medium text-gray-900">
+                  <td className="font-semibold text-gray-900">
                     {v.sale_price ? `₹${v.sale_price}` : "—"}
                   </td>
 
-                  {/* STOCK (kept exactly as requested) */}
+                  {/* STOCK */}
                   <td>
                     <span
-                      className={`px-2.5 py-1 text-sm font-semibold rounded-md ${
+                      className={`px-3 py-1 text-sm font-semibold rounded-full ${
                         v.stock > 0
                           ? "bg-green-100 text-green-700"
                           : "bg-red-100 text-red-700"
@@ -193,11 +192,11 @@ export default function ProductManage() {
 
                   {/* ACTIONS */}
                   <td>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                       <button
                         onClick={() =>
                           navigate(
-                            `/vendor/products/variant-edit/${v.variant_id}`
+                            `/vendor/products/variant-edit/${v.variant_id}`,
                           )
                         }
                         className="text-blue-600 hover:underline text-sm font-medium cursor-pointer"
@@ -209,7 +208,7 @@ export default function ProductManage() {
                       <button
                         onClick={() =>
                           navigate(
-                            `/vendor/products/variant-image/${v.variant_id}`
+                            `/vendor/products/variant-image/${v.variant_id}`,
                           )
                         }
                         className="text-purple-600 hover:underline text-sm font-medium cursor-pointer"
@@ -224,7 +223,6 @@ export default function ProductManage() {
             </tbody>
           </table>
 
-          {/* EMPTY STATE */}
           {variants.length === 0 && (
             <div className="py-16 text-center">
               <FaBoxOpen className="mx-auto text-4xl text-gray-400 mb-4" />
@@ -237,7 +235,7 @@ export default function ProductManage() {
             </div>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
