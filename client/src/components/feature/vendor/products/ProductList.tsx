@@ -736,134 +736,124 @@ export default function ProductManagerList() {
         </div>
 
         {/* TABLE */}
-        <div className="relative overflow-x-auto border border-gray-200 rounded-lg">
+        <div className="relative overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
           {tableLoading && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-[1px]">
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-sm">
               <FaSpinner className="animate-spin text-3xl text-[#852BAF]" />
             </div>
           )}
 
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            {/* TABLE HEADER */}
+            <thead className="sticky top-0 z-10 bg-gray-100">
               <tr>
-                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
-                  Product
-                </th>
-                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
-                  Brand
-                </th>
-                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
-                  Category
-                </th>
-                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
-                  Subcategory
-                </th>
-                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
-                  SubType
-                </th>
-                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
-                  Rejection Reason
-                </th>
-                <th className="px-4 py-3 text-sm font-bold tracking-wider text-left text-black uppercase">
-                  Action
-                </th>
+                {[
+                  "Product",
+                  "Brand",
+                  "Category",
+                  "Subcategory",
+                  "SubType",
+                  "Status",
+                  "Rejection Reason",
+                  "Action",
+                ].map((head) => (
+                  <th
+                    key={head}
+                    className="px-5 py-4 text-xs font-semibold tracking-wide text-gray-700 uppercase whitespace-nowrap"
+                  >
+                    {head}
+                  </th>
+                ))}
               </tr>
             </thead>
 
-            <tbody className="bg-white divide-y divide-gray-200">
+            {/* TABLE BODY */}
+            <tbody className="divide-y divide-gray-100">
               {products.map((product) => (
-                <tr key={product.product_id} className="hover:bg-gray-50">
-                  <td className="px-4 py-4">
-                    <div className="flex flex-col items-center">
-                      {product?.main_image ? (
-                        <div className="w-12 h-12 mb-2 overflow-hidden bg-gray-100 rounded">
+                <tr
+                  key={product.product_id}
+                  className="odd:bg-white even:bg-gray-50 hover:bg-indigo-50 transition-colors"
+                >
+                  {/* PRODUCT */}
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-4">
+                      {product.main_image ? (
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 ring-1 ring-gray-200">
                           <img
-                            src={
-                              product?.main_image
-                                ? `${API_BASEIMAGE_URL}/uploads/${product.main_image}`
-                                : undefined
-                            }
-                            alt={product?.product_name || "Product Image"}
-                            className="object-cover w-full h-full"
+                            src={`${API_BASEIMAGE_URL}/uploads/${product.main_image}`}
+                            alt={product.product_name}
+                            className="w-full h-full object-cover"
                           />
                         </div>
                       ) : (
-                        <div className="flex items-center justify-center w-12 h-12 mb-2 bg-gray-100 rounded">
+                        <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-gray-100 ring-1 ring-gray-200">
                           <FaBox className="text-gray-400 text-lg" />
                         </div>
                       )}
 
-                      <div className="font-semibold text-gray-700 text-center text-sm">
-                        {product?.product_name || "Unnamed Product"}
+                      <div className="text-sm font-semibold text-gray-900 leading-tight">
+                        {product.product_name || "Unnamed Product"}
                       </div>
                     </div>
                   </td>
 
-                  <td className="px-4 py-4">
-                    <div className="text-[15px] font-medium text-gray-800 leading-relaxed">
-                      {product?.brand_name || "N/A"}
+                  {/* BRAND */}
+                  <td className="px-5 py-4 text-sm font-medium text-gray-800">
+                    {product.brand_name || "N/A"}
+                  </td>
+
+                  {/* CATEGORY */}
+                  <td className="px-5 py-4 text-sm font-medium text-gray-800">
+                    {product.category_name || product.custom_category || "N/A"}
+                  </td>
+
+                  {/* SUBCATEGORY */}
+                  <td className="px-5 py-4 text-sm font-medium text-gray-800">
+                    {product.subcategory_name ||
+                      product.custom_subcategory ||
+                      "N/A"}
+                  </td>
+
+                  {/* SUB TYPE */}
+                  <td className="px-5 py-4 text-sm font-medium text-gray-800">
+                    {product.sub_subcategory_name ||
+                      product.custom_sub_subcategory ||
+                      "N/A"}
+                  </td>
+
+                  {/* STATUS */}
+                  <td className="px-5 py-4">
+                    <div className="flex items-center">
+                      <StatusChip status={product.status} />
                     </div>
                   </td>
 
-                  <td className="px-4 py-4">
-                    <div className="text-[15px] font-medium text-gray-800 leading-relaxed">
-                      {product?.category_name ||
-                        product?.custom_category ||
-                        "N/A"}
-                    </div>
+                  {/* REJECTION REASON */}
+                  <td className="px-5 py-4 text-sm text-gray-700">
+                    {product.rejection_reason || "—"}
                   </td>
 
-                  <td className="px-4 py-4">
-                    <div className="text-[15px] font-medium text-gray-800 leading-relaxed">
-                      {product?.subcategory_name ||
-                        product?.custom_subcategory ||
-                        "N/A"}
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-4">
-                    <div className="text-[15px] font-medium text-gray-800 leading-relaxed">
-                      {product?.sub_subcategory_name ||
-                        product?.custom_sub_subcategory ||
-                        "N/A"}
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-4">
-                    <StatusChip status={product?.status} />
-                  </td>
-
-                  <td className="px-4 py-4">
-                    <div className="text-[15px] font-medium text-gray-800 leading-relaxed">
-                      {product?.rejection_reason || "N/A"}
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-4">
-                    <div className="flex items-center space-x-2">
+                  {/* ACTIONS */}
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-2">
                       <Link
                         to={routes.vendor.products.review.replace(
                           ":productId",
                           String(product.product_id)
                         )}
                       >
-                        <button className="p-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 cursor-pointer">
+                        <button title="View" className="p-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-2 focus:ring-gray-300 cursor-pointer">
                           <FaEye />
                         </button>
                       </Link>
 
-                      {/* Manage Product */}
                       <Link
                         to={routes.vendor.products.manageProduct.replace(
                           ":productId",
                           String(product.product_id)
                         )}
-                        title="Manage product variants"
                       >
-                        <button className="p-2 text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 cursor-pointer">
+                        <button title="Manage" className="p-2 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 focus:ring-2 focus:ring-blue-300 cursor-pointer">
                           <FaCogs />
                         </button>
                       </Link>
@@ -878,32 +868,32 @@ export default function ProductManagerList() {
                           )}
                           target="_blank"
                         >
-                          <button className="p-2 text-purple-700 bg-purple-100 rounded hover:bg-purple-200 cursor-pointer">
+                          <button title="Edit" className="p-2 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 focus:ring-2 focus:ring-purple-300 cursor-pointer">
                             <FaEdit />
                           </button>
                         </Link>
                       )}
 
-                      {[
+                      {![
                         "approved",
                         "rejected",
                         "resubmission",
                         "sent_for_approval",
-                      ].includes(product.status) ? null : (
-                        <button
+                      ].includes(product.status) && (
+                        <button title="Delete"
                           onClick={() => openActionModal(product, "delete")}
-                          className="p-2 text-red-700 bg-red-100 rounded hover:bg-red-200 cursor-pointer"
+                          className="p-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 focus:ring-2 focus:ring-red-300 cursor-pointer"
                         >
                           <FaTrash />
                         </button>
                       )}
 
                       {["pending", "resubmission"].includes(product.status) && (
-                        <button
+                        <button title="Send"
                           onClick={() =>
                             openActionModal(product, "request_resubmission")
                           }
-                          className="p-2 text-green-700 bg-green-100 rounded hover:bg-green-200 cursor-pointer"
+                          className="p-2 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 focus:ring-2 focus:ring-green-300 cursor-pointer"
                         >
                           <FaPaperPlane />
                         </button>
