@@ -327,6 +327,35 @@ class ProductModel {
       );
       product.documents = documents;
 
+      // 4 Get variant Details
+      const [variants] = await db.execute(
+        `
+      SELECT
+        v.variant_id,
+        v.sku,
+        v.mrp,
+        v.sale_price,
+        v.stock,
+        v.is_visible,
+        v.variant_attributes,
+        v.manufacturing_date,
+        v.expiry_date,
+        v.created_at
+      FROM product_variants v
+      WHERE v.product_id = ?
+      ORDER BY v.variant_id ASC
+      `,
+        [productId],
+      );
+
+      product.variants = variants.map((v) => ({
+        ...v,
+        variant_attributes:
+          typeof v.variant_attributes === "string"
+            ? JSON.parse(v.variant_attributes)
+            : v.variant_attributes,
+      }));
+
       return product;
     } catch (error) {
       console.error("Error fetching product by ID:", error);
