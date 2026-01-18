@@ -280,19 +280,6 @@ const ActionModal = ({
       return;
     }
 
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: "Do you want to proceed with this action?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Yes, proceed",
-      cancelButtonText: "Cancel",
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-    });
-
-    if (!result.isConfirmed) return;
-
     setLoading(true);
     try {
       await onSubmit(actionType, config.showReason ? reason : undefined);
@@ -538,7 +525,12 @@ export default function ProductManagerList() {
           pending: Math.max(0, prev.pending - 1),
         }));
 
-        alert("Product deleted successfully");
+        Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "Product deleted successfully",
+          showConfirmButton: false,
+        });
       }
 
       if (action === "request_resubmission") {
@@ -554,7 +546,12 @@ export default function ProductManagerList() {
           ),
         );
 
-        alert(res.data.message || "Product sent for approval successfully");
+        Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: res.data.message || "Product sent for approval successfully",
+          showConfirmButton: false,
+        });
       }
     } catch (error: any) {
       console.error("Error performing action:", error);
@@ -567,7 +564,7 @@ export default function ProductManagerList() {
   const toggleVisibility = async (productId: number, current: boolean) => {
     try {
       await api.patch(`/product/visibility/${productId}`, {
-        is_visible: !current, 
+        is_visible: !current,
       });
 
       setProducts((prev) =>
