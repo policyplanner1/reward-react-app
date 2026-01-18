@@ -1133,7 +1133,6 @@ export default function Onboarding() {
                   existingDoc={existingDocs["signatoryIdFile"]}
                   file={formData.signatoryIdFile}
                   onChange={handleChange}
-                  required
                 />
                 {/* Business profile */}
                 <DocumentUploadRow
@@ -1142,7 +1141,6 @@ export default function Onboarding() {
                   existingDoc={existingDocs["businessProfileFile"]}
                   file={formData.businessProfileFile}
                   onChange={handleChange}
-                  required
                 />
                 {/* Brand logo - required for Manufacturer and Trader */}
                 <DocumentUploadRow
@@ -1151,7 +1149,6 @@ export default function Onboarding() {
                   existingDoc={existingDocs["brandLogoFile"]}
                   file={formData.brandLogoFile}
                   onChange={handleChange}
-                  required
                 />
                 {/* Bank proof - cancelled cheque or passbook image */}
                 <DocumentUploadRow
@@ -1160,7 +1157,6 @@ export default function Onboarding() {
                   existingDoc={existingDocs["bankProofFile"]}
                   file={formData.bankProofFile}
                   onChange={handleChange}
-                  required
                 />
                 {/* Electricity */}
                 <DocumentUploadRow
@@ -1169,7 +1165,6 @@ export default function Onboarding() {
                   existingDoc={existingDocs["electricityBillFile"]}
                   file={formData.electricityBillFile}
                   onChange={handleChange}
-                  required
                 />
                 {/* Vendor agreement - checkbox + optional upload */}
                 <div className="col-span-1 md:col-span-2 lg:col-span-3">
@@ -1197,7 +1192,6 @@ export default function Onboarding() {
                     existingDoc={existingDocs["vendorAgreementFile"]}
                     file={formData.vendorAgreementFile}
                     onChange={handleChange}
-                    required
                   />
                 </div>
                 {/* Conditional: Manufacturer fields */}
