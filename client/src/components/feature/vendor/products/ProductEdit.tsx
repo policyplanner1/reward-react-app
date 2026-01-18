@@ -134,6 +134,13 @@ interface ProductData {
   productImages: ImagePreview[];
   existingImages?: string[];
   removedImages?: string[];
+  isDiscountEligible: 1 | 0;
+  isReturnable: 1 | 0;
+  returnWindowDays: string;
+
+  deliveryMinDays: string;
+  deliveryMaxDays: string;
+  shippingClass: "standard" | "bulky" | "fragile";
 }
 
 const initialProductData: ProductData = {
@@ -150,6 +157,13 @@ const initialProductData: ProductData = {
   productImages: [],
   existingImages: [],
   removedImages: [],
+  isDiscountEligible: 1,
+  isReturnable: 1,
+  returnWindowDays: "",
+
+  deliveryMinDays: "1",
+  deliveryMaxDays: "3",
+  shippingClass: "standard",
 };
 
 const allowOnlyAlphabets = (value: string) => /^[A-Za-z ]*$/.test(value);
@@ -436,6 +450,15 @@ export default function EditProductPage() {
         categoryId: p.category_id || null,
         subCategoryId: p.subcategory_id || null,
         subSubCategoryId: p.sub_subcategory_id || null,
+        isDiscountEligible: p.is_discount_eligible ?? 1,
+        isReturnable: p.is_returnable ?? 1,
+        returnWindowDays: p.return_window_days
+          ? String(p.return_window_days)
+          : "",
+
+        deliveryMinDays: String(p.delivery_sla_min_days ?? 1),
+        deliveryMaxDays: String(p.delivery_sla_max_days ?? 3),
+        shippingClass: p.shipping_class ?? "standard",
         productImages: [],
         existingImages: p.images || [],
       });
@@ -513,6 +536,20 @@ export default function EditProductPage() {
       formData.append("hsnSacCode", product.hsnSacCode);
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
+
+      formData.append(
+        "is_discount_eligible",
+        String(product.isDiscountEligible),
+      );
+      formData.append("is_returnable", String(product.isReturnable));
+
+      if (product.isReturnable === 1) {
+        formData.append("return_window_days", product.returnWindowDays);
+      }
+
+      formData.append("delivery_sla_min_days", product.deliveryMinDays);
+      formData.append("delivery_sla_max_days", product.deliveryMaxDays);
+      formData.append("shipping_class", product.shippingClass);
 
       // Add main product images
       product.productImages.forEach(({ file }) => {
@@ -971,6 +1008,127 @@ export default function EditProductPage() {
                   {product.shortDescription.length} / {CHAR_LIMIT} characters
                 </p>
               </div>
+            </div>
+          </section>
+
+          {/* Return and Discount */}
+          <section>
+            <SectionHeader
+              icon={FaTag}
+              title="Pricing & Commercial Controls"
+              description="Discount eligibility and return policy"
+            />
+
+            <div className="mt-4 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                {/* Discount Eligible */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Discount Eligible
+                  </label>
+                  <select
+                    name="isDiscountEligible"
+                    value={product.isDiscountEligible}
+                    onChange={(e) =>
+                      setProduct((prev) => ({
+                        ...prev,
+                        isDiscountEligible: Number(e.target.value) as 1 | 0,
+                      }))
+                    }
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value={1}>Yes</option>
+                    <option value={0}>No</option>
+                  </select>
+                </div>
+
+                {/* Returnable */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Returnable
+                  </label>
+                  <select
+                    name="isReturnable"
+                    value={product.isReturnable}
+                    onChange={(e) => {
+                      const val = Number(e.target.value) as 1 | 0;
+                      setProduct((prev) => ({
+                        ...prev,
+                        isReturnable: val,
+                        returnWindowDays:
+                          val === 0 ? "" : prev.returnWindowDays,
+                      }));
+                    }}
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value={1}>Yes</option>
+                    <option value={0}>No</option>
+                  </select>
+                </div>
+
+                {/* Return Window */}
+                {product.isReturnable === 1 && (
+                  <FormInput
+                    id="returnWindowDays"
+                    label="Return Window (Days)"
+                    type="number"
+                    value={product.returnWindowDays}
+                    onChange={handleFieldChange}
+                    placeholder="e.g. 7"
+                  />
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Logistic */}
+          <section>
+            <SectionHeader
+              icon={FaBox}
+              title="Logistics & Fulfilment"
+              description="Delivery timeline and shipping classification"
+            />
+
+            <div className="mt-4 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                <FormInput
+                  id="deliveryMinDays"
+                  label="Delivery SLA (Min Days)"
+                  type="number"
+                  value={product.deliveryMinDays}
+                  onChange={handleFieldChange}
+                />
+
+                <FormInput
+                  id="deliveryMaxDays"
+                  label="Delivery SLA (Max Days)"
+                  type="number"
+                  value={product.deliveryMaxDays}
+                  onChange={handleFieldChange}
+                />
+
+                {/* Shipping Class DROPDOWN */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Shipping Class
+                  </label>
+                  <select
+                    name="shippingClass"
+                    value={product.shippingClass}
+                    onChange={handleFieldChange}
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value="standard">Standard</option>
+                    <option value="bulky">Bulky</option>
+                    <option value="fragile">Fragile</option>
+                  </select>
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs text-gray-500">
+                Delivery timeline shown to customers as an estimate. Actual
+                delivery may vary by location.
+              </p>
             </div>
           </section>
 

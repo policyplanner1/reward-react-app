@@ -379,7 +379,13 @@ class ProductModel {
       short_description = ?, 
       custom_category = ?, 
       custom_subcategory = ?, 
-      custom_sub_subcategory = ?
+      custom_sub_subcategory = ?,
+      is_discount_eligible = ?,
+      is_returnable = ?,
+      return_window_days = ?,
+      delivery_sla_min_days = ?,
+      delivery_sla_max_days = ?,
+      shipping_class = ?
      WHERE product_id = ?`,
       [
         safe(data.category_id),
@@ -395,6 +401,12 @@ class ProductModel {
         custom_category,
         custom_subcategory,
         custom_sub_subcategory,
+        safe(data.is_discount_eligible),
+        safe(data.is_returnable),
+        safe(data.return_window_days),
+        safe(data.delivery_sla_min_days),
+        safe(data.delivery_sla_max_days),
+        safe(data.shipping_class),
         productId,
       ],
     );
