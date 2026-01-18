@@ -397,12 +397,14 @@ export default function ReviewProductPage() {
 
         {/* ===================== PRODUCT VARIANTS ===================== */}
         {product.variants?.length > 0 && (
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">
-              Product Variants
-            </h3>
+          <section className="mt-6 space-y-4">
+            <SectionHeader
+              icon={FaBox}
+              title="Product Variants"
+              description="SKU-wise pricing, attributes and stock details"
+            />
 
-            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+            <div className="overflow-x-auto">
               <table className="min-w-full text-sm text-left text-gray-700">
                 <thead className="bg-gray-100 text-xs uppercase text-gray-600">
                   <tr>
@@ -430,20 +432,32 @@ export default function ReviewProductPage() {
                               ([key, value]) => (
                                 <span
                                   key={key}
-                                  className="px-2 py-0.5 text-xs rounded-full bg-blue-50 text-blue-700 border border-blue-200"
+                                  className="px-3 py-1 text-xs font-semibold rounded-full
+                                  bg-purple-50 text-purple-700
+                                  border border-purple-200"
                                 >
-                                  {key}: {value}
+                                  {key.toUpperCase()}: {value}
                                 </span>
                               ),
                             )}
                         </div>
                       </td>
 
-                      <td className="px-4 py-3">{variant.mrp ?? "—"}</td>
+                      <td className="px-4 py-3">{variant.mrp ? `₹${variant.mrp}` : "—"}</td>
 
-                      <td className="px-4 py-3">{variant.sale_price ?? "—"}</td>
+                      <td className="px-4 py-3">{variant.sale_price? `₹${variant.sale_price}` : "—"}</td>
 
-                      <td className="px-4 py-3">{variant.stock}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`px-3 py-1 text-sm font-semibold rounded-full ${
+                            variant.stock === 0
+                              ? "bg-red-100 text-red-700"
+                              : "bg-green-100 text-green-700"
+                          }`}
+                        >
+                          {variant.stock}
+                        </span>
+                      </td>
 
                       <td className="px-4 py-3">
                         <span
@@ -461,7 +475,7 @@ export default function ReviewProductPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </section>
         )}
 
         {/*  Descriptions */}
