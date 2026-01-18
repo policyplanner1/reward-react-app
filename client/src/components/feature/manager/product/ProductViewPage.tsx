@@ -15,6 +15,19 @@ import QuillEditor from "../../../QuillEditor";
 import { api } from "../../../../api/api";
 const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
+type ProductVariant = {
+  variant_id: number;
+  sku: string;
+  mrp: number | null;
+  sale_price: number | null;
+  stock: number;
+  is_visible: number;
+  variant_attributes: Record<string, string>;
+  manufacturing_date: string | null;
+  expiry_date: string | null;
+  created_at: string;
+};
+
 interface ProductView {
   productId?: number | string;
   productName?: string;
@@ -47,6 +60,8 @@ interface ProductView {
     mime_type: string;
     file_path: string;
   }>;
+
+  variants: ProductVariant[];
 }
 
 const FormInput = ({
@@ -161,6 +176,7 @@ export default function ReviewProductPage() {
           ? raw.productImages
           : (raw.images ?? []),
         requiredDocs: raw.documents ?? [],
+        variants: Array.isArray(raw.variants) ? raw.variants : [],
       };
 
       setProduct(mapped);
@@ -312,6 +328,93 @@ export default function ReviewProductPage() {
             />
           </div>
         </section>
+
+        {/* ===================== PRODUCT VARIANTS ===================== */}
+        {product.variants?.length > 0 && (
+          <section className="mt-6 space-y-4">
+            <SectionHeader
+              icon={FaBox}
+              title="Product Variants"
+              description="SKU-wise pricing, attributes and stock details"
+            />
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm text-left text-gray-700">
+                <thead className="bg-gray-100 text-xs uppercase text-gray-600">
+                  <tr>
+                    <th className="px-4 py-3">SKU</th>
+                    <th className="px-4 py-3">Attributes</th>
+                    <th className="px-4 py-3">MRP</th>
+                    <th className="px-4 py-3">Sale Price</th>
+                    <th className="px-4 py-3">Stock</th>
+                    <th className="px-4 py-3">Visibility</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {product.variants.map((variant) => (
+                    <tr
+                      key={variant.variant_id}
+                      className="border-t hover:bg-gray-50"
+                    >
+                      <td className="px-4 py-3 font-medium">{variant.sku}</td>
+
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-2">
+                          {variant.variant_attributes &&
+                            Object.entries(variant.variant_attributes).map(
+                              ([key, value]) => (
+                                <span
+                                  key={key}
+                                  className="px-3 py-1 text-xs font-semibold rounded-full
+                                          bg-purple-50 text-purple-700
+                                          border border-purple-200"
+                                >
+                                  {key.toUpperCase()}: {value}
+                                </span>
+                              ),
+                            )}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {variant.mrp ? `₹${variant.mrp}` : "—"}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {variant.sale_price ? `₹${variant.sale_price}` : "—"}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <span
+                          className={`px-3 py-1 text-sm font-semibold rounded-full ${
+                            variant.stock === 0
+                              ? "bg-red-100 text-red-700"
+                              : "bg-green-100 text-green-700"
+                          }`}
+                        >
+                          {variant.stock}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            variant.is_visible
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {variant.is_visible ? "Visible" : "Hidden"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         {/* Section: Description */}
         <section className="mt-6">
