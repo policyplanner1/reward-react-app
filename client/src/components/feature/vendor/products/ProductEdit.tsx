@@ -83,6 +83,7 @@ function FormInput(props: {
 
 import {
   FaTag,
+  FaBox,
   FaImages,
   FaFileUpload,
   FaTrash,
@@ -923,46 +924,53 @@ export default function EditProductPage() {
 
           {/* Product Description */}
           <section>
-            {/* ===================== DETAILED DESCRIPTION ===================== */}
-            <div className="mt-6">
-              <label className="block mb-2 text-sm font-medium text-gray-700">
-                Detailed Description <span className="text-red-500">*</span>
-              </label>
+            <SectionHeader
+              icon={FaBox}
+              title="Product Description"
+              description="Describe the product in detail and add a short summary"
+            />
+            <div className="mt-4 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              {/* ===================== DETAILED DESCRIPTION ===================== */}
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Detailed Description <span className="text-red-500">*</span>
+                </label>
 
-              <QuillEditor
-                value={product.description}
-                placeholder="Describe the product, features, usage, specifications, etc."
-                minHeight={300}
-                onChange={(val) =>
-                  setProduct((prev) => ({
-                    ...prev,
-                    description: val,
-                  }))
-                }
-              />
-            </div>
+                <QuillEditor
+                  value={product.description}
+                  placeholder="Describe the product, features, usage, specifications, etc."
+                  minHeight={300}
+                  onChange={(val) =>
+                    setProduct((prev) => ({
+                      ...prev,
+                      description: val,
+                    }))
+                  }
+                />
+              </div>
 
-            {/* ===================== SHORT DESCRIPTION ===================== */}
-            <div className="mt-6">
-              <FormInput
-                id="shortDescription"
-                label="Short Description"
-                type="textarea"
-                required
-                value={product.shortDescription}
-                onChange={handleShortDescriptionChange}
-                placeholder="Short description (max 150 characters)"
-              />
+              {/* ===================== SHORT DESCRIPTION ===================== */}
+              <div className="mt-6">
+                <FormInput
+                  id="shortDescription"
+                  label="Short Description"
+                  type="textarea"
+                  required
+                  value={product.shortDescription}
+                  onChange={handleShortDescriptionChange}
+                  placeholder="Short description (max 150 characters)"
+                />
 
-              <p
-                className={`mt-1 text-xs ${
-                  product.shortDescription.length >= CHAR_LIMIT
-                    ? "text-red-500"
-                    : "text-gray-500"
-                }`}
-              >
-                {product.shortDescription.length} / {CHAR_LIMIT} characters
-              </p>
+                <p
+                  className={`mt-1 text-xs ${
+                    product.shortDescription.length >= CHAR_LIMIT
+                      ? "text-red-500"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {product.shortDescription.length} / {CHAR_LIMIT} characters
+                </p>
+              </div>
             </div>
           </section>
 
