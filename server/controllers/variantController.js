@@ -2,6 +2,7 @@ const VariantModel = require("../models/variantModel");
 const db = require("../config/database");
 const path = require("path");
 const fs = require("fs");
+const variantModel = require("../models/variantModel");
 
 class VariantController {
   // 1. List all variants of a product
@@ -75,7 +76,7 @@ class VariantController {
       // Product Id
       const [[variant]] = await db.execute(
         `SELECT product_id FROM product_variants WHERE variant_id = ?`,
-        [variantId]
+        [variantId],
       );
 
       if (!variant) {
@@ -94,7 +95,7 @@ class VariantController {
         vendorId.toString(),
         productId.toString(),
         "variants",
-        variantId.toString()
+        variantId.toString(),
       );
 
       if (!fs.existsSync(variantFolder)) {
@@ -139,7 +140,7 @@ class VariantController {
       FROM product_variant_images
       WHERE image_id = ?
       `,
-        [imageId]
+        [imageId],
       );
 
       if (!image) {
@@ -152,7 +153,7 @@ class VariantController {
       // 2 Delete DB row
       await db.execute(
         `DELETE FROM product_variant_images WHERE image_id = ?`,
-        [imageId]
+        [imageId],
       );
 
       // 3 Delete physical file
@@ -175,7 +176,6 @@ class VariantController {
     }
   }
 
-
   async getVariantImages(req, res) {
     try {
       const { variantId } = req.params;
@@ -187,7 +187,7 @@ class VariantController {
       WHERE variant_id = ?
       ORDER BY image_id ASC
       `,
-        [variantId]
+        [variantId],
       );
 
       return res.json({
@@ -199,6 +199,45 @@ class VariantController {
       return res.status(500).json({
         success: false,
         message: "Failed to fetch variant images",
+      });
+    }
+  }
+
+  // Product Variant Visibility
+  async Visibility(req, res) {
+    try {
+      const { variantId } = req.params;
+      const { is_visible } = req.body;
+
+      if (typeof is_visible !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          message: "is_visible must be a boolean",
+        });
+      }
+
+      const updated = await variantModel.updateVisibility({
+        variantId,
+        isVisible: is_visible,
+      });
+
+      if (!updated) {
+        return res.status(404).json({
+          success: false,
+          message: "Variant not found or not authorized",
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Variant visibility updated successfully",
+        data: { variantId, is_visible },
+      });
+    } catch (error) {
+      console.error("Visibility update error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update visibility",
       });
     }
   }

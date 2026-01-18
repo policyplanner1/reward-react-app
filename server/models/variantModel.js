@@ -10,6 +10,7 @@ class VariantModel {
         v.mrp,
         v.sale_price,
         v.stock,
+        v.is_visible,
         v.variant_attributes,
         v.manufacturing_date,
         v.expiry_date,
@@ -18,7 +19,7 @@ class VariantModel {
       WHERE v.product_id = ?
       ORDER BY v.variant_id ASC
       `,
-      [productId]
+      [productId],
     );
 
     return rows.map((v) => ({
@@ -34,14 +35,14 @@ class VariantModel {
   async getVariantById(variantId) {
     const [[variant]] = await db.execute(
       `SELECT * FROM product_variants WHERE variant_id = ?`,
-      [variantId]
+      [variantId],
     );
 
     if (!variant) return null;
 
     const [images] = await db.execute(
       `SELECT image_id, image_url FROM product_variant_images WHERE variant_id = ?`,
-      [variantId]
+      [variantId],
     );
 
     return {
@@ -74,7 +75,7 @@ class VariantModel {
         data.manufacturing_date || null,
         data.expiry_date || null,
         variantId,
-      ]
+      ],
     );
   }
 
@@ -86,11 +87,24 @@ class VariantModel {
         INSERT INTO product_variant_images (variant_id, image_url)
         VALUES (?, ?)
         `,
-        [variantId, img.path]
+        [variantId, img.path],
       );
     }
   }
 
+  // Visibility
+  async updateVisibility({ variantId, isVisible }) {
+    const [result] = await db.query(
+      `
+      UPDATE product_variants
+      SET is_visible = ?
+      WHERE variant_id = ?
+      `,
+      [isVisible ? 1 : 0, variantId],
+    );
+
+    return result.affectedRows;
+  }
 }
 
 module.exports = new VariantModel();

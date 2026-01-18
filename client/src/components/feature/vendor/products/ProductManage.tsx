@@ -92,7 +92,7 @@ export default function ProductManage() {
 
   const toggleVisibility = async (variantId: number, current: boolean) => {
     try {
-      await api.patch(`/variant/${variantId}/visibility`, {
+      await api.patch(`/variant/visibility/${variantId}`, {
         is_visible: !current,
       });
 

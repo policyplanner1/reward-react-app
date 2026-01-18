@@ -53,4 +53,12 @@ router.delete(
   VariantController.deleteVariantImage
 );
 
+// Visibility
+router.patch(
+  "/visibility/:variantId",
+  authenticateToken,
+  authorizeRoles("vendor"),
+  VariantController.Visibility,
+);
+
 module.exports = router;
