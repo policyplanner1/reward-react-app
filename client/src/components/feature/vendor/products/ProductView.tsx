@@ -273,12 +273,6 @@ export default function ReviewProductPage() {
             </button>
 
             {/* Edit button - navigate to your edit route if exists */}
-            {/* <Link
-              href={`/src/vendor/products/edit/${product.productId}`}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg bg-white hover:bg-gray-50"
-            >
-              <FaEdit /> Edit
-            </Link> */}
             {!["approved", "rejected", "sent_for_approval"].includes(
               product.product_status ?? "",
             ) && (
