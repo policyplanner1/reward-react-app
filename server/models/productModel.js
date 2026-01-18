@@ -85,7 +85,6 @@ async function generateUniqueSKU(connection, productId) {
 class ProductModel {
   // create a Product
   async createProduct(connection, vendorId, data) {
-    console.log(data,"data")
     const safe = (v) => (v === undefined || v === "" ? null : v);
     let custom_category = data.custom_category || null;
     let custom_subcategory = data.custom_subcategory || null;
@@ -94,8 +93,8 @@ class ProductModel {
     const [result] = await connection.execute(
       `INSERT INTO eproducts 
      (vendor_id, category_id, subcategory_id, sub_subcategory_id, brand_name, manufacturer,product_name, gst_slab,hsn_sac_code,description, short_description,
-      custom_category, custom_subcategory, custom_sub_subcategory, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      custom_category, custom_subcategory, custom_sub_subcategory,is_discount_eligible,is_returnable,return_window_days,delivery_sla_min_days,delivery_sla_max_days,shipping_class, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
       [
         safe(vendorId),
         safe(data.category_id),
@@ -111,6 +110,12 @@ class ProductModel {
         custom_category,
         custom_subcategory,
         custom_sub_subcategory,
+        safe(data.is_discount_eligible),
+        safe(data.is_returnable),
+        safe(data.return_window_days),
+        safe(data.delivery_sla_min_days),
+        safe(data.delivery_sla_max_days),
+        safe(data.shipping_class),
       ],
     );
 

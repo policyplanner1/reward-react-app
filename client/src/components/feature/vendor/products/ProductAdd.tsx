@@ -152,8 +152,8 @@ const initialProductData: ProductData = {
   isReturnable: 1,
   returnWindowDays: "",
 
-  deliveryMinDays: "",
-  deliveryMaxDays: "",
+  deliveryMinDays: "1",
+  deliveryMaxDays: "3",
   shippingClass: "standard",
 };
 
