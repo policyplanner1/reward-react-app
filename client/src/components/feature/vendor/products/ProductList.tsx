@@ -567,7 +567,7 @@ export default function ProductManagerList() {
   const toggleVisibility = async (productId: number, current: boolean) => {
     try {
       await api.patch(`/product/visibility/${productId}`, {
-        is_visible: !current, // BACKEND EXPECTS BOOLEAN
+        is_visible: !current, 
       });
 
       setProducts((prev) =>

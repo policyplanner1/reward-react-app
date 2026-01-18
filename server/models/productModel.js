@@ -674,6 +674,8 @@ class ProductModel {
         p.custom_category,
         p.custom_subcategory,
         p.custom_sub_subcategory,
+        p.is_searchable,
+        p.is_visible,
         p.created_at,
 
         GROUP_CONCAT(
