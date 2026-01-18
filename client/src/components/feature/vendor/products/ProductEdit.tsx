@@ -123,6 +123,8 @@ interface ProductData {
   productName: string;
   brandName: string;
   manufacturer: string;
+  gstSlab: string;
+  hsnSacCode: string;
   description: string;
   shortDescription: string;
   categoryId: number | null;
@@ -137,6 +139,8 @@ const initialProductData: ProductData = {
   brandName: "",
   manufacturer: "",
   productName: "",
+  gstSlab: "",
+  hsnSacCode: "",
   description: "",
   shortDescription: "",
   categoryId: null,
@@ -424,6 +428,8 @@ export default function EditProductPage() {
         productName: p.product_name || "",
         brandName: p.brand_name || "",
         manufacturer: p.manufacturer || "",
+        gstSlab: p.gst_slab || "",
+        hsnSacCode: p.hsn_sac_code || "",
         description: p.description || "",
         shortDescription: p.short_description || "",
         categoryId: p.category_id || null,
@@ -460,7 +466,13 @@ export default function EditProductPage() {
         throw new Error("Please select or enter a category");
       }
 
-      if (!product.productName || !product.brandName || !product.manufacturer) {
+      if (
+        !product.productName ||
+        !product.brandName ||
+        !product.manufacturer ||
+        !product.gstSlab ||
+        !product.hsnSacCode
+      ) {
         throw new Error("Please fill in all required product information");
       }
 
@@ -496,6 +508,8 @@ export default function EditProductPage() {
       formData.append("brandName", product.brandName);
       formData.append("manufacturer", product.manufacturer);
       formData.append("productName", product.productName);
+      formData.append("gstSlab", product.gstSlab);
+      formData.append("hsnSacCode", product.hsnSacCode);
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
 
@@ -885,6 +899,24 @@ export default function EditProductPage() {
                 value={product.manufacturer}
                 onChange={handleFieldChange}
                 placeholder="Manufacturer name"
+              />
+
+              <FormInput
+                id="gstSlab"
+                label="GST Slab (%)"
+                required
+                value={product.gstSlab}
+                onChange={handleFieldChange}
+                placeholder="e.g. 5, 12, 18, 28"
+              />
+
+              <FormInput
+                id="hsnSacCode"
+                label="HSN / SAC Code"
+                required
+                value={product.hsnSacCode}
+                onChange={handleFieldChange}
+                placeholder="Enter HSN or SAC code"
               />
             </div>
           </section>
