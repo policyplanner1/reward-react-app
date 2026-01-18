@@ -37,7 +37,7 @@ function FormInput(props: {
   label: string;
   value?: string | number;
   onChange?: (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => void;
   type?: "text" | "textarea";
   required?: boolean;
@@ -111,6 +111,8 @@ interface ProductView {
   productName?: string;
   brandName?: string;
   manufacturer?: string;
+  gstSlab: string;
+  hsnSacCode: string;
   description?: string;
   shortDescription?: string;
   categoryId?: number | null;
@@ -120,6 +122,13 @@ interface ProductView {
   subCategoryName?: string | null;
   subSubCategoryName?: string | null;
   product_status?: string;
+  isDiscountEligible?: number;
+  isReturnable?: number;
+  returnWindowDays?: number | null;
+
+  deliverySlaMinDays?: number;
+  deliverySlaMaxDays?: number;
+  shippingClass?: "standard" | "bulky" | "fragile";
   productImages?: string[];
   requiredDocs?: Array<{
     id: number;
@@ -172,6 +181,8 @@ export default function ReviewProductPage() {
         productName: raw.product_name ?? raw.productName,
         brandName: raw.brand_name ?? raw.brandName,
         manufacturer: raw.manufacturer ?? "",
+        gstSlab: raw.gst_slab ?? "",
+        hsnSacCode: raw.hsn_sac_code ?? "",
         description: raw.description ?? "",
         shortDescription: raw.short_description ?? raw.shortDescription ?? "",
         categoryId: raw.category_id ?? raw.categoryId ?? null,
@@ -185,9 +196,16 @@ export default function ReviewProductPage() {
           raw.sub_subcategory_name ?? raw.custom_sub_subcategory ?? null,
 
         product_status: raw.status ?? "",
+        isDiscountEligible: raw.is_discount_eligible ?? 1,
+        isReturnable: raw.is_returnable ?? 1,
+        returnWindowDays: raw.return_window_days ?? null,
+
+        deliverySlaMinDays: raw.delivery_sla_min_days ?? 1,
+        deliverySlaMaxDays: raw.delivery_sla_max_days ?? 3,
+        shippingClass: raw.shipping_class ?? "standard",
         productImages: Array.isArray(raw.productImages)
           ? raw.productImages
-          : raw.images ?? [],
+          : (raw.images ?? []),
 
         requiredDocs: raw.documents ?? [],
       };
@@ -196,7 +214,7 @@ export default function ReviewProductPage() {
     } catch (err: any) {
       console.error(err);
       setError(
-        err?.response?.data?.message || err.message || "Failed to load product"
+        err?.response?.data?.message || err.message || "Failed to load product",
       );
     } finally {
       setLoading(false);
@@ -262,7 +280,7 @@ export default function ReviewProductPage() {
               <FaEdit /> Edit
             </Link> */}
             {!["approved", "rejected", "sent_for_approval"].includes(
-              product.product_status ?? ""
+              product.product_status ?? "",
             ) && (
               <Link
                 to={`/vendor/products/edit/${product.productId}`}
@@ -346,12 +364,24 @@ export default function ReviewProductPage() {
               label="Manufacturer"
               value={product.manufacturer}
             />
+
+            <FormInput
+              id="gstSlab"
+              label="GST Slab (%) "
+              value={product.gstSlab}
+            />
+
+            <FormInput
+              id="hsnSacCode"
+              label="HSN / SAC Code"
+              value={product.hsnSacCode}
+            />
           </div>
         </section>
 
         {/*  Descriptions */}
         <section className="mt-6">
-            <SectionHeader
+          <SectionHeader
             icon={FaBox}
             title="Product Description"
             description="Detailed and short Description"
@@ -379,6 +409,66 @@ export default function ReviewProductPage() {
               />
             </div>
           </div>
+        </section>
+
+        {/* Pricing & Commercial Controls */}
+        <section className="mt-6">
+          <SectionHeader
+            icon={FaTag}
+            title="Pricing & Commercial Controls"
+            description="Discount eligibility and return policy"
+          />
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <FormInput
+              id="isDiscountEligible"
+              label="Discount Eligible"
+              value={product.isDiscountEligible === 1 ? "Yes" : "No"}
+            />
+
+            <FormInput
+              label="Return Policy"
+              id="returnWindowDays"
+              value={
+                product.isReturnable === 1
+                  ? `Returnable (${product.returnWindowDays ?? "-"} days)`
+                  : "Not Returnable"
+              }
+            />
+          </div>
+        </section>
+
+        {/* Logistics & Fulfilment */}
+        <section className="mt-6">
+          <SectionHeader
+            icon={FaBox}
+            title="Logistics & Fulfilment"
+            description="Delivery timeline and shipping classification"
+          />
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <FormInput
+              id="delivery_sla"
+              label="Delivery SLA"
+              value={`${product.deliverySlaMinDays} - ${product.deliverySlaMaxDays} days`}
+            />
+
+            <FormInput
+              id="shippingClass"
+              label="Shipping Class"
+              value={
+                product.shippingClass
+                  ? product.shippingClass.charAt(0).toUpperCase() +
+                    product.shippingClass.slice(1)
+                  : "-"
+              }
+            />
+          </div>
+
+          <p className="mt-2 text-xs text-gray-500">
+            Delivery timeline shown to customers as an estimate. Actual delivery
+            may vary by location.
+          </p>
         </section>
 
         {/* Product Images */}
