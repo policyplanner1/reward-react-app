@@ -4,7 +4,6 @@ import type { ComponentType } from "react";
 import { api } from "../../../../api/api";
 import QuillEditor from "../../../QuillEditor";
 
-
 type IconComp = ComponentType<any>;
 
 interface ImagePreview {
@@ -44,7 +43,7 @@ function FormInput(props: {
   label: string;
   value?: string | number;
   onChange: (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => void;
   type?: string;
   required?: boolean;
@@ -121,6 +120,8 @@ interface ProductData {
   productName: string;
   brandName: string;
   manufacturer: string;
+  gstSlab: string;
+  hsnSacCode: string;
   description: string;
   shortDescription: string;
   categoryId: number | null;
@@ -133,6 +134,8 @@ const initialProductData: ProductData = {
   brandName: "",
   manufacturer: "",
   productName: "",
+  gstSlab: "",
+  hsnSacCode: "",
   description: "",
   shortDescription: "",
   categoryId: null,
@@ -152,7 +155,7 @@ export default function ProductListingDynamic() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [subSubCategories, setSubSubCategories] = useState<SubSubCategory[]>(
-    []
+    [],
   );
   const [requiredDocs, setRequiredDocs] = useState<RequiredDocument[]>([]);
   const [docFiles, setDocFiles] = useState<Record<number, File | null>>({}); // key by document_id
@@ -208,7 +211,7 @@ export default function ProductListingDynamic() {
 
       return {
         ...prev,
-        productImages: [...existingImages, ...newPreviews], // ✅ append
+        productImages: [...existingImages, ...newPreviews], //  append
       };
     });
 
@@ -281,7 +284,7 @@ export default function ProductListingDynamic() {
 
   // --- Form Handlers ---
   const handleFieldChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
 
@@ -332,7 +335,7 @@ export default function ProductListingDynamic() {
   const CHAR_LIMIT = 150;
 
   const handleShortDescriptionChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>
+    e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>,
   ) => {
     const value = e.target.value;
 
@@ -361,7 +364,7 @@ export default function ProductListingDynamic() {
 
   const onDocInputChange = (
     e: ChangeEvent<HTMLInputElement>,
-    documentId: number
+    documentId: number,
   ) => {
     const file = e.target.files?.[0] ?? null;
     setDocFiles((prev) => ({ ...prev, [documentId]: file }));
@@ -375,7 +378,7 @@ export default function ProductListingDynamic() {
       (attr) =>
         attr.is_required &&
         (!productAttributes[attr.attribute_key] ||
-          productAttributes[attr.attribute_key].length === 0)
+          productAttributes[attr.attribute_key].length === 0),
     );
 
     if (missingRequired) {
@@ -406,7 +409,7 @@ export default function ProductListingDynamic() {
         if (doc.status === 1 && !docFiles[doc.document_id]) {
           // status 1 = required
           throw new Error(
-            `Please upload required document: ${doc.document_name}`
+            `Please upload required document: ${doc.document_name}`,
           );
         }
       }
@@ -428,7 +431,7 @@ export default function ProductListingDynamic() {
       if (product.subSubCategoryId) {
         formData.append(
           "sub_subcategory_id",
-          product.subSubCategoryId.toString()
+          product.subSubCategoryId.toString(),
         );
       }
 
@@ -440,9 +443,15 @@ export default function ProductListingDynamic() {
       if (isCustomSubSubcategory)
         formData.append("custom_sub_subcategory", custom_subsubcategory);
 
+      if (!product.gstSlab || !product.hsnSacCode) {
+        throw new Error("GST Slab and HSN/SAC Code are required");
+      }
+
       formData.append("brandName", product.brandName);
       formData.append("manufacturer", product.manufacturer);
       formData.append("productName", product.productName);
+      formData.append("gstSlab", product.gstSlab);
+      formData.append("hsnSacCode", product.hsnSacCode);
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
 
@@ -531,7 +540,7 @@ export default function ProductListingDynamic() {
   // Get selected category name
   const getSelectedCategoryName = () => {
     const category = categories.find(
-      (c) => c.category_id === product.categoryId
+      (c) => c.category_id === product.categoryId,
     );
     return category?.category_name || "Not selected";
   };
@@ -539,7 +548,7 @@ export default function ProductListingDynamic() {
   // Get selected subcategory name
   const getSelectedSubCategoryName = () => {
     const subcategory = subCategories.find(
-      (s) => s.subcategory_id === product.subCategoryId
+      (s) => s.subcategory_id === product.subCategoryId,
     );
     return subcategory?.subcategory_name || "Not selected";
   };
@@ -547,7 +556,7 @@ export default function ProductListingDynamic() {
   // Get selected sub-subcategory name
   const getSelectedSubSubCategoryName = () => {
     const subsubcategory = subSubCategories.find(
-      (ss) => ss.sub_subcategory_id === product.subSubCategoryId
+      (ss) => ss.sub_subcategory_id === product.subSubCategoryId,
     );
     return subsubcategory?.name || "Not selected";
   };
@@ -821,6 +830,25 @@ export default function ProductListingDynamic() {
                 value={product.manufacturer}
                 onChange={handleFieldChange}
                 placeholder="Manufacturer name"
+              />
+
+              <FormInput
+                id="gstSlab"
+                label="GST Slab (%)"
+                required
+                type="number"
+                value={product.gstSlab}
+                onChange={handleFieldChange}
+                placeholder="e.g. 5, 12, 18, 28"
+              />
+
+              <FormInput
+                id="hsnSacCode"
+                label="HSN / SAC Code"
+                required
+                value={product.hsnSacCode}
+                onChange={handleFieldChange}
+                placeholder="Enter HSN or SAC code"
               />
             </div>
           </section>
