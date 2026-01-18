@@ -911,12 +911,12 @@ export default function ProductManagerList() {
                       onClick={() =>
                         toggleVisibility(product.product_id, product.is_visible)
                       }
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                      className={`cursor-pointer relative inline-flex h-6 w-11 items-center rounded-full transition ${
                         product.is_visible ? "bg-green-500" : "bg-gray-300"
                       }`}
                     >
                       <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                        className={`cursor-pointer inline-block h-4 w-4 transform rounded-full bg-white transition ${
                           product.is_visible ? "translate-x-6" : "translate-x-1"
                         }`}
                       />
@@ -932,12 +932,12 @@ export default function ProductManagerList() {
                           product.is_searchable,
                         )
                       }
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                      className={`cursor-pointer relative inline-flex h-6 w-11 items-center rounded-full transition ${
                         product.is_searchable ? "bg-indigo-500" : "bg-gray-300"
                       }`}
                     >
                       <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                        className={`cursor-pointer inline-block h-4 w-4 transform rounded-full bg-white transition ${
                           product.is_searchable
                             ? "translate-x-6"
                             : "translate-x-1"
