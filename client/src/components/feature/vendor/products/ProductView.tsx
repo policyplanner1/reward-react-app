@@ -347,28 +347,33 @@ export default function ReviewProductPage() {
               id="productName"
               label="Product Name"
               value={product.productName}
+              readOnly
             />
             <FormInput
               id="brandName"
               label="Brand Name"
               value={product.brandName}
+              readOnly
             />
             <FormInput
               id="manufacturer"
               label="Manufacturer"
               value={product.manufacturer}
+              readOnly
             />
 
             <FormInput
               id="gstSlab"
               label="GST Slab (%) "
               value={product.gstSlab}
+              readOnly
             />
 
             <FormInput
               id="hsnSacCode"
               label="HSN / SAC Code"
               value={product.hsnSacCode}
+              readOnly
             />
           </div>
         </section>
@@ -400,6 +405,7 @@ export default function ReviewProductPage() {
                 id="shortDescription"
                 label="Short Description"
                 value={product.shortDescription}
+                readOnly
               />
             </div>
           </div>
@@ -418,6 +424,7 @@ export default function ReviewProductPage() {
               id="isDiscountEligible"
               label="Discount Eligible"
               value={product.isDiscountEligible === 1 ? "Yes" : "No"}
+              readOnly
             />
 
             <FormInput
@@ -428,6 +435,7 @@ export default function ReviewProductPage() {
                   ? `Returnable (${product.returnWindowDays ?? "-"} days)`
                   : "Not Returnable"
               }
+              readOnly
             />
           </div>
         </section>
@@ -445,6 +453,7 @@ export default function ReviewProductPage() {
               id="delivery_sla"
               label="Delivery SLA"
               value={`${product.deliverySlaMinDays} - ${product.deliverySlaMaxDays} days`}
+              readOnly
             />
 
             <FormInput
@@ -456,6 +465,7 @@ export default function ReviewProductPage() {
                     product.shippingClass.slice(1)
                   : "-"
               }
+              readOnly
             />
           </div>
 
