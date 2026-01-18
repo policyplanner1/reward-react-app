@@ -16,6 +16,11 @@ import {
 } from "react-icons/fa";
 import { api } from "../../../../api/api";
 
+const BASE_UPLOAD_URL = "https://rewardplanners.com/api/crm/uploads";
+
+const resolveFileUrl = (path?: string) =>
+  path ? `${BASE_UPLOAD_URL}/${path}` : "";
+
 /* ================= TYPES ================= */
 
 interface VendorOnboardingData {
@@ -172,7 +177,7 @@ function FormInput(props: {
   label: string;
   value?: string | number;
   onChange: (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => void;
   type?: string;
   required?: boolean;
@@ -212,6 +217,52 @@ function FormInput(props: {
           {error}
         </p>
       )}
+    </div>
+  );
+}
+
+function ExistingDocumentPreview({
+  doc,
+  label,
+}: {
+  doc?: ExistingDocument;
+  label: string;
+}) {
+  if (!doc) return null;
+
+  const fileUrl = resolveFileUrl(doc.file_path);
+  const isImage = doc.mime_type?.startsWith("image/");
+
+  return (
+    <div className="mb-2 p-3 border rounded-lg bg-gray-50">
+      <div className="text-sm font-medium text-gray-700 mb-1">
+        Existing {label}
+      </div>
+
+      <div className="flex items-center gap-3">
+        {isImage ? (
+          <a href={fileUrl} target="_blank" rel="noreferrer">
+            <img
+              src={fileUrl}
+              alt={label}
+              className="w-16 h-16 object-cover rounded border"
+            />
+          </a>
+        ) : (
+          <a
+            href={fileUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm text-blue-600 underline"
+          >
+            View document
+          </a>
+        )}
+      </div>
+
+      <p className="text-xs text-gray-500 mt-1">
+        Uploading a new file will replace this document
+      </p>
     </div>
   );
 }
@@ -332,11 +383,20 @@ const mapBackendToForm = (data: any): VendorOnboardingData => {
   };
 };
 
+type ExistingDocument = {
+  document_key: string;
+  file_path: string;
+  mime_type: string;
+};
+
 /* ================= MAIN COMPONENT ================= */
 
 export default function Onboarding() {
   const navigate = useNavigate();
 
+  const [existingDocs, setExistingDocs] = useState<
+    Record<string, ExistingDocument>
+  >({});
   const [formData, setFormData] =
     useState<VendorOnboardingData>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -381,7 +441,7 @@ export default function Onboarding() {
     flags: {
       isSameAsAddress: boolean;
       isSameAsBilling: boolean;
-    }
+    },
   ): string => {
     switch (name) {
       case "companyName":
@@ -509,9 +569,17 @@ export default function Onboarding() {
             const detailRes = await api.get("/vendor/onboarding-data");
 
             if (detailRes.data?.success) {
-              console.log(detailRes.data.data)
-              const mapped = mapBackendToForm(detailRes.data.data);
+              const apiData = detailRes.data.data;
+
+              const mapped = mapBackendToForm(apiData);
               setFormData(mapped);
+
+              const docsMap: Record<string, ExistingDocument> = {};
+              apiData.documents?.forEach((doc: ExistingDocument) => {
+                docsMap[doc.document_key] = doc;
+              });
+
+              setExistingDocs(docsMap);
             }
           }
         }
@@ -528,7 +596,7 @@ export default function Onboarding() {
   /* ================= HANDLERS ================= */
 
   const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value, type, checked, files } = e.target as HTMLInputElement;
 
@@ -711,60 +779,16 @@ export default function Onboarding() {
   };
 
   const handleSubmit = async (e: FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const validationErrors = validateForm(formData);
-  setErrors(validationErrors);
+    const validationErrors = validateForm(formData);
+    setErrors(validationErrors);
 
-  if (Object.keys(validationErrors).length > 0) {
-    await Swal.fire({
-      icon: "error",
-      title: "Please fix the errors",
-      text: "Some required fields are missing or invalid.",
-      confirmButtonText: "OK",
-      buttonsStyling: false,
-      customClass: {
-        popup: "rounded-full",
-        confirmButton:
-          "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
-      },
-    });
-    return;
-  }
-
-  const token = localStorage.getItem("token");
-  if (!token) {
-    await Swal.fire({
-      icon: "warning",
-      title: "Not logged in",
-      text: "Please login first and try again.",
-      confirmButtonText: "OK",
-      buttonsStyling: false,
-      customClass: {
-        popup: "rounded-full",
-        confirmButton:
-          "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
-      },
-    });
-    return;
-  }
-
-  try {
-    const form = new FormData();
-    Object.entries(formData).forEach(([k, v]) => {
-      if (v instanceof File) form.append(k, v);
-      else if (v !== null) form.append(k, String(v));
-    });
-
-    const res = await api.post("/vendor/onboard", form, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    if (!res.data.success) {
+    if (Object.keys(validationErrors).length > 0) {
       await Swal.fire({
         icon: "error",
-        title: "Submission Failed",
-        text: res.data.message || "Something went wrong.",
+        title: "Please fix the errors",
+        text: "Some required fields are missing or invalid.",
         confirmButtonText: "OK",
         buttonsStyling: false,
         customClass: {
@@ -776,31 +800,78 @@ export default function Onboarding() {
       return;
     }
 
-    await Swal.fire({
-      icon: "success",
-      title: "Submitted Successfully!",
-      text: "Onboarding submitted successfully.",
-      timer: 1200,
-      showConfirmButton: false,
-      customClass: { popup: "rounded-full" },
-    });
+    const token = localStorage.getItem("token");
+    if (!token) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Not logged in",
+        text: "Please login first and try again.",
+        confirmButtonText: "OK",
+        buttonsStyling: false,
+        customClass: {
+          popup: "rounded-full",
+          confirmButton:
+            "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
+        },
+      });
+      return;
+    }
 
-    navigate("/vendor/dashboard");
-  } catch (err: any) {
-    await Swal.fire({
-      icon: "error",
-      title: "Server Error",
-      text: err?.response?.data?.message || err?.message || "Something went wrong.",
-      confirmButtonText: "OK",
-      buttonsStyling: false,
-      customClass: {
-        popup: "rounded-full",
-        confirmButton:
-          "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
-      },
-    });
-  }
-};
+    try {
+      const form = new FormData();
+      Object.entries(formData).forEach(([k, v]) => {
+        if (v instanceof File) form.append(k, v);
+        else if (v !== null) form.append(k, String(v));
+      });
+
+      const res = await api.post("/vendor/onboard", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (!res.data.success) {
+        await Swal.fire({
+          icon: "error",
+          title: "Submission Failed",
+          text: res.data.message || "Something went wrong.",
+          confirmButtonText: "OK",
+          buttonsStyling: false,
+          customClass: {
+            popup: "rounded-full",
+            confirmButton:
+              "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
+          },
+        });
+        return;
+      }
+
+      await Swal.fire({
+        icon: "success",
+        title: "Submitted Successfully!",
+        text: "Onboarding submitted successfully.",
+        timer: 1200,
+        showConfirmButton: false,
+        customClass: { popup: "rounded-full" },
+      });
+
+      navigate("/vendor/dashboard");
+    } catch (err: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "Server Error",
+        text:
+          err?.response?.data?.message ||
+          err?.message ||
+          "Something went wrong.",
+        confirmButtonText: "OK",
+        buttonsStyling: false,
+        customClass: {
+          popup: "rounded-full",
+          confirmButton:
+            "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
+        },
+      });
+    }
+  };
 
   /* ================= UI ================= */
   return (
@@ -893,7 +964,6 @@ export default function Onboarding() {
                   required
                   error={errors.fullName}
                 />
-
                 {/* Vendor Type Dropdown */}
                 <div className="flex flex-col space-y-1">
                   <label
@@ -917,7 +987,6 @@ export default function Onboarding() {
                     <option value="Service Provider">Service Provider</option>
                   </select>
                 </div>
-
                 <FormInput
                   id="gstin"
                   label="GSTIN"
@@ -939,8 +1008,12 @@ export default function Onboarding() {
                   value={formData.ip_address}
                   onChange={handleChange}
                 />
-
                 {/* File uploads: only the common docs */}
+                {/* GST */}
+                <ExistingDocumentPreview
+                  doc={existingDocs["gstinFile"]}
+                  label="GST Document"
+                />
                 <FileUploadInput
                   id="gstinFile"
                   label="GST Certificate"
@@ -951,7 +1024,11 @@ export default function Onboarding() {
                   required
                   description="Upload your GST Registration Certificate (PDF/JPG/PNG)."
                 />
-
+                {/* Pan */}
+                <ExistingDocumentPreview
+                  doc={existingDocs["panFile"]}
+                  label="PAN Card"
+                />
                 <FileUploadInput
                   id="panFile"
                   label="PAN Card"
@@ -962,8 +1039,11 @@ export default function Onboarding() {
                   required
                   description="Upload company PAN (PDF/JPG/PNG)."
                 />
-
                 {/* Noc */}
+                <ExistingDocumentPreview
+                  doc={existingDocs["nocFile"]}
+                  label="NOC"
+                />
                 <FileUploadInput
                   id="nocFile"
                   label="NOC"
@@ -975,8 +1055,11 @@ export default function Onboarding() {
                   accept=".jpg, .jpeg, .png, .pdf"
                   description="Upload a No objection certificate."
                 />
-
                 {/* Trademark File */}
+                <ExistingDocumentPreview
+                  doc={existingDocs["rightsAdvisoryFile"]}
+                  label="Trademark Certificate"
+                />
                 <FileUploadInput
                   id="rightsAdvisoryFile"
                   label="Trademark Certificate"
@@ -988,8 +1071,11 @@ export default function Onboarding() {
                   accept=".jpg, .jpeg, .png, .pdf"
                   description="Trademark."
                 />
-
-                {/* Signatory ID */}
+                {/* Signatory ID */}'
+                <ExistingDocumentPreview
+                  doc={existingDocs["signatoryIdFile"]}
+                  label="Authorized Signatory ID Proof"
+                />
                 <FileUploadInput
                   id="signatoryIdFile"
                   label="Authorized Signatory ID Proof"
@@ -1000,8 +1086,11 @@ export default function Onboarding() {
                   accept=".jpg, .jpeg, .png, .pdf"
                   description="Upload Aadhaar or PAN of authorized signatory."
                 />
-
                 {/* Business profile */}
+                <ExistingDocumentPreview
+                  doc={existingDocs["businessProfileFile"]}
+                  label="Business Profile"
+                />
                 <FileUploadInput
                   id="businessProfileFile"
                   label="Business Profile"
@@ -1012,8 +1101,11 @@ export default function Onboarding() {
                   accept=".pdf, .doc, .docx"
                   description="Upload your Business Profile (PDF or DOC)."
                 />
-
                 {/* Brand logo - required for Manufacturer and Trader */}
+                <ExistingDocumentPreview
+                  doc={existingDocs["brandLogoFile"]}
+                  label="Brand Logo"
+                />
                 <FileUploadInput
                   id="brandLogoFile"
                   label="Brand Logo"
@@ -1024,8 +1116,11 @@ export default function Onboarding() {
                   accept=".jpg, .jpeg, .png, .svg"
                   description="Upload brand logo (PNG/JPG/SVG)."
                 />
-
                 {/* Bank proof - cancelled cheque or passbook image */}
+                <ExistingDocumentPreview
+                  doc={existingDocs["bankProofFile"]}
+                  label="Bank Cancelled Cheque"
+                />
                 <FileUploadInput
                   id="bankProofFile"
                   label="Bank Cancelled Cheque"
@@ -1036,8 +1131,11 @@ export default function Onboarding() {
                   accept=".jpg, .jpeg, .png, .pdf"
                   description="Upload a Cancelled Cheque with company name and account details."
                 />
-
                 {/* Electricity */}
+                <ExistingDocumentPreview
+                  doc={existingDocs["electricityBillFile"]}
+                  label="Electricity bill"
+                />
                 <FileUploadInput
                   id="electricityBillFile"
                   label="Electricity bill"
@@ -1048,7 +1146,6 @@ export default function Onboarding() {
                   accept=".jpg, .jpeg, .png, .pdf"
                   description="Upload Electricity bill."
                 />
-
                 {/* Vendor agreement - checkbox + optional upload */}
                 <div className="col-span-1 md:col-span-2 lg:col-span-3">
                   <div className="flex items-center mb-3 space-x-3">
@@ -1069,6 +1166,10 @@ export default function Onboarding() {
                     </label>
                   </div>
 
+                  <ExistingDocumentPreview
+                    doc={existingDocs["vendorAgreementFile"]}
+                    label="Upload Signed Agreement (optional)"
+                  />
                   <FileUploadInput
                     id="vendorAgreementFile"
                     label="Upload Signed Agreement (optional)"
@@ -1080,7 +1181,6 @@ export default function Onboarding() {
                     description="If you have a signed agreement, upload it here (optional)."
                   />
                 </div>
-
                 {/* Conditional: Manufacturer fields */}
                 {formData.vendorType === "Manufacturer" && (
                   <>
@@ -1119,7 +1219,6 @@ export default function Onboarding() {
                     />
                   </>
                 )}
-
                 {/* Conditional: Authorization letter (Trader only) */}
                 {formData.vendorType === "Trader" && (
                   <FileUploadInput
@@ -1335,38 +1434,37 @@ export default function Onboarding() {
                 title="Bank Details & Proof"
                 description="Account details for receiving payments and required proof."
               />
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-  <FormInput
-    id="bankName"
-    label="Bank Name"
-    value={formData.bankName}
-    onChange={handleChange}
-    required
-  />
-  <FormInput
-    id="accountNumber"
-    label="Account Number"
-    value={formData.accountNumber}
-    onChange={handleChange}
-    type="text"
-    required
-  />
-  <FormInput
-    id="branch"
-    label="Branch"
-    value={formData.branch}
-    onChange={handleChange}
-    required
-  />
-  <FormInput
-    id="ifscCode"
-    label="IFSC Code"
-    value={formData.ifscCode}
-    onChange={handleChange}
-    required
-  />
-</div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <FormInput
+                  id="bankName"
+                  label="Bank Name"
+                  value={formData.bankName}
+                  onChange={handleChange}
+                  required
+                />
+                <FormInput
+                  id="accountNumber"
+                  label="Account Number"
+                  value={formData.accountNumber}
+                  onChange={handleChange}
+                  type="text"
+                  required
+                />
+                <FormInput
+                  id="branch"
+                  label="Branch"
+                  value={formData.branch}
+                  onChange={handleChange}
+                  required
+                />
+                <FormInput
+                  id="ifscCode"
+                  label="IFSC Code"
+                  value={formData.ifscCode}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
             </section>
 
             {/* Contact Details */}
@@ -1450,7 +1548,7 @@ export default function Onboarding() {
                   value={formData.comments}
                   onChange={
                     handleChange as (
-                      e: ChangeEvent<HTMLTextAreaElement>
+                      e: ChangeEvent<HTMLTextAreaElement>,
                     ) => void
                   }
                   placeholder="Add any specific notes or requirements here..."
