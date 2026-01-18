@@ -88,6 +88,7 @@ import {
   FaFileUpload,
   FaTrash,
   FaSpinner,
+  FaLock,
 } from "react-icons/fa";
 
 // const API_BASE = import.meta.env.VITE_API_URL;
@@ -722,187 +723,104 @@ export default function EditProductPage() {
               description="Choose category, sub-category and type"
             />
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              {/* Category */}
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Category <span className="text-red-500">*</span>
-                </label>
+            {/* DISABLED WRAPPER */}
+            <div
+              className="relative opacity-60 pointer-events-none
+               bg-gray-50 border border-gray-200 rounded-xl p-4"
+            >
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                {/* Category */}
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Category <span className="text-red-500">*</span>
+                  </label>
 
-                <select
-                  name="category_id"
-                  disabled
-                  value={isCustomCategory ? "other" : product.categoryId || ""}
-                  onChange={(e) => {
-                    if (e.target.value === "other") {
-                      setIsCustomCategory(true);
-                      setProduct((prev) => ({ ...prev, categoryId: null }));
-                    } else {
-                      setIsCustomCategory(false);
-                      setCustomCategory("");
-                      handleFieldChange(e);
+                  <select
+                    value={
+                      isCustomCategory ? "other" : product.categoryId || ""
                     }
-                  }}
-                  className="w-full p-3 border rounded-lg"
-                >
-                  <option value="">Select Category</option>
+                    className="w-full p-3 border rounded-lg bg-gray-100 text-gray-600"
+                  >
+                    <option>{getSelectedCategoryName()}</option>
+                  </select>
+                </div>
 
-                  {categories.map((c) => (
-                    <option key={c.category_id} value={c.category_id}>
-                      {c.category_name}
-                    </option>
-                  ))}
+                {/* Sub Category */}
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Sub Category
+                  </label>
 
-                  <option value="other">Other</option>
-                </select>
+                  <select
+                    value={
+                      isCustomSubcategory
+                        ? "other"
+                        : product.subCategoryId || ""
+                    }
+                    className="w-full p-3 border rounded-lg bg-gray-100 text-gray-600"
+                  >
+                    <option>{getSelectedSubCategoryName()}</option>
+                  </select>
+                </div>
 
-                {isCustomCategory && (
-                  <input
-                    type="text"
-                    value={custom_category}
-                    onChange={(e) => setCustomCategory(e.target.value)}
-                    placeholder="Enter new category"
-                    className="w-full p-3 mt-3 border rounded-lg"
-                  />
-                )}
+                {/* Sub Sub Category */}
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Type / Sub-type
+                  </label>
+
+                  <select
+                    value={
+                      isCustomSubSubcategory
+                        ? "other"
+                        : product.subSubCategoryId || ""
+                    }
+                    className="w-full p-3 border rounded-lg bg-gray-100 text-gray-600"
+                  >
+                    <option>{getSelectedSubSubCategoryName()}</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Sub Category */}
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Sub Category
-                </label>
+              {/* Selected Categories Display */}
+              {(product.categoryId ||
+                product.subCategoryId ||
+                product.subSubCategoryId) && (
+                <div className="p-3 mt-4 border rounded-lg bg-gray-100">
+                  <h4 className="mb-2 font-medium text-gray-700">
+                    Selected Categories:
+                  </h4>
+                  <div className="flex items-center text-sm text-gray-600">
+                    <span className="font-medium">
+                      {getSelectedCategoryName()}
+                    </span>
+                    {product.subCategoryId && (
+                      <>
+                        <span className="mx-2">›</span>
+                        <span>{getSelectedSubCategoryName()}</span>
+                      </>
+                    )}
+                    {product.subSubCategoryId && (
+                      <>
+                        <span className="mx-2">›</span>
+                        <span>{getSelectedSubSubCategoryName()}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                <select
-                  name="subcategory_id"
-                  disabled
-                  value={
-                    isCustomSubcategory ? "other" : product.subCategoryId || ""
-                  }
-                  onChange={(e) => {
-                    if (e.target.value === "other") {
-                      setIsCustomSubcategory(true);
-                      setProduct((prev) => ({ ...prev, subCategoryId: null }));
-                    } else {
-                      setIsCustomSubcategory(false);
-                      setCustomSubCategory("");
-                      handleFieldChange(e);
-                    }
-                  }}
-                  // disabled={!product.categoryId && !isCustomCategory}
-                  className="w-full p-3 border rounded-lg"
-                >
-                  <option value="">Select Sub Category</option>
-
-                  {subCategories.map((s) => (
-                    <option key={s.subcategory_id} value={s.subcategory_id}>
-                      {s.subcategory_name}
-                    </option>
-                  ))}
-
-                  <option value="other">Other</option>
-                </select>
-
-                {isCustomSubcategory && (
-                  <input
-                    type="text"
-                    value={custom_subcategory}
-                    onChange={(e) => setCustomSubCategory(e.target.value)}
-                    placeholder="Enter new sub-category"
-                    className="w-full p-3 mt-3 border rounded-lg"
-                  />
-                )}
-              </div>
-
-              {/* Sub Sub Category */}
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Type / Sub-type
-                </label>
-
-                <select
-                  name="sub_subcategory_id"
-                  disabled
-                  value={
-                    isCustomSubSubcategory
-                      ? "other"
-                      : product.subSubCategoryId || ""
-                  }
-                  onChange={(e) => {
-                    if (e.target.value === "other") {
-                      setIsCustomSubSubcategory(true);
-                      setProduct((prev) => ({
-                        ...prev,
-                        subSubCategoryId: null,
-                      }));
-                    } else {
-                      setIsCustomSubSubcategory(false);
-                      setCustomSubSubCategory("");
-                      handleFieldChange(e);
-                    }
-                  }}
-                  // disabled={!product.subCategoryId && !isCustomSubcategory}
-                  className="w-full p-3 border rounded-lg"
-                >
-                  <option value="">Select Type</option>
-
-                  {subSubCategories.map((t) => (
-                    <option
-                      key={t.sub_subcategory_id}
-                      value={t.sub_subcategory_id}
-                    >
-                      {t.name}
-                    </option>
-                  ))}
-
-                  <option value="other">Other</option>
-                </select>
-
-                {isCustomSubSubcategory && (
-                  <input
-                    type="text"
-                    value={custom_subsubcategory}
-                    onChange={(e) => setCustomSubSubCategory(e.target.value)}
-                    placeholder="Enter new type"
-                    className="w-full p-3 mt-3 border rounded-lg"
-                  />
-                )}
+              {/* LOCK BADGE */}
+              <div className="absolute top-3 right-3 text-xs text-gray-500 flex items-center gap-1">
+                <FaLock className="text-gray-400" size={12} />
+                <span>Category locked</span>
               </div>
             </div>
 
-            {/* Selected Categories Display */}
-            {(product.categoryId ||
-              product.subCategoryId ||
-              product.subSubCategoryId) && (
-              <div className="p-3 mt-4 border rounded-lg bg-gray-50">
-                <h4 className="mb-2 font-medium text-gray-700">
-                  Selected Categories:
-                </h4>
-                <div className="flex items-center text-sm text-gray-600">
-                  <span className="font-medium">
-                    {getSelectedCategoryName()}
-                  </span>
-                  {product.subCategoryId && (
-                    <>
-                      <span className="mx-2">›</span>
-                      <span>{getSelectedSubCategoryName()}</span>
-                    </>
-                  )}
-                  {product.subSubCategoryId && (
-                    <>
-                      <span className="mx-2">›</span>
-                      <span>{getSelectedSubSubCategoryName()}</span>
-                    </>
-                  )}
-                </div>
-                {requiredDocs.length > 0 && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    {requiredDocs.filter((doc) => doc.status === 1).length}{" "}
-                    required document(s)
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Helper text */}
+            <p className="mt-2 text-xs text-gray-500">
+              Category selection cannot be changed after product creation.
+            </p>
           </section>
 
           {/* Product Identification */}
