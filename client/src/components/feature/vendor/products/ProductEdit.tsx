@@ -260,11 +260,23 @@ export default function EditProductPage() {
     });
   };
 
-  // useEffect(() => {
-  //   return () => {
-  //     product.productImages.forEach((img) => URL.revokeObjectURL(img.url));
-  //   };
-  // }, [product.productImages]);
+  const resolveCategoryLabel = () => {
+    if (product.categoryId) return getSelectedCategoryName();
+    if (custom_category) return custom_category;
+    return "Not provided";
+  };
+
+  const resolveSubCategoryLabel = () => {
+    if (product.subCategoryId) return getSelectedSubCategoryName();
+    if (custom_subcategory) return custom_subcategory;
+    return "Not provided";
+  };
+
+  const resolveSubSubCategoryLabel = () => {
+    if (product.subSubCategoryId) return getSelectedSubSubCategoryName();
+    if (custom_subsubcategory) return custom_subsubcategory;
+    return "Not provided";
+  };
 
   // Fetch subcategories when category changes
   useEffect(() => {
@@ -735,13 +747,8 @@ export default function EditProductPage() {
                     Category <span className="text-red-500">*</span>
                   </label>
 
-                  <select
-                    value={
-                      isCustomCategory ? "other" : product.categoryId || ""
-                    }
-                    className="w-full p-3 border rounded-lg bg-gray-100 text-gray-600"
-                  >
-                    <option>{getSelectedCategoryName()}</option>
+                  <select className="w-full p-3 border rounded-lg bg-gray-100 text-gray-600">
+                    <option>{resolveCategoryLabel()}</option>
                   </select>
                 </div>
 
@@ -751,15 +758,8 @@ export default function EditProductPage() {
                     Sub Category
                   </label>
 
-                  <select
-                    value={
-                      isCustomSubcategory
-                        ? "other"
-                        : product.subCategoryId || ""
-                    }
-                    className="w-full p-3 border rounded-lg bg-gray-100 text-gray-600"
-                  >
-                    <option>{getSelectedSubCategoryName()}</option>
+                  <select className="w-full p-3 border rounded-lg bg-gray-100 text-gray-600">
+                    <option>{resolveSubCategoryLabel()}</option>
                   </select>
                 </div>
 
@@ -769,41 +769,37 @@ export default function EditProductPage() {
                     Type / Sub-type
                   </label>
 
-                  <select
-                    value={
-                      isCustomSubSubcategory
-                        ? "other"
-                        : product.subSubCategoryId || ""
-                    }
-                    className="w-full p-3 border rounded-lg bg-gray-100 text-gray-600"
-                  >
-                    <option>{getSelectedSubSubCategoryName()}</option>
+                  <select className="w-full p-3 border rounded-lg bg-gray-100 text-gray-600">
+                    <option>{resolveSubSubCategoryLabel()}</option>
                   </select>
                 </div>
               </div>
 
               {/* Selected Categories Display */}
-              {(product.categoryId ||
-                product.subCategoryId ||
-                product.subSubCategoryId) && (
+              {(resolveCategoryLabel() !== "Not provided" ||
+                resolveSubCategoryLabel() !== "Not provided" ||
+                resolveSubSubCategoryLabel() !== "Not provided") && (
                 <div className="p-3 mt-4 border rounded-lg bg-gray-100">
                   <h4 className="mb-2 font-medium text-gray-700">
                     Selected Categories:
                   </h4>
+
                   <div className="flex items-center text-sm text-gray-600">
                     <span className="font-medium">
-                      {getSelectedCategoryName()}
+                      {resolveCategoryLabel()}
                     </span>
-                    {product.subCategoryId && (
+
+                    {resolveSubCategoryLabel() !== "Not provided" && (
                       <>
                         <span className="mx-2">›</span>
-                        <span>{getSelectedSubCategoryName()}</span>
+                        <span>{resolveSubCategoryLabel()}</span>
                       </>
                     )}
-                    {product.subSubCategoryId && (
+
+                    {resolveSubSubCategoryLabel() !== "Not provided" && (
                       <>
                         <span className="mx-2">›</span>
-                        <span>{getSelectedSubSubCategoryName()}</span>
+                        <span>{resolveSubSubCategoryLabel()}</span>
                       </>
                     )}
                   </div>
