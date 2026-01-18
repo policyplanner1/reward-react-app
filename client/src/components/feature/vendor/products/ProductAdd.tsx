@@ -128,6 +128,12 @@ interface ProductData {
   subCategoryId: number | null;
   subSubCategoryId: number | null;
   productImages: ImagePreview[];
+  isDiscountEligible: 1 | 0;
+  isReturnable: 1 | 0;
+  returnWindowDays: string;
+  deliveryMinDays: string;
+  deliveryMaxDays: string;
+  shippingClass: "standard" | "bulky" | "fragile";
 }
 
 const initialProductData: ProductData = {
@@ -142,6 +148,13 @@ const initialProductData: ProductData = {
   subCategoryId: null,
   subSubCategoryId: null,
   productImages: [],
+  isDiscountEligible: 1,
+  isReturnable: 1,
+  returnWindowDays: "",
+
+  deliveryMinDays: "",
+  deliveryMaxDays: "",
+  shippingClass: "standard",
 };
 
 // --- UI Components ---
@@ -454,6 +467,23 @@ export default function ProductListingDynamic() {
       formData.append("hsnSacCode", product.hsnSacCode);
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
+
+      formData.append(
+        "is_discount_eligible",
+        String(product.isDiscountEligible),
+      );
+
+      formData.append("is_returnable", String(product.isReturnable));
+
+      if (product.isReturnable === 1 && product.returnWindowDays) {
+        formData.append("return_window_days", product.returnWindowDays);
+      }
+
+      formData.append("delivery_sla_min_days", product.deliveryMinDays);
+
+      formData.append("delivery_sla_max_days", product.deliveryMaxDays);
+
+      formData.append("shipping_class", product.shippingClass);
 
       // Add main product images
       product.productImages.forEach(({ file }) => {
@@ -937,7 +967,6 @@ export default function ProductListingDynamic() {
           </section>
 
           {/* Product Description */}
-          {/* Product Description */}
           <section>
             <SectionHeader
               icon={FaBox}
@@ -984,6 +1013,149 @@ export default function ProductListingDynamic() {
                   {product.shortDescription.length} / {CHAR_LIMIT} characters
                 </p>
               </div>
+            </div>
+          </section>
+
+          {/* Discount */}
+          <section>
+            <SectionHeader
+              icon={FaTag}
+              title="Pricing & Commercial Controls"
+              description="Define discount eligibility and return policies"
+            />
+
+            <div className="mt-4 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                {/* Discount Eligible */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Discount Eligible
+                  </label>
+                  <select
+                    name="isDiscountEligible"
+                    value={product.isDiscountEligible}
+                    onChange={(e) =>
+                      setProduct((prev) => ({
+                        ...prev,
+                        isDiscountEligible: Number(e.target.value) as 1 | 0,
+                      }))
+                    }
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value={1}>Yes</option>
+                    <option value={0}>No</option>
+                  </select>
+                </div>
+
+                {/* Returnable */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Returnable
+                  </label>
+                  <select
+                    name="isReturnable"
+                    value={product.isReturnable}
+                    onChange={(e) => {
+                      const val = Number(e.target.value) as 1 | 0;
+                      setProduct((prev) => ({
+                        ...prev,
+                        isReturnable: val,
+                        returnWindowDays:
+                          val === 0 ? "" : prev.returnWindowDays,
+                      }));
+                    }}
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value={1}>Yes</option>
+                    <option value={0}>No</option>
+                  </select>
+                </div>
+
+                {/* Return Window */}
+                {product.isReturnable === 1 && (
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                      Return Window (Days)
+                    </label>
+                    <input
+                      type="number"
+                      name="returnWindowDays"
+                      value={product.returnWindowDays}
+                      onChange={handleFieldChange}
+                      min={1}
+                      max={30}
+                      placeholder="e.g. 7"
+                      className="w-full p-3 border rounded-lg"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Logistics */}
+          <section>
+            <SectionHeader
+              icon={FaBox}
+              title="Logistics & Fulfilment"
+              description="Delivery timelines and shipping classification"
+            />
+
+            <div className="mt-4 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                {/* Delivery SLA */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Delivery SLA (Min Days)
+                  </label>
+                  <input
+                    type="number"
+                    name="deliveryMinDays"
+                    value={product.deliveryMinDays}
+                    onChange={handleFieldChange}
+                    min={1}
+                    placeholder="e.g. 3"
+                    className="w-full p-3 border rounded-lg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Delivery SLA (Max Days)
+                  </label>
+                  <input
+                    type="number"
+                    name="deliveryMaxDays"
+                    value={product.deliveryMaxDays}
+                    onChange={handleFieldChange}
+                    min={1}
+                    placeholder="e.g. 5"
+                    className="w-full p-3 border rounded-lg"
+                  />
+                </div>
+
+                {/* Shipping Class */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Shipping Class
+                  </label>
+                  <select
+                    name="shippingClass"
+                    value={product.shippingClass}
+                    onChange={handleFieldChange}
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value="standard">Standard</option>
+                    <option value="bulky">Bulky</option>
+                    <option value="fragile">Fragile</option>
+                  </select>
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs text-gray-500">
+                Delivery timeline shown to customers as an estimate. Actual
+                delivery may vary by location.
+              </p>
             </div>
           </section>
 
