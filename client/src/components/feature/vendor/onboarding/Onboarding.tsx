@@ -314,6 +314,81 @@ function FileUploadInput(props: {
   );
 }
 
+function DocumentUploadRow({
+  label,
+  docKey,
+  existingDoc,
+  file,
+  onChange,
+  required = false,
+  accept = "image/*,application/pdf",
+}: DocumentUploadRowProps) {
+  const fileUrl = existingDoc
+    ? `${BASE_UPLOAD_URL}/${existingDoc.file_path}`
+    : null;
+
+  const isImage = existingDoc?.mime_type?.startsWith("image/");
+
+  return (
+    <div className="space-y-2">
+      {/* Label */}
+      <label className="block text-sm font-semibold text-gray-800">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+
+      {/* Bordered container for preview + upload */}
+      <div className="flex items-center gap-4 border border-gray-200 rounded-xl p-4 bg-white">
+        {/* Existing preview */}
+        <div className="flex-shrink-0 w-28 h-28 bg-gray-50 rounded-lg flex items-center justify-center">
+          {existingDoc ? (
+            isImage ? (
+              <a href={fileUrl!} target="_blank" rel="noreferrer">
+                <img
+                  src={fileUrl!}
+                  alt={label}
+                  className="w-full h-full object-cover rounded-lg"
+                />
+              </a>
+            ) : (
+              <a
+                href={fileUrl!}
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-600 text-sm underline text-center"
+              >
+                View document
+              </a>
+            )
+          ) : (
+            <span className="text-xs text-gray-400 text-center">
+              No document
+            </span>
+          )}
+        </div>
+
+        {/* Upload button */}
+        <div className="flex-1">
+          <FileUploadInput
+            id={docKey}
+            label={`Upload new ${label}`}
+            file={file}
+            onChange={onChange}
+            accept={accept}
+            required={required}
+          />
+        </div>
+      </div>
+
+      {/* Helper text */}
+      {existingDoc && (
+        <p className="text-xs text-gray-500">
+          Uploading a new file will replace the existing document
+        </p>
+      )}
+    </div>
+  );
+}
+
 const mapBackendToForm = (data: any): VendorOnboardingData => {
   const { vendor, addresses, bank, contacts } = data;
 
@@ -383,6 +458,16 @@ type ExistingDocument = {
   document_key: string;
   file_path: string;
   mime_type: string;
+};
+
+type DocumentUploadRowProps = {
+  label: string;
+  docKey: string;
+  existingDoc?: ExistingDocument;
+  file: File | null;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  required?: boolean;
+  accept?: string;
 };
 
 /* ================= MAIN COMPONENT ================= */
@@ -1006,160 +1091,86 @@ export default function Onboarding() {
                 />
                 {/* File uploads: only the common docs */}
                 {/* GST */}
-                <div className="flex flex-col space-y-3">
-                  <ExistingDocumentPreview
-                    doc={existingDocs["gstinFile"]}
-                    label="GST Document"
-                  />
-                  <FileUploadInput
-                    id="gstinFile"
-                    label="GST Certificate"
-                    file={formData.gstinFile}
-                    onChange={
-                      handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                    }
-                    required
-                    description="Upload your GST Registration Certificate (PDF/JPG/PNG)."
-                  />
-                </div>
+                <DocumentUploadRow
+                  label="GST Certificate"
+                  docKey="gstinFile"
+                  existingDoc={existingDocs["gstinFile"]}
+                  file={formData.gstinFile}
+                  onChange={handleChange}
+                  required
+                />
                 {/* Pan */}
-                <div className="flex flex-col space-y-3">
-                  <ExistingDocumentPreview
-                    doc={existingDocs["panFile"]}
-                    label="PAN Card"
-                  />
-                  <FileUploadInput
-                    id="panFile"
-                    label="PAN Card"
-                    file={formData.panFile}
-                    onChange={
-                      handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                    }
-                    required
-                    description="Upload company PAN (PDF/JPG/PNG)."
-                  />
-                </div>
+                <DocumentUploadRow
+                  label="PAN Card"
+                  docKey="panFile"
+                  existingDoc={existingDocs["panFile"]}
+                  file={formData.panFile}
+                  onChange={handleChange}
+                  required
+                />
                 {/* Noc */}
-                <div className="flex flex-col space-y-3">
-                  <ExistingDocumentPreview
-                    doc={existingDocs["nocFile"]}
-                    label="NOC"
-                  />
-                  <FileUploadInput
-                    id="nocFile"
-                    label="NOC"
-                    file={formData.nocFile}
-                    onChange={
-                      handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                    }
-                    required
-                    accept=".jpg, .jpeg, .png, .pdf"
-                    description="Upload a No objection certificate."
-                  />
-                </div>
+                <DocumentUploadRow
+                  label="NOC"
+                  docKey="nocFile"
+                  existingDoc={existingDocs["nocFile"]}
+                  file={formData.nocFile}
+                  onChange={handleChange}
+                  required
+                />
                 {/* Trademark File */}
-                <div className="flex flex-col space-y-3">
-                  <ExistingDocumentPreview
-                    doc={existingDocs["rightsAdvisoryFile"]}
-                    label="Trademark Certificate"
-                  />
-                  <FileUploadInput
-                    id="rightsAdvisoryFile"
-                    label="Trademark Certificate"
-                    file={formData.rightsAdvisoryFile}
-                    onChange={
-                      handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                    }
-                    required
-                    accept=".jpg, .jpeg, .png, .pdf"
-                    description="Trademark."
-                  />
-                </div>
+                <DocumentUploadRow
+                  label="Trademark Certificate"
+                  docKey="rightsAdvisoryFile"
+                  existingDoc={existingDocs["rightsAdvisoryFile"]}
+                  file={formData.rightsAdvisoryFile}
+                  onChange={handleChange}
+                  required
+                />
                 {/* Signatory ID */}
-                <div className="flex flex-col space-y-3">
-                  <ExistingDocumentPreview
-                    doc={existingDocs["signatoryIdFile"]}
-                    label="Authorized Signatory ID Proof"
-                  />
-                  <FileUploadInput
-                    id="signatoryIdFile"
-                    label="Authorized Signatory ID Proof"
-                    file={formData.signatoryIdFile}
-                    onChange={
-                      handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                    }
-                    accept=".jpg, .jpeg, .png, .pdf"
-                    description="Upload Aadhaar or PAN of authorized signatory."
-                  />
-                </div>
+                <DocumentUploadRow
+                  label="Authorized Signatory ID Proof"
+                  docKey="signatoryIdFile"
+                  existingDoc={existingDocs["signatoryIdFile"]}
+                  file={formData.signatoryIdFile}
+                  onChange={handleChange}
+                  required
+                />
                 {/* Business profile */}
-                <div className="flex flex-col space-y-3">
-                  <ExistingDocumentPreview
-                    doc={existingDocs["businessProfileFile"]}
-                    label="Business Profile"
-                  />
-                  <FileUploadInput
-                    id="businessProfileFile"
-                    label="Business Profile"
-                    file={formData.businessProfileFile}
-                    onChange={
-                      handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                    }
-                    accept=".pdf, .doc, .docx"
-                    description="Upload your Business Profile (PDF or DOC)."
-                  />
-                </div>
+                <DocumentUploadRow
+                  label="Business Profile"
+                  docKey="businessProfileFile"
+                  existingDoc={existingDocs["businessProfileFile"]}
+                  file={formData.businessProfileFile}
+                  onChange={handleChange}
+                  required
+                />
                 {/* Brand logo - required for Manufacturer and Trader */}
-                <div className="flex flex-col space-y-3">
-                  <ExistingDocumentPreview
-                    doc={existingDocs["brandLogoFile"]}
-                    label="Brand Logo"
-                  />
-                  <FileUploadInput
-                    id="brandLogoFile"
-                    label="Brand Logo"
-                    file={formData.brandLogoFile}
-                    onChange={
-                      handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                    }
-                    accept=".jpg, .jpeg, .png, .svg"
-                    description="Upload brand logo (PNG/JPG/SVG)."
-                  />
-                </div>
+                <DocumentUploadRow
+                  label="Brand Logo"
+                  docKey="brandLogoFile"
+                  existingDoc={existingDocs["brandLogoFile"]}
+                  file={formData.brandLogoFile}
+                  onChange={handleChange}
+                  required
+                />
                 {/* Bank proof - cancelled cheque or passbook image */}
-                <div className="flex flex-col space-y-3">
-                  <ExistingDocumentPreview
-                    doc={existingDocs["bankProofFile"]}
-                    label="Bank Cancelled Cheque"
-                  />
-                  <FileUploadInput
-                    id="bankProofFile"
-                    label="Bank Cancelled Cheque"
-                    file={formData.bankProofFile}
-                    onChange={
-                      handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                    }
-                    accept=".jpg, .jpeg, .png, .pdf"
-                    description="Upload a Cancelled Cheque with company name and account details."
-                  />
-                </div>
+                <DocumentUploadRow
+                  label="Bank Cancelled Cheque"
+                  docKey="bankProofFile"
+                  existingDoc={existingDocs["bankProofFile"]}
+                  file={formData.bankProofFile}
+                  onChange={handleChange}
+                  required
+                />
                 {/* Electricity */}
-                <div className="flex flex-col space-y-3">
-                  <ExistingDocumentPreview
-                    doc={existingDocs["electricityBillFile"]}
-                    label="Electricity bill"
-                  />
-                  <FileUploadInput
-                    id="electricityBillFile"
-                    label="Electricity bill"
-                    file={formData.electricityBillFile}
-                    onChange={
-                      handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                    }
-                    accept=".jpg, .jpeg, .png, .pdf"
-                    description="Upload Electricity bill."
-                  />
-                </div>
+                <DocumentUploadRow
+                  label="Electricity bill"
+                  docKey="electricityBillFile"
+                  existingDoc={existingDocs["electricityBillFile"]}
+                  file={formData.electricityBillFile}
+                  onChange={handleChange}
+                  required
+                />
                 {/* Vendor agreement - checkbox + optional upload */}
                 <div className="col-span-1 md:col-span-2 lg:col-span-3">
                   <div className="flex items-center mb-3 space-x-3">
@@ -1180,24 +1191,14 @@ export default function Onboarding() {
                     </label>
                   </div>
 
-                  <div className="flex flex-col space-y-3">
-                    <ExistingDocumentPreview
-                      doc={existingDocs["vendorAgreementFile"]}
-                      label="Upload Signed Agreement (optional)"
-                    />
-                    <FileUploadInput
-                      id="vendorAgreementFile"
-                      label="Upload Signed Agreement (optional)"
-                      file={formData.vendorAgreementFile}
-                      onChange={
-                        handleChange as (
-                          e: ChangeEvent<HTMLInputElement>,
-                        ) => void
-                      }
-                      accept=".pdf, .jpg, .jpeg, .png"
-                      description="If you have a signed agreement, upload it here (optional)."
-                    />
-                  </div>
+                  <DocumentUploadRow
+                    label="Upload Signed Agreement (optional)"
+                    docKey="vendorAgreementFile"
+                    existingDoc={existingDocs["vendorAgreementFile"]}
+                    file={formData.vendorAgreementFile}
+                    onChange={handleChange}
+                    required
+                  />
                 </div>
                 {/* Conditional: Manufacturer fields */}
                 {formData.vendorType === "Manufacturer" && (
@@ -1239,25 +1240,14 @@ export default function Onboarding() {
                 )}
                 {/* Conditional: Authorization letter (Trader only) */}
                 {formData.vendorType === "Trader" && (
-                  <div className="flex flex-col space-y-3">
-                    <ExistingDocumentPreview
-                      doc={existingDocs["authorizationLetterFile"]}
-                      label="Authorization / Dealership Letter"
-                    />
-                    <FileUploadInput
-                      id="authorizationLetterFile"
-                      label="Authorization / Dealership Letter"
-                      file={formData.authorizationLetterFile}
-                      onChange={
-                        handleChange as (
-                          e: ChangeEvent<HTMLInputElement>,
-                        ) => void
-                      }
-                      required
-                      accept=".pdf, .jpg, .jpeg, .png"
-                      description="Traders must upload an authorization/dealership agreement."
-                    />
-                  </div>
+                  <DocumentUploadRow
+                    label="Authorization / Dealership Letter"
+                    docKey="authorizationLetterFile"
+                    existingDoc={existingDocs["authorizationLetterFile"]}
+                    file={formData.authorizationLetterFile}
+                    onChange={handleChange}
+                    required
+                  />
                 )}
               </div>
             </section>
