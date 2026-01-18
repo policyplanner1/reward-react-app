@@ -319,40 +319,6 @@ const ActionModal = ({
     }
   };
 
-  const toggleVisibility = async (productId: number, current: boolean) => {
-    try {
-      await api.patch(`/product/${productId}/visibility`, {
-        is_visible: !current,
-      });
-
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.product_id === productId ? { ...p, is_visible: !current } : p,
-        ),
-      );
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update visibility");
-    }
-  };
-
-  const toggleSearchable = async (productId: number, current: boolean) => {
-    try {
-      await api.patch(`/product/${productId}/searchable`, {
-        is_searchable: !current,
-      });
-
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.product_id === productId ? { ...p, is_searchable: !current } : p,
-        ),
-      );
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update searchable status");
-    }
-  };
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
@@ -598,6 +564,40 @@ export default function ProductManagerList() {
     }
   };
 
+  const toggleVisibility = async (productId: number, current: boolean) => {
+    try {
+      await api.patch(`/product/visibility/${productId}`, {
+        is_visible: !current, // BACKEND EXPECTS BOOLEAN
+      });
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.product_id === productId ? { ...p, is_visible: !current } : p,
+        ),
+      );
+    } catch (error) {
+      console.error("Visibility update failed", error);
+      Swal.fire("Error", "Failed to update visibility", "error");
+    }
+  };
+
+  const toggleSearchable = async (productId: number, current: boolean) => {
+    try {
+      await api.patch(`/product/searchable/${productId}`, {
+        is_searchable: !current,
+      });
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.product_id === productId ? { ...p, is_searchable: !current } : p,
+        ),
+      );
+    } catch (error) {
+      console.error("Searchable update failed", error);
+      Swal.fire("Error", "Failed to update searchable status", "error");
+    }
+  };
+
   const openActionModal = (product: ProductItem, actionType: ActionType) => {
     setModalState({ isOpen: true, product, actionType });
   };
@@ -824,9 +824,9 @@ export default function ProductManagerList() {
                   "Subcategory",
                   "SubType",
                   "Status",
+                  "Rejection Reason",
                   "Visibility",
                   "Searchable",
-                  "Rejection Reason",
                   "Action",
                 ].map((head) => (
                   <th
@@ -900,7 +900,12 @@ export default function ProductManagerList() {
                     </div>
                   </td>
 
-                  {/* Visible */}
+                  {/* REJECTION REASON */}
+                  <td className="px-5 py-4 text-sm text-gray-700">
+                    {product.rejection_reason || "—"}
+                  </td>
+
+                  {/* VISIBILITY */}
                   <td className="px-5 py-4">
                     <button
                       onClick={() =>
@@ -909,7 +914,6 @@ export default function ProductManagerList() {
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
                         product.is_visible ? "bg-green-500" : "bg-gray-300"
                       }`}
-                      title={product.is_visible ? "Visible" : "Hidden"}
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
@@ -919,7 +923,7 @@ export default function ProductManagerList() {
                     </button>
                   </td>
 
-                  {/* Search */}
+                  {/* SEARCHABLE */}
                   <td className="px-5 py-4">
                     <button
                       onClick={() =>
@@ -931,9 +935,6 @@ export default function ProductManagerList() {
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
                         product.is_searchable ? "bg-indigo-500" : "bg-gray-300"
                       }`}
-                      title={
-                        product.is_searchable ? "Searchable" : "Not searchable"
-                      }
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
@@ -943,11 +944,6 @@ export default function ProductManagerList() {
                         }`}
                       />
                     </button>
-                  </td>
-
-                  {/* REJECTION REASON */}
-                  <td className="px-5 py-4 text-sm text-gray-700">
-                    {product.rejection_reason || "—"}
                   </td>
 
                   {/* ACTIONS */}

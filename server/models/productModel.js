@@ -882,6 +882,33 @@ class ProductModel {
       throw error;
     }
   }
+
+  // Visibility
+  async updateVisibility({ productId, vendorId, isVisible }) {
+    const [result] = await db.query(
+      `
+      UPDATE eproducts
+      SET is_visible = ?
+      WHERE product_id = ? AND vendor_id = ?
+      `,
+      [isVisible ? 1 : 0, productId, vendorId],
+    );
+
+    return result.affectedRows;
+  }
+
+  async updateSearchable({ productId, vendorId, isSearchable }) {
+    const [result] = await db.query(
+      `
+      UPDATE eproducts
+      SET is_searchable = ?
+      WHERE product_id = ? AND vendor_id = ?
+      `,
+      [isSearchable ? 1 : 0, productId, vendorId],
+    );
+
+    return result.affectedRows;
+  }
 }
 
 module.exports = new ProductModel();

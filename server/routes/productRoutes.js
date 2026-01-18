@@ -10,7 +10,7 @@ router.post(
   authenticateToken,
   authorizeRoles("vendor"),
   productUpload.any(),
-  ProductController.createProduct
+  ProductController.createProduct,
 );
 
 // Update product approval
@@ -27,7 +27,7 @@ router.put(
   authenticateToken,
   authorizeRoles("vendor"),
   productUpload.any(),
-  ProductController.updateProduct
+  ProductController.updateProduct,
 );
 
 // Delete product by vendor
@@ -35,7 +35,7 @@ router.delete(
   "/delete-product/:id",
   authenticateToken,
   authorizeRoles("vendor"),
-  ProductController.deleteProduct
+  ProductController.deleteProduct,
 );
 
 // Get all products
@@ -43,7 +43,7 @@ router.get(
   "/all-products",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
-  ProductController.getAllProductDetails
+  ProductController.getAllProductDetails,
 );
 
 // Get products by vendor(admin and vendor manager can check)
@@ -51,7 +51,7 @@ router.get(
   "/vendor-products/:vendorId",
   authenticateToken,
   authorizeRoles("admin", "vendor_manager"),
-  ProductController.getProductsByVendor
+  ProductController.getProductsByVendor,
 );
 
 // My Listed Products
@@ -59,40 +59,55 @@ router.get(
   "/my-listed-products",
   authenticateToken,
   authorizeRoles("vendor"),
-  ProductController.getMyListedProducts
+  ProductController.getMyListedProducts,
 );
 
 // approved List
 router.get(
   "/approved-list",
   authenticateToken,
-  authorizeRoles("vendor_manager","admin","warehouse_manager"),
-  ProductController.approvedProductList
+  authorizeRoles("vendor_manager", "admin", "warehouse_manager"),
+  ProductController.approvedProductList,
 );
 
 // get all the approved products for stock-in
 router.get(
   "/approved-products/:productId",
   authenticateToken,
-  authorizeRoles("vendor_manager","admin","warehouse_manager"),
-  ProductController.approvedProducts
+  authorizeRoles("vendor_manager", "admin", "warehouse_manager"),
+  ProductController.approvedProducts,
 );
 
 // send for approval
 router.post(
   "/submission/:productId",
   authenticateToken,
-  authorizeRoles("vendor",),
-  ProductController.approvalRequest
+  authorizeRoles("vendor"),
+  ProductController.approvalRequest,
 );
-
 
 // get product Documents
 router.get(
   "/category/required_docs/:id",
   authenticateToken,
   authorizeRoles("vendor", "admin", "vendor_manager"),
-  ProductController.getRequiredDocuments
+  ProductController.getRequiredDocuments,
+);
+
+// Product Visibility
+router.patch(
+  "/visibility/:productId",
+  authenticateToken,
+  authorizeRoles("vendor"),
+  ProductController.Visibility,
+);
+
+// Product Search
+router.patch(
+  "/searchable/:productId",
+  authenticateToken,
+  authorizeRoles("vendor"),
+  ProductController.Searchable,
 );
 
 // Get product by ID
@@ -100,7 +115,7 @@ router.get(
   "/:id",
   authenticateToken,
   authorizeRoles("vendor", "vendor_manager", "admin"),
-  ProductController.getProductDetailsById
+  ProductController.getProductDetailsById,
 );
 
 module.exports = router;

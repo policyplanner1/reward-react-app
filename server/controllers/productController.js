@@ -24,7 +24,7 @@ class ProductController {
 
       const [vendorRows] = await db.query(
         `SELECT * FROM vendors WHERE vendor_id = ?`,
-        [vendorId]
+        [vendorId],
       );
 
       if (!vendorRows.length) {
@@ -54,7 +54,7 @@ class ProductController {
       const productId = await ProductModel.createProduct(
         connection,
         vendorId,
-        body
+        body,
       );
 
       // 1.5  Save product attributes (JSON)
@@ -67,7 +67,7 @@ class ProductController {
         await ProductModel.saveProductAttributes(
           connection,
           productId,
-          attributes
+          attributes,
         );
       }
 
@@ -76,7 +76,7 @@ class ProductController {
         __dirname,
         "../uploads/products",
         `${vendorId}`,
-        `${productId}`
+        `${productId}`,
       );
       const imagesFolder = path.join(baseFolder, "images");
       const docsFolder = path.join(baseFolder, "documents");
@@ -85,7 +85,7 @@ class ProductController {
       [baseFolder, imagesFolder, docsFolder, variantFolder].forEach(
         (folder) => {
           if (!fs.existsSync(folder)) fs.mkdirSync(folder, { recursive: true });
-        }
+        },
       );
 
       // 3️⃣ Move files from temp → final folders
@@ -125,7 +125,7 @@ class ProductController {
         await ProductModel.insertProductImages(
           connection,
           productId,
-          mainImages
+          mainImages,
         );
       }
 
@@ -136,7 +136,7 @@ class ProductController {
           connection,
           productId,
           body.category_id,
-          docFiles
+          docFiles,
         );
       }
 
@@ -144,8 +144,8 @@ class ProductController {
       await ProductModel.generateProductVariants(
         connection,
         productId,
-        body.category_id  ,
-        body.subcategory_id
+        body.category_id,
+        body.subcategory_id,
       );
 
       await connection.commit();
@@ -215,7 +215,7 @@ class ProductController {
         productId,
         vendorId,
         body,
-        files
+        files,
       );
 
       await connection.commit();
@@ -347,7 +347,7 @@ class ProductController {
           rejected: 0,
           resubmission: 0,
           total: 0,
-        }
+        },
       );
 
       return res.json({
@@ -424,7 +424,7 @@ class ProductController {
           sortOrder,
           limit,
           offset,
-        }
+        },
       );
 
       const processedProducts = products.map((product) => ({
@@ -454,7 +454,7 @@ class ProductController {
           rejected: 0,
           resubmission: 0,
           total: 0,
-        }
+        },
       );
 
       return res.json({
@@ -478,9 +478,8 @@ class ProductController {
   async getRequiredDocuments(req, res) {
     try {
       const categoryID = req.params.id;
-      const documents = await ProductModel.getRequiredDocumentsByCategory(
-        categoryID
-      );
+      const documents =
+        await ProductModel.getRequiredDocumentsByCategory(categoryID);
 
       return res.json({ success: true, data: documents });
     } catch (err) {
@@ -587,7 +586,7 @@ class ProductController {
 
     const [productRows] = await db.query(
       `SELECT * FROM eproducts WHERE product_id = ? AND vendor_id = ? `,
-      [productId, vendorId]
+      [productId, vendorId],
     );
 
     if (productRows.length === 0) {
@@ -607,7 +606,7 @@ class ProductController {
         `UPDATE eproducts
          SET status = 'sent_for_approval'
          WHERE product_id = ?`,
-        [product.product_id]
+        [product.product_id],
       );
     }
 
@@ -621,6 +620,88 @@ class ProductController {
       success: false,
       message: "Error fetching approved product List",
     });
+  }
+
+  // Product Visibility
+  async Visibility(req, res) {
+    try {
+      const { productId } = req.params;
+      const { is_visible } = req.body;
+      const vendorId = req.user?.user_id;
+
+      if (typeof is_visible !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          message: "is_visible must be a boolean",
+        });
+      }
+
+      const updated = await ProductModel.updateVisibility({
+        productId,
+        vendorId,
+        isVisible: is_visible,
+      });
+
+      if (!updated) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found or not authorized",
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Product visibility updated successfully",
+        data: { productId, is_visible },
+      });
+    } catch (error) {
+      console.error("Visibility update error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update visibility",
+      });
+    }
+  }
+
+  // Product Searchable
+   async Searchable(req, res) {
+    try {
+      const { productId } = req.params;
+      const { is_searchable } = req.body;
+      const vendorId = req.user?.user_id;
+
+      if (typeof is_searchable !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          message: "is_searchable must be a boolean",
+        });
+      }
+
+      const updated = await ProductModel.updateSearchable({
+        productId,
+        vendorId,
+        isSearchable: is_searchable,
+      });
+
+      if (!updated) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found or not authorized",
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Product searchable status updated successfully",
+        data: { productId, is_searchable },
+      });
+    } catch (error) {
+      console.error("Searchable update error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update searchable status",
+      });
+    }
   }
 }
 
