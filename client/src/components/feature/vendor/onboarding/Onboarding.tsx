@@ -221,48 +221,6 @@ function FormInput(props: {
   );
 }
 
-function ExistingDocumentPreview({
-  doc,
-  label,
-}: {
-  doc?: ExistingDocument;
-  label: string;
-}) {
-  if (!doc) return null;
-
-  const fileUrl = resolveFileUrl(doc.file_path);
-  const isImage = doc.mime_type?.startsWith("image/");
-
-  return (
-    <div className="mb-3 p-3 border rounded-xl bg-gray-50">
-      <div className="text-sm font-semibold mb-2">Existing {label}</div>
-
-      {isImage ? (
-        <a href={fileUrl} target="_blank" rel="noreferrer">
-          <img
-            src={fileUrl}
-            alt={label}
-            className="w-32 h-32 object-cover rounded border"
-          />
-        </a>
-      ) : (
-        <a
-          href={fileUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="text-blue-600 underline text-sm"
-        >
-          View document
-        </a>
-      )}
-
-      <p className="mt-2 text-xs text-gray-500">
-        Uploading a new file will replace this document
-      </p>
-    </div>
-  );
-}
-
 function FileUploadInput(props: {
   id: string;
   label: string;
@@ -611,12 +569,19 @@ export default function Onboarding() {
       case "panFile":
       case "nocFile":
       case "rightsAdvisoryFile":
-        if (!value) return "This document is required";
+        if (!value && !existingDocs[name]) {
+          return "This document is required";
+        }
         return "";
 
       case "authorizationLetterFile":
-        if (formData.vendorType === "Trader" && !value)
+        if (
+          formData.vendorType === "Trader" &&
+          !value &&
+          !existingDocs.authorizationLetterFile
+        ) {
           return "Authorization letter is required";
+        }
         return "";
 
       default:
