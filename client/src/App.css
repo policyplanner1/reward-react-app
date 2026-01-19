@@ -5,6 +5,12 @@
   text-align: center;
 }
 
+.ql-editor {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: plaintext !important;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;
