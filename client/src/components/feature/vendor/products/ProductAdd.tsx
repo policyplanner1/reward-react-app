@@ -348,7 +348,9 @@ export default function ProductListingDynamic() {
   const CHAR_LIMIT = 150;
 
   const handleShortDescriptionChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>,
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const value = e.target.value;
 

@@ -18,9 +18,6 @@ import { api } from "../../../../api/api";
 
 const BASE_UPLOAD_URL = "https://rewardplanners.com/api/crm/uploads";
 
-const resolveFileUrl = (path?: string) =>
-  path ? `${BASE_UPLOAD_URL}/${path}` : "";
-
 /* ================= TYPES ================= */
 
 interface VendorOnboardingData {
