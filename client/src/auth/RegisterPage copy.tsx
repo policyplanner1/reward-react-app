@@ -50,7 +50,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string>("");
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -71,12 +71,12 @@ export default function RegisterPage() {
         formData.email,
         formData.password,
         formData.role,
-        formData.phone,
+        formData.phone
       );
     } catch (err: unknown) {
       if (err instanceof AxiosError) {
         setError(
-          err.response?.data?.message ?? err.message ?? "Register failed",
+          err.response?.data?.message ?? err.message ?? "Register failed"
         );
       } else {
         setError("An unexpected error occurred");
@@ -137,7 +137,7 @@ export default function RegisterPage() {
             )}
 
             {/*  2 column on md+, 1 column mobile */}
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field label="Full Name" htmlFor="name" labelClass={labelClass}>
                 <input
                   id="name"
@@ -181,6 +181,21 @@ export default function RegisterPage() {
                   value={formData.phone}
                   onChange={handleChange}
                 />
+              </Field>
+
+              <Field label="User Role" htmlFor="role" labelClass={labelClass}>
+                <select
+                  id="role"
+                  name="role"
+                  className={inputBase + " cursor-pointer"}
+                  onChange={handleChange}
+                  value={formData.role}
+                >
+                  <option value="vendor">Vendor</option>
+                  <option value="vendor_manager">Vendor Manager</option>
+                  <option value="admin">Admin</option>
+                  <option value="warehouse_manager">Warehouse Manager</option>
+                </select>
               </Field>
 
               <Field
