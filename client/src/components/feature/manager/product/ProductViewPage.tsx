@@ -117,6 +117,9 @@ export default function ReviewProductPage() {
   const [product, setProduct] = useState<ProductView | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [productAttributes, setProductAttributes] = useState<
+    Record<string, string[]>
+  >({});
 
   useEffect(() => {
     if (!productId) {
@@ -178,6 +181,30 @@ export default function ReviewProductPage() {
         requiredDocs: raw.documents ?? [],
         variants: Array.isArray(raw.variants) ? raw.variants : [],
       };
+
+      if (raw.attributes) {
+        let parsedAttributes: any = raw.attributes;
+
+        try {
+          // Step 1: parse outer layer if string
+          if (typeof parsedAttributes === "string") {
+            parsedAttributes = JSON.parse(parsedAttributes);
+          }
+
+          // Step 2: if it still has nested "attributes", parse again
+          if (
+            parsedAttributes.attributes &&
+            typeof parsedAttributes.attributes === "string"
+          ) {
+            parsedAttributes = JSON.parse(parsedAttributes.attributes);
+          }
+        } catch (e) {
+          console.error("Attribute JSON parse failed", e);
+          parsedAttributes = {};
+        }
+
+        setProductAttributes(parsedAttributes);
+      }
 
       setProduct(mapped);
     } catch (err: any) {
@@ -330,6 +357,33 @@ export default function ReviewProductPage() {
             />
           </div>
         </section>
+
+        {/* ================= PRODUCT ATTRIBUTES ================= */}
+        {productAttributes && Object.keys(productAttributes).length > 0 && (
+          <section className="mt-6">
+            <SectionHeader
+              icon={FaBox}
+              title="Product Attributes"
+              description="Applies to all variants"
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(productAttributes).map(([key, values]) => (
+                <div key={key} className="bg-gray-50 border rounded-xl p-4">
+                  <p className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                    {key.replace(/_/g, " ")}
+                  </p>
+
+                  <p className="text-sm font-medium text-gray-900">
+                    {Array.isArray(values) && values.length > 0
+                      ? values.join(", ")
+                      : "—"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ===================== PRODUCT VARIANTS ===================== */}
         {product.variants?.length > 0 && (
