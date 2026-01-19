@@ -223,8 +223,8 @@ export default function EditProductPage() {
       const existingCount = prev.existingImages?.length || 0;
       const newCount = prev.productImages.length;
 
-      if (existingCount + newCount + newFiles.length > 5) {
-        setImageError("Maximum 5 images allowed (existing + new).");
+      if (existingCount + newCount + newFiles.length > 1) {
+        setImageError("Only one cover image is allowed.");
         return prev;
       }
 
@@ -689,6 +689,8 @@ export default function EditProductPage() {
     );
   }
 
+  const coverImage = product.existingImages?.[0];
+
   return (
     <div className="p-6 premium-form" style={{ backgroundColor: "#FFFAFB" }}>
       <div className="p-6 mx-auto bg-white border border-gray-100 shadow-xl rounded-2xl max-w-7xl">
@@ -1050,37 +1052,37 @@ export default function EditProductPage() {
           <section>
             <SectionHeader
               icon={FaImages}
-              title="Product Images"
-              description="Main images for product listing"
+              title="Cover Image"
+              description="Single cover image for product listing"
             />
 
-            {product.existingImages && product.existingImages.length > 0 && (
-              <div className="mb-3 flex gap-2 flex-wrap">
-                {product.existingImages?.map((img) => (
-                  <div key={img} className="relative w-20 h-20 group">
-                    <img
-                      src={`${API_BASEIMAGE_URL}/uploads/${img}`}
-                      className="w-full h-full object-cover border rounded"
-                    />
+            {coverImage && (
+              <div className="mb-3">
+                <div className="relative w-32 h-32 group">
+                  <img
+                    src={`${API_BASEIMAGE_URL}/uploads/${coverImage}`}
+                    className="w-full h-full object-cover border rounded"
+                    alt="Cover Image"
+                  />
 
-                    <button
-                      type="button"
-                      onClick={() => removeExistingMainImage(img)}
-                      className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
-                 opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                    >
-                      <FaTrash size={10} />
-                    </button>
-                  </div>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => removeExistingMainImage(coverImage)}
+                    className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
+        opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                  >
+                    <FaTrash size={12} />
+                  </button>
+                </div>
               </div>
             )}
 
             <div className="flex items-center p-3 bg-white border border-gray-400 border-dashed rounded-lg">
               <span className="flex-1 text-sm text-gray-600">
-                {product.productImages.length === 0
-                  ? "No images chosen"
-                  : `${product.productImages.length} image(s) selected`}
+                {product.productImages.length === 0 &&
+                product.existingImages?.length === 0
+                  ? "No cover image chosen"
+                  : "1 cover image selected"}
               </span>
               <label className="cursor-pointer bg-[#852BAF] text-white px-3 py-1 text-xs rounded-full hover:bg-[#7a1c94]">
                 Choose Files
@@ -1089,13 +1091,18 @@ export default function EditProductPage() {
                   multiple
                   className="hidden"
                   accept="image/*"
+                  disabled={
+                    (product.existingImages?.length || 0) +
+                      product.productImages.length >=
+                    1
+                  }
                   onChange={handleMainImages}
                 />
               </label>
             </div>
 
             <p className="mt-2 text-xs text-gray-500">
-              Upload additional product images (optional, max 5)
+              Upload one cover image (required)
             </p>
 
             {imageError && (
@@ -1105,28 +1112,26 @@ export default function EditProductPage() {
             {/* Image Previews */}
             {product.productImages.length > 0 && (
               <div className="mt-3 flex gap-2 flex-wrap">
-                {product.productImages.map((img, index) => (
-                  <div
-                    key={img.url}
-                    className="relative w-20 h-20 border rounded overflow-hidden group"
-                  >
-                    <img
-                      src={img.url}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+                {product.productImages.length > 0 && (
+                  <div className="mt-3">
+                    <div className="relative w-32 h-32 group">
+                      <img
+                        src={product.productImages[0].url}
+                        alt="Cover Preview"
+                        className="w-full h-full object-cover border rounded"
+                      />
 
-                    {/* Remove NEW main image */}
-                    <button
-                      type="button"
-                      onClick={() => removeNewMainImage(index)}
-                      className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
-                     opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                    >
-                      <FaTrash size={10} />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => removeNewMainImage(0)}
+                        className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
+        opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                      >
+                        <FaTrash size={12} />
+                      </button>
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
             )}
           </section>
