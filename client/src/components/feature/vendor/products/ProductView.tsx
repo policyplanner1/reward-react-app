@@ -443,9 +443,13 @@ export default function ReviewProductPage() {
                         </div>
                       </td>
 
-                      <td className="px-4 py-3">{variant.mrp ? `₹${variant.mrp}` : "—"}</td>
+                      <td className="px-4 py-3">
+                        {variant.mrp ? `₹${variant.mrp}` : "—"}
+                      </td>
 
-                      <td className="px-4 py-3">{variant.sale_price? `₹${variant.sale_price}` : "—"}</td>
+                      <td className="px-4 py-3">
+                        {variant.sale_price ? `₹${variant.sale_price}` : "—"}
+                      </td>
 
                       <td className="px-4 py-3">
                         <span
@@ -575,30 +579,27 @@ export default function ReviewProductPage() {
           </p>
         </section>
 
-        {/* Product Images */}
+        {/* Cover Image */}
         <section className="mt-6">
           <SectionHeader
             icon={FaImages}
-            title="Product Images"
-            description="Main images for product listing"
+            title="Cover Image"
+            description="Single cover image for product listing"
           />
 
           <div className="flex gap-2 flex-wrap">
             {product.productImages && product.productImages.length > 0 ? (
-              product.productImages.map((img, i) => (
-                <div
-                  key={i}
-                  className="w-20 h-20 border rounded overflow-hidden"
-                >
-                  <img
-                    src={resolveImageUrl(img)}
-                    alt={`Main ${i + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))
+              <div className="w-32 h-32 border rounded overflow-hidden">
+                <img
+                  src={resolveImageUrl(product.productImages[0])}
+                  alt="Cover Image"
+                  className="w-full h-full object-cover"
+                />
+              </div>
             ) : (
-              <div className="text-sm text-gray-500">No images available</div>
+              <div className="text-sm text-gray-500">
+                No cover image available
+              </div>
             )}
           </div>
         </section>
