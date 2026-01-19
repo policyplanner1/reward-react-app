@@ -627,7 +627,7 @@ class ProductController {
     try {
       const { productId } = req.params;
       const { is_visible } = req.body;
-      const vendorId = req.user?.user_id;
+      const vendorId = req.user?.vendor_id;
 
       if (typeof is_visible !== "boolean") {
         return res.status(400).json({
@@ -668,7 +668,7 @@ class ProductController {
     try {
       const { productId } = req.params;
       const { is_searchable } = req.body;
-      const vendorId = req.user?.user_id;
+      const vendorId = req.user?.vendor_id;
 
       if (typeof is_searchable !== "boolean") {
         return res.status(400).json({
