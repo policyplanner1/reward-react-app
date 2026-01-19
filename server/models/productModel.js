@@ -327,7 +327,16 @@ class ProductModel {
       );
       product.documents = documents;
 
-      // 4 Get variant Details
+      // 4 Get Product Attributes
+      const [attributes] = await db.execute(
+        `SELECT attributes
+          FROM product_attributes
+          WHERE product_id = ?`,
+        [productId],
+      );
+      product.attributes = attributes[0];
+
+      // 5 Get variant Details
       const [variants] = await db.execute(
         `
       SELECT
