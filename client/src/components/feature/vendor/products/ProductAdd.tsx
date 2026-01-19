@@ -212,8 +212,8 @@ export default function ProductListingDynamic() {
     setProduct((prev) => {
       const existingImages = prev.productImages;
 
-      if (existingImages.length + newFiles.length > 5) {
-        setImageError("You can select a maximum of 5 images.");
+      if (existingImages.length + newFiles.length > 1) {
+        setImageError("Only one cover image is allowed.");
         return prev;
       }
 
@@ -224,7 +224,7 @@ export default function ProductListingDynamic() {
 
       return {
         ...prev,
-        productImages: [...existingImages, ...newPreviews], //  append
+        productImages: [...existingImages, ...newPreviews],
       };
     });
 
@@ -429,7 +429,7 @@ export default function ProductListingDynamic() {
 
       // Validate at least one main image
       if (product.productImages.length === 0) {
-        throw new Error("Please upload at least one product image");
+        throw new Error("Cover image is required");
       }
 
       const formData = new FormData();
@@ -1163,15 +1163,15 @@ export default function ProductListingDynamic() {
           <section>
             <SectionHeader
               icon={FaImages}
-              title="Product Images"
-              description="Main images for product listing"
+              title="Cover Image"
+              description="Single cover image for product listing"
             />
 
             <div className="flex items-center p-3 bg-white border border-gray-400 border-dashed rounded-lg">
               <span className="flex-1 text-sm text-gray-600">
                 {product.productImages.length === 0
-                  ? "No images chosen"
-                  : `${product.productImages.length} image(s) selected`}
+                  ? "No cover image chosen"
+                  : "1 cover image selected"}
               </span>
               <label
                 className={`cursor-pointer px-3 py-1 text-xs rounded-full
@@ -1187,7 +1187,7 @@ export default function ProductListingDynamic() {
                   type="file"
                   multiple
                   hidden
-                  disabled={product.productImages.length >= 5}
+                  disabled={product.productImages.length >= 1}
                   accept="image/*"
                   onChange={handleMainImages}
                 />
@@ -1195,7 +1195,7 @@ export default function ProductListingDynamic() {
             </div>
 
             <p className="mt-2 text-xs text-gray-500">
-              Upload high-quality product images (min 1, max 5)
+              Upload one high-quality cover image (required)
             </p>
 
             {imageError && (
