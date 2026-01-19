@@ -255,7 +255,10 @@ function FileUploadInput(props: {
               file ? "text-emerald-500" : "text-gray-400"
             }`}
           />
-          <span className="text-[11px] font-bold text-gray-500 text-center truncate w-full px-2">
+          <span
+            className="text-[11px] font-bold text-gray-500 text-center 
+                 truncate w-full px-2 block max-w-full"
+          >
             {file ? file.name : "Click to upload document"}
           </span>
         </div>
@@ -292,16 +295,20 @@ function DocumentUploadRow({
       </label>
 
       {/* Bordered container for preview + upload */}
-      <div className="flex items-center gap-4 border border-gray-200 rounded-xl p-4 bg-white">
+      <div className="flex items-start gap-4 border border-gray-200 rounded-xl p-4 bg-white min-w-0">
         {/* Existing preview */}
-        <div className="flex-shrink-0 w-28 h-28 bg-gray-50 rounded-lg flex items-center justify-center">
+        <div
+          className="flex-shrink-0 w-28 h-28 bg-gray-50 rounded-lg 
+                flex items-center justify-center 
+                overflow-hidden"
+        >
           {existingDoc ? (
             isImage ? (
               <a href={fileUrl!} target="_blank" rel="noreferrer">
                 <img
                   src={fileUrl!}
                   alt={label}
-                  className="w-full h-full object-cover rounded-lg"
+                  className="w-full h-full object-contain rounded-lg"
                 />
               </a>
             ) : (
@@ -322,7 +329,7 @@ function DocumentUploadRow({
         </div>
 
         {/* Upload button */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <FileUploadInput
             id={docKey}
             label={`Upload new ${label}`}
