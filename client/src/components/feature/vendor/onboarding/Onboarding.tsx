@@ -374,8 +374,11 @@ const mapBackendToForm = (data: any): VendorOnboardingData => {
     rightsAdvisoryFile: null,
     nocFile: null,
 
-    agreementAccepted: false,
-
+    agreementAccepted: Boolean(
+      data.documents?.some(
+        (doc: any) => doc.document_key === "vendorAgreementFile",
+      ),
+    ),
     companyEmail: contacts?.email || "",
     companyPhone: "",
 
@@ -548,9 +551,6 @@ export default function Onboarding() {
       case "ifscCode":
         return value.trim() ? "" : "IFSC code is required";
 
-      case "agreementAccepted":
-        return value ? "" : "You must accept the agreement";
-
       case "companyEmail":
         if (formData.vendorType === "Manufacturer") {
           if (!value.trim()) return "Company Email is required";
@@ -603,6 +603,20 @@ export default function Onboarding() {
       if (error) newErrors[key] = error;
     });
 
+    if (
+      formData.agreementAccepted &&
+      !formData.vendorAgreementFile &&
+      !existingDocs.vendorAgreementFile
+    ) {
+      newErrors.vendorAgreementFile = "Please upload the signed agreement";
+    }
+
+    if (!formData.agreementAccepted && formData.vendorAgreementFile) {
+      newErrors.agreementAccepted =
+        "Please accept the agreement to upload the signed document";
+    }
+
+    setErrors(newErrors);
     return newErrors;
   };
 
@@ -675,6 +689,16 @@ export default function Onboarding() {
 
     /* FILE */
     if (type === "file") {
+      if (name === "vendorAgreementFile" && !formData.agreementAccepted) {
+        Swal.fire({
+          icon: "warning",
+          title: "Agreement not accepted",
+          text: "Please accept the Vendor Agreement before uploading the signed document.",
+          confirmButtonText: "OK",
+        });
+        return;
+      }
+
       setFormData((p) => ({ ...p, [name]: files?.[0] || null }));
       return;
     }
@@ -1163,31 +1187,42 @@ export default function Onboarding() {
                 />
                 {/* Vendor agreement - checkbox + optional upload */}
                 <div className="col-span-1 md:col-span-2 lg:col-span-3">
-                  <div className="flex items-center mb-3 space-x-3">
+                  <div className="flex items-start gap-2">
                     <input
                       type="checkbox"
-                      id="agreementAccepted"
-                      name="agreementAccepted"
                       checked={formData.agreementAccepted}
-                      onChange={handleChange}
-                      className="w-4 h-4 border-gray-300 rounded text-brand-purple"
-                      style={{ accentColor: "#852BAF" }}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          agreementAccepted: e.target.checked,
+                        }))
+                      }
                     />
-                    <label
-                      htmlFor="agreementAccepted"
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      I accept the Vendor Agreement terms.
+                    <label className="text-sm">
+                      I have read and agree to the Vendor Agreement
                     </label>
                   </div>
 
+                  {errors.agreementAccepted && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.agreementAccepted}
+                    </p>
+                  )}
+
                   <DocumentUploadRow
-                    label="Upload Signed Agreement (optional)"
+                    label="Signed Agreement"
                     docKey="vendorAgreementFile"
                     existingDoc={existingDocs["vendorAgreementFile"]}
                     file={formData.vendorAgreementFile}
                     onChange={handleChange}
+                    required={false}
                   />
+
+                  {errors.vendorAgreementFile && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.vendorAgreementFile}
+                    </p>
+                  )}
                 </div>
                 {/* Conditional: Manufacturer fields */}
                 {formData.vendorType === "Manufacturer" && (
@@ -1479,8 +1514,8 @@ export default function Onboarding() {
             <section className="space-y-4 bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-2xl transition-shadow duration-300">
               <SectionHeader
                 icon={FaAddressBook}
-                title="Registered Address"
-                description="Official business location"
+                title="Contact Details"
+                description="Primary contact information"
               />
               <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                 <FormInput
