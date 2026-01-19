@@ -503,13 +503,7 @@ export default function EditProductPage() {
         throw new Error("Please select or enter a category");
       }
 
-      if (
-        !product.productName ||
-        !product.brandName ||
-        !product.manufacturer ||
-        !product.gstSlab ||
-        !product.hsnSacCode
-      ) {
+      if (!product.productName || !product.brandName || !product.manufacturer) {
         throw new Error("Please fill in all required product information");
       }
 
@@ -545,10 +539,16 @@ export default function EditProductPage() {
       formData.append("brandName", product.brandName);
       formData.append("manufacturer", product.manufacturer);
       formData.append("productName", product.productName);
-      formData.append("gstSlab", product.gstSlab);
-      formData.append("hsnSacCode", product.hsnSacCode);
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
+
+      if (product.gstSlab) {
+        formData.append("gstSlab", product.gstSlab);
+      }
+
+      if (product.hsnSacCode) {
+        formData.append("hsnSacCode", product.hsnSacCode);
+      }
 
       formData.append(
         "is_discount_eligible",
@@ -858,7 +858,6 @@ export default function EditProductPage() {
               <FormInput
                 id="gstSlab"
                 label="GST Slab (%)"
-                required
                 value={product.gstSlab}
                 onChange={handleFieldChange}
                 placeholder="e.g. 5, 12, 18, 28"
@@ -867,7 +866,6 @@ export default function EditProductPage() {
               <FormInput
                 id="hsnSacCode"
                 label="HSN / SAC Code"
-                required
                 value={product.hsnSacCode}
                 onChange={handleFieldChange}
                 placeholder="Enter HSN or SAC code"

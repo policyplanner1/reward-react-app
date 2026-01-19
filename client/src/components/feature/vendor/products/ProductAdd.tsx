@@ -458,17 +458,23 @@ export default function ProductListingDynamic() {
       if (isCustomSubSubcategory)
         formData.append("custom_sub_subcategory", custom_subsubcategory);
 
-      if (!product.gstSlab || !product.hsnSacCode) {
-        throw new Error("GST Slab and HSN/SAC Code are required");
-      }
+      // if (!product.gstSlab || !product.hsnSacCode) {
+      //   throw new Error("GST Slab and HSN/SAC Code are required");
+      // }
 
       formData.append("brandName", product.brandName);
       formData.append("manufacturer", product.manufacturer);
       formData.append("productName", product.productName);
-      formData.append("gstSlab", product.gstSlab);
-      formData.append("hsnSacCode", product.hsnSacCode);
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
+
+      if (product.gstSlab) {
+        formData.append("gstSlab", product.gstSlab);
+      }
+
+      if (product.hsnSacCode) {
+        formData.append("hsnSacCode", product.hsnSacCode);
+      }
 
       formData.append(
         "is_discount_eligible",
@@ -867,7 +873,6 @@ export default function ProductListingDynamic() {
               <FormInput
                 id="gstSlab"
                 label="GST Slab (%)"
-                required
                 type="number"
                 value={product.gstSlab}
                 onChange={handleFieldChange}
@@ -877,7 +882,6 @@ export default function ProductListingDynamic() {
               <FormInput
                 id="hsnSacCode"
                 label="HSN / SAC Code"
-                required
                 value={product.hsnSacCode}
                 onChange={handleFieldChange}
                 placeholder="Enter HSN or SAC code"
@@ -902,7 +906,7 @@ export default function ProductListingDynamic() {
                   const inputType =
                     attr.input_type && attr.input_type.trim()
                       ? attr.input_type.toLowerCase().trim()
-                      : "textarea"; 
+                      : "textarea";
 
                   return (
                     <div key={attr.attribute_key}>
