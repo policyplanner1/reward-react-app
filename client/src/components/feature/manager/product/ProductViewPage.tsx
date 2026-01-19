@@ -224,6 +224,8 @@ export default function ReviewProductPage() {
     );
   }
 
+  const coverImage = product.productImages?.[0];
+
   return (
     <div className="p-6" style={{ backgroundColor: "#FFFAFB" }}>
       <div className="p-6 mx-auto bg-white border border-gray-100 shadow-xl rounded-2xl max-w-7xl">
@@ -507,42 +509,37 @@ export default function ReviewProductPage() {
           </p>
         </section>
 
-        {/* Section: Main Images */}
+        {/* Section: Cover Image */}
         <section className="mt-6">
           <SectionHeader
             icon={FaImages}
-            title="Product Images"
-            description="Main images for product listing"
+            title="Cover Image"
+            description="Single cover image for product listing"
           />
-          <div className="flex gap-2 flex-wrap">
-            {product.productImages && product.productImages.length > 0 ? (
-              product.productImages.map((img, i) => {
-                const resolvedUrl = resolveImageUrl(img);
-                return (
-                  <div
-                    key={i}
-                    className="relative w-20 h-20 border rounded overflow-hidden group"
-                  >
-                    <img
-                      src={resolvedUrl}
-                      alt={`Main ${i + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      onClick={() =>
-                        downloadFile(resolvedUrl, `product-main-${i + 1}.jpg`)
-                      }
-                      className="absolute bottom-1 right-1 p-1 text-xs text-white bg-black/60 rounded opacity-0 group-hover:opacity-100"
-                    >
-                      <FaDownload className="text-sm" />
-                    </button>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="text-sm text-gray-500">No images available</div>
-            )}
-          </div>
+
+          {coverImage ? (
+            <div className="relative w-32 h-32 border rounded overflow-hidden group">
+              <img
+                src={resolveImageUrl(coverImage)}
+                alt="Cover Image"
+                className="w-full h-full object-cover"
+              />
+
+              <button
+                onClick={() =>
+                  downloadFile(resolveImageUrl(coverImage), "cover-image.jpg")
+                }
+                className="absolute bottom-1 right-1 p-1 text-xs text-white bg-black/60 rounded
+                   opacity-0 group-hover:opacity-100 transition"
+              >
+                <FaDownload className="text-sm" />
+              </button>
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500">
+              No cover image available
+            </div>
+          )}
         </section>
 
         {/* Section: Documents */}
