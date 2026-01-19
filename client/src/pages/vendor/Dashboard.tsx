@@ -24,19 +24,19 @@ export default function VendorDashboard() {
   const dashboardStats = [
     {
       title: "Total Revenue",
-      value: "₹4,25,000",
+      value: "₹0",
       icon: FaWallet,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
-      trend: "+12.5%",
+      trend: "—",
     },
     {
       title: "Total Orders",
-      value: "1,240",
+      value: "0",
       icon: FaShoppingCart,
       color: "text-blue-600",
       bg: "bg-blue-50",
-      trend: "+8.2%",
+      trend: "—",
     },
     {
       title: "Active Products",
@@ -44,15 +44,15 @@ export default function VendorDashboard() {
       icon: FaBox,
       color: "text-purple-600",
       bg: "bg-purple-50",
-      trend: "+2",
+      trend: "—",
     },
     {
       title: "Customer Rating",
-      value: "4.8/5",
+      value: "0",
       icon: FiUsers,
       color: "text-amber-600",
       bg: "bg-amber-50",
-      trend: "Top 5%",
+      trend: "—",
     },
   ];
 
@@ -243,34 +243,14 @@ export default function VendorDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {[1, 2, 3].map((order) => (
-                  <tr
-                    key={order}
-                    className="hover:bg-gray-50/50 transition-colors"
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="px-6 py-10 text-center text-sm text-gray-400 font-medium"
                   >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
-                          <FiPackage size={20} />
-                        </div>
-                        <span className="font-semibold text-gray-700 text-sm">
-                          Designer Silk Saree
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      Rahul Sharma
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 text-xs font-bold rounded-full bg-orange-50 text-orange-600">
-                        Processing
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-gray-800 text-sm">
-                      ₹12,499
-                    </td>
-                  </tr>
-                ))}
+                    No recent orders available
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -286,8 +266,8 @@ export default function VendorDashboard() {
               <FaEllipsisH className="opacity-60 cursor-pointer" />
             </div>
             <div className="mt-8">
-              <h2 className="text-5xl font-extrabold tracking-tighter">4.9</h2>
-              <p className="mt-2 opacity-80 text-sm">Excellent Performance</p>
+              <h2 className="text-5xl font-extrabold tracking-tighter">0</h2>
+              <p className="mt-2 opacity-80 text-sm">No ratings yet</p>
             </div>
           </div>
 
@@ -296,10 +276,10 @@ export default function VendorDashboard() {
               <span className="text-xs font-bold uppercase tracking-widest">
                 Profile Strength
               </span>
-              <span className="text-xs font-bold">92%</span>
+              <span className="text-xs font-bold">0%</span>
             </div>
             <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
-              <div className="bg-white h-full w-[92%] rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
+              <div className="bg-white h-full w-[0%] rounded-full"></div>
             </div>
           </div>
         </div>
