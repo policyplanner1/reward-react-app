@@ -6,7 +6,7 @@ import {
   FaPlus,
   FaEllipsisH,
 } from "react-icons/fa";
-import { FiPackage, FiUsers } from "react-icons/fi";
+import { FiUsers } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api/api";
 import { useAuth } from "../../auth/useAuth";
