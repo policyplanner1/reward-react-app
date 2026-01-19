@@ -356,7 +356,7 @@ export default function VendorApprovalForm() {
       }
 
       alert(`Vendor status updated to ${status}`);
-      navigate("/manager/dashboard/vendorlist");
+      navigate("/manager/vendors");
     } catch (err: any) {
       alert(
         err?.response?.data?.message ||
