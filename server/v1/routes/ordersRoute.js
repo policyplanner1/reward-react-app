@@ -16,4 +16,11 @@ router.get("/cancellation-reasons", OrderController.getCancellationReasons);
 // router.post("/cancel/:orderId",auth, OrderController.requestOrderCancellation);
 router.post("/cancel/:orderId", OrderController.requestOrderCancellation);
 
+// Get cancellation Details
+// router.get("/cancellation-details/:orderId",auth, OrderController.cancellation-details);
+router.get(
+  "/cancellation-details/:orderId",
+  OrderController.cancellationDetails,
+);
+
 module.exports = router;

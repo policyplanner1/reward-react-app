@@ -55,7 +55,7 @@ class orderModel {
       ORDER BY o.created_at DESC
       LIMIT ? OFFSET ?
       `,
-      [...params, limit, offset]
+      [...params, limit, offset],
     );
 
     const [[{ total }]] = await db.execute(
@@ -64,7 +64,7 @@ class orderModel {
       FROM eorders o
       ${whereClause}
       `,
-      params
+      params,
     );
 
     return {
@@ -86,7 +86,7 @@ class orderModel {
       FROM eorders
       WHERE order_id = ? AND user_id = ?
       `,
-      [orderId, userId]
+      [orderId, userId],
     );
 
     if (!order) {
@@ -115,7 +115,7 @@ class orderModel {
       WHERE oi.order_id = ?
       GROUP BY oi.order_item_id
       `,
-      [orderId]
+      [orderId],
     );
 
     const processedItems = items.map((i) => ({
@@ -132,6 +132,109 @@ class orderModel {
     return {
       order,
       items: processedItems,
+    };
+  }
+
+  // Get cancellation Details
+  async getCancellationDetails({ userId, orderId }) {
+    // 1 Order validation + address + user
+    const [[order]] = await db.execute(
+      `
+    SELECT 
+      o.order_id,
+      o.address_id,
+      o.status, 
+      o.total_amount,
+
+      ca.address_type,
+      ca.address1,
+      ca.address2,
+      ca.city,
+      ca.zipcode,
+      ca.landmark,
+
+      cu.name AS customer_name,
+
+      s.state_name,
+      c.country_name
+
+    FROM eorders o
+    JOIN customer_addresses ca 
+      ON o.address_id = ca.address_id
+    JOIN customer cu
+      ON o.user_id = cu.user_id
+    LEFT JOIN states s
+      ON ca.state_id = s.state_id
+    LEFT JOIN countries c
+      ON ca.country_id = c.country_id
+
+    WHERE o.order_id = ?
+      AND o.user_id = ?
+    `,
+      [orderId, userId],
+    );
+
+    if (!order) {
+      throw new Error("ORDER_NOT_FOUND");
+    }
+
+    // 2 Timeline
+    const [timeline] = await db.execute(
+      `
+    SELECT event, event_time
+    FROM order_cancellation_timeline
+    WHERE order_id = ?
+    ORDER BY event_time ASC
+    `,
+      [orderId],
+    );
+
+    // 3 Refunds
+    const [refunds] = await db.execute(
+      `
+    SELECT refund_amount, refund_method, status
+    FROM order_refunds
+    WHERE order_id = ?
+    `,
+      [orderId],
+    );
+
+    const totalRefund = refunds.reduce(
+      (sum, r) => sum + Number(r.refund_amount),
+      0,
+    );
+
+    return {
+      orderId: order.order_id,
+      status: order.status,
+
+      customer: {
+        name: order.customer_name,
+      },
+
+      address: {
+        type: order.address_type,
+        line1: order.address1,
+        line2: order.address2,
+        city: order.city,
+        state: order.state_name,
+        country: order.country_name,
+        zipcode: order.zipcode,
+        landmark: order.landmark,
+      },
+
+      timeline: timeline.map((t) => ({
+        label: t.event.replace(/_/g, " "),
+        date: t.event_time,
+      })),
+
+      refunds: refunds.map((r) => ({
+        amount: r.refund_amount,
+        method: r.refund_method,
+        status: r.status,
+      })),
+
+      totalRefund,
     };
   }
 }

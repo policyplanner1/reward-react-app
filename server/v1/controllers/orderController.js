@@ -155,6 +155,15 @@ class OrderController {
         [orderId, userId, reason_id, comment || null],
       );
 
+      //2.5 create Cancellation Timeline
+       await db.execute(
+        `
+       INSERT INTO order_cancellation_timeline (order_id, event)
+        VALUES (?, 'cancellation_requested')
+        `,
+        [orderId],
+      );
+
       // 3 Update order status
       await db.execute(
         `
@@ -174,6 +183,31 @@ class OrderController {
       return res.status(500).json({
         success: false,
         message: "Unable to submit cancellation request",
+      });
+    }
+  }
+
+  // Cancellation Details
+  async cancellationDetails(req, res) {
+    try {
+      // const userId = req.user.user_id;
+      const userId=1;
+      const orderId = Number(req.params.orderId);
+
+      const data = await OrderModel.getCancellationDetails({
+        userId,
+        orderId,
+      });
+
+      return res.json({
+        success: true,
+        data,
+      });
+    } catch (error) {
+      console.error("Cancellation details error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch cancellation details",
       });
     }
   }
