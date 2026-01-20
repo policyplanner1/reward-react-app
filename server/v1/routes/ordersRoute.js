@@ -9,5 +9,11 @@ router.get("/orders-history", auth, OrderController.getOrderHistory);
 // get order Details
 router.get("/order-details/:orderId", auth, OrderController.getOrderDetails);
 
+// Get cancellation Reason
+router.get("/cancellation-reasons", OrderController.getCancellationReasons);
+
+// Submit cancel Request
+// router.post("/cancel/:orderId",auth, OrderController.requestOrderCancellation);
+router.post("/cancel/:orderId", OrderController.requestOrderCancellation);
 
 module.exports = router;
