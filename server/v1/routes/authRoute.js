@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
 const auth = require("../middlewares/auth");
-const uploadReviewMedia = require("../../middleware/productUpload");
+const {uploadReviewMedia} = require("../../middleware/productUpload");
 
 /*============================================Profile=================================================*/
 // User registration
@@ -49,7 +49,7 @@ router.get("/address/:address_id", authController.getAddressById);
 router.post(
   "/reviews",
   /* auth, */ 
-  uploadReviewMedia,
+  // uploadReviewMedia,
   authController.submitReview
 );
 
