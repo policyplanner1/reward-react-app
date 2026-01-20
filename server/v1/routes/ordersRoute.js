@@ -4,10 +4,12 @@ const OrderController = require("../controllers/orderController");
 const auth = require("../middlewares/auth");
 
 // Get all orders
-router.get("/orders-history", auth, OrderController.getOrderHistory);
+// router.get("/orders-history", auth, OrderController.getOrderHistory);
+router.get("/orders-history", OrderController.getOrderHistory);
 
 // get order Details
-router.get("/order-details/:orderId", auth, OrderController.getOrderDetails);
+// router.get("/order-details/:orderId", auth, OrderController.getOrderDetails);
+router.get("/order-details/:orderId", OrderController.getOrderDetails);
 
 // Get cancellation Reason
 router.get("/cancellation-reasons", OrderController.getCancellationReasons);
