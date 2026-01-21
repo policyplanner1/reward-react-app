@@ -55,7 +55,7 @@ app.use('/',dashboardRoute)
 
 // App Routes
 app.use("/v1",ecommerceRoute);
-app.use("/v1/services",serviceRoute)
+app.use("/v1/service",serviceRoute)
 
 // 404 Handler
 app.use((req, res) => {
