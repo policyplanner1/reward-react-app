@@ -1,8 +1,5 @@
 const db = require("../config/database");
 const CategoryAttributeModel = require("../models/categoryAttributeModel");
-const CategoryAttributeValueModel = require(
-  "../models/CategoryAttributeValueModel"
-);
 
 const ALLOWED_TYPES = ["text", "number", "select", "multiselect", "textarea"];
 
