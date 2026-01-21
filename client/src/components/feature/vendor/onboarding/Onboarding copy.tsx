@@ -47,9 +47,6 @@ interface VendorOnboardingData {
 
   agreementAccepted: boolean;
 
-  companyEmail: string;
-  companyPhone: string;
-
   addressLine1: string;
   addressLine2: string;
   addressLine3: string;
@@ -105,9 +102,6 @@ const initialFormData: VendorOnboardingData = {
   nocFile: null,
 
   agreementAccepted: false,
-
-  companyEmail: "",
-  companyPhone: "",
 
   addressLine1: "",
   addressLine2: "",
@@ -383,8 +377,6 @@ const mapBackendToForm = (data: any): VendorOnboardingData => {
         (doc: any) => doc.document_key === "vendorAgreementFile",
       ),
     ),
-    companyEmail: contacts?.email || "",
-    companyPhone: "",
 
     addressLine1: getAddress("business", "line1"),
     addressLine2: getAddress("business", "line2"),
@@ -554,20 +546,6 @@ export default function Onboarding() {
 
       case "ifscCode":
         return value.trim() ? "" : "IFSC code is required";
-
-      case "companyEmail":
-        if (formData.vendorType === "Manufacturer") {
-          if (!value.trim()) return "Company Email is required";
-          if (!validators.email(value)) return "Enter a valid email";
-        }
-        return "";
-
-      case "companyPhone":
-        if (formData.vendorType === "Manufacturer") {
-          if (!value.trim()) return "Company Phone is required";
-          if (!validators.phone(value)) return "Phone must be 10 digits";
-        }
-        return "";
 
       case "gstinFile":
       case "panFile":
@@ -756,7 +734,6 @@ export default function Onboarding() {
       "accountNumber",
       "primaryContactNumber",
       "alternateContactNumber",
-      "companyPhone",
     ];
 
     if (numberOnlyFields.includes(name)) {
@@ -767,7 +744,6 @@ export default function Onboarding() {
         [
           "primaryContactNumber",
           "alternateContactNumber",
-          "companyPhone",
         ].includes(name) &&
         value.length > 10
       )
@@ -810,7 +786,6 @@ export default function Onboarding() {
       [
         "primaryContactNumber",
         "alternateContactNumber",
-        "companyPhone",
       ].includes(name) &&
       value.length === 10 &&
       !/^[0-9]{10}$/.test(value)
@@ -1047,7 +1022,7 @@ export default function Onboarding() {
               <SectionHeader
                 icon={FaBuilding}
                 title="Business Information & Documents"
-                description="Upload only the common mandatory documents."
+                description="Upload supporting business documents if available."
               />
               <div className="grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
                 <FormInput
@@ -1228,44 +1203,6 @@ export default function Onboarding() {
                     </p>
                   )}
                 </div>
-                {/* Conditional: Manufacturer fields */}
-                {formData.vendorType === "Manufacturer" && (
-                  <>
-                    <div className="flex flex-col space-y-1">
-                      <label
-                        htmlFor="companyEmail"
-                        className="flex items-center text-sm font-medium text-gray-700"
-                      >
-                        <FaEnvelope
-                          className="mr-2 text-brand-purple"
-                          style={{ color: "#852BAF" }}
-                        />
-                        Company Email <span className="text-red-500">*</span>
-                      </label>
-
-                      <FormInput
-                        type="email"
-                        id="companyEmail"
-                        label="Company Email"
-                        value={formData.companyEmail}
-                        onChange={handleChange}
-                        placeholder="Enter official company email"
-                        required
-                        error={errors.companyEmail}
-                      />
-                    </div>
-
-                    <FormInput
-                      id="companyPhone"
-                      label="Company Phone"
-                      value={formData.companyPhone}
-                      onChange={handleChange}
-                      type="tel"
-                      required
-                      placeholder="Enter official company phone"
-                    />
-                  </>
-                )}
                 {/* Conditional: Authorization letter (Trader only) */}
                 {formData.vendorType === "Trader" && (
                   <DocumentUploadRow
