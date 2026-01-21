@@ -12,7 +12,6 @@ import {
   FaUniversity,
   FaFileContract,
   FaFileUpload,
-  FaEnvelope,
 } from "react-icons/fa";
 import { api } from "../../../../api/api";
 
