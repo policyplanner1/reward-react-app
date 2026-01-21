@@ -359,6 +359,7 @@ const authController = {
       }
 
       const user = rows[0];
+      const { password: _password, ...safeUser } = user;
 
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) {
@@ -435,7 +436,7 @@ const authController = {
         success: true,
         message: "Login successful",
         data: {
-          user,
+          user: safeUser,
           vendor: vendorData,
           token,
         },
