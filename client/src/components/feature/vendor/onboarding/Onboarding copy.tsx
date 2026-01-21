@@ -569,24 +569,24 @@ export default function Onboarding() {
         }
         return "";
 
-      // case "gstinFile":
-      // case "panFile":
-      // case "nocFile":
-      // case "rightsAdvisoryFile":
-      //   if (!value && !existingDocs[name]) {
-      //     return "This document is required";
-      //   }
-      //   return "";
+      case "gstinFile":
+      case "panFile":
+      case "nocFile":
+      case "rightsAdvisoryFile":
+        if (!value && !existingDocs[name]) {
+          return "This document is required";
+        }
+        return "";
 
-      // case "authorizationLetterFile":
-      //   if (
-      //     formData.vendorType === "Trader" &&
-      //     !value &&
-      //     !existingDocs.authorizationLetterFile
-      //   ) {
-      //     return "Authorization letter is required";
-      //   }
-      //   return "";
+      case "authorizationLetterFile":
+        if (
+          formData.vendorType === "Trader" &&
+          !value &&
+          !existingDocs.authorizationLetterFile
+        ) {
+          return "Authorization letter is required";
+        }
+        return "";
 
       default:
         return "";
@@ -622,6 +622,26 @@ export default function Onboarding() {
 
     setErrors(newErrors);
     return newErrors;
+  };
+
+  // Doc check
+  const isDocRequired = (
+    docKey: string,
+    vendorType: VendorOnboardingData["vendorType"],
+  ) => {
+    const alwaysRequired = [
+      "gstinFile",
+      "panFile",
+      "nocFile",
+      "rightsAdvisoryFile",
+    ];
+
+    if (alwaysRequired.includes(docKey)) return true;
+
+    if (vendorType === "Trader" && docKey === "authorizationLetterFile")
+      return true;
+
+    return false;
   };
 
   /* ================= FETCH STATUS ================= */
@@ -1097,7 +1117,7 @@ export default function Onboarding() {
                   existingDoc={existingDocs["gstinFile"]}
                   file={formData.gstinFile}
                   onChange={handleChange}
-                  required={false}
+                  required={isDocRequired("gstinFile", formData.vendorType)}
                 />
                 {/* Pan */}
                 <DocumentUploadRow
@@ -1106,7 +1126,7 @@ export default function Onboarding() {
                   existingDoc={existingDocs["panFile"]}
                   file={formData.panFile}
                   onChange={handleChange}
-                  required={false}
+                  required={isDocRequired("panFile", formData.vendorType)}
                 />
                 {/* Noc */}
                 <DocumentUploadRow
@@ -1115,7 +1135,7 @@ export default function Onboarding() {
                   existingDoc={existingDocs["nocFile"]}
                   file={formData.nocFile}
                   onChange={handleChange}
-                  required={false}
+                  required={isDocRequired("nocFile", formData.vendorType)}
                 />
                 {/* Trademark File */}
                 <DocumentUploadRow
@@ -1124,7 +1144,10 @@ export default function Onboarding() {
                   existingDoc={existingDocs["rightsAdvisoryFile"]}
                   file={formData.rightsAdvisoryFile}
                   onChange={handleChange}
-                  required={false}
+                  required={isDocRequired(
+                    "rightsAdvisoryFile",
+                    formData.vendorType,
+                  )}
                 />
                 {/* Signatory ID */}
                 <DocumentUploadRow
@@ -1251,7 +1274,10 @@ export default function Onboarding() {
                     existingDoc={existingDocs["authorizationLetterFile"]}
                     file={formData.authorizationLetterFile}
                     onChange={handleChange}
-                    required={false}
+                    required={isDocRequired(
+                      "authorizationLetterFile",
+                      formData.vendorType,
+                    )}
                   />
                 )}
               </div>
