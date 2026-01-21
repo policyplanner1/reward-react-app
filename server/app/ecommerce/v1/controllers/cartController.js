@@ -1,5 +1,5 @@
 const CartModel = require("../models/cartModel");
-const db = require("../../config/database");
+const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 

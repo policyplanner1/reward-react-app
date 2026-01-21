@@ -1,6 +1,6 @@
 const AuthModel = require("../models/authModel");
 const AddressModel = require("../models/addressModel");
-const db = require("../../config/database");
+const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcryptjs");

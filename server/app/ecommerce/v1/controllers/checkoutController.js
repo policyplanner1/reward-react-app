@@ -1,5 +1,5 @@
 const CheckoutModel = require("../models/checkoutModel");
-const db = require("../../config/database");
+const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 
@@ -9,13 +9,11 @@ class CheckoutController {
     try {
       // const userId = req.user?.user_id;
       const userId = 1; // Temporary hardcoded user ID for testing
-      const { address_id } = req.body;
 
       const companyId = req.body?.company_id ?? null;
 
       const orderId = await CheckoutModel.checkoutCart(
         userId,
-        address_id,
         companyId
       );
 
@@ -58,7 +56,6 @@ class CheckoutController {
         variant_id,
         quantity = 1,
         company_id,
-        address_id,
       } = req.body;
 
       const orderId = await CheckoutModel.buyNow({
@@ -66,7 +63,6 @@ class CheckoutController {
         productId: product_id,
         variantId: variant_id,
         quantity,
-        address_id,
         companyId: company_id || null,
       });
 

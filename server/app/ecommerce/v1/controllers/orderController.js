@@ -1,5 +1,5 @@
 const OrderModel = require("../models/orderModel");
-const db = require("../../config/database");
+const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 
