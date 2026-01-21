@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const CheckoutController = require("../controllers/checkoutController");
-const auth = require("../middlewares/auth");
+const auth = require("../../../middlewares/auth");
 
 // get cart checkout Details
 // router.get("/get-cart", auth, CheckoutController.getCheckoutCart);

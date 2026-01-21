@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
-const auth = require("../middlewares/auth");
+const auth = require("../../../middlewares/auth");
 const {uploadReviewMedia} = require("../../../../middleware/reviewUpload");
 
 /*============================================Profile=================================================*/
