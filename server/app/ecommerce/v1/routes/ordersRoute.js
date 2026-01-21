@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const OrderController = require("../controllers/orderController");
-const auth = require("../../../middlewares/auth");
+const auth = require("../middlewares/auth");
 
 // Get all orders
 // router.get("/orders-history", auth, OrderController.getOrderHistory);
