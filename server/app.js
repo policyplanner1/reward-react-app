@@ -14,9 +14,7 @@ const ecommerceRoute=require('./app/ecommerce/v1/routes/indexRoute')
 
 const app = express();
 
-// -----------------------------
 // Middleware
-// -----------------------------
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -41,9 +39,7 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploads folder
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// -----------------------------
 // Base route
-// -----------------------------
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -59,20 +55,7 @@ app.use('/',dashboardRoute)
 // App Routes
 app.use("/v1",ecommerceRoute);
 
-// -----------------------------
-// Health check route
-// -----------------------------
-app.get("/api/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "Server is healthy",
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// -----------------------------
 // 404 Handler
-// -----------------------------
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -80,9 +63,7 @@ app.use((req, res) => {
   });
 });
 
-// -----------------------------
 // Global Error Handler
-// -----------------------------
 app.use((error, req, res, next) => {
   console.error("Unhandled Error:", error);
 
@@ -93,18 +74,12 @@ app.use((error, req, res, next) => {
   });
 });
 
-// -----------------------------
 // Start Server
-// -----------------------------
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log("\n=================================");
-  console.log("🚀 Reward Planners Backend Started!");
-  console.log("=================================");
-  console.log(`📡 Port: ${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log("Reward Planners Backend Started!");
   console.log(`🔗 Server URL: http://localhost:${PORT}`);
-  console.log(`❤️ Health check: http://localhost:${PORT}/api/health`);
   console.log("=================================\n");
 });
