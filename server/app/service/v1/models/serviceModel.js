@@ -3,7 +3,99 @@ const fs = require("fs");
 const path = require("path");
 
 class ServiceModel {
- 
+  async create(data) {
+    const sql = `
+      INSERT INTO services
+      (category_id, name, description, price, estimated_days, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    const params = [
+      data.category_id,
+      data.name,
+      data.description || null,
+      data.price,
+      data.estimated_days || null,
+      data.status ?? 1,
+    ];
+
+    const [result] = await db.execute(sql, params);
+    return result.insertId;
+  }
+
+  async findAll(filters = {}) {
+    let sql = `
+      SELECT 
+        s.*,
+        c.name AS category_name
+      FROM services s
+      JOIN service_categories c ON c.id = s.category_id
+      WHERE s.status = 1
+    `;
+
+    const params = [];
+
+    if (filters.category_id) {
+      sql += ` AND s.category_id = ?`;
+      params.push(filters.category_id);
+    }
+
+    sql += ` ORDER BY s.created_at DESC`;
+
+    const [rows] = await db.execute(sql, params);
+    return rows;
+  }
+
+  async findById(id) {
+    const [rows] = await db.execute(
+      `
+      SELECT 
+        s.*,
+        c.name AS category_name
+      FROM services s
+      JOIN service_categories c ON c.id = s.category_id
+      WHERE s.id = ?
+      `,
+      [id],
+    );
+    return rows[0];
+  }
+
+  async update(id, data) {
+    const sql = `
+      UPDATE services
+      SET
+        category_id = ?,
+        name = ?,
+        description = ?,
+        price = ?,
+        estimated_days = ?,
+        status = ?
+      WHERE id = ?
+    `;
+
+    const params = [
+      data.category_id,
+      data.name,
+      data.description || null,
+      data.price,
+      data.estimated_days || null,
+      data.status ?? 1,
+      id,
+    ];
+
+    const [result] = await db.execute(sql, params);
+    return result.affectedRows;
+  }
+
+  async delete(id) {
+    // Soft delete
+    const [result] = await db.execute(
+      `UPDATE services SET status = 0 WHERE id = ?`,
+      [id],
+    );
+    return result.affectedRows;
+  }
 }
 
 module.exports = new ServiceModel();
