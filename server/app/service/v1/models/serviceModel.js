@@ -107,6 +107,27 @@ class ServiceModel {
     );
     return result.affectedRows;
   }
+
+  // By category Id search
+  async findByCategoryId(categoryId) {
+    const [rows] = await db.execute(
+      `
+    SELECT 
+      id,
+      name,
+      description,
+      price,
+      estimated_days,
+      service_image
+    FROM services
+    WHERE category_id = ? AND status = 1
+    ORDER BY id DESC
+    `,
+      [categoryId],
+    );
+
+    return rows;
+  }
 }
 
 module.exports = new ServiceModel();

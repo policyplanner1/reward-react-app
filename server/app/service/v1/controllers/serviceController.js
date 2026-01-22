@@ -110,6 +110,32 @@ class ServiceController {
     }
   }
 
+  // Get service by category Id
+  async getServicesByCategory(req, res) {
+    try {
+      const { categoryId } = req.params;
+
+      if (!categoryId) {
+        return res.status(400).json({
+          success: false,
+          message: "Category id is required",
+        });
+      }
+
+      const services = await ServiceModel.findByCategoryId(categoryId);
+
+      res.json({
+        success: true,
+        data: services,
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
   // Update services
   async updateService(req, res) {
     try {
@@ -147,7 +173,7 @@ class ServiceController {
         imagePath = `uploads/services/${id}/${req.file.filename}`;
       }
 
-      // 🔥 Merge existing + new values
+      //  Merge existing + new values
       const updatedData = {
         category_id: req.body.category_id ?? existing.category_id,
         name: req.body.name ?? existing.name,

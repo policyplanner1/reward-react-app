@@ -9,6 +9,10 @@ router.get("/all-services", ServiceController.getServices);
 // Get By Id
 router.get("/find/:id", ServiceController.getServiceById);
 
+// Get by category Id
+router.get("/by-category/:categoryId", ServiceController.getServicesByCategory);
+
+
 // ======================Admin Routes===================================
 // Create a services
 router.post(
