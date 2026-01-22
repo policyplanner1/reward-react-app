@@ -3,6 +3,7 @@ const db = require("../config/database");
 const { generateToken } = require("../utils/jwt");
 const { generateOTP, hashOTP } = require("../utils/optGenerate");
 const { sendOtpEmail, sendPasswordResetEmail } = require("../config/mail");
+const { sendRegistrationSuccessMail } = require("../services/authNotification");
 const crypto = require("crypto");
 
 const authController = {
@@ -30,7 +31,7 @@ const authController = {
 
       const [existing] = await db.execute(
         "SELECT user_id FROM eusers WHERE email = ?",
-        [email.toLowerCase()]
+        [email.toLowerCase()],
       );
 
       if (existing.length > 0) {
@@ -45,7 +46,7 @@ const authController = {
       // Create User
       const [insertUser] = await db.execute(
         "INSERT INTO eusers (name, email, password, role, phone, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
-        [name, email.toLowerCase(), hashedPassword, role, phone || null]
+        [name, email.toLowerCase(), hashedPassword, role, phone || null],
       );
 
       //  Otp Creation
@@ -60,14 +61,14 @@ const authController = {
       await db.execute(
         `INSERT INTO user_otps (user_id, otp_hash, expires_at)
          VALUES (?, ?, ?)`,
-        [insertUser.insertId, otpHash, expiresAt]
+        [insertUser.insertId, otpHash, expiresAt],
       );
 
       // vendor creation
       if (role === "vendor") {
         await db.execute(
           "INSERT INTO vendors (user_id, status, created_at) VALUES (?, 'pending', NOW())",
-          [insertUser.insertId]
+          [insertUser.insertId],
         );
       }
 
@@ -113,7 +114,7 @@ const authController = {
         ORDER BY o.created_at DESC
         LIMIT 1
     `,
-      [email.toLowerCase(), otpHash]
+      [email.toLowerCase(), otpHash],
     );
 
     if (!rows.length) {
@@ -136,7 +137,7 @@ const authController = {
     if (user.role === "vendor") {
       const [data] = await db.execute(
         "SELECT * from vendors where user_id= ?",
-        [user.user_id]
+        [user.user_id],
       );
 
       vendorData = {
@@ -150,6 +151,19 @@ const authController = {
       role: user.role,
       email: user.email,
     });
+
+    // Send mail
+    try {
+      await sendRegistrationSuccessMail(
+        {
+          email: user.email,
+          role: user.role,
+        },
+        vendorData,
+      );
+    } catch (mailErr) {
+      console.error("REGISTRATION MAIL FAILED:", mailErr);
+    }
 
     return res.json({
       success: true,
@@ -180,7 +194,7 @@ const authController = {
 
     const [users] = await db.execute(
       "SELECT user_id FROM eusers WHERE email = ?",
-      [email.toLowerCase()]
+      [email.toLowerCase()],
     );
 
     if (!users.length) {
@@ -201,7 +215,7 @@ const authController = {
     await db.execute(
       `INSERT INTO user_otps (user_id, otp_hash, expires_at)
      VALUES (?, ?, ?)`,
-      [userId, otpHash, expiresAt]
+      [userId, otpHash, expiresAt],
     );
 
     await sendOtpEmail(email, otp);
@@ -228,7 +242,7 @@ const authController = {
 
     const [users] = await db.execute(
       "SELECT user_id, email FROM eusers WHERE email = ?",
-      [email.toLowerCase()]
+      [email.toLowerCase()],
     );
 
     if (!users.length) {
@@ -254,7 +268,7 @@ const authController = {
     await db.execute(
       `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
      VALUES (?, ?, ?)`,
-      [user.user_id, tokenHash, expiresAt]
+      [user.user_id, tokenHash, expiresAt],
     );
 
     const resetLink = `https://rewardplanners.com/crm/reset-password?token=${rawToken}`;
@@ -298,7 +312,7 @@ const authController = {
       AND expires_at > NOW()
     LIMIT 1
     `,
-      [tokenHash]
+      [tokenHash],
     );
 
     if (!rows.length) {
@@ -345,6 +359,7 @@ const authController = {
       }
 
       const user = rows[0];
+      const { password: _password, ...safeUser } = user;
 
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) {
@@ -368,7 +383,7 @@ const authController = {
         await db.execute(
           `INSERT INTO user_otps (user_id, otp_hash, expires_at)
      VALUES (?, ?, ?)`,
-          [user.user_id, otpHash, expiresAt]
+          [user.user_id, otpHash, expiresAt],
         );
 
         await sendOtpEmail(user.email, otp);
@@ -400,7 +415,7 @@ const authController = {
              END,
              vendor_id DESC
            LIMIT 1`,
-          [user.user_id]
+          [user.user_id],
         );
 
         if (vendorRows.length > 0) {
@@ -421,7 +436,7 @@ const authController = {
         success: true,
         message: "Login successful",
         data: {
-          user,
+          user: safeUser,
           vendor: vendorData,
           token,
         },
@@ -442,7 +457,7 @@ const authController = {
     try {
       const [rows] = await db.execute(
         "SELECT user_id, name, email, role, phone FROM eusers WHERE user_id = ?",
-        [req.user.user_id]
+        [req.user.user_id],
       );
 
       if (rows.length === 0) {
@@ -495,7 +510,7 @@ const authController = {
 
       const [rows] = await db.execute(
         "SELECT password FROM eusers WHERE email = ?",
-        [email]
+        [email],
       );
 
       if (rows.length === 0) {

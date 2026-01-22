@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import type { ComponentType } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import QuillEditor from "../../../QuillEditor";
+import { FaArrowLeft } from "react-icons/fa";
 
 type IconComp = ComponentType<any>;
 
@@ -43,7 +44,7 @@ function FormInput(props: {
   label: string;
   value?: string | number;
   onChange: (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => void;
   type?: string;
   required?: boolean;
@@ -85,9 +86,9 @@ import {
   FaBox,
   FaImages,
   FaFileUpload,
-  FaPlus,
   FaTrash,
   FaSpinner,
+  FaLock,
 } from "react-icons/fa";
 
 // const API_BASE = import.meta.env.VITE_API_URL;
@@ -120,70 +121,50 @@ interface RequiredDocument {
   status: number;
 }
 
-interface Variant {
-  variant_id: string | number;
-  size: string;
-  color: string;
-  dimension: string;
-  weight: string;
-  customAttributes: Record<string, any>;
-  MRP: string | number;
-  salesPrice: string | number;
-  stock: string | number;
-  sku: string;
-  expiryDate: string;
-  manufacturingYear: string;
-  materialType: string;
-  images: File[];
-  existingImages?: string[];
-  removedImages?: string[];
-}
-
 interface ProductData {
   productName: string;
   brandName: string;
   manufacturer: string;
+  gstSlab: string;
+  hsnSacCode: string;
   description: string;
   shortDescription: string;
   categoryId: number | null;
   subCategoryId: number | null;
   subSubCategoryId: number | null;
-  variants: Variant[];
   productImages: ImagePreview[];
   existingImages?: string[];
   removedImages?: string[];
+  isDiscountEligible: 1 | 0;
+  isReturnable: 1 | 0;
+  returnWindowDays: string;
+
+  deliveryMinDays: string;
+  deliveryMaxDays: string;
+  shippingClass: "standard" | "bulky" | "fragile";
 }
 
 const initialProductData: ProductData = {
   brandName: "",
   manufacturer: "",
   productName: "",
+  gstSlab: "",
+  hsnSacCode: "",
   description: "",
   shortDescription: "",
   categoryId: null,
   subCategoryId: null,
   subSubCategoryId: null,
-  variants: [
-    {
-      variant_id: "",
-      size: "",
-      color: "",
-      dimension: "",
-      weight: "",
-      customAttributes: {},
-      MRP: "",
-      salesPrice: "",
-      stock: "",
-      sku: "",
-      expiryDate: "",
-      manufacturingYear: "",
-      materialType: "",
-      images: [],
-    },
-  ],
   productImages: [],
   existingImages: [],
   removedImages: [],
+  isDiscountEligible: 1,
+  isReturnable: 1,
+  returnWindowDays: "",
+
+  deliveryMinDays: "1",
+  deliveryMaxDays: "3",
+  shippingClass: "standard",
 };
 
 const allowOnlyAlphabets = (value: string) => /^[A-Za-z ]*$/.test(value);
@@ -197,7 +178,7 @@ export default function EditProductPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [subSubCategories, setSubSubCategories] = useState<SubSubCategory[]>(
-    []
+    [],
   );
   const [requiredDocs, setRequiredDocs] = useState<RequiredDocument[]>([]);
   const [docFiles, setDocFiles] = useState<Record<number, File | null>>({});
@@ -207,9 +188,6 @@ export default function EditProductPage() {
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [isCustomSubcategory, setIsCustomSubcategory] = useState(false);
   const [isCustomSubSubcategory, setIsCustomSubSubcategory] = useState(false);
-  const [variantImageErrors, setVariantImageErrors] = useState<
-    Record<number, string>
-  >({});
   const [imageError, setImageError] = useState("");
   const [custom_category, setCustomCategory] = useState("");
   const [custom_subcategory, setCustomSubCategory] = useState("");
@@ -245,8 +223,8 @@ export default function EditProductPage() {
       const existingCount = prev.existingImages?.length || 0;
       const newCount = prev.productImages.length;
 
-      if (existingCount + newCount + newFiles.length > 5) {
-        setImageError("Maximum 5 images allowed (existing + new).");
+      if (existingCount + newCount + newFiles.length > 1) {
+        setImageError("Only one cover image is allowed.");
         return prev;
       }
 
@@ -282,21 +260,23 @@ export default function EditProductPage() {
     });
   };
 
-  const removeVariantImage = (variantIndex: number, imageIndex: number) => {
-    setProduct((prev) => {
-      const variants = [...prev.variants];
-      const imgs = [...variants[variantIndex].images];
-      imgs.splice(imageIndex, 1);
-      variants[variantIndex].images = imgs;
-      return { ...prev, variants };
-    });
+  const resolveCategoryLabel = () => {
+    if (product.categoryId) return getSelectedCategoryName();
+    if (custom_category) return custom_category;
+    return "Not provided";
   };
 
-  // useEffect(() => {
-  //   return () => {
-  //     product.productImages.forEach((img) => URL.revokeObjectURL(img.url));
-  //   };
-  // }, [product.productImages]);
+  const resolveSubCategoryLabel = () => {
+    if (product.subCategoryId) return getSelectedSubCategoryName();
+    if (custom_subcategory) return custom_subcategory;
+    return "Not provided";
+  };
+
+  const resolveSubSubCategoryLabel = () => {
+    if (product.subSubCategoryId) return getSelectedSubSubCategoryName();
+    if (custom_subsubcategory) return custom_subsubcategory;
+    return "Not provided";
+  };
 
   // Fetch subcategories when category changes
   useEffect(() => {
@@ -348,7 +328,7 @@ export default function EditProductPage() {
   const fetchRequiredDocuments = async (categoryId: number) => {
     try {
       const res = await api.get(
-        `/product/category/required_docs/${categoryId}`
+        `/product/category/required_docs/${categoryId}`,
       );
 
       if (res.data.success) {
@@ -364,7 +344,7 @@ export default function EditProductPage() {
   };
 
   const handleFieldChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
 
@@ -421,7 +401,7 @@ export default function EditProductPage() {
   const handleShortDescriptionChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const value = e.target.value;
 
@@ -476,41 +456,24 @@ export default function EditProductPage() {
         productName: p.product_name || "",
         brandName: p.brand_name || "",
         manufacturer: p.manufacturer || "",
+        gstSlab: p.gst_slab || "",
+        hsnSacCode: p.hsn_sac_code || "",
         description: p.description || "",
         shortDescription: p.short_description || "",
         categoryId: p.category_id || null,
         subCategoryId: p.subcategory_id || null,
         subSubCategoryId: p.sub_subcategory_id || null,
+        isDiscountEligible: p.is_discount_eligible ?? 1,
+        isReturnable: p.is_returnable ?? 1,
+        returnWindowDays: p.return_window_days
+          ? String(p.return_window_days)
+          : "",
+
+        deliveryMinDays: String(p.delivery_sla_min_days ?? 1),
+        deliveryMaxDays: String(p.delivery_sla_max_days ?? 3),
+        shippingClass: p.shipping_class ?? "standard",
         productImages: [],
         existingImages: p.images || [],
-        variants:
-          p.variants?.length > 0
-            ? p.variants.map((v: any) => ({
-                variant_id: v.variant_id,
-                size: v.size || "",
-                color: v.color || "",
-                dimension: v.dimension || "",
-                weight: v.weight || "",
-                MRP: v.mrp || "",
-                salesPrice: v.sale_price || "",
-                stock: v.stock || "",
-                sku: v.sku || "",
-                manufacturingYear:
-                  typeof v.manufacturing_date === "string"
-                    ? v.manufacturing_date.substring(0, 10)
-                    : "",
-
-                expiryDate:
-                  typeof v.expiry_date === "string"
-                    ? v.expiry_date.substring(0, 10)
-                    : "",
-
-                materialType: v.material_type || "",
-                customAttributes: v.custom_attributes || {},
-                images: [],
-                existingImages: v.images || [],
-              }))
-            : [...initialProductData.variants],
       });
     } catch (err: any) {
       setError(err.message);
@@ -519,175 +482,9 @@ export default function EditProductPage() {
     }
   };
 
-  const handleVariantChange = (index: number, field: string, value: string) => {
-    /* ================= HARD BLOCK ================= */
-
-    // Decimal numbers
-    if (["MRP", "salesPrice", "weight"].includes(field)) {
-      if (!/^\d*\.?\d*$/.test(value)) return;
-    }
-
-    // Integers only
-    if (field === "stock") {
-      if (!/^\d*$/.test(value)) return;
-    }
-
-    // Alphabets only
-    if (field === "color" || field === "materialType") {
-      if (!/^[A-Za-z ]*$/.test(value)) return;
-    }
-
-    // Dimension (numbers + * + .)
-    if (field === "dimension") {
-      if (!/^[0-9.*]*$/.test(value)) return;
-    }
-
-    /* ================= DATE VALIDATION ================= */
-
-    // Manufacturing date
-    if (field === "manufacturingYear") {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const mfg = new Date(value);
-      mfg.setHours(0, 0, 0, 0);
-
-      if (mfg >= today) return;
-
-      const expiry = product.variants[index].expiryDate;
-      if (expiry) {
-        const exp = new Date(expiry);
-        exp.setHours(0, 0, 0, 0);
-        if (mfg >= exp) return;
-      }
-    }
-
-    // Expiry date
-    if (field === "expiryDate") {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const exp = new Date(value);
-      exp.setHours(0, 0, 0, 0);
-
-      if (exp <= today) return;
-
-      const mfg = product.variants[index].manufacturingYear;
-      if (mfg) {
-        const mfgDate = new Date(mfg);
-        mfgDate.setHours(0, 0, 0, 0);
-        if (exp <= mfgDate) return;
-      }
-    }
-
-    /* ================= STATE UPDATE ================= */
-
-    const updatedVariants = [...product.variants];
-    updatedVariants[index] = {
-      ...updatedVariants[index],
-      [field]: value,
-    };
-
-    setProduct((prev) => ({
-      ...prev,
-      variants: updatedVariants,
-    }));
-  };
-  const handleVariantImages = (
-    variantIndex: number,
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (!e.target.files) return;
-
-    const newFiles = Array.from(e.target.files);
-
-    setProduct((prev) => {
-      const variants = [...prev.variants];
-      const v = variants[variantIndex];
-
-      const existingCount = v.existingImages?.length || 0;
-      const newCount = v.images.length;
-
-      if (existingCount + newCount + newFiles.length > 5) {
-        setVariantImageErrors((prevErr) => ({
-          ...prevErr,
-          [variantIndex]: "Maximum 5 images allowed (existing + new).",
-        }));
-        return prev;
-      }
-
-      variants[variantIndex] = {
-        ...v,
-        images: [...v.images, ...newFiles],
-      };
-
-      return { ...prev, variants };
-    });
-
-    // Clear error on success
-    setVariantImageErrors((prevErr) => ({
-      ...prevErr,
-      [variantIndex]: "",
-    }));
-
-    e.target.value = "";
-  };
-
-  const removeExistingVariantImage = (variantIndex: number, img: string) => {
-    setProduct((prev) => {
-      const variants = [...prev.variants];
-      const v = variants[variantIndex];
-
-      variants[variantIndex] = {
-        ...v,
-        existingImages: v.existingImages?.filter((i) => i !== img),
-        removedImages: [...(v.removedImages || []), img],
-      };
-
-      return { ...prev, variants };
-    });
-  };
-
-  const addVariant = () => {
-    setProduct((prev) => ({
-      ...prev,
-      variants: [
-        ...prev.variants,
-        {
-          variant_id: "",
-          size: "",
-          color: "",
-          dimension: "",
-          weight: "",
-          customAttributes: {},
-          MRP: "",
-          salesPrice: "",
-          stock: "",
-          sku: "",
-          expiryDate: "",
-          manufacturingYear: "",
-          materialType: "",
-          images: [],
-          existingImages: [],
-        },
-      ],
-    }));
-  };
-
-  const removeVariant = (index: number) => {
-    if (product.variants.length <= 1) {
-      alert("At least one variant is required");
-      return;
-    }
-    setProduct((prev) => ({
-      ...prev,
-      variants: prev.variants.filter((_, i) => i !== index),
-    }));
-  };
-
   const onDocInputChange = (
     e: ChangeEvent<HTMLInputElement>,
-    documentId: number
+    documentId: number,
   ) => {
     const file = e.target.files?.[0] ?? null;
     setDocFiles((prev) => ({ ...prev, [documentId]: file }));
@@ -710,24 +507,6 @@ export default function EditProductPage() {
         throw new Error("Please fill in all required product information");
       }
 
-      // Validate variants
-      if (product.variants.length === 0) {
-        throw new Error("Please add at least one variant");
-      }
-
-      for (const variant of product.variants) {
-        if (
-          !variant.salesPrice ||
-          parseFloat(variant.salesPrice as string) <= 0
-        ) {
-          throw new Error("Please enter valid sales price for all variants");
-        }
-
-        if (!variant.stock || parseInt(variant.stock as string) < 0) {
-          throw new Error("Please enter valid stock quantity for all variants");
-        }
-      }
-
       const formData = new FormData();
       if (!product.categoryId && !custom_category.trim()) {
         throw new Error("Please select or enter a category");
@@ -744,7 +523,7 @@ export default function EditProductPage() {
       if (product.subSubCategoryId) {
         formData.append(
           "sub_subcategory_id",
-          product.subSubCategoryId.toString()
+          product.subSubCategoryId.toString(),
         );
       }
       if (isCustomCategory) {
@@ -763,6 +542,28 @@ export default function EditProductPage() {
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
 
+      if (product.gstSlab) {
+        formData.append("gstSlab", product.gstSlab);
+      }
+
+      if (product.hsnSacCode) {
+        formData.append("hsnSacCode", product.hsnSacCode);
+      }
+
+      formData.append(
+        "is_discount_eligible",
+        String(product.isDiscountEligible),
+      );
+      formData.append("is_returnable", String(product.isReturnable));
+
+      if (product.isReturnable === 1) {
+        formData.append("return_window_days", product.returnWindowDays);
+      }
+
+      formData.append("delivery_sla_min_days", product.deliveryMinDays);
+      formData.append("delivery_sla_max_days", product.deliveryMaxDays);
+      formData.append("shipping_class", product.shippingClass);
+
       // Add main product images
       product.productImages.forEach(({ file }) => {
         formData.append("images", file);
@@ -770,7 +571,7 @@ export default function EditProductPage() {
 
       formData.append(
         "removedMainImages",
-        JSON.stringify(product.removedImages || [])
+        JSON.stringify(product.removedImages || []),
       );
 
       // Documents
@@ -778,36 +579,6 @@ export default function EditProductPage() {
         if (file) {
           formData.append(docId, file);
         }
-      });
-
-      const variantsPayload = product.variants.map((variant) => ({
-        variant_id: variant.variant_id,
-        expiryDate: variant.expiryDate,
-        manufacturingYear: variant.manufacturingYear,
-        materialType: variant.materialType,
-        size: variant.size,
-        color: variant.color,
-        dimension: variant.dimension,
-        weight: variant.weight,
-        mrp: variant.MRP,
-        salesPrice: variant.salesPrice,
-        stock: variant.stock,
-        customAttributes: variant.customAttributes,
-      }));
-
-      formData.append("variants", JSON.stringify(variantsPayload));
-
-      // Add variant images
-      product.variants.forEach((variant, index) => {
-        variant.images.forEach((file, imgIndex) => {
-          formData.append(`variant_${index}_${imgIndex}`, file);
-        });
-
-        // removed variant images
-        formData.append(
-          `variantRemovedImages_${index}`,
-          JSON.stringify(variant.removedImages || [])
-        );
       });
 
       // Submit to backend
@@ -818,7 +589,7 @@ export default function EditProductPage() {
           headers: {
             "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
 
       const data = response.data;
@@ -885,305 +656,10 @@ export default function EditProductPage() {
     );
   };
 
-  const renderVariantBuilder = () => {
-    return (
-      <section>
-        <SectionHeader
-          icon={FaBox}
-          title="Product Variants"
-          description="Configure product variants"
-        />
-
-        {product.variants.map((variant, index) => (
-          <div
-            key={index}
-            className="p-6 mb-6 border shadow-sm rounded-xl bg-gray-50"
-          >
-            <div className="flex items-center justify-between mb-4">
-              {product.variants.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeVariant(index)}
-                  className="p-2 text-red-600 hover:text-red-800"
-                >
-                  <FaTrash />
-                </button>
-              )}
-            </div>
-
-            {/* === ALWAYS SHOW SIMPLE INPUTS === */}
-            <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-3">
-              {/* Size */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Size
-                </label>
-                <input
-                  type="text"
-                  value={variant.size}
-                  onChange={(e) =>
-                    handleVariantChange(index, "size", e.target.value)
-                  }
-                  placeholder="Enter Size / capacity / volume"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Color */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Color
-                </label>
-                <input
-                  type="text"
-                  value={variant.color}
-                  onChange={(e) =>
-                    handleVariantChange(index, "color", e.target.value)
-                  }
-                  placeholder="Enter Color"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Material Type */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Material Type
-                </label>
-                <input
-                  type="text"
-                  value={variant.materialType}
-                  onChange={(e) =>
-                    handleVariantChange(index, "materialType", e.target.value)
-                  }
-                  placeholder="Enter Material Type"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Dimension */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Dimension
-                </label>
-                <input
-                  type="text"
-                  value={variant.dimension}
-                  onChange={(e) =>
-                    handleVariantChange(index, "dimension", e.target.value)
-                  }
-                  placeholder="12x10x5 cm"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Weight */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Weight (In Grams)
-                </label>
-                <input
-                  type="text"
-                  value={variant.weight}
-                  onChange={(e) =>
-                    handleVariantChange(index, "weight", e.target.value)
-                  }
-                  placeholder="1000g"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* MRP */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  MRP
-                </label>
-                <input
-                  type="number"
-                  value={variant.MRP}
-                  onChange={(e) =>
-                    handleVariantChange(index, "MRP", e.target.value)
-                  }
-                  placeholder="Enter MRP"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Sales Price */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Sales Price
-                </label>
-                <input
-                  type="number"
-                  value={variant.salesPrice}
-                  onChange={(e) =>
-                    handleVariantChange(index, "salesPrice", e.target.value)
-                  }
-                  placeholder="Enter Sales Price"
-                  className="w-full p-2 border rounded-lg"
-                  required
-                />
-              </div>
-
-              {/* Stock */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Stock
-                </label>
-                <input
-                  type="number"
-                  value={variant.stock}
-                  onChange={(e) =>
-                    handleVariantChange(index, "stock", e.target.value)
-                  }
-                  placeholder="Enter Stock / Unit"
-                  className="w-full p-2 border rounded-lg"
-                  required
-                />
-              </div>
-
-              {/* Manufacturing Year */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Manufacturing Year
-                </label>
-                <input
-                  type="date"
-                  value={variant.manufacturingYear || ""}
-                  max={new Date().toISOString().split("T")[0]}
-                  onChange={(e) =>
-                    handleVariantChange(
-                      index,
-                      "manufacturingYear",
-                      e.target.value
-                    )
-                  }
-                  placeholder="Enter Manufacturing Year"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Expiry Date */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Expiry Date
-                </label>
-                <input
-                  type="date"
-                  value={variant.expiryDate || ""}
-                  min={
-                    new Date(Date.now() + 86400000).toISOString().split("T")[0]
-                  }
-                  onChange={(e) =>
-                    handleVariantChange(index, "expiryDate", e.target.value)
-                  }
-                  placeholder="Enter Expiry Date"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-            </div>
-
-            {variant.existingImages && variant.existingImages.length > 0 && (
-              <div className="mt-3">
-                <p className="text-xs text-gray-500 mb-1">Existing images</p>
-                <div className="flex gap-2 flex-wrap">
-                  {variant.existingImages?.map((img) => (
-                    <div key={img} className="relative w-16 h-16 group">
-                      <img
-                        src={`${API_BASEIMAGE_URL}/uploads/${img}`}
-                        className="w-full h-full object-cover border rounded"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => removeExistingVariantImage(index, img)}
-                        className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
-                 opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                      >
-                        <FaTrash size={10} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Variant Images */}
-            <div className="mt-4">
-              <label className="block mb-2 text-sm font-medium text-gray-700">
-                Variant Images
-              </label>
-
-              <div className="flex items-center p-3 bg-white border border-gray-400 border-dashed rounded-lg">
-                <span className="flex-1 text-sm text-gray-600">
-                  {variant.images.length === 0
-                    ? "No images chosen"
-                    : `${variant.images.length} image(s) selected`}
-                </span>
-                <label className="cursor-pointer bg-[#852BAF] text-white px-3 py-1 text-xs rounded-full hover:bg-[#7a1c94]">
-                  Choose Files
-                  <input
-                    type="file"
-                    multiple
-                    className="hidden"
-                    accept="image/*"
-                    onChange={(e) => handleVariantImages(index, e)}
-                  />
-                </label>
-              </div>
-
-              {/* Image Previews */}
-              {variant.images.length > 0 && (
-                <div className="mt-3 flex gap-2 flex-wrap">
-                  {variant.images.map((file, imgIndex) => {
-                    const url = URL.createObjectURL(file);
-                    return (
-                      <div
-                        key={imgIndex}
-                        className="relative w-20 h-20 border rounded overflow-hidden group"
-                      >
-                        <img src={url} className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => removeVariantImage(index, imgIndex)}
-                          className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
-                       opacity-0 group-hover:opacity-100 cursor-pointer"
-                        >
-                          <FaTrash size={10} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Variant image error */}
-              {variantImageErrors[index] && (
-                <p className="mt-1 text-xs text-red-500">
-                  {variantImageErrors[index]}
-                </p>
-              )}
-            </div>
-          </div>
-        ))}
-
-        <button
-          type="button"
-          onClick={addVariant}
-          className="flex items-center justify-center w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#852BAF] hover:bg-purple-50 cursor-pointer"
-        >
-          <FaPlus className="mr-2 text-[#852BAF]" />
-          Add Another Variant
-        </button>
-      </section>
-    );
-  };
-
   // Get selected category name
   const getSelectedCategoryName = () => {
     const category = categories.find(
-      (c) => c.category_id === product.categoryId
+      (c) => c.category_id === product.categoryId,
     );
     return category?.category_name || "Not selected";
   };
@@ -1191,7 +667,7 @@ export default function EditProductPage() {
   // Get selected subcategory name
   const getSelectedSubCategoryName = () => {
     const subcategory = subCategories.find(
-      (s) => s.subcategory_id === product.subCategoryId
+      (s) => s.subcategory_id === product.subCategoryId,
     );
     return subcategory?.subcategory_name || "Not selected";
   };
@@ -1199,7 +675,7 @@ export default function EditProductPage() {
   // Get selected sub-subcategory name
   const getSelectedSubSubCategoryName = () => {
     const subsubcategory = subSubCategories.find(
-      (ss) => ss.sub_subcategory_id === product.subSubCategoryId
+      (ss) => ss.sub_subcategory_id === product.subSubCategoryId,
     );
     return subsubcategory?.name || "Not selected";
   };
@@ -1213,12 +689,32 @@ export default function EditProductPage() {
     );
   }
 
+  const coverImage = product.existingImages?.[0];
+
   return (
     <div className="p-6 premium-form" style={{ backgroundColor: "#FFFAFB" }}>
       <div className="p-6 mx-auto bg-white border border-gray-100 shadow-xl rounded-2xl max-w-7xl">
-        <h1 className="mb-6 text-3xl font-bold text-gray-900">
-          Edit Product Details
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="mb-1 text-3xl font-bold text-gray-900">
+              Edit Product Details
+            </h1>
+            <p className="text-sm text-gray-600">
+              Editing product ID: {productId}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg
+      bg-[#852BAF] text-white transition-all duration-300
+      hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+      cursor-pointer"
+          >
+            <FaArrowLeft /> Back
+          </button>
+        </div>
 
         {error && (
           <div className="p-4 mb-6 border border-red-200 rounded-lg bg-red-50">
@@ -1241,184 +737,88 @@ export default function EditProductPage() {
               description="Choose category, sub-category and type"
             />
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              {/* Category */}
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Category <span className="text-red-500">*</span>
-                </label>
+            {/* DISABLED WRAPPER */}
+            <div
+              className="relative opacity-60 pointer-events-none
+               bg-gray-50 border border-gray-200 rounded-xl p-4"
+            >
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                {/* Category */}
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Category <span className="text-red-500">*</span>
+                  </label>
 
-                <select
-                  name="category_id"
-                  value={isCustomCategory ? "other" : product.categoryId || ""}
-                  onChange={(e) => {
-                    if (e.target.value === "other") {
-                      setIsCustomCategory(true);
-                      setProduct((prev) => ({ ...prev, categoryId: null }));
-                    } else {
-                      setIsCustomCategory(false);
-                      setCustomCategory("");
-                      handleFieldChange(e);
-                    }
-                  }}
-                  className="w-full p-3 border rounded-lg"
-                >
-                  <option value="">Select Category</option>
+                  <select className="w-full p-3 border rounded-lg bg-gray-100 text-gray-600">
+                    <option>{resolveCategoryLabel()}</option>
+                  </select>
+                </div>
 
-                  {categories.map((c) => (
-                    <option key={c.category_id} value={c.category_id}>
-                      {c.category_name}
-                    </option>
-                  ))}
+                {/* Sub Category */}
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Sub Category
+                  </label>
 
-                  <option value="other">Other</option>
-                </select>
+                  <select className="w-full p-3 border rounded-lg bg-gray-100 text-gray-600">
+                    <option>{resolveSubCategoryLabel()}</option>
+                  </select>
+                </div>
 
-                {isCustomCategory && (
-                  <input
-                    type="text"
-                    value={custom_category}
-                    onChange={(e) => setCustomCategory(e.target.value)}
-                    placeholder="Enter new category"
-                    className="w-full p-3 mt-3 border rounded-lg"
-                  />
-                )}
+                {/* Sub Sub Category */}
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Type / Sub-type
+                  </label>
+
+                  <select className="w-full p-3 border rounded-lg bg-gray-100 text-gray-600">
+                    <option>{resolveSubSubCategoryLabel()}</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Sub Category */}
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Sub Category
-                </label>
+              {/* Selected Categories Display */}
+              {(resolveCategoryLabel() !== "Not provided" ||
+                resolveSubCategoryLabel() !== "Not provided" ||
+                resolveSubSubCategoryLabel() !== "Not provided") && (
+                <div className="p-3 mt-4 border rounded-lg bg-gray-100">
+                  <h4 className="mb-2 font-medium text-gray-700">
+                    Selected Categories:
+                  </h4>
 
-                <select
-                  name="subcategory_id"
-                  value={
-                    isCustomSubcategory ? "other" : product.subCategoryId || ""
-                  }
-                  onChange={(e) => {
-                    if (e.target.value === "other") {
-                      setIsCustomSubcategory(true);
-                      setProduct((prev) => ({ ...prev, subCategoryId: null }));
-                    } else {
-                      setIsCustomSubcategory(false);
-                      setCustomSubCategory("");
-                      handleFieldChange(e);
-                    }
-                  }}
-                  disabled={!product.categoryId && !isCustomCategory}
-                  className="w-full p-3 border rounded-lg"
-                >
-                  <option value="">Select Sub Category</option>
+                  <div className="flex items-center text-sm text-gray-600">
+                    <span className="font-medium">
+                      {resolveCategoryLabel()}
+                    </span>
 
-                  {subCategories.map((s) => (
-                    <option key={s.subcategory_id} value={s.subcategory_id}>
-                      {s.subcategory_name}
-                    </option>
-                  ))}
+                    {resolveSubCategoryLabel() !== "Not provided" && (
+                      <>
+                        <span className="mx-2">›</span>
+                        <span>{resolveSubCategoryLabel()}</span>
+                      </>
+                    )}
 
-                  <option value="other">Other</option>
-                </select>
+                    {resolveSubSubCategoryLabel() !== "Not provided" && (
+                      <>
+                        <span className="mx-2">›</span>
+                        <span>{resolveSubSubCategoryLabel()}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                {isCustomSubcategory && (
-                  <input
-                    type="text"
-                    value={custom_subcategory}
-                    onChange={(e) => setCustomSubCategory(e.target.value)}
-                    placeholder="Enter new sub-category"
-                    className="w-full p-3 mt-3 border rounded-lg"
-                  />
-                )}
-              </div>
-
-              {/* Sub Sub Category */}
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Type / Sub-type
-                </label>
-
-                <select
-                  name="sub_subcategory_id"
-                  value={
-                    isCustomSubSubcategory
-                      ? "other"
-                      : product.subSubCategoryId || ""
-                  }
-                  onChange={(e) => {
-                    if (e.target.value === "other") {
-                      setIsCustomSubSubcategory(true);
-                      setProduct((prev) => ({
-                        ...prev,
-                        subSubCategoryId: null,
-                      }));
-                    } else {
-                      setIsCustomSubSubcategory(false);
-                      setCustomSubSubCategory("");
-                      handleFieldChange(e);
-                    }
-                  }}
-                  disabled={!product.subCategoryId && !isCustomSubcategory}
-                  className="w-full p-3 border rounded-lg"
-                >
-                  <option value="">Select Type</option>
-
-                  {subSubCategories.map((t) => (
-                    <option
-                      key={t.sub_subcategory_id}
-                      value={t.sub_subcategory_id}
-                    >
-                      {t.name}
-                    </option>
-                  ))}
-
-                  <option value="other">Other</option>
-                </select>
-
-                {isCustomSubSubcategory && (
-                  <input
-                    type="text"
-                    value={custom_subsubcategory}
-                    onChange={(e) => setCustomSubSubCategory(e.target.value)}
-                    placeholder="Enter new type"
-                    className="w-full p-3 mt-3 border rounded-lg"
-                  />
-                )}
+              {/* LOCK BADGE */}
+              <div className="absolute top-3 right-3 text-xs text-gray-500 flex items-center gap-1">
+                <FaLock className="text-gray-400" size={12} />
+                <span>Category locked</span>
               </div>
             </div>
 
-            {/* Selected Categories Display */}
-            {(product.categoryId ||
-              product.subCategoryId ||
-              product.subSubCategoryId) && (
-              <div className="p-3 mt-4 border rounded-lg bg-gray-50">
-                <h4 className="mb-2 font-medium text-gray-700">
-                  Selected Categories:
-                </h4>
-                <div className="flex items-center text-sm text-gray-600">
-                  <span className="font-medium">
-                    {getSelectedCategoryName()}
-                  </span>
-                  {product.subCategoryId && (
-                    <>
-                      <span className="mx-2">›</span>
-                      <span>{getSelectedSubCategoryName()}</span>
-                    </>
-                  )}
-                  {product.subSubCategoryId && (
-                    <>
-                      <span className="mx-2">›</span>
-                      <span>{getSelectedSubSubCategoryName()}</span>
-                    </>
-                  )}
-                </div>
-                {requiredDocs.length > 0 && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    {requiredDocs.filter((doc) => doc.status === 1).length}{" "}
-                    required document(s)
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Helper text */}
+            <p className="mt-2 text-xs text-gray-500">
+              Category selection cannot be changed after product creation.
+            </p>
           </section>
 
           {/* Product Identification */}
@@ -1454,52 +854,194 @@ export default function EditProductPage() {
                 onChange={handleFieldChange}
                 placeholder="Manufacturer name"
               />
+
+              <FormInput
+                id="gstSlab"
+                label="GST Slab (%)"
+                value={product.gstSlab}
+                onChange={handleFieldChange}
+                placeholder="e.g. 5, 12, 18, 28"
+              />
+
+              <FormInput
+                id="hsnSacCode"
+                label="HSN / SAC Code"
+                value={product.hsnSacCode}
+                onChange={handleFieldChange}
+                placeholder="Enter HSN or SAC code"
+              />
             </div>
           </section>
 
           {/* Product Description */}
           <section>
-            {renderVariantBuilder()}
+            <SectionHeader
+              icon={FaBox}
+              title="Product Description"
+              description="Describe the product in detail and add a short summary"
+            />
+            <div className="mt-4 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              {/* ===================== DETAILED DESCRIPTION ===================== */}
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Detailed Description <span className="text-red-500">*</span>
+                </label>
 
-            {/* ===================== DETAILED DESCRIPTION ===================== */}
-            <div className="mt-6">
-              <label className="block mb-2 text-sm font-medium text-gray-700">
-                Detailed Description <span className="text-red-500">*</span>
-              </label>
+                <QuillEditor
+                  value={product.description}
+                  placeholder="Describe the product, features, usage, specifications, etc."
+                  minHeight={300}
+                  onChange={(val) =>
+                    setProduct((prev) => ({
+                      ...prev,
+                      description: val,
+                    }))
+                  }
+                />
+              </div>
 
-              <QuillEditor
-                value={product.description}
-                placeholder="Describe the product, features, usage, specifications, etc."
-                minHeight={300}
-                onChange={(val) =>
-                  setProduct((prev) => ({
-                    ...prev,
-                    description: val,
-                  }))
-                }
-              />
+              {/* ===================== SHORT DESCRIPTION ===================== */}
+              <div className="mt-6">
+                <FormInput
+                  id="shortDescription"
+                  label="Short Description"
+                  type="textarea"
+                  required
+                  value={product.shortDescription}
+                  onChange={handleShortDescriptionChange}
+                  placeholder="Short description (max 150 characters)"
+                />
+
+                <p
+                  className={`mt-1 text-xs ${
+                    product.shortDescription.length >= CHAR_LIMIT
+                      ? "text-red-500"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {product.shortDescription.length} / {CHAR_LIMIT} characters
+                </p>
+              </div>
             </div>
+          </section>
 
-            {/* ===================== SHORT DESCRIPTION ===================== */}
-            <div className="mt-6">
-              <FormInput
-                id="shortDescription"
-                label="Short Description"
-                type="textarea"
-                required
-                value={product.shortDescription}
-                onChange={handleShortDescriptionChange}
-                placeholder="Short description (max 150 characters)"
-              />
+          {/* Return and Discount */}
+          <section>
+            <SectionHeader
+              icon={FaTag}
+              title="Pricing & Commercial Controls"
+              description="Discount eligibility and return policy"
+            />
 
-              <p
-                className={`mt-1 text-xs ${
-                  product.shortDescription.length >= CHAR_LIMIT
-                    ? "text-red-500"
-                    : "text-gray-500"
-                }`}
-              >
-                {product.shortDescription.length} / {CHAR_LIMIT} characters
+            <div className="mt-4 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                {/* Discount Eligible */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Discount Eligible
+                  </label>
+                  <select
+                    name="isDiscountEligible"
+                    value={product.isDiscountEligible}
+                    onChange={(e) =>
+                      setProduct((prev) => ({
+                        ...prev,
+                        isDiscountEligible: Number(e.target.value) as 1 | 0,
+                      }))
+                    }
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value={1}>Yes</option>
+                    <option value={0}>No</option>
+                  </select>
+                </div>
+
+                {/* Returnable */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Returnable
+                  </label>
+                  <select
+                    name="isReturnable"
+                    value={product.isReturnable}
+                    onChange={(e) => {
+                      const val = Number(e.target.value) as 1 | 0;
+                      setProduct((prev) => ({
+                        ...prev,
+                        isReturnable: val,
+                        returnWindowDays:
+                          val === 0 ? "" : prev.returnWindowDays,
+                      }));
+                    }}
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value={1}>Yes</option>
+                    <option value={0}>No</option>
+                  </select>
+                </div>
+
+                {/* Return Window */}
+                {product.isReturnable === 1 && (
+                  <FormInput
+                    id="returnWindowDays"
+                    label="Return Window (Days)"
+                    type="number"
+                    value={product.returnWindowDays}
+                    onChange={handleFieldChange}
+                    placeholder="e.g. 7"
+                  />
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Logistic */}
+          <section>
+            <SectionHeader
+              icon={FaBox}
+              title="Logistics & Fulfilment"
+              description="Delivery timeline and shipping classification"
+            />
+
+            <div className="mt-4 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                <FormInput
+                  id="deliveryMinDays"
+                  label="Delivery SLA (Min Days)"
+                  type="number"
+                  value={product.deliveryMinDays}
+                  onChange={handleFieldChange}
+                />
+
+                <FormInput
+                  id="deliveryMaxDays"
+                  label="Delivery SLA (Max Days)"
+                  type="number"
+                  value={product.deliveryMaxDays}
+                  onChange={handleFieldChange}
+                />
+
+                {/* Shipping Class DROPDOWN */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Shipping Class
+                  </label>
+                  <select
+                    name="shippingClass"
+                    value={product.shippingClass}
+                    onChange={handleFieldChange}
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value="standard">Standard</option>
+                    <option value="bulky">Bulky</option>
+                    <option value="fragile">Fragile</option>
+                  </select>
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs text-gray-500">
+                Delivery timeline shown to customers as an estimate. Actual
+                delivery may vary by location.
               </p>
             </div>
           </section>
@@ -1508,37 +1050,37 @@ export default function EditProductPage() {
           <section>
             <SectionHeader
               icon={FaImages}
-              title="Product Images"
-              description="Main images for product listing"
+              title="Cover Image"
+              description="Single cover image for product listing"
             />
 
-            {product.existingImages && product.existingImages.length > 0 && (
-              <div className="mb-3 flex gap-2 flex-wrap">
-                {product.existingImages?.map((img) => (
-                  <div key={img} className="relative w-20 h-20 group">
-                    <img
-                      src={`${API_BASEIMAGE_URL}/uploads/${img}`}
-                      className="w-full h-full object-cover border rounded"
-                    />
+            {coverImage && (
+              <div className="mb-3">
+                <div className="relative w-32 h-32 group">
+                  <img
+                    src={`${API_BASEIMAGE_URL}/uploads/${coverImage}`}
+                    className="w-full h-full object-cover border rounded"
+                    alt="Cover Image"
+                  />
 
-                    <button
-                      type="button"
-                      onClick={() => removeExistingMainImage(img)}
-                      className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
-                 opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                    >
-                      <FaTrash size={10} />
-                    </button>
-                  </div>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => removeExistingMainImage(coverImage)}
+                    className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
+        opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                  >
+                    <FaTrash size={12} />
+                  </button>
+                </div>
               </div>
             )}
 
             <div className="flex items-center p-3 bg-white border border-gray-400 border-dashed rounded-lg">
               <span className="flex-1 text-sm text-gray-600">
-                {product.productImages.length === 0
-                  ? "No images chosen"
-                  : `${product.productImages.length} image(s) selected`}
+                {product.productImages.length === 0 &&
+                product.existingImages?.length === 0
+                  ? "No cover image chosen"
+                  : "1 cover image selected"}
               </span>
               <label className="cursor-pointer bg-[#852BAF] text-white px-3 py-1 text-xs rounded-full hover:bg-[#7a1c94]">
                 Choose Files
@@ -1547,13 +1089,18 @@ export default function EditProductPage() {
                   multiple
                   className="hidden"
                   accept="image/*"
+                  disabled={
+                    (product.existingImages?.length || 0) +
+                      product.productImages.length >=
+                    1
+                  }
                   onChange={handleMainImages}
                 />
               </label>
             </div>
 
             <p className="mt-2 text-xs text-gray-500">
-              Upload additional product images (optional, max 5)
+              Upload one cover image (required)
             </p>
 
             {imageError && (
@@ -1563,28 +1110,26 @@ export default function EditProductPage() {
             {/* Image Previews */}
             {product.productImages.length > 0 && (
               <div className="mt-3 flex gap-2 flex-wrap">
-                {product.productImages.map((img, index) => (
-                  <div
-                    key={img.url}
-                    className="relative w-20 h-20 border rounded overflow-hidden group"
-                  >
-                    <img
-                      src={img.url}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+                {product.productImages.length > 0 && (
+                  <div className="mt-3">
+                    <div className="relative w-32 h-32 group">
+                      <img
+                        src={product.productImages[0].url}
+                        alt="Cover Preview"
+                        className="w-full h-full object-cover border rounded"
+                      />
 
-                    {/* Remove NEW main image */}
-                    <button
-                      type="button"
-                      onClick={() => removeNewMainImage(index)}
-                      className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
-                     opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                    >
-                      <FaTrash size={10} />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => removeNewMainImage(0)}
+                        className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
+        opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                      >
+                        <FaTrash size={12} />
+                      </button>
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
             )}
           </section>

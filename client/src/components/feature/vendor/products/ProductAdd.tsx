@@ -43,7 +43,7 @@ function FormInput(props: {
   label: string;
   value?: string | number;
   onChange: (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => void;
   type?: string;
   required?: boolean;
@@ -85,7 +85,6 @@ import {
   FaBox,
   FaImages,
   FaFileUpload,
-  FaPlus,
   FaTrash,
   FaSpinner,
 } from "react-icons/fa";
@@ -117,62 +116,45 @@ interface RequiredDocument {
   status: number;
 }
 
-interface Variant {
-  size: string;
-  color: string;
-  dimension: string;
-  weight: string;
-  customAttributes: Record<string, any>;
-  MRP: string | number;
-  salesPrice: string | number;
-  stock: string | number;
-  sku: string;
-  expiryDate: string;
-  manufacturingYear: string;
-  materialType: string;
-  images: File[];
-}
-
 interface ProductData {
   productName: string;
   brandName: string;
   manufacturer: string;
+  gstSlab: string;
+  hsnSacCode: string;
   description: string;
   shortDescription: string;
   categoryId: number | null;
   subCategoryId: number | null;
   subSubCategoryId: number | null;
-  variants: Variant[];
   productImages: ImagePreview[];
+  isDiscountEligible: 1 | 0;
+  isReturnable: 1 | 0;
+  returnWindowDays: string;
+  deliveryMinDays: string;
+  deliveryMaxDays: string;
+  shippingClass: "standard" | "bulky" | "fragile";
 }
 
 const initialProductData: ProductData = {
   brandName: "",
   manufacturer: "",
   productName: "",
+  gstSlab: "",
+  hsnSacCode: "",
   description: "",
   shortDescription: "",
   categoryId: null,
   subCategoryId: null,
   subSubCategoryId: null,
-  variants: [
-    {
-      size: "",
-      color: "",
-      dimension: "",
-      weight: "",
-      customAttributes: {},
-      MRP: "",
-      salesPrice: "",
-      stock: "",
-      sku: "",
-      expiryDate: "",
-      manufacturingYear: "",
-      materialType: "",
-      images: [],
-    },
-  ],
   productImages: [],
+  isDiscountEligible: 1,
+  isReturnable: 1,
+  returnWindowDays: "",
+
+  deliveryMinDays: "1",
+  deliveryMaxDays: "3",
+  shippingClass: "standard",
 };
 
 // --- UI Components ---
@@ -186,11 +168,8 @@ export default function ProductListingDynamic() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [subSubCategories, setSubSubCategories] = useState<SubSubCategory[]>(
-    []
+    [],
   );
-  const [variantErrors, setVariantErrors] = useState<
-    Record<number, Record<string, string>>
-  >({});
   const [requiredDocs, setRequiredDocs] = useState<RequiredDocument[]>([]);
   const [docFiles, setDocFiles] = useState<Record<number, File | null>>({}); // key by document_id
   const [loading, setLoading] = useState(false);
@@ -203,6 +182,10 @@ export default function ProductListingDynamic() {
   const [custom_category, setCustomCategory] = useState("");
   const [custom_subcategory, setCustomSubCategory] = useState("");
   const [custom_subsubcategory, setCustomSubSubCategory] = useState("");
+  const [categoryAttributes, setCategoryAttributes] = useState<any[]>([]);
+  const [productAttributes, setProductAttributes] = useState<
+    Record<string, any>
+  >({});
 
   // --- Fetch data from API ---
   useEffect(() => {
@@ -229,8 +212,8 @@ export default function ProductListingDynamic() {
     setProduct((prev) => {
       const existingImages = prev.productImages;
 
-      if (existingImages.length + newFiles.length > 5) {
-        setImageError("You can select a maximum of 5 images.");
+      if (existingImages.length + newFiles.length > 1) {
+        setImageError("Only one cover image is allowed.");
         return prev;
       }
 
@@ -241,7 +224,7 @@ export default function ProductListingDynamic() {
 
       return {
         ...prev,
-        productImages: [...existingImages, ...newPreviews], // ✅ append
+        productImages: [...existingImages, ...newPreviews],
       };
     });
 
@@ -250,12 +233,6 @@ export default function ProductListingDynamic() {
     // reset input so same file can be selected again if needed
     e.target.value = "";
   };
-
-  // useEffect(() => {
-  //   return () => {
-  //     product.productImages.forEach((img) => URL.revokeObjectURL(img.url));
-  //   };
-  // }, [product.productImages]);
 
   // Fetch subcategories when category changes
   useEffect(() => {
@@ -269,6 +246,25 @@ export default function ProductListingDynamic() {
       setDocFiles({});
     }
   }, [product.categoryId]);
+
+  useEffect(() => {
+    if (!product.categoryId) return;
+
+    const params = new URLSearchParams({
+      categoryId: String(product.categoryId),
+    });
+
+    if (product.subCategoryId) {
+      params.append("subcategoryId", String(product.subCategoryId));
+    }
+
+    api.get(`/category/attributes?${params.toString()}`).then((res) => {
+      if (res.data.success) {
+        setCategoryAttributes(res.data.data);
+        setProductAttributes({});
+      }
+    });
+  }, [product.categoryId, product.subCategoryId]);
 
   // Fetch sub-subcategories when subcategory changes
   useEffect(() => {
@@ -301,7 +297,7 @@ export default function ProductListingDynamic() {
 
   // --- Form Handlers ---
   const handleFieldChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
 
@@ -348,12 +344,13 @@ export default function ProductListingDynamic() {
     }));
   };
 
-
   // Character Limit
   const CHAR_LIMIT = 150;
 
   const handleShortDescriptionChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const value = e.target.value;
 
@@ -380,224 +377,27 @@ export default function ProductListingDynamic() {
     });
   };
 
-  const removeVariantImage = (variantIndex: number, imageIndex: number) => {
-    setProduct((prev) => {
-      const updatedVariants = [...prev.variants];
-      const updatedImages = [...updatedVariants[variantIndex].images];
-
-      updatedImages.splice(imageIndex, 1);
-
-      updatedVariants[variantIndex] = {
-        ...updatedVariants[variantIndex],
-        images: updatedImages,
-      };
-
-      return { ...prev, variants: updatedVariants };
-    });
-  };
-
-  const handleVariantChange = (index: number, field: string, value: string) => {
-    // manufacturing Year
-    if (field === "manufacturingYear") {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const mfgDate = new Date(value);
-      mfgDate.setHours(0, 0, 0, 0);
-
-      // must be before today
-      if (mfgDate >= today) return;
-
-      // must be before expiry date (if exists)
-      const expiry = product.variants[index].expiryDate;
-      if (expiry) {
-        const expiryDate = new Date(expiry);
-        expiryDate.setHours(0, 0, 0, 0);
-        if (mfgDate >= expiryDate) return;
-      }
-    }
-
-    // expiry Date
-    if (field === "expiryDate") {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const expiryDate = new Date(value);
-      expiryDate.setHours(0, 0, 0, 0);
-
-      // must be after today
-      if (expiryDate <= today) return;
-
-      // must be after manufacturing date (if exists)
-      const mfg = product.variants[index].manufacturingYear;
-      if (mfg) {
-        const mfgDate = new Date(mfg);
-        mfgDate.setHours(0, 0, 0, 0);
-        if (expiryDate <= mfgDate) return;
-      }
-    }
-
-    // ================= DIMENSION =================
-    if (field === "dimension") {
-      if (!/^[0-9.*]*$/.test(value)) return;
-    }
-
-    // ================= ALPHABET ONLY =================
-    if (field === "color" || field === "materialType") {
-      if (!/^[A-Za-z ]*$/.test(value)) return;
-    }
-
-    // ================= DECIMAL NUMBERS =================
-    if (["MRP", "salesPrice", "weight"].includes(field)) {
-      if (!/^\d*\.?\d*$/.test(value)) return;
-    }
-
-    // ================= INTEGER ONLY =================
-    if (field === "stock") {
-      if (!/^\d*$/.test(value)) return;
-    }
-
-    // ---------- Soft validation (error messages) ----------
-    let error = "";
-
-    setVariantErrors((prev) => ({
-      ...prev,
-      [index]: {
-        ...(prev[index] || {}),
-        [field]: error,
-      },
-    }));
-
-    // ---------- STATE UPDATE ----------
-    const updatedVariants = [...product.variants];
-    updatedVariants[index] = {
-      ...updatedVariants[index],
-      [field]: value,
-    };
-
-    setProduct((prev) => ({ ...prev, variants: updatedVariants }));
-  };
-
-  const handleVariantAttributeChange = (
-    variantIndex: number,
-    attrName: string,
-    value: any
-  ) => {
-    const updatedVariants = [...product.variants];
-    updatedVariants[variantIndex].customAttributes = {
-      ...updatedVariants[variantIndex].customAttributes,
-      [attrName]: value,
-    };
-    setProduct((prev) => ({ ...prev, variants: updatedVariants }));
-  };
-
-  const handleVariantImages = (
-    variantIndex: number,
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (!e.target.files) return;
-
-    const newFiles = Array.from(e.target.files);
-
-    setProduct((prev) => {
-      const updatedVariants = [...prev.variants];
-      const existingImages = updatedVariants[variantIndex].images;
-
-      // enforce max 5
-      if (existingImages.length + newFiles.length > 5) {
-        alert("You can select a maximum of 5 images per variant.");
-        return prev;
-      }
-
-      updatedVariants[variantIndex] = {
-        ...updatedVariants[variantIndex],
-        images: [...existingImages, ...newFiles], // ✅ append
-      };
-
-      return {
-        ...prev,
-        variants: updatedVariants,
-      };
-    });
-
-    // allow re-selecting the same file again
-    e.target.value = "";
-  };
-
-  const addVariant = () => {
-    setProduct((prev) => ({
-      ...prev,
-      variants: [
-        ...prev.variants,
-        {
-          size: "",
-          color: "",
-          dimension: "",
-          weight: "",
-          customAttributes: {},
-          MRP: "",
-          salesPrice: "",
-          stock: "",
-          expiryDate: "",
-          manufacturingYear: "",
-          materialType: "",
-          sku: "",
-          images: [],
-        },
-      ],
-    }));
-  };
-
-  const removeVariant = (index: number) => {
-    if (product.variants.length <= 1) {
-      alert("At least one variant is required");
-      return;
-    }
-    setProduct((prev) => ({
-      ...prev,
-      variants: prev.variants.filter((_, i) => i !== index),
-    }));
-  };
-
   const onDocInputChange = (
     e: ChangeEvent<HTMLInputElement>,
-    documentId: number
+    documentId: number,
   ) => {
     const file = e.target.files?.[0] ?? null;
     setDocFiles((prev) => ({ ...prev, [documentId]: file }));
-  };
-
-  // Get attributes for selected sub-subcategory
-  const getSelectedAttributes = () => {
-    if (!product.subSubCategoryId) return null;
-
-    const found = subSubCategories.find(
-      (s) => s.sub_subcategory_id === product.subSubCategoryId
-    );
-
-    // If backend did not send attributes or it's null → return empty structure
-    return (
-      found?.attributes || {
-        variation_types: [],
-        sizes: [],
-        colors: [],
-        attributes: {},
-      }
-    );
   };
 
   // --- Form Submission ---
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    const hasVariantErrors = Object.values(variantErrors).some((variant) =>
-      Object.values(variant).some(Boolean)
+    const missingRequired = categoryAttributes.some(
+      (attr) =>
+        attr.is_required &&
+        (!productAttributes[attr.attribute_key] ||
+          productAttributes[attr.attribute_key].length === 0),
     );
 
-    if (hasVariantErrors) {
-      setError("Please fix variant pricing/stock errors before submitting.");
-      setIsSubmitting(false);
-      return;
+    if (missingRequired) {
+      throw new Error("Please fill all required product attributes");
     }
 
     setIsSubmitting(true);
@@ -624,31 +424,14 @@ export default function ProductListingDynamic() {
         if (doc.status === 1 && !docFiles[doc.document_id]) {
           // status 1 = required
           throw new Error(
-            `Please upload required document: ${doc.document_name}`
+            `Please upload required document: ${doc.document_name}`,
           );
         }
       }
 
       // Validate at least one main image
       if (product.productImages.length === 0) {
-        throw new Error("Please upload at least one product image");
-      }
-
-      // Validate variants
-      if (product.variants.length === 0) {
-        throw new Error("Please add at least one variant");
-      }
-
-      for (const variant of product.variants) {
-        if (
-          !variant.salesPrice ||
-          parseFloat(variant.salesPrice as string) <= 0
-        ) {
-          throw new Error("Please enter valid sales price for all variants");
-        }
-        if (!variant.stock || parseInt(variant.stock as string) < 0) {
-          throw new Error("Please enter valid stock quantity for all variants");
-        }
+        throw new Error("Cover image is required");
       }
 
       const formData = new FormData();
@@ -663,7 +446,7 @@ export default function ProductListingDynamic() {
       if (product.subSubCategoryId) {
         formData.append(
           "sub_subcategory_id",
-          product.subSubCategoryId.toString()
+          product.subSubCategoryId.toString(),
         );
       }
 
@@ -675,38 +458,40 @@ export default function ProductListingDynamic() {
       if (isCustomSubSubcategory)
         formData.append("custom_sub_subcategory", custom_subsubcategory);
 
+      // if (!product.gstSlab || !product.hsnSacCode) {
+      //   throw new Error("GST Slab and HSN/SAC Code are required");
+      // }
+
       formData.append("brandName", product.brandName);
       formData.append("manufacturer", product.manufacturer);
       formData.append("productName", product.productName);
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
 
-      // Add first variant data as main product data (for backward compatibility)
-      if (product.variants.length > 0) {
-        const firstVariant = product.variants[0];
-        formData.append("size", firstVariant.size || "");
-        formData.append("color", firstVariant.color || "");
-        formData.append("dimension", firstVariant.dimension || "");
-        formData.append("weight", firstVariant.weight || "");
-        formData.append("stock", firstVariant.stock?.toString() || "0");
-        formData.append(
-          "salesPrice",
-          firstVariant.salesPrice?.toString() || "0"
-        );
-        formData.append("MRP", firstVariant.MRP?.toString() || "0");
-        formData.append(
-          "expiryDate",
-          firstVariant.expiryDate?.toString() || ""
-        );
-        formData.append(
-          "manufacturingYear",
-          firstVariant.manufacturingYear?.toString() || ""
-        );
-        formData.append(
-          "materialType",
-          firstVariant.materialType?.toString() || ""
-        );
+      if (product.gstSlab) {
+        formData.append("gstSlab", product.gstSlab);
       }
+
+      if (product.hsnSacCode) {
+        formData.append("hsnSacCode", product.hsnSacCode);
+      }
+
+      formData.append(
+        "is_discount_eligible",
+        String(product.isDiscountEligible),
+      );
+
+      formData.append("is_returnable", String(product.isReturnable));
+
+      if (product.isReturnable === 1 && product.returnWindowDays) {
+        formData.append("return_window_days", product.returnWindowDays);
+      }
+
+      formData.append("delivery_sla_min_days", product.deliveryMinDays);
+
+      formData.append("delivery_sla_max_days", product.deliveryMaxDays);
+
+      formData.append("shipping_class", product.shippingClass);
 
       // Add main product images
       product.productImages.forEach(({ file }) => {
@@ -720,30 +505,7 @@ export default function ProductListingDynamic() {
         }
       });
 
-      // Add variants as JSON
-      const variantsPayload = product.variants.map((variant) => ({
-        // sku: variant.sku || generateSKU(index),
-        expiryDate: variant.expiryDate,
-        manufacturingYear: variant.manufacturingYear,
-        materialType: variant.materialType,
-        size: variant.size,
-        color: variant.color,
-        dimension: variant.dimension,
-        weight: variant.weight,
-        mrp: variant.MRP,
-        salesPrice: variant.salesPrice,
-        stock: variant.stock,
-        customAttributes: variant.customAttributes,
-      }));
-
-      formData.append("variants", JSON.stringify(variantsPayload));
-
-      // Add variant images
-      product.variants.forEach((variant, index) => {
-        variant.images.forEach((file, imgIndex) => {
-          formData.append(`variant_${index}_${imgIndex}`, file);
-        });
-      });
+      formData.append("attributes", JSON.stringify(productAttributes));
 
       // Submit to backend
       const res = await api.post("/product/create-product", formData, {
@@ -813,344 +575,10 @@ export default function ProductListingDynamic() {
     );
   };
 
-  const renderVariantBuilder = () => {
-    const attributes = getSelectedAttributes();
-
-    return (
-      <section>
-        <SectionHeader
-          icon={FaBox}
-          title="Product Variants"
-          description="Configure product variants"
-        />
-
-        {product.variants.map((variant, index) => (
-          <div
-            key={index}
-            className="p-6 mb-6 border shadow-sm rounded-xl bg-gray-50"
-          >
-            <div className="flex items-center justify-between mb-4">
-              {product.variants.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeVariant(index)}
-                  className="p-2 text-red-600 hover:text-red-800 cursor-pointer"
-                >
-                  <FaTrash />
-                </button>
-              )}
-            </div>
-
-            {/* === ALWAYS SHOW SIMPLE INPUTS === */}
-            <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-3">
-              {/* Size */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Size
-                </label>
-                <input
-                  type="text"
-                  value={variant.size}
-                  onChange={(e) =>
-                    handleVariantChange(index, "size", e.target.value)
-                  }
-                  placeholder="Enter Size / capacity / volume"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Color */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Color
-                </label>
-                <input
-                  type="text"
-                  value={variant.color}
-                  onChange={(e) =>
-                    handleVariantChange(index, "color", e.target.value)
-                  }
-                  placeholder="Enter Color"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Material Type */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Material Type
-                </label>
-                <input
-                  type="text"
-                  value={variant.materialType}
-                  onChange={(e) =>
-                    handleVariantChange(index, "materialType", e.target.value)
-                  }
-                  placeholder="Enter Material Type"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Dimension */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Dimension
-                </label>
-                <input
-                  type="text"
-                  value={variant.dimension}
-                  onChange={(e) =>
-                    handleVariantChange(index, "dimension", e.target.value)
-                  }
-                  placeholder="12x10x5 cm"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* Weight */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Weight (In Grams)
-                </label>
-                <input
-                  type="text"
-                  value={variant.weight}
-                  placeholder="1000g"
-                  className="w-full p-2 border rounded-lg"
-                  onChange={(e) =>
-                    handleVariantChange(index, "weight", e.target.value)
-                  }
-                />
-                {variantErrors[index]?.weight && (
-                  <p className="text-xs text-red-500">
-                    {variantErrors[index].weight}
-                  </p>
-                )}
-              </div>
-
-              {/* MRP */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  MRP
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter MRP"
-                  className="w-full p-2 border rounded-lg"
-                  value={variant.MRP}
-                  onChange={(e) =>
-                    handleVariantChange(index, "MRP", e.target.value)
-                  }
-                />
-                {variantErrors[index]?.MRP && (
-                  <p className="text-xs text-red-500">
-                    {variantErrors[index].MRP}
-                  </p>
-                )}
-              </div>
-
-              {/* Sales Price */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Sales Price
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter Sales Price"
-                  className="w-full p-2 border rounded-lg"
-                  required
-                  value={variant.salesPrice}
-                  onChange={(e) =>
-                    handleVariantChange(index, "salesPrice", e.target.value)
-                  }
-                />
-                {variantErrors[index]?.salesPrice && (
-                  <p className="text-xs text-red-500">
-                    {variantErrors[index].salesPrice}
-                  </p>
-                )}
-              </div>
-
-              {/* Stock */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Stock
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter Stock / Unit"
-                  className="w-full p-2 border rounded-lg"
-                  required
-                  value={variant.stock}
-                  onChange={(e) =>
-                    handleVariantChange(index, "stock", e.target.value)
-                  }
-                />
-                {variantErrors[index]?.stock && (
-                  <p className="text-xs text-red-500">
-                    {variantErrors[index].stock}
-                  </p>
-                )}
-              </div>
-
-              {/* Manufacturing */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Manufacturing Year
-                </label>
-                <input
-                  type="date"
-                  max={new Date().toISOString().split("T")[0]}
-                  value={variant.manufacturingYear}
-                  onChange={(e) =>
-                    handleVariantChange(
-                      index,
-                      "manufacturingYear",
-                      e.target.value
-                    )
-                  }
-                  placeholder="Enter Manufacturing Year"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              {/* expiryDate */}
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Expiry Date
-                </label>
-                <input
-                  type="date"
-                  min={
-                    new Date(Date.now() + 86400000).toISOString().split("T")[0]
-                  }
-                  value={variant.expiryDate}
-                  onChange={(e) =>
-                    handleVariantChange(index, "expiryDate", e.target.value)
-                  }
-                  placeholder="Enter Expiry Date"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-            </div>
-
-            {/* === ONLY SHOW CUSTOM ATTRIBUTES IF PRESENT === */}
-            {attributes?.attributes && (
-              <div className="mb-4">
-                <h4 className="mb-2 font-medium text-gray-700">
-                  Product Attributes
-                </h4>
-
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  {Object.keys(attributes.attributes).map((key) => (
-                    <div key={key}>
-                      <label className="block mb-1 text-sm font-medium text-gray-700">
-                        {key}
-                      </label>
-                      <input
-                        type="text"
-                        value={variant.customAttributes[key] || ""}
-                        onChange={(e) =>
-                          handleVariantAttributeChange(
-                            index,
-                            key,
-                            e.target.value
-                          )
-                        }
-                        placeholder={`Enter ${key}`}
-                        className="w-full p-2 border rounded-lg"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* === VARIANT IMAGES === */}
-            {/* Variant Images */}
-            <div className="mt-4">
-              <label className="block mb-2 text-sm font-medium text-gray-700">
-                Variant Images
-              </label>
-
-              <div className="flex items-center p-3 bg-white border border-gray-400 border-dashed rounded-lg">
-                <span className="flex-1 text-sm text-gray-600">
-                  {variant.images.length === 0
-                    ? "No images chosen"
-                    : `${variant.images.length} image(s) selected`}
-                </span>
-                <label
-                  className={`cursor-pointer px-3 py-1 text-xs rounded-full
-    ${
-      variant.images.length >= 5
-        ? "bg-gray-400 cursor-not-allowed"
-        : "bg-[#852BAF] hover:bg-[#7a1c94] text-white"
-    }
-  `}
-                >
-                  Choose Files
-                  <input
-                    type="file"
-                    multiple
-                    hidden
-                    accept="image/*"
-                    disabled={variant.images.length >= 5}
-                    onChange={(e) => handleVariantImages(index, e)}
-                  />
-                </label>
-              </div>
-
-              {/* Image Previews */}
-              {variant.images.length > 0 && (
-                <div className="mt-3 flex gap-2 flex-wrap">
-                  {variant.images.map((file, imgIndex) => {
-                    const url = URL.createObjectURL(file);
-
-                    return (
-                      <div
-                        key={imgIndex}
-                        className="relative w-20 h-20 border rounded overflow-hidden group"
-                      >
-                        <img
-                          src={url}
-                          alt={`Variant ${index + 1} - Image ${imgIndex + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-
-                        {/* Remove button */}
-                        <button
-                          type="button"
-                          onClick={() => removeVariantImage(index, imgIndex)}
-                          className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1
-                   opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                        >
-                          <FaTrash size={10} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-
-        <button
-          type="button"
-          onClick={addVariant}
-          className="flex items-center justify-center w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#852BAF] hover:bg-purple-50 cursor-pointer"
-        >
-          <FaPlus className="mr-2 text-[#852BAF]" />
-          Add Another Variant
-        </button>
-      </section>
-    );
-  };
-
   // Get selected category name
   const getSelectedCategoryName = () => {
     const category = categories.find(
-      (c) => c.category_id === product.categoryId
+      (c) => c.category_id === product.categoryId,
     );
     return category?.category_name || "Not selected";
   };
@@ -1158,7 +586,7 @@ export default function ProductListingDynamic() {
   // Get selected subcategory name
   const getSelectedSubCategoryName = () => {
     const subcategory = subCategories.find(
-      (s) => s.subcategory_id === product.subCategoryId
+      (s) => s.subcategory_id === product.subCategoryId,
     );
     return subcategory?.subcategory_name || "Not selected";
   };
@@ -1166,7 +594,7 @@ export default function ProductListingDynamic() {
   // Get selected sub-subcategory name
   const getSelectedSubSubCategoryName = () => {
     const subsubcategory = subSubCategories.find(
-      (ss) => ss.sub_subcategory_id === product.subSubCategoryId
+      (ss) => ss.sub_subcategory_id === product.subSubCategoryId,
     );
     return subsubcategory?.name || "Not selected";
   };
@@ -1408,7 +836,6 @@ export default function ProductListingDynamic() {
               </div>
             )}
           </section>
-
           {/* Product Identification */}
           <section>
             <SectionHeader
@@ -1442,49 +869,325 @@ export default function ProductListingDynamic() {
                 onChange={handleFieldChange}
                 placeholder="Manufacturer name"
               />
+
+              <FormInput
+                id="gstSlab"
+                label="GST Slab (%)"
+                type="number"
+                value={product.gstSlab}
+                onChange={handleFieldChange}
+                placeholder="e.g. 5, 12, 18, 28"
+              />
+
+              <FormInput
+                id="hsnSacCode"
+                label="HSN / SAC Code"
+                value={product.hsnSacCode}
+                onChange={handleFieldChange}
+                placeholder="Enter HSN or SAC code"
+              />
+            </div>
+          </section>
+          <section>
+            <SectionHeader
+              icon={FaBox}
+              title="Product Attributes"
+              description="Select available options for this product"
+            />
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {categoryAttributes.length === 0 ? (
+                <p className="text-sm text-gray-500 col-span-full">
+                  No attributes found for this category.
+                </p>
+              ) : (
+                categoryAttributes.map((attr) => {
+                  //  NORMALIZE input_type
+                  const inputType =
+                    attr.input_type && attr.input_type.trim()
+                      ? attr.input_type.toLowerCase().trim()
+                      : "textarea";
+
+                  return (
+                    <div key={attr.attribute_key}>
+                      <label className="block mb-1 text-sm font-medium text-gray-700">
+                        {attr.attribute_label}
+                        {attr.is_required === 1 && (
+                          <span className="text-red-500">*</span>
+                        )}
+                      </label>
+
+                      {/* MULTISELECT */}
+                      {inputType === "multiselect" && (
+                        <input
+                          type="text"
+                          placeholder="Comma separated (e.g. S,M,L)"
+                          onChange={(e) =>
+                            setProductAttributes((prev) => ({
+                              ...prev,
+                              [attr.attribute_key]: e.target.value
+                                .split(",")
+                                .map((v) => v.trim())
+                                .filter(Boolean),
+                            }))
+                          }
+                          className="w-full p-2 border rounded-lg"
+                        />
+                      )}
+
+                      {/* SELECT */}
+                      {inputType === "select" && (
+                        <input
+                          type="text"
+                          onChange={(e) =>
+                            setProductAttributes((prev) => ({
+                              ...prev,
+                              [attr.attribute_key]: [e.target.value],
+                            }))
+                          }
+                          className="w-full p-2 border rounded-lg"
+                          placeholder={`Enter ${attr.attribute_label}`}
+                        />
+                      )}
+
+                      {/* NUMBER */}
+                      {inputType === "number" && (
+                        <input
+                          type="number"
+                          onChange={(e) =>
+                            setProductAttributes((prev) => ({
+                              ...prev,
+                              [attr.attribute_key]: [e.target.value],
+                            }))
+                          }
+                          className="w-full p-2 border rounded-lg"
+                        />
+                      )}
+
+                      {/* TEXT */}
+                      {inputType === "text" && (
+                        <input
+                          type="text"
+                          onChange={(e) =>
+                            setProductAttributes((prev) => ({
+                              ...prev,
+                              [attr.attribute_key]: [e.target.value],
+                            }))
+                          }
+                          className="w-full p-2 border rounded-lg"
+                        />
+                      )}
+
+                      {/* TEXTAREA */}
+                      {inputType === "textarea" && (
+                        <textarea
+                          onChange={(e) =>
+                            setProductAttributes((prev) => ({
+                              ...prev,
+                              [attr.attribute_key]: [e.target.value],
+                            }))
+                          }
+                          className="w-full p-2 border rounded-lg"
+                          rows={3}
+                          placeholder={attr.attribute_label}
+                        />
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </section>
 
           {/* Product Description */}
           <section>
-            {renderVariantBuilder()}
+            <SectionHeader
+              icon={FaBox}
+              title="Product Description"
+              description="Describe the product in detail and add a short summary"
+            />
 
-            {/* ===================== DETAILED DESCRIPTION ===================== */}
-            <div className="mt-6">
-              <label className="block mb-2 text-sm font-medium text-gray-700">
-                Detailed Description <span className="text-red-500">*</span>
-              </label>
+            <div className="mt-4 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              {/* Detailed Description */}
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Detailed Description <span className="text-red-500">*</span>
+                </label>
 
-              <QuillEditor
-                value={product.description}
-                placeholder="Describe your product, features, benefits, specifications, and usage instructions..."
-                minHeight={300}
-                onChange={(val) =>
-                  setProduct((prev) => ({ ...prev, description: val }))
-                }
-              />
+                <QuillEditor
+                  value={product.description}
+                  placeholder="Describe your product, features, benefits, specifications, and usage instructions..."
+                  minHeight={300}
+                  onChange={(val) =>
+                    setProduct((prev) => ({ ...prev, description: val }))
+                  }
+                />
+              </div>
+
+              {/* Short Description */}
+              <div className="mt-6">
+                <FormInput
+                  id="shortDescription"
+                  label="Short Description"
+                  type="textarea"
+                  required
+                  value={product.shortDescription}
+                  onChange={handleShortDescriptionChange}
+                  placeholder="Short description (max 150 characters)"
+                />
+
+                <p
+                  className={`mt-1 text-xs ${
+                    product.shortDescription.length >= CHAR_LIMIT
+                      ? "text-red-500"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {product.shortDescription.length} / {CHAR_LIMIT} characters
+                </p>
+              </div>
             </div>
+          </section>
 
-            {/* ===================== SHORT DESCRIPTION ===================== */}
-            <div className="mt-6">
-              <FormInput
-                id="shortDescription"
-                label="Short Description"
-                type="textarea"
-                required
-                value={product.shortDescription}
-                onChange={handleShortDescriptionChange}
-                placeholder="Short description (max 150 characters)"
-              />
+          {/* Discount */}
+          <section>
+            <SectionHeader
+              icon={FaTag}
+              title="Pricing & Commercial Controls"
+              description="Define discount eligibility and return policies"
+            />
 
-              <p
-                className={`mt-1 text-xs ${
-                  product.shortDescription.length >= CHAR_LIMIT
-                    ? "text-red-500"
-                    : "text-gray-500"
-                }`}
-              >
-                {product.shortDescription.length} / {CHAR_LIMIT} characters
+            <div className="mt-4 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                {/* Discount Eligible */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Discount Eligible
+                  </label>
+                  <select
+                    name="isDiscountEligible"
+                    value={product.isDiscountEligible}
+                    onChange={(e) =>
+                      setProduct((prev) => ({
+                        ...prev,
+                        isDiscountEligible: Number(e.target.value) as 1 | 0,
+                      }))
+                    }
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value={1}>Yes</option>
+                    <option value={0}>No</option>
+                  </select>
+                </div>
+
+                {/* Returnable */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Returnable
+                  </label>
+                  <select
+                    name="isReturnable"
+                    value={product.isReturnable}
+                    onChange={(e) => {
+                      const val = Number(e.target.value) as 1 | 0;
+                      setProduct((prev) => ({
+                        ...prev,
+                        isReturnable: val,
+                        returnWindowDays:
+                          val === 0 ? "" : prev.returnWindowDays,
+                      }));
+                    }}
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value={1}>Yes</option>
+                    <option value={0}>No</option>
+                  </select>
+                </div>
+
+                {/* Return Window */}
+                {product.isReturnable === 1 && (
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                      Return Window (Days)
+                    </label>
+                    <input
+                      type="number"
+                      name="returnWindowDays"
+                      value={product.returnWindowDays}
+                      onChange={handleFieldChange}
+                      min={1}
+                      max={30}
+                      placeholder="e.g. 7"
+                      className="w-full p-3 border rounded-lg"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Logistics */}
+          <section>
+            <SectionHeader
+              icon={FaBox}
+              title="Logistics & Fulfilment"
+              description="Delivery timelines and shipping classification"
+            />
+
+            <div className="mt-4 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                {/* Delivery SLA */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Delivery SLA (Min Days)
+                  </label>
+                  <input
+                    type="number"
+                    name="deliveryMinDays"
+                    value={product.deliveryMinDays}
+                    onChange={handleFieldChange}
+                    min={1}
+                    placeholder="e.g. 3"
+                    className="w-full p-3 border rounded-lg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Delivery SLA (Max Days)
+                  </label>
+                  <input
+                    type="number"
+                    name="deliveryMaxDays"
+                    value={product.deliveryMaxDays}
+                    onChange={handleFieldChange}
+                    min={1}
+                    placeholder="e.g. 5"
+                    className="w-full p-3 border rounded-lg"
+                  />
+                </div>
+
+                {/* Shipping Class */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Shipping Class
+                  </label>
+                  <select
+                    name="shippingClass"
+                    value={product.shippingClass}
+                    onChange={handleFieldChange}
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value="standard">Standard</option>
+                    <option value="bulky">Bulky</option>
+                    <option value="fragile">Fragile</option>
+                  </select>
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs text-gray-500">
+                Delivery timeline shown to customers as an estimate. Actual
+                delivery may vary by location.
               </p>
             </div>
           </section>
@@ -1493,15 +1196,15 @@ export default function ProductListingDynamic() {
           <section>
             <SectionHeader
               icon={FaImages}
-              title="Product Images"
-              description="Main images for product listing"
+              title="Cover Image"
+              description="Single cover image for product listing"
             />
 
             <div className="flex items-center p-3 bg-white border border-gray-400 border-dashed rounded-lg">
               <span className="flex-1 text-sm text-gray-600">
                 {product.productImages.length === 0
-                  ? "No images chosen"
-                  : `${product.productImages.length} image(s) selected`}
+                  ? "No cover image chosen"
+                  : "1 cover image selected"}
               </span>
               <label
                 className={`cursor-pointer px-3 py-1 text-xs rounded-full
@@ -1517,7 +1220,7 @@ export default function ProductListingDynamic() {
                   type="file"
                   multiple
                   hidden
-                  disabled={product.productImages.length >= 5}
+                  disabled={product.productImages.length >= 1}
                   accept="image/*"
                   onChange={handleMainImages}
                 />
@@ -1525,7 +1228,7 @@ export default function ProductListingDynamic() {
             </div>
 
             <p className="mt-2 text-xs text-gray-500">
-              Upload high-quality product images (min 1, max 5)
+              Upload one high-quality cover image (required)
             </p>
 
             {imageError && (
@@ -1561,10 +1264,8 @@ export default function ProductListingDynamic() {
               </div>
             )}
           </section>
-
           {/* Documents */}
           {renderDocUploads()}
-
           {/* Submit Button */}
           <div className="pt-6">
             <button

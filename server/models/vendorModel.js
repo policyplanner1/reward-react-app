@@ -28,7 +28,7 @@ class VendorModel {
         data.panNumber || null,
         vendorId,
         userId,
-      ]
+      ],
     );
 
     if (result.affectedRows === 0) {
@@ -37,7 +37,7 @@ class VendorModel {
 
     const [rows] = await connection.execute(
       `SELECT * FROM vendors WHERE vendor_id = ?`,
-      [vendorId]
+      [vendorId],
     );
 
     return rows[0];
@@ -49,7 +49,7 @@ class VendorModel {
   async insertAddress(connection, vendorId, type, d) {
     await connection.execute(
       `DELETE FROM vendor_addresses WHERE vendor_id = ? AND type = ?`,
-      [vendorId, type]
+      [vendorId, type],
     );
 
     const address = {
@@ -74,7 +74,7 @@ class VendorModel {
         address.city,
         address.state,
         address.pincode,
-      ]
+      ],
     );
   }
 
@@ -84,7 +84,7 @@ class VendorModel {
   async insertBankDetails(connection, vendorId, d) {
     await connection.execute(
       `DELETE FROM vendor_bank_details WHERE vendor_id = ?`,
-      [vendorId]
+      [vendorId],
     );
     await connection.execute(
       `INSERT INTO vendor_bank_details 
@@ -96,7 +96,7 @@ class VendorModel {
         d.accountNumber || "",
         d.branch || "",
         d.ifscCode || "",
-      ]
+      ],
     );
   }
 
@@ -106,7 +106,7 @@ class VendorModel {
   async insertContacts(connection, vendorId, d) {
     await connection.execute(
       `DELETE FROM vendor_contacts WHERE vendor_id = ?`,
-      [vendorId]
+      [vendorId],
     );
 
     await connection.execute(
@@ -120,7 +120,7 @@ class VendorModel {
         d.email || "",
         d.paymentTerms || "",
         d.comments || "",
-      ]
+      ],
     );
   }
 
@@ -128,7 +128,7 @@ class VendorModel {
   async getApprovedVendorList() {
     try {
       const [vendorRows] = await db.execute(
-        `SELECT vendor_id, full_name FROM vendors WHERE status = 'approved';`
+        `SELECT vendor_id, full_name FROM vendors WHERE status = 'approved';`,
       );
 
       return vendorRows;
@@ -143,28 +143,29 @@ class VendorModel {
       Works with ANY file key from frontend
   ============================================================ */
   async insertCommonDocuments(connection, vendorId, files) {
-    await connection.execute(
-      `UPDATE vendor_documents
-          SET is_active = 0
-          WHERE vendor_id = ?`,
-      [vendorId]
-    );
-
     for (const key of Object.keys(files)) {
       const file = files[key][0];
+
+      //  deactivate ONLY this document type
+      await connection.execute(
+        `UPDATE vendor_documents
+       SET is_active = 0
+       WHERE vendor_id = ? AND document_key = ?`,
+        [vendorId, key],
+      );
 
       const relativePath = path.join(
         "vendors",
         vendorId.toString(),
         "documents",
-        file.filename
+        file.filename,
       );
 
       await connection.execute(
         `INSERT INTO vendor_documents 
-           (vendor_id, document_key, file_path, mime_type, uploaded_at, is_active)
-         VALUES (?, ?, ?, ?, NOW(),1)`,
-        [vendorId, key, relativePath, file.mimetype]
+       (vendor_id, document_key, file_path, mime_type, uploaded_at, is_active)
+       VALUES (?, ?, ?, ?, NOW(), 1)`,
+        [vendorId, key, relativePath, file.mimetype],
       );
     }
   }
@@ -178,29 +179,29 @@ class VendorModel {
        FROM vendors v 
        JOIN eusers u ON v.user_id = u.user_id
        WHERE v.vendor_id = ?`,
-      [vendorId]
+      [vendorId],
     );
 
     if (!vendor) return null;
 
     const [addresses] = await db.execute(
       "SELECT * FROM vendor_addresses WHERE vendor_id = ?",
-      [vendorId]
+      [vendorId],
     );
 
     const [[bank]] = await db.execute(
       "SELECT * FROM vendor_bank_details WHERE vendor_id = ?",
-      [vendorId]
+      [vendorId],
     );
 
     const [[contacts]] = await db.execute(
       "SELECT * FROM vendor_contacts WHERE vendor_id = ?",
-      [vendorId]
+      [vendorId],
     );
 
     const [documents] = await db.execute(
       "SELECT * FROM vendor_documents WHERE vendor_id = ? AND is_active=1",
-      [vendorId]
+      [vendorId],
     );
 
     return { vendor, addresses, bank, contacts, documents };
@@ -239,7 +240,7 @@ class VendorModel {
          rejection_reason = ?,
          created_at = NOW()
      WHERE vendor_id = ?`,
-      [status, onboarding_flag, reason, vendorId]
+      [status, onboarding_flag, reason, vendorId],
     );
 
     return result.affectedRows > 0;

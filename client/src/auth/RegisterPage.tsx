@@ -5,7 +5,7 @@ import { useAuth } from "./useAuth";
 import logoImage from "../assets/logo.svg";
 import { Eye, EyeOff } from "lucide-react";
 
-type Role = "vendor" | "vendor_manager" | "admin" | "warehouse_manager";
+type Role = "vendor";
 
 type FieldProps = {
   label: string;
@@ -21,9 +21,9 @@ function Field({ label, htmlFor, labelClass, children }: FieldProps) {
         {label}
       </label>
 
-      <div className="relative mt-2">
+      <div className="relative mt-1.5">
         <div
-          className="pointer-events-none absolute -inset-0.5 rounded-2xl opacity-0 blur-lg transition duration-300
+          className="pointer-events-none absolute -inset-0.5 rounded-xl opacity-0 blur-lg transition
                      bg-gradient-to-r from-[#852BAF]/25 to-[#FC3F78]/25
                      focus-within:opacity-100"
         />
@@ -47,11 +47,9 @@ export default function RegisterPage() {
     phone: "",
   });
 
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState("");
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -70,79 +68,58 @@ export default function RegisterPage() {
         formData.name,
         formData.email,
         formData.password,
-        formData.role,
-        formData.phone
+        "vendor",
+        formData.phone,
       );
     } catch (err: unknown) {
       if (err instanceof AxiosError) {
-        setError(
-          err.response?.data?.message ?? err.message ?? "Register failed"
-        );
+        setError(err.response?.data?.message ?? "Register failed");
       } else {
-        setError("An unexpected error occurred");
+        setError("Unexpected error occurred");
       }
     }
   };
 
-  const labelClass = "text-sm font-semibold text-slate-700 tracking-wide";
-
+  const labelClass = "text-sm font-semibold text-slate-700";
   const inputBase =
-    "w-full px-4 py-2.5 rounded-xl bg-white/90 text-slate-900 placeholder:text-slate-400 border border-slate-200 shadow-sm outline-none transition-all duration-300 focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15 focus:shadow-lg focus:shadow-[#852BAF]/10";
+    "w-full px-4 py-2.5 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 " +
+    "border border-slate-200 shadow-sm outline-none transition-all duration-300 " +
+    "focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15";
 
   return (
-    <div className="relative min-h-screen overflow-hidden flex items-center justify-center bg-gradient-to-tr from-[#38bdf8] via-[#a855f7] to-[#ec4899] font-sans px-4">
-      <div className="pointer-events-none absolute inset-0 opacity-[0.08] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:18px_18px]" />
-
-      <div className="relative z-10 w-full max-w-6xl min-h-[78vh] bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        <div className="relative hidden md:block bg-white">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_20%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(900px_circle_at_85%_30%,rgba(168,85,247,0.10),transparent_55%),radial-gradient(900px_circle_at_50%_110%,rgba(236,72,153,0.08),transparent_55%)]" />
-          <div className="pointer-events-none absolute inset-0 opacity-[0.06] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:18px_18px]" />
-
-          <div className="relative h-full w-full flex items-center justify-center p-10">
-            <img
-              src={logoImage}
-              alt="Register Illustration"
-              className="w-full max-w-md drop-shadow-2xl select-none mt-[-4em]"
-              draggable={false}
-            />
-          </div>
-
-          <div className="absolute bottom-8 left-8 right-8 text-slate-900">
-            <p className="text-2xl font-extrabold leading-tight">
-              Create your account
-            </p>
-            <p className="mt-2 text-[16px] font-medium text-gray-700 leading-relaxed">
-              Join us and manage everything in one place.
-            </p>
-          </div>
-
-          {/* premium divider */}
-          <div className="pointer-events-none absolute top-0 right-0 h-full w-[2px] bg-gradient-to-b from-transparent via-slate-200 to-transparent" />
-          <div className="pointer-events-none absolute top-0 right-[-10px] h-full w-[22px] bg-gradient-to-l from-[#852BAF]/10 via-[#FC3F78]/5 to-transparent blur-xl" />
+    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-tr from-[#38bdf8] via-[#a855f7] to-[#ec4899] px-4">
+      <div className="relative z-10 w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
+        {/* LEFT ILLUSTRATION */}
+        <div className="hidden md:flex items-center justify-center bg-white p-6">
+          <img
+            src={logoImage}
+            alt="Register"
+            className="max-w-sm w-full select-none"
+            draggable={false}
+          />
         </div>
 
-        <div className="relative z-20 w-full bg-white py-8 px-8 md:px-10">
-          <div className="pb-4 mb-4 border-b border-gray-100">
-            <h2 className="text-3xl font-extrabold text-gray-900">
-              Create Account
-            </h2>
-          </div>
+        {/* FORM */}
+        <div className="w-full p-5 md:p-6">
+          <h2 className="text-xl font-extrabold text-gray-900 mb-0.5">
+            Create Account
+          </h2>
+          <p className="text-sm text-gray-500 mb-3">
+            Join us and manage everything in one place.
+          </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Error Alert */}
-            {(error || authError) && (
-              <div className="p-3 text-sm text-red-700 rounded-xl bg-red-50 border border-red-200 shadow-sm">
-                {error || (authError as string)}
-              </div>
-            )}
+          {(error || authError) && (
+            <div className="mb-3 p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
+              {error || (authError as string)}
+            </div>
+          )}
 
-            {/*  2 column on md+, 1 column mobile */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="grid grid-cols-1 gap-3">
               <Field label="Full Name" htmlFor="name" labelClass={labelClass}>
                 <input
                   id="name"
                   name="name"
-                  placeholder="John Doe"
                   className={inputBase}
                   value={formData.name}
                   onChange={handleChange}
@@ -159,7 +136,6 @@ export default function RegisterPage() {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="john@example.com"
                   className={inputBase}
                   value={formData.email}
                   onChange={handleChange}
@@ -175,115 +151,89 @@ export default function RegisterPage() {
                 <input
                   id="phone"
                   name="phone"
-                  type="tel"
-                  placeholder="+1 234 567 890"
                   className={inputBase}
                   value={formData.phone}
                   onChange={handleChange}
                 />
               </Field>
 
-              <Field label="User Role" htmlFor="role" labelClass={labelClass}>
-                <select
-                  id="role"
-                  name="role"
-                  className={inputBase + " cursor-pointer"}
-                  onChange={handleChange}
-                  value={formData.role}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Field
+                  label="Password"
+                  htmlFor="password"
+                  labelClass={labelClass}
                 >
-                  <option value="vendor">Vendor</option>
-                  <option value="vendor_manager">Vendor Manager</option>
-                  <option value="admin">Admin</option>
-                  <option value="warehouse_manager">Warehouse Manager</option>
-                </select>
-              </Field>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      className={inputBase}
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </Field>
 
-              <Field
-                label="Password"
-                htmlFor="password"
-                labelClass={labelClass}
-              >
-                <div className="relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    className={inputBase}
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </Field>
-
-              <Field
-                label="Confirm Password"
-                htmlFor="confirmPassword"
-                labelClass={labelClass}
-              >
-                <div className="relative">
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    className={inputBase}
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    required
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff size={18} />
-                    ) : (
-                      <Eye size={18} />
-                    )}
-                  </button>
-                </div>
-              </Field>
+                <Field
+                  label="Confirm Password"
+                  htmlFor="confirmPassword"
+                  labelClass={labelClass}
+                >
+                  <div className="relative">
+                    <input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      className={inputBase}
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                      className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff size={18} />
+                      ) : (
+                        <Eye size={18} />
+                      )}
+                    </button>
+                  </div>
+                </Field>
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-15 text-white font-bold py-3.5 rounded-full text-xl
+              className="w-full mt-3 py-3.5 rounded-xl text-white font-bold
                          bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-                         shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer
-                         hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
-                         hover:shadow-xl active:scale-95
-                         disabled:opacity-60 disabled:cursor-not-allowed"
+                         shadow-md transition hover:from-[#FC3F78] hover:to-[#852BAF]
+                         disabled:opacity-60"
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Creating account...
-                </span>
-              ) : (
-                "Register Now"
-              )}
+              {loading ? "Creating account..." : "Register"}
             </button>
 
-            <p className="text-md text-center text-gray-600">
+            <p className="text-center text-sm text-gray-600">
               Already have an account?{" "}
               <Link
                 to="/login"
-                className="font-bold text-[#852BAF] hover:text-[#FC3F78] transition-all hover:underline"
+                className="font-semibold text-[#852BAF] hover:underline"
               >
-                Login here
+                Login
               </Link>
             </p>
           </form>

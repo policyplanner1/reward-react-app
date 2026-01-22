@@ -12,9 +12,10 @@ import {
   FaUniversity,
   FaFileContract,
   FaFileUpload,
-  FaEnvelope,
 } from "react-icons/fa";
 import { api } from "../../../../api/api";
+
+const BASE_UPLOAD_URL = "https://rewardplanners.com/api/crm/uploads";
 
 /* ================= TYPES ================= */
 
@@ -44,10 +45,6 @@ interface VendorOnboardingData {
   nocFile: File | null;
 
   agreementAccepted: boolean;
-
-  companyEmail: string;
-  companyPhone: string;
-
   addressLine1: string;
   addressLine2: string;
   addressLine3: string;
@@ -103,10 +100,6 @@ const initialFormData: VendorOnboardingData = {
   nocFile: null,
 
   agreementAccepted: false,
-
-  companyEmail: "",
-  companyPhone: "",
-
   addressLine1: "",
   addressLine2: "",
   addressLine3: "",
@@ -172,7 +165,7 @@ function FormInput(props: {
   label: string;
   value?: string | number;
   onChange: (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => void;
   type?: string;
   required?: boolean;
@@ -253,7 +246,10 @@ function FileUploadInput(props: {
               file ? "text-emerald-500" : "text-gray-400"
             }`}
           />
-          <span className="text-[11px] font-bold text-gray-500 text-center truncate w-full px-2">
+          <span
+            className="text-[11px] font-bold text-gray-500 text-center 
+                 truncate w-full px-2 block max-w-full"
+          >
             {file ? file.name : "Click to upload document"}
           </span>
         </div>
@@ -261,6 +257,85 @@ function FileUploadInput(props: {
       {description && (
         <p className="text-[10px] text-gray-400 italic leading-tight">
           {description}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function DocumentUploadRow({
+  label,
+  docKey,
+  existingDoc,
+  file,
+  onChange,
+  required = false,
+  accept = "image/*,application/pdf",
+}: DocumentUploadRowProps) {
+  const fileUrl = existingDoc
+    ? `${BASE_UPLOAD_URL}/${existingDoc.file_path}`
+    : null;
+
+  const isImage = existingDoc?.mime_type?.startsWith("image/");
+
+  return (
+    <div className="space-y-2">
+      {/* Label */}
+      <label className="block text-sm font-semibold text-gray-800">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+
+      {/* Bordered container for preview + upload */}
+      <div className="flex items-start gap-4 border border-gray-200 rounded-xl p-4 bg-white min-w-0">
+        {/* Existing preview */}
+        <div
+          className="flex-shrink-0 w-28 h-28 bg-gray-50 rounded-lg 
+                flex items-center justify-center 
+                overflow-hidden"
+        >
+          {existingDoc ? (
+            isImage ? (
+              <a href={fileUrl!} target="_blank" rel="noreferrer">
+                <img
+                  src={fileUrl!}
+                  alt={label}
+                  className="w-full h-full object-contain rounded-lg"
+                />
+              </a>
+            ) : (
+              <a
+                href={fileUrl!}
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-600 text-sm underline text-center"
+              >
+                View document
+              </a>
+            )
+          ) : (
+            <span className="text-xs text-gray-400 text-center">
+              No document
+            </span>
+          )}
+        </div>
+
+        {/* Upload button */}
+        <div className="flex-1 min-w-0">
+          <FileUploadInput
+            id={docKey}
+            label={`Upload new ${label}`}
+            file={file}
+            onChange={onChange}
+            accept={accept}
+            required={required}
+          />
+        </div>
+      </div>
+
+      {/* Helper text */}
+      {existingDoc && (
+        <p className="text-xs text-gray-500">
+          Uploading a new file will replace the existing document
         </p>
       )}
     </div>
@@ -294,10 +369,11 @@ const mapBackendToForm = (data: any): VendorOnboardingData => {
     rightsAdvisoryFile: null,
     nocFile: null,
 
-    agreementAccepted: false,
-
-    companyEmail: contacts?.email || "",
-    companyPhone: "",
+    agreementAccepted: Boolean(
+      data.documents?.some(
+        (doc: any) => doc.document_key === "vendorAgreementFile",
+      ),
+    ),
 
     addressLine1: getAddress("business", "line1"),
     addressLine2: getAddress("business", "line2"),
@@ -332,11 +408,30 @@ const mapBackendToForm = (data: any): VendorOnboardingData => {
   };
 };
 
+type ExistingDocument = {
+  document_key: string;
+  file_path: string;
+  mime_type: string;
+};
+
+type DocumentUploadRowProps = {
+  label: string;
+  docKey: string;
+  existingDoc?: ExistingDocument;
+  file: File | null;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  required?: boolean;
+  accept?: string;
+};
+
 /* ================= MAIN COMPONENT ================= */
 
 export default function Onboarding() {
   const navigate = useNavigate();
 
+  const [existingDocs, setExistingDocs] = useState<
+    Record<string, ExistingDocument>
+  >({});
   const [formData, setFormData] =
     useState<VendorOnboardingData>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -381,7 +476,7 @@ export default function Onboarding() {
     flags: {
       isSameAsAddress: boolean;
       isSameAsBilling: boolean;
-    }
+    },
   ): string => {
     switch (name) {
       case "companyName":
@@ -449,28 +544,6 @@ export default function Onboarding() {
       case "ifscCode":
         return value.trim() ? "" : "IFSC code is required";
 
-      case "agreementAccepted":
-        return value ? "" : "You must accept the agreement";
-
-      case "companyEmail":
-        if (formData.vendorType === "Manufacturer") {
-          if (!value.trim()) return "Company Email is required";
-          if (!validators.email(value)) return "Enter a valid email";
-        }
-        return "";
-
-      case "companyPhone":
-        if (formData.vendorType === "Manufacturer") {
-          if (!value.trim()) return "Company Phone is required";
-          if (!validators.phone(value)) return "Phone must be 10 digits";
-        }
-        return "";
-
-      case "authorizationLetterFile":
-        if (formData.vendorType === "Trader" && !value)
-          return "Authorization letter is required";
-        return "";
-
       default:
         return "";
     }
@@ -490,6 +563,20 @@ export default function Onboarding() {
       if (error) newErrors[key] = error;
     });
 
+    if (
+      formData.agreementAccepted &&
+      !formData.vendorAgreementFile &&
+      !existingDocs.vendorAgreementFile
+    ) {
+      newErrors.vendorAgreementFile = "Please upload the signed agreement";
+    }
+
+    if (!formData.agreementAccepted && formData.vendorAgreementFile) {
+      newErrors.agreementAccepted =
+        "Please accept the agreement to upload the signed document";
+    }
+
+    setErrors(newErrors);
     return newErrors;
   };
 
@@ -509,9 +596,17 @@ export default function Onboarding() {
             const detailRes = await api.get("/vendor/onboarding-data");
 
             if (detailRes.data?.success) {
-              console.log(detailRes.data.data)
-              const mapped = mapBackendToForm(detailRes.data.data);
+              const apiData = detailRes.data.data;
+
+              const mapped = mapBackendToForm(apiData);
               setFormData(mapped);
+
+              const docsMap: Record<string, ExistingDocument> = {};
+              apiData.documents?.forEach((doc: ExistingDocument) => {
+                docsMap[doc.document_key] = doc;
+              });
+
+              setExistingDocs(docsMap);
             }
           }
         }
@@ -528,12 +623,22 @@ export default function Onboarding() {
   /* ================= HANDLERS ================= */
 
   const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value, type, checked, files } = e.target as HTMLInputElement;
 
     /* FILE */
     if (type === "file") {
+      if (name === "vendorAgreementFile" && !formData.agreementAccepted) {
+        Swal.fire({
+          icon: "warning",
+          title: "Agreement not accepted",
+          text: "Please accept the Vendor Agreement before uploading the signed document.",
+          confirmButtonText: "OK",
+        });
+        return;
+      }
+
       setFormData((p) => ({ ...p, [name]: files?.[0] || null }));
       return;
     }
@@ -587,7 +692,6 @@ export default function Onboarding() {
       "accountNumber",
       "primaryContactNumber",
       "alternateContactNumber",
-      "companyPhone",
     ];
 
     if (numberOnlyFields.includes(name)) {
@@ -598,7 +702,6 @@ export default function Onboarding() {
         [
           "primaryContactNumber",
           "alternateContactNumber",
-          "companyPhone",
         ].includes(name) &&
         value.length > 10
       )
@@ -641,7 +744,6 @@ export default function Onboarding() {
       [
         "primaryContactNumber",
         "alternateContactNumber",
-        "companyPhone",
       ].includes(name) &&
       value.length === 10 &&
       !/^[0-9]{10}$/.test(value)
@@ -711,60 +813,16 @@ export default function Onboarding() {
   };
 
   const handleSubmit = async (e: FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const validationErrors = validateForm(formData);
-  setErrors(validationErrors);
+    const validationErrors = validateForm(formData);
+    setErrors(validationErrors);
 
-  if (Object.keys(validationErrors).length > 0) {
-    await Swal.fire({
-      icon: "error",
-      title: "Please fix the errors",
-      text: "Some required fields are missing or invalid.",
-      confirmButtonText: "OK",
-      buttonsStyling: false,
-      customClass: {
-        popup: "rounded-full",
-        confirmButton:
-          "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
-      },
-    });
-    return;
-  }
-
-  const token = localStorage.getItem("token");
-  if (!token) {
-    await Swal.fire({
-      icon: "warning",
-      title: "Not logged in",
-      text: "Please login first and try again.",
-      confirmButtonText: "OK",
-      buttonsStyling: false,
-      customClass: {
-        popup: "rounded-full",
-        confirmButton:
-          "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
-      },
-    });
-    return;
-  }
-
-  try {
-    const form = new FormData();
-    Object.entries(formData).forEach(([k, v]) => {
-      if (v instanceof File) form.append(k, v);
-      else if (v !== null) form.append(k, String(v));
-    });
-
-    const res = await api.post("/vendor/onboard", form, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    if (!res.data.success) {
+    if (Object.keys(validationErrors).length > 0) {
       await Swal.fire({
         icon: "error",
-        title: "Submission Failed",
-        text: res.data.message || "Something went wrong.",
+        title: "Please fix the errors",
+        text: "Some required fields are missing or invalid.",
         confirmButtonText: "OK",
         buttonsStyling: false,
         customClass: {
@@ -776,31 +834,78 @@ export default function Onboarding() {
       return;
     }
 
-    await Swal.fire({
-      icon: "success",
-      title: "Submitted Successfully!",
-      text: "Onboarding submitted successfully.",
-      timer: 1200,
-      showConfirmButton: false,
-      customClass: { popup: "rounded-full" },
-    });
+    const token = localStorage.getItem("token");
+    if (!token) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Not logged in",
+        text: "Please login first and try again.",
+        confirmButtonText: "OK",
+        buttonsStyling: false,
+        customClass: {
+          popup: "rounded-full",
+          confirmButton:
+            "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
+        },
+      });
+      return;
+    }
 
-    navigate("/vendor/dashboard");
-  } catch (err: any) {
-    await Swal.fire({
-      icon: "error",
-      title: "Server Error",
-      text: err?.response?.data?.message || err?.message || "Something went wrong.",
-      confirmButtonText: "OK",
-      buttonsStyling: false,
-      customClass: {
-        popup: "rounded-full",
-        confirmButton:
-          "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
-      },
-    });
-  }
-};
+    try {
+      const form = new FormData();
+      Object.entries(formData).forEach(([k, v]) => {
+        if (v instanceof File) form.append(k, v);
+        else if (v !== null) form.append(k, String(v));
+      });
+
+      const res = await api.post("/vendor/onboard", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (!res.data.success) {
+        await Swal.fire({
+          icon: "error",
+          title: "Submission Failed",
+          text: res.data.message || "Something went wrong.",
+          confirmButtonText: "OK",
+          buttonsStyling: false,
+          customClass: {
+            popup: "rounded-full",
+            confirmButton:
+              "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
+          },
+        });
+        return;
+      }
+
+      await Swal.fire({
+        icon: "success",
+        title: "Submitted Successfully!",
+        text: "Onboarding submitted successfully.",
+        timer: 1200,
+        showConfirmButton: false,
+        customClass: { popup: "rounded-full" },
+      });
+
+      navigate("/vendor/dashboard");
+    } catch (err: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "Server Error",
+        text:
+          err?.response?.data?.message ||
+          err?.message ||
+          "Something went wrong.",
+        confirmButtonText: "OK",
+        buttonsStyling: false,
+        customClass: {
+          popup: "rounded-full",
+          confirmButton:
+            "px-6 py-2 rounded-full font-bold text-white bg-[#852BAF] hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition-all duration-300 cursor-pointer active:scale-95",
+        },
+      });
+    }
+  };
 
   /* ================= UI ================= */
   return (
@@ -875,7 +980,7 @@ export default function Onboarding() {
               <SectionHeader
                 icon={FaBuilding}
                 title="Business Information & Documents"
-                description="Upload only the common mandatory documents."
+                description="Upload supporting business documents if available."
               />
               <div className="grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
                 <FormInput
@@ -893,7 +998,6 @@ export default function Onboarding() {
                   required
                   error={errors.fullName}
                 />
-
                 {/* Vendor Type Dropdown */}
                 <div className="flex flex-col space-y-1">
                   <label
@@ -917,7 +1021,6 @@ export default function Onboarding() {
                     <option value="Service Provider">Service Provider</option>
                   </select>
                 </div>
-
                 <FormInput
                   id="gstin"
                   label="GSTIN"
@@ -939,199 +1042,132 @@ export default function Onboarding() {
                   value={formData.ip_address}
                   onChange={handleChange}
                 />
-
                 {/* File uploads: only the common docs */}
-                <FileUploadInput
-                  id="gstinFile"
+                {/* GST */}
+                <DocumentUploadRow
                   label="GST Certificate"
+                  docKey="gstinFile"
+                  existingDoc={existingDocs["gstinFile"]}
                   file={formData.gstinFile}
-                  onChange={
-                    handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                  }
-                  required
-                  description="Upload your GST Registration Certificate (PDF/JPG/PNG)."
+                  onChange={handleChange}
+                  required={false}
                 />
-
-                <FileUploadInput
-                  id="panFile"
+                {/* Pan */}
+                <DocumentUploadRow
                   label="PAN Card"
+                  docKey="panFile"
+                  existingDoc={existingDocs["panFile"]}
                   file={formData.panFile}
-                  onChange={
-                    handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                  }
-                  required
-                  description="Upload company PAN (PDF/JPG/PNG)."
+                  onChange={handleChange}
+                  required={false}
                 />
-
                 {/* Noc */}
-                <FileUploadInput
-                  id="nocFile"
+                <DocumentUploadRow
                   label="NOC"
+                  docKey="nocFile"
+                  existingDoc={existingDocs["nocFile"]}
                   file={formData.nocFile}
-                  onChange={
-                    handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                  }
-                  required
-                  accept=".jpg, .jpeg, .png, .pdf"
-                  description="Upload a No objection certificate."
+                  onChange={handleChange}
+                  required={false}
                 />
-
                 {/* Trademark File */}
-                <FileUploadInput
-                  id="rightsAdvisoryFile"
+                <DocumentUploadRow
                   label="Trademark Certificate"
+                  docKey="rightsAdvisoryFile"
+                  existingDoc={existingDocs["rightsAdvisoryFile"]}
                   file={formData.rightsAdvisoryFile}
-                  onChange={
-                    handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                  }
-                  required
-                  accept=".jpg, .jpeg, .png, .pdf"
-                  description="Trademark."
+                  onChange={handleChange}
+                  required={false}
                 />
-
                 {/* Signatory ID */}
-                <FileUploadInput
-                  id="signatoryIdFile"
+                <DocumentUploadRow
                   label="Authorized Signatory ID Proof"
+                  docKey="signatoryIdFile"
+                  existingDoc={existingDocs["signatoryIdFile"]}
                   file={formData.signatoryIdFile}
-                  onChange={
-                    handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                  }
-                  accept=".jpg, .jpeg, .png, .pdf"
-                  description="Upload Aadhaar or PAN of authorized signatory."
+                  onChange={handleChange}
                 />
-
                 {/* Business profile */}
-                <FileUploadInput
-                  id="businessProfileFile"
+                <DocumentUploadRow
                   label="Business Profile"
+                  docKey="businessProfileFile"
+                  existingDoc={existingDocs["businessProfileFile"]}
                   file={formData.businessProfileFile}
-                  onChange={
-                    handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                  }
-                  accept=".pdf, .doc, .docx"
-                  description="Upload your Business Profile (PDF or DOC)."
+                  onChange={handleChange}
                 />
-
                 {/* Brand logo - required for Manufacturer and Trader */}
-                <FileUploadInput
-                  id="brandLogoFile"
+                <DocumentUploadRow
                   label="Brand Logo"
+                  docKey="brandLogoFile"
+                  existingDoc={existingDocs["brandLogoFile"]}
                   file={formData.brandLogoFile}
-                  onChange={
-                    handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                  }
-                  accept=".jpg, .jpeg, .png, .svg"
-                  description="Upload brand logo (PNG/JPG/SVG)."
+                  onChange={handleChange}
                 />
-
                 {/* Bank proof - cancelled cheque or passbook image */}
-                <FileUploadInput
-                  id="bankProofFile"
+                <DocumentUploadRow
                   label="Bank Cancelled Cheque"
+                  docKey="bankProofFile"
+                  existingDoc={existingDocs["bankProofFile"]}
                   file={formData.bankProofFile}
-                  onChange={
-                    handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                  }
-                  accept=".jpg, .jpeg, .png, .pdf"
-                  description="Upload a Cancelled Cheque with company name and account details."
+                  onChange={handleChange}
                 />
-
                 {/* Electricity */}
-                <FileUploadInput
-                  id="electricityBillFile"
+                <DocumentUploadRow
                   label="Electricity bill"
+                  docKey="electricityBillFile"
+                  existingDoc={existingDocs["electricityBillFile"]}
                   file={formData.electricityBillFile}
-                  onChange={
-                    handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                  }
-                  accept=".jpg, .jpeg, .png, .pdf"
-                  description="Upload Electricity bill."
+                  onChange={handleChange}
                 />
-
                 {/* Vendor agreement - checkbox + optional upload */}
                 <div className="col-span-1 md:col-span-2 lg:col-span-3">
-                  <div className="flex items-center mb-3 space-x-3">
+                  <div className="flex items-start gap-2">
                     <input
                       type="checkbox"
-                      id="agreementAccepted"
-                      name="agreementAccepted"
                       checked={formData.agreementAccepted}
-                      onChange={handleChange}
-                      className="w-4 h-4 border-gray-300 rounded text-brand-purple"
-                      style={{ accentColor: "#852BAF" }}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          agreementAccepted: e.target.checked,
+                        }))
+                      }
                     />
-                    <label
-                      htmlFor="agreementAccepted"
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      I accept the Vendor Agreement terms.
+                    <label className="text-sm">
+                      I have read and agree to the Vendor Agreement
                     </label>
                   </div>
 
-                  <FileUploadInput
-                    id="vendorAgreementFile"
-                    label="Upload Signed Agreement (optional)"
+                  {errors.agreementAccepted && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.agreementAccepted}
+                    </p>
+                  )}
+
+                  <DocumentUploadRow
+                    label="Signed Agreement"
+                    docKey="vendorAgreementFile"
+                    existingDoc={existingDocs["vendorAgreementFile"]}
                     file={formData.vendorAgreementFile}
-                    onChange={
-                      handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                    }
-                    accept=".pdf, .jpg, .jpeg, .png"
-                    description="If you have a signed agreement, upload it here (optional)."
+                    onChange={handleChange}
+                    required={false}
                   />
+
+                  {errors.vendorAgreementFile && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.vendorAgreementFile}
+                    </p>
+                  )}
                 </div>
-
-                {/* Conditional: Manufacturer fields */}
-                {formData.vendorType === "Manufacturer" && (
-                  <>
-                    <div className="flex flex-col space-y-1">
-                      <label
-                        htmlFor="companyEmail"
-                        className="flex items-center text-sm font-medium text-gray-700"
-                      >
-                        <FaEnvelope
-                          className="mr-2 text-brand-purple"
-                          style={{ color: "#852BAF" }}
-                        />
-                        Company Email <span className="text-red-500">*</span>
-                      </label>
-
-                      <FormInput
-                        type="email"
-                        id="companyEmail"
-                        label="Company Email"
-                        value={formData.companyEmail}
-                        onChange={handleChange}
-                        placeholder="Enter official company email"
-                        required
-                        error={errors.companyEmail}
-                      />
-                    </div>
-
-                    <FormInput
-                      id="companyPhone"
-                      label="Company Phone"
-                      value={formData.companyPhone}
-                      onChange={handleChange}
-                      type="tel"
-                      required
-                      placeholder="Enter official company phone"
-                    />
-                  </>
-                )}
-
+              
                 {/* Conditional: Authorization letter (Trader only) */}
                 {formData.vendorType === "Trader" && (
-                  <FileUploadInput
-                    id="authorizationLetterFile"
+                  <DocumentUploadRow
                     label="Authorization / Dealership Letter"
+                    docKey="authorizationLetterFile"
+                    existingDoc={existingDocs["authorizationLetterFile"]}
                     file={formData.authorizationLetterFile}
-                    onChange={
-                      handleChange as (e: ChangeEvent<HTMLInputElement>) => void
-                    }
-                    required
-                    accept=".pdf, .jpg, .jpeg, .png"
-                    description="Traders must upload an authorization/dealership agreement."
+                    onChange={handleChange}
+                    required={false}
                   />
                 )}
               </div>
@@ -1335,46 +1371,45 @@ export default function Onboarding() {
                 title="Bank Details & Proof"
                 description="Account details for receiving payments and required proof."
               />
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-  <FormInput
-    id="bankName"
-    label="Bank Name"
-    value={formData.bankName}
-    onChange={handleChange}
-    required
-  />
-  <FormInput
-    id="accountNumber"
-    label="Account Number"
-    value={formData.accountNumber}
-    onChange={handleChange}
-    type="text"
-    required
-  />
-  <FormInput
-    id="branch"
-    label="Branch"
-    value={formData.branch}
-    onChange={handleChange}
-    required
-  />
-  <FormInput
-    id="ifscCode"
-    label="IFSC Code"
-    value={formData.ifscCode}
-    onChange={handleChange}
-    required
-  />
-</div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <FormInput
+                  id="bankName"
+                  label="Bank Name"
+                  value={formData.bankName}
+                  onChange={handleChange}
+                  required
+                />
+                <FormInput
+                  id="accountNumber"
+                  label="Account Number"
+                  value={formData.accountNumber}
+                  onChange={handleChange}
+                  type="text"
+                  required
+                />
+                <FormInput
+                  id="branch"
+                  label="Branch"
+                  value={formData.branch}
+                  onChange={handleChange}
+                  required
+                />
+                <FormInput
+                  id="ifscCode"
+                  label="IFSC Code"
+                  value={formData.ifscCode}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
             </section>
 
             {/* Contact Details */}
             <section className="space-y-4 bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-2xl transition-shadow duration-300">
               <SectionHeader
                 icon={FaAddressBook}
-                title="Registered Address"
-                description="Official business location"
+                title="Contact Details"
+                description="Primary contact information"
               />
               <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                 <FormInput
@@ -1450,7 +1485,7 @@ export default function Onboarding() {
                   value={formData.comments}
                   onChange={
                     handleChange as (
-                      e: ChangeEvent<HTMLTextAreaElement>
+                      e: ChangeEvent<HTMLTextAreaElement>,
                     ) => void
                   }
                   placeholder="Add any specific notes or requirements here..."

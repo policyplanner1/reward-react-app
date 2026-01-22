@@ -6,6 +6,9 @@ const productModel = require("../models/productModel");
 const db = require("../config/database");
 const fs = require("fs");
 const path = require("path");
+const {
+  notifyVendorStatusChange,
+} = require("../services/vendorNotificationService");
 
 // helper function to upload the images and docs
 // async function moveVendorFiles(vendorId, files) {
@@ -35,7 +38,7 @@ async function moveVendorFiles(vendorId, files) {
     __dirname,
     "../uploads/vendors",
     vendorId.toString(),
-    "documents"
+    "documents",
   );
 
   // Ensure target directory exists
@@ -81,7 +84,7 @@ class VendorController {
       // fetch vendor
       const [rows] = await connection.query(
         `SELECT status FROM vendors WHERE vendor_id = ? AND user_id = ?`,
-        [vndID, userId]
+        [vndID, userId],
       );
 
       if (!rows.length) {
@@ -107,7 +110,7 @@ class VendorController {
         connection,
         data,
         userId,
-        vndID
+        vndID,
       );
 
       await VendorModel.insertAddress(connection, vndID, "business", data);
@@ -216,7 +219,7 @@ class VendorController {
       const updated = await VendorModel.updateVendorStatus(
         vendorId,
         status,
-        rejectionReason || null
+        rejectionReason || null,
       );
 
       if (!updated) {
@@ -224,6 +227,26 @@ class VendorController {
           success: false,
           message: "Vendor not found",
         });
+      }
+
+      // Fetch Vendor Details
+      const [vendorRows] = await db.query(
+        `SELECT * FROM vendors WHERE vendor_id = ?`,
+        [vendorId],
+      );
+
+      if (!vendorRows.length) {
+        return res.status(404).json({
+          success: false,
+          message: "Vendor not found",
+        });
+      }
+
+      const vendor = vendorRows[0];
+
+      // Send Mail
+      if (status === "approved" || status === "rejected") {
+        await notifyVendorStatusChange(vendor, status);
       }
 
       return res.json({
@@ -269,7 +292,7 @@ class VendorController {
 
       const updatedCategory = await categoryModel.updateCategory(
         categoryID,
-        data
+        data,
       );
 
       if (!updatedCategory) {
@@ -649,7 +672,7 @@ class VendorController {
 
       const [vendorRows] = await db.query(
         `SELECT * FROM vendors WHERE vendor_id = ? AND user_id = ?`,
-        [vendorId, userId]
+        [vendorId, userId],
       );
 
       if (!vendorRows.length) {

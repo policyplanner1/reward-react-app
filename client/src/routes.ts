@@ -7,6 +7,9 @@ export const routes = {
     add: "/vendor/products/add",
     list: "/vendor/products/list",
     edit: "/vendor/products/edit/:id",
+    manageProduct:"/vendor/products/manage-product/:productId",
+    variantEdit:"/vendor/products/variant-edit/:variantId",
+    variantImage:"/vendor/products/variant-image/:variantId",
     review: "/vendor/products/review/:productId", 
     },
     productManagerList: "/vendor/product-managers",
@@ -22,6 +25,7 @@ export const routes = {
     subcategories: "/manager/category_management/subcategories",
     subsubcategories: "/manager/category_management/subsubcategories",
     addDocument:"/manager/document/DocumentAdd",
-    linkDocument:"/manager/document/DocumentCategory"
+    linkDocument:"/manager/document/DocumentCategory",
+    attributes: "/manager/attributes",
   },
 };

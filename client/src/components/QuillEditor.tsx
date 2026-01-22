@@ -28,7 +28,7 @@ export default function QuillEditor({
       placeholder,
       readOnly,
       modules: readOnly
-        ? { toolbar: false } // ✅ hide toolbar in view mode
+        ? { toolbar: false }
         : {
             toolbar: [
               [{ header: [1, 2, 3, false] }],
@@ -40,6 +40,15 @@ export default function QuillEditor({
           },
     });
 
+    //  FORCE LTR — THIS FIXES REVERSED TYPING
+    const editor = quillRef.current;
+
+    editor.root.setAttribute("dir", "ltr");
+    editor.root.style.direction = "ltr";
+    editor.root.style.textAlign = "left";
+    editor.root.style.unicodeBidi = "plaintext";
+    editor.root.style.minHeight = `${minHeight}px`;
+
     if (onChange) {
       quillRef.current.on("text-change", () => {
         onChange(quillRef.current!.root.innerHTML);
@@ -50,13 +59,24 @@ export default function QuillEditor({
   }, [onChange, placeholder, minHeight, readOnly]);
 
   useEffect(() => {
-    if (quillRef.current) {
-      quillRef.current.root.innerHTML = value || "";
+    if (!quillRef.current) return;
+
+    const editor = quillRef.current;
+    const currentHTML = editor.root.innerHTML;
+
+    //  Only update if value actually changed externally
+    if (value !== currentHTML) {
+      const selection = editor.getSelection();
+      editor.root.innerHTML = value || "";
+
+      if (selection) {
+        editor.setSelection(selection.index, selection.length);
+      }
     }
   }, [value]);
 
   return (
-    <div className="bg-white border border-gray-300 rounded-lg">
+    <div dir="ltr" className="bg-white border border-gray-300 rounded-lg">
       <div ref={editorRef} />
     </div>
   );

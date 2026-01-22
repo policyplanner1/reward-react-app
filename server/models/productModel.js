@@ -12,10 +12,31 @@ function generateSKU(productId) {
 
 const UPLOAD_BASE = path.join(__dirname, "..", "uploads", "products");
 
+// Variant Combination Generator
+function generateCombinations(attributes) {
+  const keys = Object.keys(attributes);
+
+  return keys.reduce(
+    (acc, key) => {
+      const values = attributes[key];
+      const result = [];
+
+      acc.forEach((a) => {
+        values.forEach((v) => {
+          result.push({ ...a, [key]: v });
+        });
+      });
+
+      return result;
+    },
+    [{}],
+  );
+}
+
 // for image
 async function processUploadedFiles(
   files,
-  { vendorId, productId, imagesFolder, docsFolder, variantFolder }
+  { vendorId, productId, imagesFolder, docsFolder, variantFolder },
 ) {
   const movedFiles = [];
 
@@ -52,7 +73,7 @@ async function generateUniqueSKU(connection, productId) {
 
     const [[row]] = await connection.execute(
       `SELECT 1 FROM product_variants WHERE sku = ? LIMIT 1`,
-      [sku]
+      [sku],
     );
 
     exists = !!row;
@@ -71,9 +92,9 @@ class ProductModel {
 
     const [result] = await connection.execute(
       `INSERT INTO eproducts 
-     (vendor_id, category_id, subcategory_id, sub_subcategory_id, brand_name, manufacturer,product_name, description, short_description,
-      custom_category, custom_subcategory, custom_sub_subcategory, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+     (vendor_id, category_id, subcategory_id, sub_subcategory_id, brand_name, manufacturer,product_name, gst_slab,hsn_sac_code,description, short_description,
+      custom_category, custom_subcategory, custom_sub_subcategory,is_discount_eligible,is_returnable,return_window_days,delivery_sla_min_days,delivery_sla_max_days,shipping_class, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
       [
         safe(vendorId),
         safe(data.category_id),
@@ -82,15 +103,123 @@ class ProductModel {
         safe(data.brandName),
         safe(data.manufacturer),
         safe(data.productName),
+        safe(data.gstSlab),
+        safe(data.hsnSacCode),
         safe(data.description),
         safe(data.shortDescription),
         custom_category,
         custom_subcategory,
         custom_sub_subcategory,
-      ]
+        safe(data.is_discount_eligible),
+        safe(data.is_returnable),
+        safe(data.return_window_days),
+        safe(data.delivery_sla_min_days),
+        safe(data.delivery_sla_max_days),
+        safe(data.shipping_class),
+      ],
     );
 
     return result.insertId;
+  }
+
+  // product attributes
+  async saveProductAttributes(connection, productId, attributes) {
+    await connection.execute(
+      `INSERT INTO product_attributes (product_id, attributes)
+     VALUES (?, ?)`,
+      [productId, JSON.stringify(attributes)],
+    );
+  }
+
+  async getVariantAttributeKeys(connection, categoryId, subcategoryId) {
+    const [rows] = await connection.execute(
+      `
+    SELECT attribute_key
+    FROM category_attributes
+    WHERE is_variant = 1
+      AND (
+        subcategory_id = ?
+        OR (category_id = ? AND subcategory_id IS NULL)
+      )
+    ORDER BY sort_order
+    `,
+      [subcategoryId, categoryId],
+    );
+
+    return rows.map((r) => r.attribute_key);
+  }
+
+  // generate product variants
+  async generateProductVariants(
+    connection,
+    productId,
+    categoryId,
+    subcategoryId,
+  ) {
+    const [[row]] = await connection.execute(
+      `SELECT attributes FROM product_attributes WHERE product_id = ?`,
+      [productId],
+    );
+
+    if (!row) return;
+
+    const allAttributes =
+      typeof row.attributes === "string"
+        ? JSON.parse(row.attributes)
+        : row.attributes;
+
+    const normalize = (arr) =>
+      arr.flatMap((v) =>
+        typeof v === "string"
+          ? v
+              .split(",")
+              .map((x) => x.trim())
+              .filter(Boolean)
+          : v,
+      );
+
+    const variantKeys = await this.getVariantAttributeKeys(
+      connection,
+      categoryId,
+      subcategoryId,
+    );
+
+    const variantAttributes = {};
+    variantKeys.forEach((k) => {
+      if (Array.isArray(allAttributes[k])) {
+        const normalized = normalize(allAttributes[k]);
+        if (normalized.length) {
+          variantAttributes[k] = normalized;
+        }
+      }
+    });
+
+    if (!Object.keys(variantAttributes).length) return;
+
+    const combinations = generateCombinations(variantAttributes);
+
+    for (const combo of combinations) {
+      const comboJson = JSON.stringify(combo);
+
+      const [exists] = await connection.execute(
+        `SELECT variant_id
+       FROM product_variants
+       WHERE product_id = ?
+         AND variant_attributes = ?`,
+        [productId, comboJson],
+      );
+
+      if (exists.length) continue;
+
+      const sku = await generateUniqueSKU(connection, productId);
+
+      await connection.execute(
+        `INSERT INTO product_variants
+       (product_id, variant_attributes, sku, stock)
+       VALUES (?, ?, ?, 0)`,
+        [productId, comboJson, sku],
+      );
+    }
   }
 
   // insert product Images
@@ -99,7 +228,7 @@ class ProductModel {
       await connection.execute(
         `INSERT INTO product_images (product_id, image_url)
        VALUES (?, ?)`,
-        [productId, file.finalPath]
+        [productId, file.finalPath],
       );
     }
   }
@@ -111,7 +240,7 @@ class ProductModel {
      FROM category_document cd
      JOIN documents d ON cd.document_id = d.document_id
      WHERE cd.category_id = ?`,
-      [categoryId]
+      [categoryId],
     );
 
     const validDocumentIds = docTypes.map((d) => d.document_id);
@@ -124,37 +253,9 @@ class ProductModel {
         `INSERT INTO product_documents 
        (product_id, document_id, file_path, mime_type)
        VALUES (?, ?, ?, ?)`,
-        [productId, docId, file.finalPath, file.mimetype]
+        [productId, docId, file.finalPath, file.mimetype],
       );
     }
-  }
-
-  async createProductVariant(connection, productId, variant) {
-    const safe = (v) => (v === undefined || v === "" ? null : v);
-
-    const sku = await generateUniqueSKU(connection, productId);
-
-    const [result] = await connection.execute(
-      `INSERT INTO product_variants
-      (product_id, size, color, dimension, weight, sku, mrp, sale_price, stock,manufacturing_date,expiry_date,material_type)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        productId,
-        safe(variant.size),
-        safe(variant.color),
-        safe(variant.dimension),
-        safe(variant.weight),
-        sku,
-        safe(variant.mrp),
-        safe(variant.salesPrice),
-        safe(variant.stock),
-        safe(variant.manufacturingYear),
-        safe(variant.expiryDate),
-        safe(variant.materialType),
-      ]
-    );
-
-    return result.insertId;
   }
 
   async insertProductVariantImages(connection, variantId, files) {
@@ -162,7 +263,7 @@ class ProductModel {
       await connection.execute(
         `INSERT INTO product_variant_images (variant_id, image_url)
        VALUES (?, ?)`,
-        [variantId, file.finalPath]
+        [variantId, file.finalPath],
       );
     }
   }
@@ -175,7 +276,7 @@ class ProductModel {
        FROM documents d
        INNER JOIN category_document cd ON d.document_id = cd.document_id
        WHERE cd.category_id = ? AND d.status = 1`,
-        [categoryId]
+        [categoryId],
       );
 
       return rows;
@@ -203,7 +304,7 @@ class ProductModel {
         LEFT JOIN sub_sub_categories ssc ON p.sub_subcategory_id = ssc.sub_subcategory_id
         WHERE p.product_id = ?
         `,
-        [productId]
+        [productId],
       );
 
       if (!productRows.length) return null;
@@ -212,7 +313,7 @@ class ProductModel {
       // 2 Get product images
       const [images] = await db.execute(
         `SELECT image_url FROM product_images WHERE product_id = ?`,
-        [productId]
+        [productId],
       );
       product.images = images.map((img) => img.image_url);
 
@@ -222,28 +323,47 @@ class ProductModel {
        FROM product_documents pd
        JOIN documents d ON pd.document_id = d.document_id
        WHERE pd.product_id = ?`,
-        [productId]
+        [productId],
       );
       product.documents = documents;
 
-      // 4 Get product variants
+      // 4 Get Product Attributes
+      const [attributes] = await db.execute(
+        `SELECT attributes
+          FROM product_attributes
+          WHERE product_id = ?`,
+        [productId],
+      );
+      product.attributes = attributes[0];
+
+      // 5 Get variant Details
       const [variants] = await db.execute(
-        `SELECT * FROM product_variants WHERE product_id = ?`,
-        [productId]
+        `
+      SELECT
+        v.variant_id,
+        v.sku,
+        v.mrp,
+        v.sale_price,
+        v.stock,
+        v.is_visible,
+        v.variant_attributes,
+        v.manufacturing_date,
+        v.expiry_date,
+        v.created_at
+      FROM product_variants v
+      WHERE v.product_id = ?
+      ORDER BY v.variant_id ASC
+      `,
+        [productId],
       );
 
-      // 5 Get images for each variant
-      for (const variant of variants) {
-        const [variantImages] = await db.execute(
-          `SELECT image_url FROM product_variant_images WHERE variant_id = ?`,
-          [variant.variant_id]
-        );
-        variant.images = variantImages.map((img) => img.image_url);
-        variant.customAttributes = JSON.parse(
-          variant.custom_attributes || "{}"
-        );
-      }
-      product.variants = variants;
+      product.variants = variants.map((v) => ({
+        ...v,
+        variant_attributes:
+          typeof v.variant_attributes === "string"
+            ? JSON.parse(v.variant_attributes)
+            : v.variant_attributes,
+      }));
 
       return product;
     } catch (error) {
@@ -265,21 +385,21 @@ class ProductModel {
       UPLOAD_BASE,
       vendorId.toString(),
       productId.toString(),
-      "images"
+      "images",
     );
 
     const docsFolder = path.join(
       UPLOAD_BASE,
       vendorId.toString(),
       productId.toString(),
-      "documents"
+      "documents",
     );
 
     const variantFolder = path.join(
       UPLOAD_BASE,
       vendorId.toString(),
       productId.toString(),
-      "variants"
+      "variants",
     );
 
     // ---------- 1. UPDATE PRODUCT ----------
@@ -290,12 +410,20 @@ class ProductModel {
       sub_subcategory_id = ?, 
       brand_name = ?, 
       manufacturer = ?, 
+      gst_slab = ?,
+      hsn_sac_code = ?,
       product_name = ?, 
       description = ?, 
       short_description = ?, 
       custom_category = ?, 
       custom_subcategory = ?, 
-      custom_sub_subcategory = ?
+      custom_sub_subcategory = ?,
+      is_discount_eligible = ?,
+      is_returnable = ?,
+      return_window_days = ?,
+      delivery_sla_min_days = ?,
+      delivery_sla_max_days = ?,
+      shipping_class = ?
      WHERE product_id = ?`,
       [
         safe(data.category_id),
@@ -303,14 +431,22 @@ class ProductModel {
         safe(data.sub_subcategory_id),
         safe(data.brandName),
         safe(data.manufacturer),
+        safe(data.gstSlab),
+        safe(data.hsnSacCode),
         safe(data.productName),
         safe(data.description),
         safe(data.shortDescription),
         custom_category,
         custom_subcategory,
         custom_sub_subcategory,
+        safe(data.is_discount_eligible),
+        safe(data.is_returnable),
+        safe(data.return_window_days),
+        safe(data.delivery_sla_min_days),
+        safe(data.delivery_sla_max_days),
+        safe(data.shipping_class),
         productId,
-      ]
+      ],
     );
 
     // ---------- 2. PROCESS FILES ----------
@@ -319,7 +455,6 @@ class ProductModel {
       productId,
       imagesFolder,
       docsFolder,
-      variantFolder,
     });
 
     // ============================================================
@@ -330,7 +465,7 @@ class ProductModel {
 
       //  FILTER INVALID VALUES
       const removedImages = removedImagesRaw.filter(
-        (img) => typeof img === "string" && img.trim() !== ""
+        (img) => typeof img === "string" && img.trim() !== "",
       );
 
       if (removedImages.length > 0) {
@@ -339,7 +474,7 @@ class ProductModel {
         await connection.execute(
           `DELETE FROM product_images
        WHERE product_id = ? AND image_url IN (${placeholders})`,
-          [productId, ...removedImages]
+          [productId, ...removedImages],
         );
 
         for (const imgUrl of removedImages) {
@@ -367,147 +502,14 @@ class ProductModel {
       if (otherFiles.length && data.category_id) {
         await connection.execute(
           `DELETE FROM product_documents WHERE product_id = ?`,
-          [productId]
+          [productId],
         );
 
         await this.insertProductDocuments(
           connection,
           productId,
           data.category_id,
-          otherFiles
-        );
-      }
-    }
-
-    // ============================================================
-    // 5. VARIANTS
-    // ============================================================
-    if (!data.variants) return true;
-
-    const variants = JSON.parse(data.variants);
-    if (!Array.isArray(variants)) return true;
-
-    // ---------- A. FETCH EXISTING VARIANTS ----------
-    const [existing] = await connection.execute(
-      `SELECT variant_id FROM product_variants WHERE product_id = ?`,
-      [productId]
-    );
-
-    const existingVariantIds = existing.map((v) => v.variant_id);
-    const incomingVariantIds = variants
-      .map((v) => v.variant_id)
-      .filter(Boolean);
-
-    // ---------- B. DELETE REMOVED VARIANTS ----------
-    const variantsToDelete = existingVariantIds.filter(
-      (id) => !incomingVariantIds.includes(id)
-    );
-
-    if (variantsToDelete.length) {
-      const placeholders = variantsToDelete.map(() => "?").join(",");
-
-      // Delete variant images
-      await connection.execute(
-        `DELETE FROM product_variant_images
-       WHERE variant_id IN (${placeholders})`,
-        variantsToDelete
-      );
-
-      // Delete variants
-      await connection.execute(
-        `DELETE FROM product_variants
-       WHERE variant_id IN (${placeholders})`,
-        variantsToDelete
-      );
-    }
-
-    // ---------- C. UPDATE / INSERT VARIANTS ----------
-    for (let i = 0; i < variants.length; i++) {
-      const variant = variants[i];
-      let variantId = variant.variant_id;
-
-      // -------- UPDATE --------
-      if (variantId) {
-        await connection.execute(
-          `UPDATE product_variants SET 
-          size = ?, 
-          color = ?, 
-          dimension = ?, 
-          weight = ?, 
-          mrp = ?, 
-          sale_price = ?, 
-          stock = ?, 
-          manufacturing_date = COALESCE(?, manufacturing_date),
-          expiry_date = COALESCE(?, expiry_date),
-          material_type = ?
-         WHERE variant_id = ?`,
-          [
-            safe(variant.size),
-            safe(variant.color),
-            safe(variant.dimension),
-            safe(variant.weight),
-            safe(variant.mrp),
-            safe(variant.salesPrice),
-            safe(variant.stock),
-            safe(variant.manufacturingYear),
-            safe(variant.expiryDate),
-            safe(variant.materialType),
-            variantId,
-          ]
-        );
-      }
-      // -------- INSERT --------
-      else {
-        variantId = await this.createProductVariant(
-          connection,
-          productId,
-          variant
-        );
-      }
-
-      // ========================================================
-      // REMOVE VARIANT IMAGES (EDIT MODE)
-      // ========================================================
-      const removedKey = `variantRemovedImages_${i}`;
-
-      if (data[removedKey]) {
-        const removedImagesRaw = JSON.parse(data[removedKey] || "[]");
-
-        //  FILTER INVALID VALUES
-        const removedImages = removedImagesRaw.filter(
-          (img) => typeof img === "string" && img.trim() !== ""
-        );
-
-        if (removedImages.length > 0) {
-          const placeholders = removedImages.map(() => "?").join(",");
-
-          await connection.execute(
-            `DELETE FROM product_variant_images
-       WHERE variant_id = ? AND image_url IN (${placeholders})`,
-            [variantId, ...removedImages]
-          );
-
-          for (const imgUrl of removedImages) {
-            const imgPath = path.join(UPLOAD_BASE, imgUrl);
-            if (fs.existsSync(imgPath)) {
-              fs.unlinkSync(imgPath);
-            }
-          }
-        }
-      }
-
-      // ========================================================
-      // ADD NEW VARIANT IMAGES
-      // ========================================================
-      const variantFiles = movedFiles.filter((f) =>
-        f.fieldname.startsWith(`variant_${i}_`)
-      );
-
-      if (variantFiles.length) {
-        await this.insertProductVariantImages(
-          connection,
-          variantId,
-          variantFiles
+          otherFiles,
         );
       }
     }
@@ -521,37 +523,37 @@ class ProductModel {
       // Delete product variant images
       const [variants] = await connection.execute(
         `SELECT variant_id FROM product_variants WHERE product_id = ?`,
-        [productId]
+        [productId],
       );
       for (const variant of variants) {
         await connection.execute(
           `DELETE FROM product_variant_images WHERE variant_id = ?`,
-          [variant.variant_id]
+          [variant.variant_id],
         );
       }
 
       // Delete product variants
       await connection.execute(
         `DELETE FROM product_variants WHERE product_id = ?`,
-        [productId]
+        [productId],
       );
 
       // Delete product images
       await connection.execute(
         `DELETE FROM product_images WHERE product_id = ?`,
-        [productId]
+        [productId],
       );
 
       // Delete product documents
       await connection.execute(
         `DELETE FROM product_documents WHERE product_id = ?`,
-        [productId]
+        [productId],
       );
 
       // Delete main product
       await connection.execute(
         `DELETE FROM eproducts WHERE product_id = ? AND vendor_id = ?`,
-        [productId, vendorId]
+        [productId, vendorId],
       );
 
       return true;
@@ -663,7 +665,7 @@ class ProductModel {
 
       const [[{ total }]] = await db.execute(
         `SELECT COUNT(DISTINCT p.product_id) AS total FROM eproducts p ${whereClause}`,
-        params
+        params,
       );
 
       return { products, totalItems: total };
@@ -676,7 +678,7 @@ class ProductModel {
   // Get all products for a specific vendor
   async getProductsByVendor(
     vendorId,
-    { search, status, sortBy, sortOrder, limit, offset }
+    { search, status, sortBy, sortOrder, limit, offset },
   ) {
     try {
       let where = `WHERE p.vendor_id = ?`;
@@ -710,6 +712,8 @@ class ProductModel {
         p.custom_category,
         p.custom_subcategory,
         p.custom_sub_subcategory,
+        p.is_searchable,
+        p.is_visible,
         p.created_at,
 
         GROUP_CONCAT(
@@ -763,7 +767,7 @@ class ProductModel {
       // Total count (no LIMIT/OFFSET)
       const [[{ total }]] = await db.execute(
         `SELECT COUNT(*) AS total FROM eproducts p ${where}`,
-        params.slice(0, -2)
+        params.slice(0, -2),
       );
 
       return { products, totalItems: total };
@@ -789,7 +793,7 @@ class ProductModel {
     try {
       const [productRows] = await db.execute(
         `SELECT product_id, product_name FROM eproducts WHERE status = 'approved' AND vendor_id = ?`,
-        [vendorId]
+        [vendorId],
       );
 
       return productRows;
@@ -820,12 +824,12 @@ class ProductModel {
       WHERE p.status = 'approved' AND p.product_id = ?
       GROUP BY p.product_id
        `,
-        [productId]
+        [productId],
       );
 
       if (productRows.length > 0 && productRows[0].variants) {
         productRows[0].variants = JSON.parse(
-          "[" + productRows[0].variants + "]"
+          "[" + productRows[0].variants + "]",
         );
       }
 
@@ -878,7 +882,7 @@ class ProductModel {
           WHERE s.status = ?;
 
       `,
-        [status]
+        [status],
       );
 
       res.json({ success: true, data: rows });
@@ -917,6 +921,33 @@ class ProductModel {
       console.error("Error fetching product stats:", error);
       throw error;
     }
+  }
+
+  // Visibility
+  async updateVisibility({ productId, vendorId, isVisible }) {
+    const [result] = await db.query(
+      `
+      UPDATE eproducts
+      SET is_visible = ?
+      WHERE product_id = ? AND vendor_id = ?
+      `,
+      [isVisible ? 1 : 0, productId, vendorId],
+    );
+
+    return result.affectedRows;
+  }
+
+  async updateSearchable({ productId, vendorId, isSearchable }) {
+    const [result] = await db.query(
+      `
+      UPDATE eproducts
+      SET is_searchable = ?
+      WHERE product_id = ? AND vendor_id = ?
+      `,
+      [isSearchable ? 1 : 0, productId, vendorId],
+    );
+
+    return result.affectedRows;
   }
 }
 

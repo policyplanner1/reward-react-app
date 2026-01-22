@@ -171,9 +171,11 @@ export default function VendorNavbar() {
                           key={child.to}
                           to={child.to}
                           className={`flex items-center gap-2 py-2 px-4 text-sm transition-all duration-200 rounded-r-lg border-l-2 -ml-[2px]
-                            ${isActive(child.to) 
-                              ? "border-[#852BAF] text-[#852BAF] font-semibold bg-[#852BAF]/5" 
-                              : "border-transparent text-gray-500 hover:text-[#852BAF] hover:bg-gray-50"}`}
+                            ${
+                              isActive(child.to)
+                                ? "border-[#852BAF] text-[#852BAF] font-semibold bg-[#852BAF]/5"
+                                : "border-transparent text-gray-500 hover:text-[#852BAF] hover:bg-gray-50"
+                            }`}
                         >
                           <FiChevronRight
                             className={`text-sm transition-transform duration-200

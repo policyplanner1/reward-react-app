@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require("../config/database");
 const { authenticateToken, authorizeRoles } = require("../middleware/auth");
 const managerController = require("../controllers/managerController");
+const CategoryAttributeController = require("../controllers/categoryAttributeController");
 
 // Manager Stats API
 router.get(
@@ -58,7 +59,7 @@ router.get(
       console.error("Stats Error:", err);
       res.status(500).json({ success: false, message: "Server error" });
     }
-  }
+  },
 );
 
 // All Vendor list
@@ -66,7 +67,7 @@ router.get(
   "/all-vendors",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
-  managerController.vendorList
+  managerController.vendorList,
 );
 
 // approve product
@@ -74,7 +75,7 @@ router.put(
   "/product/approve/:productId",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
-  managerController.approveProduct
+  managerController.approveProduct,
 );
 
 // reject product
@@ -82,7 +83,7 @@ router.put(
   "/product/reject/:productId",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
-  managerController.rejectProduct
+  managerController.rejectProduct,
 );
 
 // resubmission product request
@@ -90,7 +91,7 @@ router.put(
   "/product/resubmission/:productId",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
-  managerController.resubmissionRequest
+  managerController.resubmissionRequest,
 );
 
 // Get all Documents
@@ -98,7 +99,7 @@ router.get(
   "/documents",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  managerController.getAllDocuments
+  managerController.getAllDocuments,
 );
 
 // create a document
@@ -106,7 +107,7 @@ router.post(
   "/create-document",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  managerController.createDocument
+  managerController.createDocument,
 );
 
 // get document details by Id
@@ -114,7 +115,7 @@ router.get(
   "/document/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  managerController.getDocumentById
+  managerController.getDocumentById,
 );
 
 // document update
@@ -122,7 +123,7 @@ router.put(
   "/update-document/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  managerController.updateDocument
+  managerController.updateDocument,
 );
 
 // delete document
@@ -130,7 +131,7 @@ router.delete(
   "/delete-document/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  managerController.deleteDocument
+  managerController.deleteDocument,
 );
 
 // create pair of category and documents
@@ -138,7 +139,7 @@ router.post(
   "/create-category-documents",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  managerController.createCategoryDocument
+  managerController.createCategoryDocument,
 );
 
 // fetch category linked Documents
@@ -146,7 +147,7 @@ router.get(
   "/category-documents",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  managerController.getAllCategoryDocs
+  managerController.getAllCategoryDocs,
 );
 
 // get category document By Id
@@ -154,7 +155,7 @@ router.get(
   "/category-documents/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  managerController.getCategoryDocById
+  managerController.getCategoryDocById,
 );
 
 // delete category Document
@@ -162,7 +163,39 @@ router.delete(
   "/category-documents/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  managerController.deleteCategoryDocument
+  managerController.deleteCategoryDocument,
+);
+
+// Get all the attributes
+router.get(
+  "/",
+  authenticateToken,
+  authorizeRoles("admin", "vendor_manager"),
+  CategoryAttributeController.list,
+);
+
+// create attribute
+router.post(
+  "/",
+  authenticateToken,
+  authorizeRoles("admin", "vendor_manager"),
+  CategoryAttributeController.create,
+);
+
+// Update an attribute
+router.put(
+  "/:id",
+  authenticateToken,
+  authorizeRoles("admin", "vendor_manager"),
+  CategoryAttributeController.update,
+);
+
+// Delete attribute
+router.delete(
+  "/:id",
+  authenticateToken,
+  authorizeRoles("admin", "vendor_manager"),
+  CategoryAttributeController.remove,
 );
 
 module.exports = router;

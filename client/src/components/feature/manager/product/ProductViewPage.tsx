@@ -15,25 +15,26 @@ import QuillEditor from "../../../QuillEditor";
 import { api } from "../../../../api/api";
 const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
-interface VariantView {
-  size?: string;
-  color?: string;
-  dimension?: string;
-  customAttributes?: Record<string, any>;
-  MRP?: string | number;
-  salesPrice?: string | number;
-  stock?: string | number;
-  expiryDate?: string;
-  manufacturingYear?: string;
-  materialType?: string;
-  images?: string[];
-}
+type ProductVariant = {
+  variant_id: number;
+  sku: string;
+  mrp: number | null;
+  sale_price: number | null;
+  stock: number;
+  is_visible: number;
+  variant_attributes: Record<string, string>;
+  manufacturing_date: string | null;
+  expiry_date: string | null;
+  created_at: string;
+};
 
 interface ProductView {
   productId?: number | string;
   productName?: string;
   brandName?: string;
   manufacturer?: string;
+  gstSlab: string;
+  hsnSacCode: string;
   description?: string;
   shortDescription?: string;
   categoryId?: number | null;
@@ -43,7 +44,13 @@ interface ProductView {
   subCategoryName?: string | null;
   subSubCategoryName?: string | null;
   product_status?: string;
-  variants?: VariantView[];
+  isDiscountEligible?: number;
+  isReturnable?: number;
+  returnWindowDays?: number | null;
+
+  deliverySlaMinDays?: number;
+  deliverySlaMaxDays?: number;
+  shippingClass?: "standard" | "bulky" | "fragile";
   productImages?: string[];
   requiredDocs?: Array<{
     id: number;
@@ -53,6 +60,8 @@ interface ProductView {
     mime_type: string;
     file_path: string;
   }>;
+
+  variants: ProductVariant[];
 }
 
 const FormInput = ({
@@ -108,6 +117,9 @@ export default function ReviewProductPage() {
   const [product, setProduct] = useState<ProductView | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [productAttributes, setProductAttributes] = useState<
+    Record<string, string[]>
+  >({});
 
   useEffect(() => {
     if (!productId) {
@@ -126,11 +138,6 @@ export default function ReviewProductPage() {
     return `${API_BASEIMAGE_URL}/uploads/${path.replace(/^\/+/, "")}`;
   };
 
-  const isValidDate = (date: any): boolean => {
-    const parsedDate = new Date(date);
-    return !isNaN(parsedDate.getTime());
-  };
-
   const fetchProduct = async (id: string) => {
     setLoading(true);
     setError(null);
@@ -146,6 +153,8 @@ export default function ReviewProductPage() {
         productName: raw.product_name ?? raw.productName,
         brandName: raw.brand_name ?? raw.brandName,
         manufacturer: raw.manufacturer ?? "",
+        gstSlab: raw.gst_slab ?? "",
+        hsnSacCode: raw.hsn_sac_code ?? "",
         description: raw.description ?? "",
         shortDescription: raw.short_description ?? raw.shortDescription ?? "",
         categoryId: raw.category_id ?? raw.categoryId ?? null,
@@ -159,34 +168,43 @@ export default function ReviewProductPage() {
           raw.sub_subcategory_name ?? raw.custom_sub_subcategory ?? null,
 
         product_status: raw.status ?? "",
+        isDiscountEligible: raw.is_discount_eligible ?? 1,
+        isReturnable: raw.is_returnable ?? 1,
+        returnWindowDays: raw.return_window_days ?? null,
+
+        deliverySlaMinDays: raw.delivery_sla_min_days ?? 1,
+        deliverySlaMaxDays: raw.delivery_sla_max_days ?? 3,
+        shippingClass: raw.shipping_class ?? "standard",
         productImages: Array.isArray(raw.productImages)
           ? raw.productImages
-          : raw.images ?? [],
-
-        variants: Array.isArray(raw.variants)
-          ? raw.variants.map((v: any) => ({
-              size: v.size ?? "",
-              color: v.color ?? "",
-              dimension: v.dimension ?? "",
-              customAttributes: v.customAttributes ?? {},
-              MRP: v.mrp ?? "",
-              salesPrice: v.sale_price ?? "",
-              stock: v.stock ?? v.qty ?? "",
-              expiryDate:
-                v.expiry_date && isValidDate(v.expiry_date)
-                  ? new Date(v.expiry_date).toLocaleDateString()
-                  : "",
-              manufacturingYear:
-                v.manufacturing_date && isValidDate(v.manufacturing_date)
-                  ? new Date(v.manufacturing_date).toLocaleDateString()
-                  : "",
-              materialType: v.material_type ?? "",
-              images: Array.isArray(v.images) ? v.images : v.imageUrls ?? [],
-            }))
-          : [],
-
+          : (raw.images ?? []),
         requiredDocs: raw.documents ?? [],
+        variants: Array.isArray(raw.variants) ? raw.variants : [],
       };
+
+      if (raw.attributes) {
+        let parsedAttributes: any = raw.attributes;
+
+        try {
+          // Step 1: parse outer layer if string
+          if (typeof parsedAttributes === "string") {
+            parsedAttributes = JSON.parse(parsedAttributes);
+          }
+
+          // Step 2: if it still has nested "attributes", parse again
+          if (
+            parsedAttributes.attributes &&
+            typeof parsedAttributes.attributes === "string"
+          ) {
+            parsedAttributes = JSON.parse(parsedAttributes.attributes);
+          }
+        } catch (e) {
+          console.error("Attribute JSON parse failed", e);
+          parsedAttributes = {};
+        }
+
+        setProductAttributes(parsedAttributes);
+      }
 
       setProduct(mapped);
     } catch (err: any) {
@@ -232,6 +250,8 @@ export default function ReviewProductPage() {
       </div>
     );
   }
+
+  const coverImage = product.productImages?.[0];
 
   return (
     <div className="p-6" style={{ backgroundColor: "#FFFAFB" }}>
@@ -323,183 +343,142 @@ export default function ReviewProductPage() {
               label="Manufacturer"
               value={product.manufacturer}
             />
+
+            <FormInput
+              id="gstSlab"
+              label="GST Slab (%) "
+              value={product.gstSlab}
+            />
+
+            <FormInput
+              id="hsnSacCode"
+              label="HSN / SAC Code"
+              value={product.hsnSacCode}
+            />
           </div>
         </section>
 
-        {/* Section: Variants */}
+        {/* ================= PRODUCT ATTRIBUTES ================= */}
+        {productAttributes && Object.keys(productAttributes).length > 0 && (
+          <section className="mt-6">
+            <SectionHeader
+              icon={FaBox}
+              title="Product Attributes"
+              description="Applies to all variants"
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(productAttributes).map(([key, values]) => (
+                <div key={key} className="bg-gray-50 border rounded-xl p-4">
+                  <p className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                    {key.replace(/_/g, " ")}
+                  </p>
+
+                  <p className="text-sm font-medium text-gray-900">
+                    {Array.isArray(values) && values.length > 0
+                      ? values.join(", ")
+                      : "—"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ===================== PRODUCT VARIANTS ===================== */}
+        {product.variants?.length > 0 && (
+          <section className="mt-6 space-y-4">
+            <SectionHeader
+              icon={FaBox}
+              title="Product Variants"
+              description="SKU-wise pricing, attributes and stock details"
+            />
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm text-left text-gray-700">
+                <thead className="bg-gray-100 text-xs uppercase text-gray-600">
+                  <tr>
+                    <th className="px-4 py-3">SKU</th>
+                    <th className="px-4 py-3">Attributes</th>
+                    <th className="px-4 py-3">MRP</th>
+                    <th className="px-4 py-3">Sale Price</th>
+                    <th className="px-4 py-3">Stock</th>
+                    <th className="px-4 py-3">Visibility</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {product.variants.map((variant) => (
+                    <tr
+                      key={variant.variant_id}
+                      className="border-t hover:bg-gray-50"
+                    >
+                      <td className="px-4 py-3 font-medium">{variant.sku}</td>
+
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-2">
+                          {variant.variant_attributes &&
+                            Object.entries(variant.variant_attributes).map(
+                              ([key, value]) => (
+                                <span
+                                  key={key}
+                                  className="px-3 py-1 text-xs font-semibold rounded-full
+                                          bg-purple-50 text-purple-700
+                                          border border-purple-200"
+                                >
+                                  {key.toUpperCase()}: {value}
+                                </span>
+                              ),
+                            )}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {variant.mrp ? `₹${variant.mrp}` : "—"}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {variant.sale_price ? `₹${variant.sale_price}` : "—"}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <span
+                          className={`px-3 py-1 text-sm font-semibold rounded-full ${
+                            variant.stock === 0
+                              ? "bg-red-100 text-red-700"
+                              : "bg-green-100 text-green-700"
+                          }`}
+                        >
+                          {variant.stock}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            variant.is_visible
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {variant.is_visible ? "Visible" : "Hidden"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {/* Section: Description */}
         <section className="mt-6">
           <SectionHeader
             icon={FaBox}
-            title="Product Variants"
-            description="Configured product variants"
+            title="Product Description"
+            description="Detailed and short Description"
           />
-          {product.variants && product.variants.length > 0 ? (
-            product.variants.map((v, idx) => (
-              <div
-                key={idx}
-                className="p-6 mb-6 border shadow-sm rounded-xl bg-gray-50"
-              >
-                <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-3">
-                  {/* Variant Fields */}
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
-                      Size
-                    </label>
-                    <input
-                      readOnly
-                      value={v.size ?? ""}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
-                      Color
-                    </label>
-                    <input
-                      readOnly
-                      value={v.color ?? ""}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
-                      Material Type
-                    </label>
-                    <input
-                      readOnly
-                      value={v.materialType ?? ""}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
-                      Dimension
-                    </label>
-                    <input
-                      readOnly
-                      value={v.dimension ?? ""}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
-                      MRP
-                    </label>
-                    <input
-                      readOnly
-                      value={String(v.MRP ?? "")}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
-                      Sales Price
-                    </label>
-                    <input
-                      readOnly
-                      value={String(v.salesPrice ?? "")}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
-                      Stock
-                    </label>
-                    <input
-                      readOnly
-                      value={String(v.stock ?? "")}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
-                      Manufacturing Year
-                    </label>
-                    <input
-                      readOnly
-                      value={v.manufacturingYear ?? ""}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
-                      Expiry Date
-                    </label>
-                    <input
-                      readOnly
-                      value={v.expiryDate ?? ""}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                </div>
-
-                {/* Attributes */}
-                {v.customAttributes &&
-                  Object.keys(v.customAttributes).length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="mb-2 font-medium text-gray-700">
-                        Product Attributes
-                      </h4>
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                        {Object.keys(v.customAttributes).map((key) => (
-                          <div key={key}>
-                            <label className="block mb-1 text-sm font-medium text-gray-700">
-                              {key}
-                            </label>
-                            <input
-                              readOnly
-                              value={String(v.customAttributes?.[key] ?? "")}
-                              className="w-full p-2 border rounded-lg"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                {/* Variant Images */}
-                <div className="mt-4">
-                  <label className="block mb-2 text-sm font-medium text-gray-700">
-                    Variant Images
-                  </label>
-                  <div className="flex gap-2 flex-wrap">
-                    {v.images && v.images.length > 0 ? (
-                      v.images.map((img, i) => {
-                        const resolvedUrl = resolveImageUrl(img);
-                        return (
-                          <div
-                            key={i}
-                            className="relative w-20 h-20 border rounded overflow-hidden group"
-                          >
-                            <img
-                              src={resolvedUrl}
-                              alt={`Variant ${idx + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                            <button
-                              onClick={() =>
-                                downloadFile(
-                                  resolvedUrl,
-                                  `variant-${idx + 1}-${i + 1}.jpg`
-                                )
-                              }
-                              className="absolute bottom-1 right-1 p-1 text-xs text-white bg-black/60 rounded opacity-0 group-hover:opacity-100"
-                            >
-                              <FaDownload className="text-sm" />
-                            </button>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="text-xs text-gray-500">No images</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-sm text-gray-500">No variants configured.</div>
-          )}
 
           {/* Descriptions */}
           <div className="mt-6">
@@ -524,42 +503,97 @@ export default function ReviewProductPage() {
           </div>
         </section>
 
-        {/* Section: Main Images */}
+        {/* Pricing & Commercial Controls */}
+        <section className="mt-6">
+          <SectionHeader
+            icon={FaTag}
+            title="Pricing & Commercial Controls"
+            description="Discount eligibility and return policy"
+          />
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <FormInput
+              id="isDiscountEligible"
+              label="Discount Eligible"
+              value={product.isDiscountEligible === 1 ? "Yes" : "No"}
+            />
+
+            <FormInput
+              label="Return Policy"
+              id="returnWindowDays"
+              value={
+                product.isReturnable === 1
+                  ? `Returnable (${product.returnWindowDays ?? "-"} days)`
+                  : "Not Returnable"
+              }
+            />
+          </div>
+        </section>
+
+        {/* Logistics & Fulfilment */}
+        <section className="mt-6">
+          <SectionHeader
+            icon={FaBox}
+            title="Logistics & Fulfilment"
+            description="Delivery timeline and shipping classification"
+          />
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <FormInput
+              id="delivery_sla"
+              label="Delivery SLA"
+              value={`${product.deliverySlaMinDays} - ${product.deliverySlaMaxDays} days`}
+            />
+
+            <FormInput
+              id="shippingClass"
+              label="Shipping Class"
+              value={
+                product.shippingClass
+                  ? product.shippingClass.charAt(0).toUpperCase() +
+                    product.shippingClass.slice(1)
+                  : "-"
+              }
+            />
+          </div>
+
+          <p className="mt-2 text-xs text-gray-500">
+            Delivery timeline shown to customers as an estimate. Actual delivery
+            may vary by location.
+          </p>
+        </section>
+
+        {/* Section: Cover Image */}
         <section className="mt-6">
           <SectionHeader
             icon={FaImages}
-            title="Product Images"
-            description="Main images for product listing"
+            title="Cover Image"
+            description="Single cover image for product listing"
           />
-          <div className="flex gap-2 flex-wrap">
-            {product.productImages && product.productImages.length > 0 ? (
-              product.productImages.map((img, i) => {
-                const resolvedUrl = resolveImageUrl(img);
-                return (
-                  <div
-                    key={i}
-                    className="relative w-20 h-20 border rounded overflow-hidden group"
-                  >
-                    <img
-                      src={resolvedUrl}
-                      alt={`Main ${i + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      onClick={() =>
-                        downloadFile(resolvedUrl, `product-main-${i + 1}.jpg`)
-                      }
-                      className="absolute bottom-1 right-1 p-1 text-xs text-white bg-black/60 rounded opacity-0 group-hover:opacity-100"
-                    >
-                      <FaDownload className="text-sm" />
-                    </button>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="text-sm text-gray-500">No images available</div>
-            )}
-          </div>
+
+          {coverImage ? (
+            <div className="relative w-32 h-32 border rounded overflow-hidden group">
+              <img
+                src={resolveImageUrl(coverImage)}
+                alt="Cover Image"
+                className="w-full h-full object-cover"
+              />
+
+              <button
+                onClick={() =>
+                  downloadFile(resolveImageUrl(coverImage), "cover-image.jpg")
+                }
+                className="absolute bottom-1 right-1 p-1 text-xs text-white bg-black/60 rounded
+                   opacity-0 group-hover:opacity-100 transition"
+              >
+                <FaDownload className="text-sm" />
+              </button>
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500">
+              No cover image available
+            </div>
+          )}
         </section>
 
         {/* Section: Documents */}

@@ -1,5 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import { routes } from "./routes";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "./auth/useAuth";
 
 /* Auth */
 import AuthLayout from "./layouts/AuthLayout";
@@ -29,13 +31,22 @@ import Onboarding from "./components/feature/vendor/onboarding/Onboarding";
 import ChangePasswordPage from "./pages/changePassword";
 import ProductListingDynamic from "./components/feature/vendor/products/ProductAdd";
 import ProductManagerList from "./components/feature/vendor/products/ProductList";
+import ProductManage from "./components/feature/vendor/products/ProductManage";
+import ProductVariantEdit from "./components/feature/vendor/products/ProductVariantEdit";
+import ProductVariantImages from "./components/feature/vendor/products/ProductVariantImage";
 import EditProductPage from "./components/feature/vendor/products/ProductEdit";
 import ReviewProductPage from "./components/feature/vendor/products/ProductView";
 import VendorApprovalList from "./components/feature/manager/vendor/VendorApprovalList";
 import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprovalForm";
 import NotFoundPage from "./pages/NotFound";
+import AttributeManagement from "./components/feature/manager/attribute/attributes";
 
 export default function App() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return null;
+  }
   return (
     <Routes>
       {/* ========== AUTH ========== */}
@@ -76,6 +87,24 @@ export default function App() {
         <Route
           path={routes.vendor.products.edit}
           element={<EditProductPage />}
+        />
+
+        {/* Manage Product page */}
+        <Route
+          path={routes.vendor.products.manageProduct}
+          element={<ProductManage />}
+        />
+
+        {/* Variant Edit */}
+        <Route
+          path={routes.vendor.products.variantEdit}
+          element={<ProductVariantEdit />}
+        />
+
+        {/* Variant Image */}
+        <Route
+          path={routes.vendor.products.variantImage}
+          element={<ProductVariantImages />}
         />
 
         <Route
@@ -129,10 +158,19 @@ export default function App() {
           path={routes.manager.linkDocument}
           element={<DocumentCategoryManagement />}
         />
+
+        {/* Attribute */}
+        <Route
+          path={routes.manager.attributes}
+          element={<AttributeManagement />}
+        />
       </Route>
 
       {/* ========== FALLBACK ========== */}
-      <Route path="*" element={<NotFoundPage />} />
+      <Route
+        path="*"
+        element={user ? <NotFoundPage /> : <Navigate to="/login" replace />}
+      />
     </Routes>
   );
 }
