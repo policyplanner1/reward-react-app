@@ -25,6 +25,7 @@ export const routes = {
     subcategories: "/manager/category_management/subcategories",
     subsubcategories: "/manager/category_management/subsubcategories",
     addDocument:"/manager/document/DocumentAdd",
-    linkDocument:"/manager/document/DocumentCategory"
+    linkDocument:"/manager/document/DocumentCategory",
+    attributes: "/manager/attributes",
   },
 };

@@ -39,6 +39,7 @@ import ReviewProductPage from "./components/feature/vendor/products/ProductView"
 import VendorApprovalList from "./components/feature/manager/vendor/VendorApprovalList";
 import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprovalForm";
 import NotFoundPage from "./pages/NotFound";
+import AttributeManagement from "./components/feature/manager/attribute/attributes";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -156,6 +157,12 @@ export default function App() {
         <Route
           path={routes.manager.linkDocument}
           element={<DocumentCategoryManagement />}
+        />
+
+        {/* Attribute */}
+        <Route
+          path={routes.manager.attributes}
+          element={<AttributeManagement />}
         />
       </Route>
 

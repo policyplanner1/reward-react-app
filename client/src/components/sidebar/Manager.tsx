@@ -9,6 +9,7 @@ import {
   FiChevronsRight,
   FiUser,
   FiLogOut,
+  FiSliders 
 } from "react-icons/fi";
 
 import { FaFileAlt } from "react-icons/fa";
@@ -79,6 +80,12 @@ export default function ManagerNavbar() {
         { label: "Add Document", to: routes.manager.addDocument },
         { label: "Category Link Document", to: routes.manager.linkDocument },
       ],
+    },
+    {
+      label: "Category Attributes",
+      to: routes.manager.attributes,
+      icon: <FiSliders />,
+      type: "link",
     },
   ];
 
