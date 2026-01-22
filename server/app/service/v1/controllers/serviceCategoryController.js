@@ -1,9 +1,8 @@
 const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const ServiceCategoryModel = require("../models/serviceCategoryModel");
+const { UPLOAD_BASE } = require("../../../../config/path");
 
 class ServiceCatalogController {
   // Find all categories
@@ -26,7 +25,7 @@ class ServiceCatalogController {
   // create category
   async createCategory(req, res) {
     try {
-      const { name, icon, status } = req.body;
+      const { name, status } = req.body;
 
       if (!name) {
         return res.status(400).json({
@@ -35,16 +34,45 @@ class ServiceCatalogController {
         });
       }
 
+      // 1. Create category
       const categoryId = await ServiceCategoryModel.create({
         name,
-        icon,
+        icon: null,
         status,
       });
+
+      let iconPath = null;
+
+      if (req.file) {
+        const categoryDir = path.join(
+          UPLOAD_BASE,
+          "service-category",
+          String(categoryId),
+        );
+
+        fs.mkdirSync(categoryDir, { recursive: true });
+
+        const finalPath = path.join(categoryDir, req.file.filename);
+
+        fs.copyFileSync(req.file.path, finalPath);
+        fs.unlinkSync(req.file.path);
+
+        iconPath = `uploads/service-category/${categoryId}/${req.file.filename}`;
+
+        await ServiceCategoryModel.update(categoryId, {
+          name,
+          icon: iconPath,
+          status,
+        });
+      }
 
       res.status(201).json({
         success: true,
         message: "Service category created successfully",
-        data: { id: categoryId },
+        data: {
+          id: categoryId,
+          icon: iconPath,
+        },
       });
     } catch (err) {
       res.status(500).json({

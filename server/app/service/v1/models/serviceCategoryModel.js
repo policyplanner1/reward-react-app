@@ -4,15 +4,21 @@ const path = require("path");
 
 class ServiceCategoryModel {
   // create category
-  async create() {
-    const sql = `
+  async create({ name, icon = null, status = 1 }) {
+    try {
+      const sql = `
       INSERT INTO service_categories (name, icon, status)
       VALUES (?, ?, ?)
     `;
-    const params = [data.name, data.icon || null, data.status ?? 1];
 
-    const [result] = await db.execute(sql, params);
-    return result.insertId;
+      const params = [name, icon ?? null, status ?? 1];
+
+      const [result] = await db.execute(sql, params);
+      return result.insertId;
+    } catch (error) {
+      console.error("Error creating service category:", error);
+      throw error;
+    }
   }
 
   //   Fetch all service categories
