@@ -6,8 +6,8 @@ class ServiceModel {
   async create(data) {
     const sql = `
       INSERT INTO services
-      (category_id, name, description, price, estimated_days, status)
-      VALUES (?, ?, ?, ?, ?, ?)
+      (category_id, name, description, price, estimated_days, status,service_image)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -17,6 +17,7 @@ class ServiceModel {
       data.price,
       data.estimated_days || null,
       data.status ?? 1,
+      data.service_image,
     ];
 
     const [result] = await db.execute(sql, params);
@@ -70,7 +71,8 @@ class ServiceModel {
         description = ?,
         price = ?,
         estimated_days = ?,
-        status = ?
+        status = ?,
+        service_image = ?
       WHERE id = ?
     `;
 
@@ -81,10 +83,19 @@ class ServiceModel {
       data.price,
       data.estimated_days || null,
       data.status ?? 1,
+      data.service_image || null,
       id,
     ];
 
     const [result] = await db.execute(sql, params);
+    return result.affectedRows;
+  }
+
+  async updateImage(id, imagePath) {
+    const [result] = await db.execute(
+      `UPDATE services SET service_image = ? WHERE id = ?`,
+      [imagePath, id],
+    );
     return result.affectedRows;
   }
 
