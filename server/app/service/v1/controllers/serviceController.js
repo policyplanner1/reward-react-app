@@ -1,9 +1,7 @@
 const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const ServiceCategoryModel = require("../models/serviceCategoryModel");
+const ServiceModel = require("../models/serviceModel");
 
 class ServiceController {
   // Find all services
