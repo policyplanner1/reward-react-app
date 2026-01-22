@@ -17,7 +17,11 @@ router.post(
 router.get("/find/:id", ServiceCategoryController.getCategoryById);
 
 // update
-router.put("/update/:id", ServiceCategoryController.updateCategory);
+router.put(
+  "/update/:id",
+  upload.single("icon"),
+  ServiceCategoryController.updateCategory,
+);
 
 // Delete
 router.delete("/remove/:id", ServiceCategoryController.deleteCategory);
