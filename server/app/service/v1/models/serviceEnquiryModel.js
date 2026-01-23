@@ -30,6 +30,37 @@ class ServiceEnquiryModel {
       enquiry_data: r.enquiry_data ? JSON.parse(r.enquiry_data) : {},
     }));
   }
+
+  // Get Enquiry By Id
+  async findById(id) {
+    const [rows] = await db.execute(
+      `
+    SELECT 
+      se.id,
+      se.name,
+      se.city,
+      se.mobile,
+      se.email,
+      se.status,
+      se.enquiry_data,
+      se.created_at,
+      s.name AS service_name
+    FROM service_enquiries se
+    JOIN services s ON s.id = se.service_id
+    WHERE se.id = ?
+    `,
+      [id],
+    );
+
+    if (!rows.length) return null;
+
+    const r = rows[0];
+
+    return {
+      ...r,
+      enquiry_data: r.enquiry_data ? JSON.parse(r.enquiry_data) : {},
+    };
+  }
 }
 
 module.exports = new ServiceEnquiryModel();

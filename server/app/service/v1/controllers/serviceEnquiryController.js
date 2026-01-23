@@ -48,6 +48,32 @@ class ServiceEnquiryController {
       });
     }
   }
+
+  // Get Enquiry By Id
+  async getEnquiryById(req, res) {
+    try {
+      const { id } = req.params;
+
+      const enquiry = await ServiceEnquiryModel.findById(id);
+
+      if (!enquiry) {
+        return res.status(404).json({
+          success: false,
+          message: "Enquiry not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: enquiry,
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
 }
 
 module.exports = new ServiceEnquiryController();
