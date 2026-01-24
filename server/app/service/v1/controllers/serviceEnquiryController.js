@@ -4,7 +4,15 @@ const ServiceEnquiryModel = require("../models/serviceEnquiryModel");
 class ServiceEnquiryController {
   async createEnquiry(req, res) {
     try {
-      const { service_id, name, city, mobile, email, enquiry_data } = req.body;
+      const {
+        service_id,
+        variant_id,
+        name,
+        city,
+        mobile,
+        email,
+        enquiry_data,
+      } = req.body;
 
       if (!service_id || !name || !mobile) {
         return res.status(400).json({
@@ -15,6 +23,7 @@ class ServiceEnquiryController {
 
       const id = await ServiceEnquiryModel.create({
         service_id,
+        variant_id,
         name,
         city,
         mobile,
