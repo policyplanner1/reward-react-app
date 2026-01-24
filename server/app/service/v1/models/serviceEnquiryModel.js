@@ -20,16 +20,45 @@ class ServiceEnquiryModel {
     return result.insertId;
   }
 
+  // All the Enquiries
   async findAll() {
     const [rows] = await db.execute(
-      `SELECT * FROM service_enquiries ORDER BY created_at DESC`,
+      `
+    SELECT
+      se.id,
+      se.name,
+      se.city,
+      se.mobile,
+      se.email,
+      se.status,
+      se.enquiry_data,
+      se.created_at,
+
+      s.name AS service_name,
+
+      sv.variant_name AS variant_name,
+      sv.title AS variant_title
+
+    FROM service_enquiries se
+    JOIN services s ON s.id = se.service_id
+    LEFT JOIN service_variants sv ON sv.id = se.variant_id
+    ORDER BY se.created_at DESC
+    `,
     );
 
-    // Parse JSON before returning
-    return rows.map((r) => ({
-      ...r,
-      enquiry_data: r.enquiry_data ? JSON.parse(r.enquiry_data) : {},
-    }));
+    return rows.map((r) => {
+      let parsedData = {};
+      try {
+        parsedData = r.enquiry_data ? JSON.parse(r.enquiry_data) : {};
+      } catch (e) {
+        parsedData = {};
+      }
+
+      return {
+        ...r,
+        enquiry_data: parsedData,
+      };
+    });
   }
 
   // Get Enquiry By Id
@@ -59,10 +88,17 @@ class ServiceEnquiryModel {
     if (!rows.length) return null;
 
     const r = rows[0];
+    let parsedData = {};
+
+    try {
+      parsedData = r.enquiry_data ? JSON.parse(r.enquiry_data) : {};
+    } catch (e) {
+      parsedData = {};
+    }
 
     return {
       ...r,
-      enquiry_data: r.enquiry_data ? JSON.parse(r.enquiry_data) : {},
+      enquiry_data: parsedData,
     };
   }
 }
