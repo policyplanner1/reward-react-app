@@ -5,10 +5,10 @@ class ServiceEnquiryModel {
     const [result] = await db.execute(
       `INSERT INTO service_enquiries
       (service_id,variant_id, name, city, mobile, email, enquiry_data)
-      VALUES (?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         data.service_id,
-        data.variant_id,
+        data.variant_id || null,
         data.name,
         data.city || null,
         data.mobile,
@@ -17,7 +17,18 @@ class ServiceEnquiryModel {
       ],
     );
 
-    return result.insertId;
+    const insertId = result.insertId;
+    const ref = `SP-ENQ-${1000 + insertId}`;
+
+    await db.execute(
+      `UPDATE service_enquiries SET enquiry_ref = ? WHERE id = ?`,
+      [ref, insertId],
+    );
+
+    return {
+      id: insertId,
+      enquiry_ref: ref,
+    };
   }
 
   // All the Enquiries
@@ -26,6 +37,7 @@ class ServiceEnquiryModel {
       `
     SELECT
       se.id,
+      se.enquiry_ref,
       se.name,
       se.city,
       se.mobile,
@@ -67,6 +79,7 @@ class ServiceEnquiryModel {
       `
     SELECT 
       se.id,
+      se.enquiry_ref,
       se.name,
       se.city,
       se.mobile,

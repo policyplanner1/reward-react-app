@@ -2,6 +2,7 @@ const db = require("../../../../config/database");
 const ServiceEnquiryModel = require("../models/serviceEnquiryModel");
 
 class ServiceEnquiryController {
+  // create user Enquiry
   async createEnquiry(req, res) {
     try {
       const {
@@ -21,20 +22,24 @@ class ServiceEnquiryController {
         });
       }
 
-      const id = await ServiceEnquiryModel.create({
+      const safeEnquiryData =
+        enquiry_data && typeof enquiry_data === "object" ? enquiry_data : {};
+
+      const result = await ServiceEnquiryModel.create({
         service_id,
-        variant_id,
+        variant_id: variant_id || null,
         name,
         city,
         mobile,
         email,
         enquiry_data,
+        enquiry_data: safeEnquiryData,
       });
 
       res.status(201).json({
         success: true,
         message: "Enquiry submitted successfully",
-        data: { id },
+        data: result,
       });
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });
