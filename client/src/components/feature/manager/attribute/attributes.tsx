@@ -77,7 +77,7 @@ export default function CategoryAttributeManagement() {
   };
 
   const fetchAttributes = async () => {
-    const res = await api.get("/category-attributes", {
+    const res = await api.get("/manager/category-attributes", {
       params: {
         category_id: categoryId || undefined,
         subcategory_id: subcategoryId || undefined,
@@ -138,7 +138,7 @@ export default function CategoryAttributeManagement() {
     if (!confirm.isConfirmed) return;
 
     try {
-      await api.delete(`/category-attributes/${id}`);
+      await api.delete(`/manager/category-attributes/${id}`);
       fetchAttributes();
       Swal.fire("Deleted", "", "success");
     } catch (err: any) {
@@ -150,7 +150,7 @@ export default function CategoryAttributeManagement() {
     if (!selected) return;
 
     try {
-      await api.put(`/category-attributes/${selected.id}`, selected);
+      await api.put(`/manager/category-attributes/${selected.id}`, selected);
       fetchAttributes();
       setDrawerOpen(false);
       Swal.fire("Updated", "", "success");
