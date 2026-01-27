@@ -10,4 +10,10 @@ router.post(
   ServiceOrderDocumentController.uploadDocument,
 );
 
+router.get(
+  "/required-documents/:orderId",
+  ServiceOrderDocumentController.getRequiredDocuments
+);
+
+
 module.exports = router;
