@@ -25,7 +25,7 @@ class ServiceVariantModel {
   //   find by service
   async findByServiceId(serviceId) {
     const [rows] = await db.execute(
-      `SELECT id, variant_name, description, price
+      `SELECT id, variant_name,title, short_description,features, price
        FROM service_variants
        WHERE service_id = ? AND status = 1`,
       [serviceId],
