@@ -105,7 +105,7 @@ export default function CategoryAttributeManagement() {
     }
 
     try {
-      await api.post("/category-attributes", {
+      await api.post("/manager/category-attributes", {
         ...form,
         category_id: categoryId || null,
         subcategory_id: subcategoryId || null,

@@ -160,7 +160,7 @@ router.delete(
 
 // Get all the attributes
 router.get(
-  "/",
+  "/category-attributes",
   authenticateToken,
   authorizeRoles("admin", "vendor_manager"),
   CategoryAttributeController.list,
@@ -168,7 +168,7 @@ router.get(
 
 // create attribute
 router.post(
-  "/",
+  "/category-attributes",
   authenticateToken,
   authorizeRoles("admin", "vendor_manager"),
   CategoryAttributeController.create,
@@ -176,7 +176,7 @@ router.post(
 
 // Update an attribute
 router.put(
-  "/:id",
+  "/category-attributes/:id",
   authenticateToken,
   authorizeRoles("admin", "vendor_manager"),
   CategoryAttributeController.update,
@@ -184,7 +184,7 @@ router.put(
 
 // Delete attribute
 router.delete(
-  "/:id",
+  "/category-attributes/:id",
   authenticateToken,
   authorizeRoles("admin", "vendor_manager"),
   CategoryAttributeController.remove,
