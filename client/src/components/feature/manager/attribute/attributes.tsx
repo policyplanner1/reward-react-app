@@ -67,7 +67,7 @@ export default function CategoryAttributeManagement() {
       (res.data.data || []).map((c: any) => ({
         category_id: c.category_id,
         name: c.category_name,
-      }))
+      })),
     );
   };
 
@@ -150,7 +150,13 @@ export default function CategoryAttributeManagement() {
     if (!selected) return;
 
     try {
-      await api.put(`/manager/category-attributes/${selected.id}`, selected);
+      await api.put(`/manager/category-attributes/${selected.id}`, {
+        attribute_label: selected.attribute_label,
+        is_variant: selected.is_variant,
+        is_required: selected.is_required,
+        sort_order: selected.sort_order,
+      });
+
       fetchAttributes();
       setDrawerOpen(false);
       Swal.fire("Updated", "", "success");
@@ -210,9 +216,7 @@ export default function CategoryAttributeManagement() {
         <input
           placeholder="Key"
           value={form.attribute_key}
-          onChange={(e) =>
-            setForm({ ...form, attribute_key: e.target.value })
-          }
+          onChange={(e) => setForm({ ...form, attribute_key: e.target.value })}
           className="col-span-1 px-4 py-3 rounded-xl"
         />
         <input
@@ -297,25 +301,79 @@ export default function CategoryAttributeManagement() {
               <FiX />
             </button>
 
-            <h2 className="text-xl font-bold mt-4">
-              {selected.attribute_label}
-            </h2>
+            <h2 className="text-xl font-bold mt-4">Edit Attribute</h2>
 
-            {isEditing ? (
-              <button
-                onClick={handleSave}
-                className="mt-6 w-full bg-[#852BAF] text-white py-3 rounded-xl"
-              >
-                <FiSave /> Save
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="mt-6 w-full bg-black text-white py-3 rounded-xl"
-              >
-                Edit
-              </button>
-            )}
+            <div className="mt-6 space-y-4">
+              {/* Label (readonly) */}
+              <div>
+                <label className="text-xs text-gray-500">Attribute Label</label>
+                <input
+                  value={selected.attribute_label}
+                  onChange={(e) =>
+                    setSelected({
+                      ...selected,
+                      attribute_label: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-xl"
+                />
+              </div>
+
+              {/* Is Variant */}
+              <div className="flex items-center justify-between">
+                <label className="font-medium">Is Variant Attribute</label>
+                <input
+                  type="checkbox"
+                  checked={selected.is_variant === 1}
+                  onChange={(e) =>
+                    setSelected({
+                      ...selected,
+                      is_variant: e.target.checked ? 1 : 0,
+                    })
+                  }
+                  className="w-5 h-5"
+                />
+              </div>
+
+              {/* Is Required */}
+              <div className="flex items-center justify-between">
+                <label className="font-medium">Is Required</label>
+                <input
+                  type="checkbox"
+                  checked={selected.is_required === 1}
+                  onChange={(e) =>
+                    setSelected({
+                      ...selected,
+                      is_required: e.target.checked ? 1 : 0,
+                    })
+                  }
+                  className="w-5 h-5"
+                />
+              </div>
+
+              {/* Sort Order */}
+              <div>
+                <label className="text-xs text-gray-500">Sort Order</label>
+                <input
+                  type="number"
+                  value={selected.sort_order}
+                  onChange={(e) =>
+                    setSelected({
+                      ...selected,
+                      sort_order: Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-xl"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleSave}
+              className="mt-8 w-full bg-[#852BAF] text-white py-3 rounded-xl flex items-center justify-center gap-2"
+            >
+              <FiSave /> Save Changes
+            </button>
           </div>
         </div>
       )}
