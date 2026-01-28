@@ -15,7 +15,6 @@ import $ from "jquery";
 import "datatables.net";
 import "datatables.net-responsive";
 
-
 type InputType = "text" | "number" | "select" | "multiselect" | "textarea";
 
 interface Category {
@@ -92,28 +91,28 @@ export default function CategoryAttributeManagement() {
     setAttributes(res.data.data || []);
   };
 
-  useEffect(() => {
-    if (!tableRef.current) return;
-    if (attributes.length === 0) return;
+  // useEffect(() => {
+  //   if (!tableRef.current) return;
+  //   if (attributes.length === 0) return;
 
-    // Wait until React fully paints rows
-    const timer = setTimeout(() => {
-      if (dataTableRef.current) {
-        dataTableRef.current.destroy();
-        dataTableRef.current = null;
-      }
+  //   // Wait until React fully paints rows
+  //   const timer = setTimeout(() => {
+  //     if (dataTableRef.current) {
+  //       dataTableRef.current.destroy();
+  //       dataTableRef.current = null;
+  //     }
 
-      dataTableRef.current = $(tableRef.current!).DataTable({
-        responsive: true,
-        pageLength: 10,
-        ordering: true,
-        searching: true,
-        columnDefs: [{ orderable: false, targets: 5 }],
-      });
-    }, 300); // <-- important delay
+  //     dataTableRef.current = $(tableRef.current!).DataTable({
+  //       responsive: true,
+  //       pageLength: 10,
+  //       ordering: true,
+  //       searching: true,
+  //       columnDefs: [{ orderable: false, targets: 5 }],
+  //     });
+  //   }, 300); // <-- important delay
 
-    return () => clearTimeout(timer);
-  }, [attributes]);
+  //   return () => clearTimeout(timer);
+  // }, [attributes]);
 
   useEffect(() => {
     return () => {
@@ -128,9 +127,13 @@ export default function CategoryAttributeManagement() {
     fetchSubcategories();
   }, []);
 
+  // useEffect(() => {
+  //   fetchAttributes();
+  // }, [categoryId, subcategoryId]);
+
   useEffect(() => {
     fetchAttributes();
-  }, [categoryId, subcategoryId]);
+  }, []);
 
   /* ------------------ HANDLERS ------------------ */
 
@@ -288,7 +291,7 @@ export default function CategoryAttributeManagement() {
 
       {/* TABLE */}
       <div className="mt-8 bg-white rounded-2xl overflow-hidden">
-        <table ref={tableRef} id="attributeTable" className="w-full display">
+        <table className="w-full">
           <thead>
             <tr className="text-left text-xs uppercase text-gray-400">
               <th className="px-6 py-4">Key</th>
@@ -308,7 +311,8 @@ export default function CategoryAttributeManagement() {
                 <td>{a.is_variant ? "Yes" : "No"}</td>
                 <td>{a.is_required ? "Yes" : "No"}</td>
                 <td className="px-6 text-right">
-                  <button className="cursor-pointer"
+                  <button
+                    className="cursor-pointer"
                     onClick={() => {
                       setSelected(a);
                       setDrawerOpen(true);
@@ -334,7 +338,7 @@ export default function CategoryAttributeManagement() {
       {drawerOpen && selected && (
         <div className="fixed inset-0 bg-black/20 flex justify-end">
           <div className="w-[420px] bg-white p-6">
-            <button onClick={() => setDrawerOpen(false)}>
+            <button className="cursor-pointer" onClick={() => setDrawerOpen(false)}>
               <FiX />
             </button>
 
@@ -407,7 +411,7 @@ export default function CategoryAttributeManagement() {
 
             <button
               onClick={handleSave}
-              className="mt-8 w-full bg-[#852BAF] text-white py-3 rounded-xl flex items-center justify-center gap-2"
+              className="mt-8 w-full bg-[#852BAF] text-white py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
             >
               <FiSave /> Save Changes
             </button>
