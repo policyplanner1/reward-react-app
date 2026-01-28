@@ -1,17 +1,14 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Swal from "sweetalert2";
 import {
-  FiEdit,
   FiTrash2,
   FiEye,
   FiPlus,
   FiX,
   FiSave,
   FiLayers,
-  FiTag,
 } from "react-icons/fi";
 import { api } from "../../../../api/api";
-import $ from "jquery";
 import "datatables.net";
 import "datatables.net-responsive";
 
@@ -52,8 +49,6 @@ export default function CategoryAttributeManagement() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<Attribute | null>(null);
   const dataTableRef = useRef<any>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 10;
 
   const [form, setForm] = useState({
     attribute_key: "",
@@ -316,7 +311,6 @@ export default function CategoryAttributeManagement() {
                     onClick={() => {
                       setSelected(a);
                       setDrawerOpen(true);
-                      setIsEditing(false);
                     }}
                   >
                     <FiEye />
