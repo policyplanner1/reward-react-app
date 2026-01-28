@@ -152,27 +152,102 @@ class ProductModel {
   }
 
   // generate product variants
+  // async generateProductVariants(
+  //   connection,
+  //   productId,
+  //   categoryId,
+  //   subcategoryId,
+  // ) {
+  //   if (!categoryId && !subcategoryId) {
+  //     return;
+  //   }
+
+  //   const [[row]] = await connection.execute(
+  //     `SELECT attributes FROM product_attributes WHERE product_id = ?`,
+  //     [productId],
+  //   );
+
+  //   if (!row) return;
+
+  //   const allAttributes =
+  //     typeof row.attributes === "string"
+  //       ? JSON.parse(row.attributes)
+  //       : row.attributes;
+
+  //   const normalize = (arr) =>
+  //     arr.flatMap((v) =>
+  //       typeof v === "string"
+  //         ? v
+  //             .split(",")
+  //             .map((x) => x.trim())
+  //             .filter(Boolean)
+  //         : v,
+  //     );
+
+  //   const variantKeys = await this.getVariantAttributeKeys(
+  //     connection,
+  //     categoryId,
+  //     subcategoryId,
+  //   );
+
+  //   const variantAttributes = {};
+  //   variantKeys.forEach((k) => {
+  //     if (Array.isArray(allAttributes[k])) {
+  //       const normalized = normalize(allAttributes[k]);
+  //       if (normalized.length) {
+  //         variantAttributes[k] = normalized;
+  //       }
+  //     }
+  //   });
+
+  //   if (!Object.keys(variantAttributes).length) return;
+
+  //   const combinations = generateCombinations(variantAttributes);
+
+  //   for (const combo of combinations) {
+  //     const comboJson = JSON.stringify(combo);
+
+  //     const [exists] = await connection.execute(
+  //       `SELECT variant_id
+  //      FROM product_variants
+  //      WHERE product_id = ?
+  //        AND variant_attributes = ?`,
+  //       [productId, comboJson],
+  //     );
+
+  //     if (exists.length) continue;
+
+  //     const sku = await generateUniqueSKU(connection, productId);
+
+  //     if (!sku) throw new Error("SKU generation failed");
+
+  //     await connection.execute(
+  //       `INSERT INTO product_variants
+  //      (product_id, variant_attributes, sku, stock)
+  //      VALUES (?, ?, ?, 0)`,
+  //       [productId, comboJson, sku],
+  //     );
+  //   }
+  // }
+
   async generateProductVariants(
     connection,
     productId,
     categoryId,
     subcategoryId,
   ) {
-    if (!categoryId && !subcategoryId) {
-      return;
-    }
-
     const [[row]] = await connection.execute(
       `SELECT attributes FROM product_attributes WHERE product_id = ?`,
       [productId],
     );
 
-    if (!row) return;
-
-    const allAttributes =
-      typeof row.attributes === "string"
-        ? JSON.parse(row.attributes)
-        : row.attributes;
+    let allAttributes = {};
+    if (row && row.attributes) {
+      allAttributes =
+        typeof row.attributes === "string"
+          ? JSON.parse(row.attributes)
+          : row.attributes;
+    }
 
     const normalize = (arr) =>
       arr.flatMap((v) =>
@@ -184,11 +259,15 @@ class ProductModel {
           : v,
       );
 
-    const variantKeys = await this.getVariantAttributeKeys(
-      connection,
-      categoryId,
-      subcategoryId,
-    );
+    // Get variant keys only if category/subcategory exist
+    let variantKeys = [];
+    if (categoryId || subcategoryId) {
+      variantKeys = await this.getVariantAttributeKeys(
+        connection,
+        categoryId,
+        subcategoryId,
+      );
+    }
 
     const variantAttributes = {};
     variantKeys.forEach((k) => {
@@ -200,32 +279,51 @@ class ProductModel {
       }
     });
 
-    if (!Object.keys(variantAttributes).length) return;
+    // CASE 1: Real variant combinations
+    if (Object.keys(variantAttributes).length) {
+      const combinations = generateCombinations(variantAttributes);
 
-    const combinations = generateCombinations(variantAttributes);
+      for (const combo of combinations) {
+        const comboJson = JSON.stringify(combo);
 
-    for (const combo of combinations) {
-      const comboJson = JSON.stringify(combo);
+        const [exists] = await connection.execute(
+          `SELECT variant_id
+         FROM product_variants
+         WHERE product_id = ?
+           AND variant_attributes = ?`,
+          [productId, comboJson],
+        );
 
-      const [exists] = await connection.execute(
-        `SELECT variant_id
-       FROM product_variants
-       WHERE product_id = ?
-         AND variant_attributes = ?`,
-        [productId, comboJson],
-      );
+        if (exists.length) continue;
 
-      if (exists.length) continue;
+        const sku = await generateUniqueSKU(connection, productId);
+        if (!sku) throw new Error("SKU generation failed");
 
+        await connection.execute(
+          `INSERT INTO product_variants
+         (product_id, variant_attributes, sku, stock)
+         VALUES (?, ?, ?, 0)`,
+          [productId, comboJson, sku],
+        );
+      }
+    }
+
+    // CASE 2: Fallback single variant (VERY IMPORTANT)
+    const [existing] = await connection.execute(
+      `SELECT variant_id FROM product_variants WHERE product_id = ?`,
+      [productId],
+    );
+
+    if (!existing.length) {
       const sku = await generateUniqueSKU(connection, productId);
 
-      if (!sku) throw new Error("SKU generation failed");
-
       await connection.execute(
-        `INSERT INTO product_variants
-       (product_id, variant_attributes, sku, stock)
-       VALUES (?, ?, ?, 0)`,
-        [productId, comboJson, sku],
+        `
+      INSERT INTO product_variants
+      (product_id, variant_attributes, sku, stock)
+      VALUES (?, ?, ?, 0)
+      `,
+        [productId, JSON.stringify({}), sku],
       );
     }
   }
