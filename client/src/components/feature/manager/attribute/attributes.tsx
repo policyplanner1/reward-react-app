@@ -280,7 +280,7 @@ export default function CategoryAttributeManagement() {
 
         <button
           type="submit"
-          className="col-span-2 flex items-center justify-center gap-2 bg-[#852BAF] text-white rounded-xl"
+          className="col-span-2 flex items-center justify-center gap-2 bg-[#852BAF] text-white rounded-xl cursor-pointer"
         >
           <FiPlus /> Add Attribute
         </button>
@@ -308,7 +308,7 @@ export default function CategoryAttributeManagement() {
                 <td>{a.is_variant ? "Yes" : "No"}</td>
                 <td>{a.is_required ? "Yes" : "No"}</td>
                 <td className="px-6 text-right">
-                  <button
+                  <button className="cursor-pointer"
                     onClick={() => {
                       setSelected(a);
                       setDrawerOpen(true);
@@ -319,7 +319,7 @@ export default function CategoryAttributeManagement() {
                   </button>
                   <button
                     onClick={() => handleDelete(a.id)}
-                    className="ml-3 text-red-500"
+                    className="ml-3 text-red-500 cursor-pointer"
                   >
                     <FiTrash2 />
                   </button>
