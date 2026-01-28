@@ -8,4 +8,7 @@ router.post("/", ServiceEnquiryController.createEnquiry);
 // Get all the Enquires
 router.get("/", ServiceEnquiryController.getAllEnquiries);
 
+// Get Enquiry By Id
+router.get("/:id", ServiceEnquiryController.getEnquiryById);
+
 module.exports = router;

@@ -132,7 +132,7 @@ class ProductModel {
           FROM eproducts p
           ${whereClause}
         `,
-        params
+        params,
       );
 
       return {
@@ -163,7 +163,7 @@ class ProductModel {
         LEFT JOIN sub_sub_categories ssc ON p.sub_subcategory_id = ssc.sub_subcategory_id
         WHERE p.product_id = ?
         `,
-        [productId]
+        [productId],
       );
 
       if (!productRows.length) return null;
@@ -172,27 +172,41 @@ class ProductModel {
       // 2 Get product images
       const [images] = await db.execute(
         `SELECT image_url FROM product_images WHERE product_id = ?`,
-        [productId]
+        [productId],
       );
       product.images = images.map((img) => img.image_url);
 
       // 3 Get product variants
       const [variants] = await db.execute(
         `SELECT * FROM product_variants WHERE product_id = ?`,
-        [productId]
+        [productId],
       );
 
-      // 4 Get images for each variant
+      const attributeMap = {}; 
+
       for (const variant of variants) {
+        variant.variant_attributes = JSON.parse(
+          variant.variant_attributes || "{}",
+        );
+
+        for (const [key, value] of Object.entries(variant.variant_attributes)) {
+          if (!attributeMap[key]) attributeMap[key] = new Set();
+          attributeMap[key].add(value);
+        }
+
         const [variantImages] = await db.execute(
           `SELECT image_url FROM product_variant_images WHERE variant_id = ?`,
-          [variant.variant_id]
+          [variant.variant_id],
         );
         variant.images = variantImages.map((img) => img.image_url);
-        variant.customAttributes = JSON.parse(
-          variant.custom_attributes || "{}"
-        );
       }
+
+      const attributes = {};
+      for (const key in attributeMap) {
+        attributes[key] = Array.from(attributeMap[key]);
+      }
+
+      product.attributes = attributes;
       product.variants = variants;
 
       return product;
@@ -375,7 +389,7 @@ class ProductModel {
             ) v ON p.product_id = v.product_id
             ${whereClause}
         `,
-        params
+        params,
       );
 
       return {
@@ -526,7 +540,7 @@ class ProductModel {
       ) v ON p.product_id = v.product_id
       ${whereClause}
       `,
-        params
+        params,
       );
 
       return {
@@ -601,120 +615,7 @@ class ProductModel {
     });
   }
 
-  // Similar Products
-  // async getSimilarProducts({
-  //   productId,
-  //   categoryId,
-  //   subcategoryId,
-  //   sub_subcategoryId,
-  //   limit = 10,
-  // }) {
-  //   const query = `
-  //     SELECT
-  //       p.product_id,
-  //       p.product_name,
-  //       p.brand_id,
-
-  //       v.variant_id,
-  //       v.sale_price,
-  //       v.mrp,
-
-  //       b.brand_name,
-
-  //       GROUP_CONCAT(
-  //         DISTINCT CONCAT(
-  //           pi.image_id, '::',
-  //           pi.image_url, '::',
-  //           pi.sort_order
-  //         )
-  //         ORDER BY pi.sort_order ASC
-  //       ) AS images
-
-  //     FROM eproducts p
-
-  //     /* ---- Active category ---- */
-  //     INNER JOIN categories c
-  //       ON c.category_id = p.category_id
-  //       AND c.status = 1
-
-  //     /* ---- Active subcategory ---- */
-  //     INNER JOIN sub_categories sc
-  //       ON sc.subcategory_id = p.subcategory_id
-  //       AND sc.status = 1
-
-  //     /* ---- Active sub-subcategory ---- */
-  //     INNER JOIN sub_sub_categories ssc
-  //       ON ssc.sub_subcategory_id = p.sub_subcategory_id
-  //       AND ssc.status = 1
-
-  //     /* ---- Active brand ---- */
-  //     INNER JOIN brands b
-  //       ON b.brand_id = p.brand_id
-  //       AND b.status = 1
-
-  //     /* ---- Lowest price active variant ---- */
-  //     INNER JOIN (
-  //       SELECT pv.*
-  //       FROM product_variants pv
-  //       INNER JOIN (
-  //         SELECT product_id, MIN(sale_price) AS min_price
-  //         FROM product_variants
-  //         WHERE status = 1
-  //         GROUP BY product_id
-  //       ) mp
-  //         ON pv.product_id = mp.product_id
-  //        AND pv.sale_price = mp.min_price
-  //       WHERE pv.status = 1
-  //     ) v ON v.product_id = p.product_id
-
-  //     /* ---- Active images ---- */
-  //     LEFT JOIN product_images pi
-  //       ON pi.product_id = p.product_id
-  //      AND pi.status = 1
-
-  //     WHERE p.status = "approved"
-  //       AND p.product_id != ?
-  //       AND (
-  //         p.category_id = ?
-  //         OR p.subcategory_id = ?
-  //         OR p.sub_subcategory_id = ?
-  //       )
-
-  //     GROUP BY p.product_id
-  //     ORDER BY RAND()
-  //     LIMIT ?
-  //   `;
-
-  //   const [rows] = await db.execute(query, [
-  //     productId,
-  //     categoryId,
-  //     subcategoryId,
-  //     sub_subcategoryId,
-  //     limit,
-  //   ]);
-
-  //   return rows.map((row) => {
-  //     let images = [];
-
-  //     if (row.images) {
-  //       images = row.images.split(",").map((i) => {
-  //         const [, image_url] = i.split("::");
-  //         return { image_url };
-  //       });
-  //     }
-
-  //     return {
-  //       product_id: row.product_id,
-  //       product_name: row.product_name,
-  //       brand_name: row.brand_name,
-  //       variant_id: row.variant_id,
-  //       sale_price: row.sale_price,
-  //       mrp: row.mrp,
-  //       image: images.length ? images[0].image_url : null,
-  //     };
-  //   });
-  // }
-
+ 
   async getSimilarProducts({
     productId,
     categoryId,

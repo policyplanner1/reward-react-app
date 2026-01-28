@@ -70,9 +70,7 @@ class CategoryAttributeModel {
     const values = [];
 
     const allowed = [
-      "attribute_key",
       "attribute_label",
-      "input_type",
       "is_variant",
       "is_required",
       "sort_order",
