@@ -51,9 +51,9 @@ export default function CategoryAttributeManagement() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<Attribute | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const tableRef = useRef<HTMLTableElement | null>(null);
   const dataTableRef = useRef<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
 
   const [form, setForm] = useState({
     attribute_key: "",
@@ -338,7 +338,10 @@ export default function CategoryAttributeManagement() {
       {drawerOpen && selected && (
         <div className="fixed inset-0 bg-black/20 flex justify-end">
           <div className="w-[420px] bg-white p-6">
-            <button className="cursor-pointer" onClick={() => setDrawerOpen(false)}>
+            <button
+              className="cursor-pointer"
+              onClick={() => setDrawerOpen(false)}
+            >
               <FiX />
             </button>
 
