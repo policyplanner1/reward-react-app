@@ -158,6 +158,10 @@ class ProductModel {
     categoryId,
     subcategoryId,
   ) {
+    if (!categoryId && !subcategoryId) {
+      return;
+    }
+
     const [[row]] = await connection.execute(
       `SELECT attributes FROM product_attributes WHERE product_id = ?`,
       [productId],
