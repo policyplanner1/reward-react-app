@@ -19,9 +19,16 @@ class CategoryAttributeModel {
   //  LIST
   async list({ category_id, subcategory_id }) {
     let sql = `
-      SELECT *
-      FROM category_attributes
-      WHERE is_active = 1
+        SELECT 
+      ca.*,
+      c.category_name,
+      sc.subcategory_name
+    FROM category_attributes ca
+    LEFT JOIN categories c 
+      ON ca.category_id = c.category_id
+    LEFT JOIN sub_categories sc 
+      ON ca.subcategory_id = sc.subcategory_id
+    WHERE ca.is_active = 1
     `;
     const params = [];
 
@@ -35,7 +42,7 @@ class CategoryAttributeModel {
       params.push(subcategory_id);
     }
 
-    sql += " ORDER BY sort_order ASC, created_at ASC";
+    sql += " ORDER BY ca.sort_order ASC, ca.created_at ASC";
 
     const [rows] = await db.query(sql, params);
     return rows;

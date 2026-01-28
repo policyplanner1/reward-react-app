@@ -1,13 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import Swal from "sweetalert2";
-import {
-  FiTrash2,
-  FiEye,
-  FiPlus,
-  FiX,
-  FiSave,
-  FiLayers,
-} from "react-icons/fi";
+import { FiTrash2, FiEye, FiPlus, FiX, FiSave, FiLayers } from "react-icons/fi";
 import { api } from "../../../../api/api";
 import "datatables.net";
 import "datatables.net-responsive";
@@ -29,9 +22,11 @@ interface Attribute {
   id: number;
   category_id?: number;
   subcategory_id?: number;
+  category_name?: string | null;
+  subcategory_name?: string | null;
   attribute_key: string;
   attribute_label: string;
-  input_type: InputType;
+  input_type: InputType | "";
   is_variant: number;
   is_required: number;
   sort_order: number;
@@ -83,6 +78,7 @@ export default function CategoryAttributeManagement() {
         subcategory_id: subcategoryId || undefined,
       },
     });
+    console.log(res.data.data);
     setAttributes(res.data.data || []);
   };
 
@@ -289,7 +285,9 @@ export default function CategoryAttributeManagement() {
         <table className="w-full">
           <thead>
             <tr className="text-left text-xs uppercase text-gray-400">
-              <th className="px-6 py-4">Key</th>
+              <th className="px-6 py-4">Category</th>
+              <th>Subcategory</th>
+              <th>Key</th>
               <th>Label</th>
               <th>Type</th>
               <th>Variant</th>
@@ -297,14 +295,22 @@ export default function CategoryAttributeManagement() {
               <th className="text-right px-6">Actions</th>
             </tr>
           </thead>
+
           <tbody>
             {attributes.map((a) => (
               <tr key={a.id} className="border-t">
-                <td className="px-6 py-4 font-mono">{a.attribute_key}</td>
+                <td className="px-6 py-4">
+                  {a.category_name ? a.category_name : "-"}
+                </td>
+
+                <td>{a.subcategory_name ? a.subcategory_name : "-"}</td>
+
+                <td className="font-mono">{a.attribute_key}</td>
                 <td>{a.attribute_label}</td>
-                <td>{a.input_type}</td>
+                <td>{a.input_type || "-"}</td>
                 <td>{a.is_variant ? "Yes" : "No"}</td>
                 <td>{a.is_required ? "Yes" : "No"}</td>
+
                 <td className="px-6 text-right">
                   <button
                     className="cursor-pointer"
