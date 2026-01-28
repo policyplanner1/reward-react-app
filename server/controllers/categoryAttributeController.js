@@ -50,12 +50,12 @@ class CategoryAttributeController {
         });
       }
 
-      if (category_id && subcategory_id) {
-        return res.status(400).json({
-          success: false,
-          message: "Provide only one: category_id OR subcategory_id",
-        });
-      }
+      // if (category_id && subcategory_id) {
+      //   return res.status(400).json({
+      //     success: false,
+      //     message: "Provide only one: category_id OR subcategory_id",
+      //   });
+      // }
 
       if (!ALLOWED_TYPES.includes(input_type)) {
         return res.status(400).json({

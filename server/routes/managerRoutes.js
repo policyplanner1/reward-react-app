@@ -14,31 +14,23 @@ router.get(
     try {
       const [[vendorStats]] = await db.execute(`
         SELECT
-          COUNT(*) AS totalVendors,
+          COUNT(CASE WHEN status != 'pending' THEN 1 END) AS totalVendors,
           SUM(status='pending') AS pendingApprovals,
           SUM(status='sent_for_approval') AS sentForApproval,
-          SUM(status='approved') AS approvedVendors
+          SUM(status='approved') AS approvedVendors,
+          SUM(status='rejected') AS rejectedVendors
         FROM vendors
       `);
-
-      // const [[productStats]] = await db.execute(`
-      //   SELECT
-      //     COUNT(*) AS totalProducts,
-      //     SUM(status='pending') AS pendingProducts,
-      //     SUM(status='sent_for_approval') AS sentForApproval,
-      //     SUM(status='resubmission') AS resubmissionProducts,
-      //     SUM(status='approved') AS approvedProducts
-      //   FROM products
-      // `);
 
       const [[productStats]] = await db.execute(`
         SELECT
           COUNT(CASE WHEN status != 'pending' THEN 1 END) AS totalProducts,
           SUM(status = 'pending') AS pendingProducts,
-          SUM(status = 'sent_for_approval') AS sentForApproval,
+          SUM(status = 'sent_for_approval') AS sentForApprovalProducts,
           SUM(status = 'resubmission') AS resubmissionProducts,
-          SUM(status = 'approved') AS approvedProducts
-        FROM products
+          SUM(status = 'approved') AS approvedProducts,
+          SUM(status = 'rejected') AS rejectedProducts
+        FROM eproducts
       `);
 
       res.json({
@@ -168,7 +160,7 @@ router.delete(
 
 // Get all the attributes
 router.get(
-  "/",
+  "/category-attributes",
   authenticateToken,
   authorizeRoles("admin", "vendor_manager"),
   CategoryAttributeController.list,
@@ -176,7 +168,7 @@ router.get(
 
 // create attribute
 router.post(
-  "/",
+  "/category-attributes",
   authenticateToken,
   authorizeRoles("admin", "vendor_manager"),
   CategoryAttributeController.create,
@@ -184,7 +176,7 @@ router.post(
 
 // Update an attribute
 router.put(
-  "/:id",
+  "/category-attributes/:id",
   authenticateToken,
   authorizeRoles("admin", "vendor_manager"),
   CategoryAttributeController.update,
@@ -192,7 +184,7 @@ router.put(
 
 // Delete attribute
 router.delete(
-  "/:id",
+  "/category-attributes/:id",
   authenticateToken,
   authorizeRoles("admin", "vendor_manager"),
   CategoryAttributeController.remove,

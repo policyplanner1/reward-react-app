@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import Swal from "sweetalert2";
 import {
   FiEdit,
@@ -11,6 +11,10 @@ import {
   FiTag,
 } from "react-icons/fi";
 import { api } from "../../../../api/api";
+import $ from "jquery";
+import "datatables.net";
+import "datatables.net-responsive";
+
 
 type InputType = "text" | "number" | "select" | "multiselect" | "textarea";
 
@@ -49,6 +53,8 @@ export default function CategoryAttributeManagement() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<Attribute | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const tableRef = useRef<HTMLTableElement | null>(null);
+  const dataTableRef = useRef<any>(null);
 
   const [form, setForm] = useState({
     attribute_key: "",
@@ -67,7 +73,7 @@ export default function CategoryAttributeManagement() {
       (res.data.data || []).map((c: any) => ({
         category_id: c.category_id,
         name: c.category_name,
-      }))
+      })),
     );
   };
 
@@ -77,7 +83,7 @@ export default function CategoryAttributeManagement() {
   };
 
   const fetchAttributes = async () => {
-    const res = await api.get("/category-attributes", {
+    const res = await api.get("/manager/category-attributes", {
       params: {
         category_id: categoryId || undefined,
         subcategory_id: subcategoryId || undefined,
@@ -85,6 +91,37 @@ export default function CategoryAttributeManagement() {
     });
     setAttributes(res.data.data || []);
   };
+
+  useEffect(() => {
+    if (!tableRef.current) return;
+    if (attributes.length === 0) return;
+
+    // Wait until React fully paints rows
+    const timer = setTimeout(() => {
+      if (dataTableRef.current) {
+        dataTableRef.current.destroy();
+        dataTableRef.current = null;
+      }
+
+      dataTableRef.current = $(tableRef.current!).DataTable({
+        responsive: true,
+        pageLength: 10,
+        ordering: true,
+        searching: true,
+        columnDefs: [{ orderable: false, targets: 5 }],
+      });
+    }, 300); // <-- important delay
+
+    return () => clearTimeout(timer);
+  }, [attributes]);
+
+  useEffect(() => {
+    return () => {
+      if (dataTableRef.current) {
+        dataTableRef.current.destroy(true);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     fetchCategories();
@@ -105,7 +142,7 @@ export default function CategoryAttributeManagement() {
     }
 
     try {
-      await api.post("/category-attributes", {
+      await api.post("/manager/category-attributes", {
         ...form,
         category_id: categoryId || null,
         subcategory_id: subcategoryId || null,
@@ -138,7 +175,7 @@ export default function CategoryAttributeManagement() {
     if (!confirm.isConfirmed) return;
 
     try {
-      await api.delete(`/category-attributes/${id}`);
+      await api.delete(`/manager/category-attributes/${id}`);
       fetchAttributes();
       Swal.fire("Deleted", "", "success");
     } catch (err: any) {
@@ -150,7 +187,13 @@ export default function CategoryAttributeManagement() {
     if (!selected) return;
 
     try {
-      await api.put(`/category-attributes/${selected.id}`, selected);
+      await api.put(`/manager/category-attributes/${selected.id}`, {
+        attribute_label: selected.attribute_label,
+        is_variant: selected.is_variant,
+        is_required: selected.is_required,
+        sort_order: selected.sort_order,
+      });
+
       fetchAttributes();
       setDrawerOpen(false);
       Swal.fire("Updated", "", "success");
@@ -210,9 +253,7 @@ export default function CategoryAttributeManagement() {
         <input
           placeholder="Key"
           value={form.attribute_key}
-          onChange={(e) =>
-            setForm({ ...form, attribute_key: e.target.value })
-          }
+          onChange={(e) => setForm({ ...form, attribute_key: e.target.value })}
           className="col-span-1 px-4 py-3 rounded-xl"
         />
         <input
@@ -239,7 +280,7 @@ export default function CategoryAttributeManagement() {
 
         <button
           type="submit"
-          className="col-span-2 flex items-center justify-center gap-2 bg-[#852BAF] text-white rounded-xl"
+          className="col-span-2 flex items-center justify-center gap-2 bg-[#852BAF] text-white rounded-xl cursor-pointer"
         >
           <FiPlus /> Add Attribute
         </button>
@@ -247,7 +288,7 @@ export default function CategoryAttributeManagement() {
 
       {/* TABLE */}
       <div className="mt-8 bg-white rounded-2xl overflow-hidden">
-        <table className="w-full">
+        <table ref={tableRef} id="attributeTable" className="w-full display">
           <thead>
             <tr className="text-left text-xs uppercase text-gray-400">
               <th className="px-6 py-4">Key</th>
@@ -267,7 +308,7 @@ export default function CategoryAttributeManagement() {
                 <td>{a.is_variant ? "Yes" : "No"}</td>
                 <td>{a.is_required ? "Yes" : "No"}</td>
                 <td className="px-6 text-right">
-                  <button
+                  <button className="cursor-pointer"
                     onClick={() => {
                       setSelected(a);
                       setDrawerOpen(true);
@@ -278,7 +319,7 @@ export default function CategoryAttributeManagement() {
                   </button>
                   <button
                     onClick={() => handleDelete(a.id)}
-                    className="ml-3 text-red-500"
+                    className="ml-3 text-red-500 cursor-pointer"
                   >
                     <FiTrash2 />
                   </button>
@@ -297,25 +338,79 @@ export default function CategoryAttributeManagement() {
               <FiX />
             </button>
 
-            <h2 className="text-xl font-bold mt-4">
-              {selected.attribute_label}
-            </h2>
+            <h2 className="text-xl font-bold mt-4">Edit Attribute</h2>
 
-            {isEditing ? (
-              <button
-                onClick={handleSave}
-                className="mt-6 w-full bg-[#852BAF] text-white py-3 rounded-xl"
-              >
-                <FiSave /> Save
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="mt-6 w-full bg-black text-white py-3 rounded-xl"
-              >
-                Edit
-              </button>
-            )}
+            <div className="mt-6 space-y-4">
+              {/* Label (readonly) */}
+              <div>
+                <label className="text-xs text-gray-500">Attribute Label</label>
+                <input
+                  value={selected.attribute_label}
+                  onChange={(e) =>
+                    setSelected({
+                      ...selected,
+                      attribute_label: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-xl"
+                />
+              </div>
+
+              {/* Is Variant */}
+              <div className="flex items-center justify-between">
+                <label className="font-medium">Is Variant Attribute</label>
+                <input
+                  type="checkbox"
+                  checked={selected.is_variant === 1}
+                  onChange={(e) =>
+                    setSelected({
+                      ...selected,
+                      is_variant: e.target.checked ? 1 : 0,
+                    })
+                  }
+                  className="w-5 h-5"
+                />
+              </div>
+
+              {/* Is Required */}
+              <div className="flex items-center justify-between">
+                <label className="font-medium">Is Required</label>
+                <input
+                  type="checkbox"
+                  checked={selected.is_required === 1}
+                  onChange={(e) =>
+                    setSelected({
+                      ...selected,
+                      is_required: e.target.checked ? 1 : 0,
+                    })
+                  }
+                  className="w-5 h-5"
+                />
+              </div>
+
+              {/* Sort Order */}
+              <div>
+                <label className="text-xs text-gray-500">Sort Order</label>
+                <input
+                  type="number"
+                  value={selected.sort_order}
+                  onChange={(e) =>
+                    setSelected({
+                      ...selected,
+                      sort_order: Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-xl"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleSave}
+              className="mt-8 w-full bg-[#852BAF] text-white py-3 rounded-xl flex items-center justify-center gap-2"
+            >
+              <FiSave /> Save Changes
+            </button>
           </div>
         </div>
       )}
