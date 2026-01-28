@@ -349,7 +349,7 @@ export default function EditProductPage() {
     const { name, value } = e.target;
 
     /* ===== PRODUCT TEXT (ALPHABETS ONLY) ===== */
-    const productAlphabetFields = ["productName", "brandName", "manufacturer"];
+    const productAlphabetFields = ["brandName", "manufacturer"];
 
     if (productAlphabetFields.includes(name)) {
       if (!allowOnlyAlphabets(value)) return;

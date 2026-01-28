@@ -303,7 +303,7 @@ export default function ProductListingDynamic() {
 
     /* ================= PRODUCT TEXT FIELDS ================= */
 
-    const productAlphabetFields = ["productName", "brandName", "manufacturer"];
+    const productAlphabetFields = ["brandName", "manufacturer"];
 
     if (productAlphabetFields.includes(name)) {
       if (!allowOnlyAlphabets(value)) return;
