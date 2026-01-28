@@ -45,6 +45,16 @@ export default function CategoryAttributeManagement() {
   const [selected, setSelected] = useState<Attribute | null>(null);
   const dataTableRef = useRef<any>(null);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+
+  const totalPages = Math.ceil(attributes.length / rowsPerPage);
+
+  const paginatedAttributes = attributes.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage,
+  );
+
   const [form, setForm] = useState({
     attribute_key: "",
     attribute_label: "",
@@ -82,28 +92,6 @@ export default function CategoryAttributeManagement() {
     setAttributes(res.data.data || []);
   };
 
-  // useEffect(() => {
-  //   if (!tableRef.current) return;
-  //   if (attributes.length === 0) return;
-
-  //   // Wait until React fully paints rows
-  //   const timer = setTimeout(() => {
-  //     if (dataTableRef.current) {
-  //       dataTableRef.current.destroy();
-  //       dataTableRef.current = null;
-  //     }
-
-  //     dataTableRef.current = $(tableRef.current!).DataTable({
-  //       responsive: true,
-  //       pageLength: 10,
-  //       ordering: true,
-  //       searching: true,
-  //       columnDefs: [{ orderable: false, targets: 5 }],
-  //     });
-  //   }, 300); // <-- important delay
-
-  //   return () => clearTimeout(timer);
-  // }, [attributes]);
 
   useEffect(() => {
     return () => {
@@ -281,10 +269,10 @@ export default function CategoryAttributeManagement() {
       </form>
 
       {/* TABLE */}
-      <div className="mt-8 bg-white rounded-2xl overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="text-left text-xs uppercase text-gray-400">
+      <div className="mt-10 bg-white rounded-2xl shadow-sm border border-gray-100">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-gray-600 uppercase text-xs tracking-wider">
+            <tr>
               <th className="px-6 py-4">Category</th>
               <th>Subcategory</th>
               <th>Key</th>
@@ -297,23 +285,45 @@ export default function CategoryAttributeManagement() {
           </thead>
 
           <tbody>
-            {attributes.map((a) => (
-              <tr key={a.id} className="border-t">
-                <td className="px-6 py-4">
-                  {a.category_name ? a.category_name : "-"}
+            {paginatedAttributes.map((a) => (
+              <tr key={a.id} className="border-t hover:bg-gray-50 transition">
+                <td className="px-6 py-4 font-medium">
+                  {a.category_name || "-"}
                 </td>
 
-                <td>{a.subcategory_name ? a.subcategory_name : "-"}</td>
+                <td>{a.subcategory_name || "-"}</td>
 
-                <td className="font-mono">{a.attribute_key}</td>
+                <td className="font-mono text-gray-700">{a.attribute_key}</td>
                 <td>{a.attribute_label}</td>
                 <td>{a.input_type || "-"}</td>
-                <td>{a.is_variant ? "Yes" : "No"}</td>
-                <td>{a.is_required ? "Yes" : "No"}</td>
+
+                <td>
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      a.is_variant
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {a.is_variant ? "Yes" : "No"}
+                  </span>
+                </td>
+
+                <td>
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      a.is_required
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {a.is_required ? "Yes" : "No"}
+                  </span>
+                </td>
 
                 <td className="px-6 text-right">
                   <button
-                    className="cursor-pointer"
+                    className="p-2 rounded-lg hover:bg-gray-100 cursor-pointer"
                     onClick={() => {
                       setSelected(a);
                       setDrawerOpen(true);
@@ -321,9 +331,10 @@ export default function CategoryAttributeManagement() {
                   >
                     <FiEye />
                   </button>
+
                   <button
                     onClick={() => handleDelete(a.id)}
-                    className="ml-3 text-red-500 cursor-pointer"
+                    className="ml-2 p-2 rounded-lg hover:bg-red-50 text-red-600 cursor-pointer"
                   >
                     <FiTrash2 />
                   </button>
@@ -332,6 +343,43 @@ export default function CategoryAttributeManagement() {
             ))}
           </tbody>
         </table>
+        <div className="flex justify-between items-center px-6 py-4 bg-gray-50">
+          <div className="text-sm text-gray-600">
+            Showing {(currentPage - 1) * rowsPerPage + 1} to{" "}
+            {Math.min(currentPage * rowsPerPage, attributes.length)} of{" "}
+            {attributes.length} entries
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => p - 1)}
+              className="px-3 py-1 rounded border disabled:opacity-40 cursor-pointer"
+            >
+              Prev
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`px-3 py-1 rounded border cursor-pointer ${
+                  currentPage === i + 1 ? "bg-[#852BAF] text-white" : "bg-white"
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => p + 1)}
+              className="px-3 py-1 rounded border disabled:opacity-40 cursor-pointer"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* DRAWER */}
@@ -375,7 +423,7 @@ export default function CategoryAttributeManagement() {
                       is_variant: e.target.checked ? 1 : 0,
                     })
                   }
-                  className="w-5 h-5"
+                  className="w-5 h-5 cursor-pointer"
                 />
               </div>
 
@@ -391,7 +439,7 @@ export default function CategoryAttributeManagement() {
                       is_required: e.target.checked ? 1 : 0,
                     })
                   }
-                  className="w-5 h-5"
+                  className="w-5 h-5 cursor-pointer"
                 />
               </div>
 
