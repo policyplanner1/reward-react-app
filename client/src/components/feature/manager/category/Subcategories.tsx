@@ -43,6 +43,8 @@ export default function SubcategoryManagement() {
   const [loadingAdd, setLoadingAdd] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const normalizeStatus = (status: any): Status => {
     if (status === "active") return "active";
@@ -57,8 +59,8 @@ export default function SubcategoryManagement() {
       const categoriesArray = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data.data)
-        ? res.data.data
-        : [];
+          ? res.data.data
+          : [];
       const formatted = categoriesArray.map((c: any) => ({
         category_id: c.category_id,
         name: c.category_name,
@@ -78,8 +80,8 @@ export default function SubcategoryManagement() {
       const subArray = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data.data)
-        ? res.data.data
-        : [];
+          ? res.data.data
+          : [];
 
       console.log("Fetched subcategories:", subArray);
 
@@ -108,92 +110,110 @@ export default function SubcategoryManagement() {
   const filteredSubcategories = useMemo(() => {
     if (selectedCategoryId === "") return subcategories;
     return subcategories.filter(
-      (item) => item.category_id === selectedCategoryId
+      (item) => item.category_id === selectedCategoryId,
     );
   }, [subcategories, selectedCategoryId]);
 
-const handleAdd = async (e?: React.FormEvent) => {
-  e?.preventDefault();
+  const totalPages = Math.ceil(filteredSubcategories.length / itemsPerPage);
 
-  if (selectedCategoryId === "") {
-    await Swal.fire({
-      title: "Select a category",
-      text: "Please choose a category before adding a subcategory.",
-      icon: "warning",
-      confirmButtonText: "OK",
+  const paginatedSubcategories = filteredSubcategories.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
 
-      buttonsStyling: false,
-      customClass: {
-        confirmButton:
-          "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
-          "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
-        popup: "rounded-2xl",
-      },
-    });
-    return;
-  }
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategoryId]);
 
-  if (!newSubcategoryName.trim()) {
-    await Swal.fire({
-      title: "Subcategory name required",
-      text: "Please enter a subcategory name before adding.",
-      icon: "warning",
-      confirmButtonText: "OK",
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages || 1);
+    }
+  }, [filteredSubcategories, totalPages, currentPage]);
 
-      buttonsStyling: false,
-      customClass: {
-        confirmButton:
-          "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
-          "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
-        popup: "rounded-2xl",
-      },
-    });
-    return;
-  }
+  const handleAdd = async (e?: React.FormEvent) => {
+    e?.preventDefault();
 
-  setLoadingAdd(true);
+    if (selectedCategoryId === "") {
+      await Swal.fire({
+        title: "Select a category",
+        text: "Please choose a category before adding a subcategory.",
+        icon: "warning",
+        confirmButtonText: "OK",
 
-  try {
-    await api.post("/vendor/create-subcategory", {
-      category_id: selectedCategoryId,
-      name: newSubcategoryName,
-    });
+        buttonsStyling: false,
+        customClass: {
+          confirmButton:
+            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
+            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
+          popup: "rounded-2xl",
+        },
+      });
+      return;
+    }
 
-    setNewSubcategoryName("");
-    fetchSubcategories();
+    if (!newSubcategoryName.trim()) {
+      await Swal.fire({
+        title: "Subcategory name required",
+        text: "Please enter a subcategory name before adding.",
+        icon: "warning",
+        confirmButtonText: "OK",
 
-    //  SUCCESS POPUP (IMPORTANT: await)
-    await Swal.fire({
-      title: "Added!",
-      text: "Subcategory added successfully.",
-      icon: "success",
-      timer: 1200,
-      showConfirmButton: false,
-      customClass: { popup: "rounded-2xl" },
-    });
-  } catch (err: any) {
-    console.log("Add error:", err);
+        buttonsStyling: false,
+        customClass: {
+          confirmButton:
+            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
+            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
+          popup: "rounded-2xl",
+        },
+      });
+      return;
+    }
 
-    await Swal.fire({
-      title: "Failed",
-      text:
-        err?.response?.data?.error ||
-        "Failed to add subcategory. Please try again.",
-      icon: "error",
-      confirmButtonText: "OK",
+    setLoadingAdd(true);
 
-      buttonsStyling: false,
-      customClass: {
-        confirmButton:
-          "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
-          "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
-        popup: "rounded-2xl",
-      },
-    });
-  } finally {
-    setLoadingAdd(false);
-  }
-};
+    try {
+      await api.post("/vendor/create-subcategory", {
+        category_id: selectedCategoryId,
+        name: newSubcategoryName,
+      });
+
+      setNewSubcategoryName("");
+      fetchSubcategories();
+      setCurrentPage(1);
+
+      //  SUCCESS POPUP (IMPORTANT: await)
+      await Swal.fire({
+        title: "Added!",
+        text: "Subcategory added successfully.",
+        icon: "success",
+        timer: 1200,
+        showConfirmButton: false,
+        customClass: { popup: "rounded-2xl" },
+      });
+    } catch (err: any) {
+      console.log("Add error:", err);
+
+      await Swal.fire({
+        title: "Failed",
+        text:
+          err?.response?.data?.error ||
+          "Failed to add subcategory. Please try again.",
+        icon: "error",
+        confirmButtonText: "OK",
+
+        buttonsStyling: false,
+        customClass: {
+          confirmButton:
+            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
+            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
+          popup: "rounded-2xl",
+        },
+      });
+    } finally {
+      setLoadingAdd(false);
+    }
+  };
 
   const handleView = async (id: number) => {
     try {
@@ -232,6 +252,7 @@ const handleAdd = async (e?: React.FormEvent) => {
         status: selected.status,
       });
 
+      setCurrentPage(1);
       fetchSubcategories();
       setIsEditing(false);
       closeDrawer();
@@ -242,74 +263,75 @@ const handleAdd = async (e?: React.FormEvent) => {
     }
   };
 
- const handleDelete = async (id: number) => {
-  const result = await Swal.fire({
-    title: "Delete this subcategory?",
-    text: "This action cannot be undone.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Yes, delete",
-    cancelButtonText: "Cancel",
-    confirmButtonColor: "#EF4444",
-    cancelButtonColor: "#9CA3AF",
-    reverseButtons: true,
-  });
-
-  if (!result.isConfirmed) return;
-
-  try {
-    await api.delete(`/vendor/delete-subcategory/${id}`);
-    fetchSubcategories();
-    setDrawerOpen(false);
-
-    Swal.fire({
-      title: "Deleted!",
-      text: "Subcategory deleted successfully.",
-      icon: "success",
-      timer: 1200,
-      showConfirmButton: false,
+  const handleDelete = async (id: number) => {
+    const result = await Swal.fire({
+      title: "Delete this subcategory?",
+      text: "This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#EF4444",
+      cancelButtonColor: "#9CA3AF",
+      reverseButtons: true,
     });
-  } catch (err) {
-    console.error("Delete error:", err);
 
-    if (axios.isAxiosError(err)) {
-      const msg =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        "Failed to delete subcategory";
+    if (!result.isConfirmed) return;
 
-      setError(msg);
+    try {
+      await api.delete(`/vendor/delete-subcategory/${id}`);
+      fetchSubcategories();
+      setDrawerOpen(false);
+      setCurrentPage(1);
 
       Swal.fire({
-        title: "Delete failed",
-        text: msg,
-        icon: "error",
-        confirmButtonText: "OK",
-        confirmButtonColor: "#EF4444",
+        title: "Deleted!",
+        text: "Subcategory deleted successfully.",
+        icon: "success",
+        timer: 1200,
+        showConfirmButton: false,
       });
-    } else if (err instanceof Error) {
-      setError(err.message);
+    } catch (err) {
+      console.error("Delete error:", err);
 
-      Swal.fire({
-        title: "Delete failed",
-        text: err.message,
-        icon: "error",
-        confirmButtonText: "OK",
-        confirmButtonColor: "#EF4444",
-      });
-    } else {
-      setError("Failed to delete subcategory");
+      if (axios.isAxiosError(err)) {
+        const msg =
+          err.response?.data?.error ||
+          err.response?.data?.message ||
+          "Failed to delete subcategory";
 
-      Swal.fire({
-        title: "Delete failed",
-        text: "Failed to delete subcategory",
-        icon: "error",
-        confirmButtonText: "OK",
-        confirmButtonColor: "#EF4444",
-      });
+        setError(msg);
+
+        Swal.fire({
+          title: "Delete failed",
+          text: msg,
+          icon: "error",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#EF4444",
+        });
+      } else if (err instanceof Error) {
+        setError(err.message);
+
+        Swal.fire({
+          title: "Delete failed",
+          text: err.message,
+          icon: "error",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#EF4444",
+        });
+      } else {
+        setError("Failed to delete subcategory");
+
+        Swal.fire({
+          title: "Delete failed",
+          text: "Failed to delete subcategory",
+          icon: "error",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#EF4444",
+        });
+      }
     }
-  }
-};
+  };
   const closeDrawer = () => {
     setDrawerOpen(false);
     setTimeout(() => setSelected(null), 300);
@@ -336,42 +358,41 @@ const handleAdd = async (e?: React.FormEvent) => {
       )}
       {/* ADD FORM */}
       <form
-  onSubmit={handleAdd}
-  className="flex flex-col gap-4 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-[60rem] md:flex-row"
->
-  <select
-    value={selectedCategoryId}
-    onChange={(e) =>
-      setSelectedCategoryId(
-        e.target.value === "" ? "" : Number(e.target.value)
-      )
-    }
-    className="px-5 py-3 text-sm font-bold bg-gray-50 rounded-xl outline-none text-gray-700 md:w-1/3"
-  >
-    <option value="">Filter by Category</option>
-    {categories.map((c) => (
-      <option key={c.category_id} value={c.category_id}>
-        {c.name}
-      </option>
-    ))}
-  </select>
+        onSubmit={handleAdd}
+        className="flex flex-col gap-4 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-[60rem] md:flex-row"
+      >
+        <select
+          value={selectedCategoryId}
+          onChange={(e) =>
+            setSelectedCategoryId(
+              e.target.value === "" ? "" : Number(e.target.value),
+            )
+          }
+          className="px-5 py-3 text-sm font-bold bg-gray-50 rounded-xl outline-none text-gray-700 md:w-1/3"
+        >
+          <option value="">Filter by Category</option>
+          {categories.map((c) => (
+            <option key={c.category_id} value={c.category_id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
 
-  <input
-    value={newSubcategoryName}
-    onChange={(e) => setNewSubcategoryName(e.target.value)}
-    className="flex-1 px-5 py-3 text-sm font-semibold bg-transparent outline-none placeholder:text-gray-300"
-    placeholder="Enter subcategory name..."
-  />
+        <input
+          value={newSubcategoryName}
+          onChange={(e) => setNewSubcategoryName(e.target.value)}
+          className="flex-1 px-5 py-3 text-sm font-semibold bg-transparent outline-none placeholder:text-gray-300"
+          placeholder="Enter subcategory name..."
+        />
 
-  <button
-    type="submit"
-    disabled={loadingAdd}
-    className="flex items-center justify-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200 cursor-pointer"
-  >
-    <FiPlus /> {loadingAdd ? "Adding…" : "Add Subcategory"}
-  </button>
-</form>
-
+        <button
+          type="submit"
+          disabled={loadingAdd}
+          className="flex items-center justify-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200 cursor-pointer"
+        >
+          <FiPlus /> {loadingAdd ? "Adding…" : "Add Subcategory"}
+        </button>
+      </form>
 
       {/* TABLE */}
       <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] border border-gray-100 overflow-hidden">
@@ -397,7 +418,7 @@ const handleAdd = async (e?: React.FormEvent) => {
           </thead>
 
           <tbody className="divide-y divide-gray-50">
-            {filteredSubcategories.map((sub) => (
+            {paginatedSubcategories.map((sub) => (
               <tr
                 key={sub.subcategory_id}
                 className="group transition-colors hover:bg-gray-50/50"
@@ -448,13 +469,12 @@ const handleAdd = async (e?: React.FormEvent) => {
                     >
                       <FiEdit size={16} />
                     </button>
-                   <button
-  onClick={() => handleDelete(sub.subcategory_id)}
-  className="p-2.5 text-gray-400 hover:text-red-500 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
->
-  <FiTrash2 size={16} />
-</button>
-
+                    <button
+                      onClick={() => handleDelete(sub.subcategory_id)}
+                      className="p-2.5 text-gray-400 hover:text-red-500 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
+                    >
+                      <FiTrash2 size={16} />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -462,6 +482,72 @@ const handleAdd = async (e?: React.FormEvent) => {
           </tbody>
         </table>
       </div>
+
+      {/* PAGINATION */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <div className="text-sm text-gray-600">
+            Showing{" "}
+            <span className="font-semibold">
+              {(currentPage - 1) * itemsPerPage + 1}
+            </span>{" "}
+            to{" "}
+            <span className="font-semibold">
+              {Math.min(
+                currentPage * itemsPerPage,
+                filteredSubcategories.length,
+              )}
+            </span>{" "}
+            of{" "}
+            <span className="font-semibold">
+              {filteredSubcategories.length}
+            </span>{" "}
+            subcategories
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => p - 1)}
+              className={`px-4 py-2 rounded-lg border text-sm font-medium cursor-pointer ${
+                currentPage === 1
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-white hover:bg-gray-50"
+              }`}
+            >
+              Previous
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .slice(Math.max(0, currentPage - 3), currentPage + 2)
+              .map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold border cursor-pointer ${
+                    currentPage === page
+                      ? "bg-[#852BAF] text-white border-[#852BAF]"
+                      : "bg-white hover:bg-gray-50"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => p + 1)}
+              className={`px-4 py-2 rounded-lg border text-sm font-medium cursor-pointer ${
+                currentPage === totalPages
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-white hover:bg-gray-50"
+              }`}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* DRAWER */}
       {selected && (
@@ -519,7 +605,7 @@ const handleAdd = async (e?: React.FormEvent) => {
            transition-all duration-300 cursor-pointer"
                     onClick={() => setIsEditing(true)}
                   >
-                     Edit
+                    Edit
                   </button>
                 </div>
               ) : (
@@ -565,9 +651,10 @@ const handleAdd = async (e?: React.FormEvent) => {
                     </button>
                     <button
                       onClick={() => setIsEditing(false)}
-className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl 
+                      className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl 
            hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
-           hover:text-white transition-all duration-300 cursor-pointer"                    >
+           hover:text-white transition-all duration-300 cursor-pointer"
+                    >
                       Discard
                     </button>
                   </div>
