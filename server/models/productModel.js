@@ -132,18 +132,20 @@ class ProductModel {
   }
 
   async getVariantAttributeKeys(connection, categoryId, subcategoryId) {
+    const safe = (v) => (v === undefined ? null : v);
+
     const [rows] = await connection.execute(
       `
-    SELECT attribute_key
-    FROM category_attributes
-    WHERE is_variant = 1
-      AND (
-        subcategory_id = ?
-        OR (category_id = ? AND subcategory_id IS NULL)
-      )
-    ORDER BY sort_order
-    `,
-      [subcategoryId, categoryId],
+  SELECT attribute_key
+  FROM category_attributes
+  WHERE is_variant = 1
+    AND (
+      subcategory_id = ?
+      OR (category_id = ? AND subcategory_id IS NULL)
+    )
+  ORDER BY sort_order
+  `,
+      [safe(subcategoryId), safe(categoryId)],
     );
 
     return rows.map((r) => r.attribute_key);
@@ -213,6 +215,8 @@ class ProductModel {
 
       const sku = await generateUniqueSKU(connection, productId);
 
+      if (!sku) throw new Error("SKU generation failed");
+
       await connection.execute(
         `INSERT INTO product_variants
        (product_id, variant_attributes, sku, stock)
@@ -248,6 +252,8 @@ class ProductModel {
     for (const file of files) {
       const docId = parseInt(file.fieldname);
       if (!validDocumentIds.includes(docId)) continue;
+
+      if (!file.mimetype) continue;
 
       await connection.execute(
         `INSERT INTO product_documents 
