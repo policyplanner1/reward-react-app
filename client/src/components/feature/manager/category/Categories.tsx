@@ -30,6 +30,21 @@ export default function CategoryManagement() {
   const [editName, setEditName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const totalPages = Math.ceil(categories.length / itemsPerPage);
+
+  const paginatedCategories = categories.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages || 1);
+    }
+  }, [categories, totalPages, currentPage]);
 
   const fetchCategories = async () => {
     try {
@@ -38,8 +53,8 @@ export default function CategoryManagement() {
       const categoriesArray = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data.data)
-        ? res.data.data
-        : [];
+          ? res.data.data
+          : [];
 
       const formatted: Category[] = categoriesArray.map((c: any) => ({
         category_id: c.category_id,
@@ -58,74 +73,75 @@ export default function CategoryManagement() {
     fetchCategories();
   }, []);
 
- const handleAdd = async (e?: React.FormEvent) => {
-  e?.preventDefault();
+  const handleAdd = async (e?: React.FormEvent) => {
+    e?.preventDefault();
 
-  //  EMPTY INPUT CHECK WITH POPUP
-  if (!newCategoryName.trim()) {
-    await Swal.fire({
-      title: "Category name required",
-      text: "Please enter a category name before adding.",
-      icon: "warning",
-      confirmButtonText: "OK",
+    //  EMPTY INPUT CHECK WITH POPUP
+    if (!newCategoryName.trim()) {
+      await Swal.fire({
+        title: "Category name required",
+        text: "Please enter a category name before adding.",
+        icon: "warning",
+        confirmButtonText: "OK",
 
-      buttonsStyling: false,
-      customClass: {
-        confirmButton:
-          "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
-          "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95",
-        popup: "rounded-2xl",
-      },
-    });
-    return;
-  }
+        buttonsStyling: false,
+        customClass: {
+          confirmButton:
+            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
+            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95",
+          popup: "rounded-2xl",
+        },
+      });
+      return;
+    }
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    await api.post("/vendor/create-category", {
-      name: newCategoryName,
-      status: 1,
-    });
+      await api.post("/vendor/create-category", {
+        name: newCategoryName,
+        status: 1,
+      });
 
-    setNewCategoryName("");
-    fetchCategories();
+      setNewCategoryName("");
+      setCurrentPage(1);
+      fetchCategories();
 
-    //  SUCCESS POPUP (IMPORTANT: await)
-    await Swal.fire({
-      title: "Added!",
-      text: "Category added successfully.",
-      icon: "success",
-      timer: 1200,
-      showConfirmButton: false,
-      customClass: { popup: "rounded-2xl" },
-    });
-  } catch (err: any) {
-    console.error("Add category error:", err.response?.data || err.message);
+      //  SUCCESS POPUP (IMPORTANT: await)
+      await Swal.fire({
+        title: "Added!",
+        text: "Category added successfully.",
+        icon: "success",
+        timer: 1200,
+        showConfirmButton: false,
+        customClass: { popup: "rounded-2xl" },
+      });
+    } catch (err: any) {
+      console.error("Add category error:", err.response?.data || err.message);
 
-    setError("Failed to add category. Make sure you are a vendor_manager.");
+      setError("Failed to add category. Make sure you are a vendor_manager.");
 
-    //  ERROR POPUP (await + same hover gradient)
-    await Swal.fire({
-      title: "Failed",
-      text:
-        err?.response?.data?.error ||
-        "Failed to add category. Please try again.",
-      icon: "error",
-      confirmButtonText: "OK",
+      //  ERROR POPUP (await + same hover gradient)
+      await Swal.fire({
+        title: "Failed",
+        text:
+          err?.response?.data?.error ||
+          "Failed to add category. Please try again.",
+        icon: "error",
+        confirmButtonText: "OK",
 
-      buttonsStyling: false,
-      customClass: {
-        confirmButton:
-          "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
-          "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95",
-        popup: "rounded-2xl",
-      },
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+        buttonsStyling: false,
+        customClass: {
+          confirmButton:
+            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
+            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95",
+          popup: "rounded-2xl",
+        },
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleView = async (categoryId: number) => {
     try {
@@ -160,6 +176,7 @@ export default function CategoryManagement() {
       });
       fetchCategories();
       setIsEditing(false);
+      setCurrentPage(1);
       closeDrawer();
     } catch (err: any) {
       console.error("Update error:", err.response?.data || err.message);
@@ -167,47 +184,49 @@ export default function CategoryManagement() {
     }
   };
 
- const handleDelete = async (id: number) => {
-  const result = await Swal.fire({
-    title: "Delete category?",
-    text: "This action cannot be undone.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Yes, delete",
-    cancelButtonText: "Cancel",
-    confirmButtonColor: "#EF4444",
-    cancelButtonColor: "#9CA3AF",
-    reverseButtons: true,
-  });
-
-  if (!result.isConfirmed) return;
-
-  try {
-    await api.delete(`/vendor/delete-category/${id}`);
-    fetchCategories();
-    closeDrawer();
-
-    Swal.fire({
-      title: "Deleted!",
-      text: "Category deleted successfully.",
-      icon: "success",
-      timer: 1400,
-      showConfirmButton: false,
-    });
-  } catch (err: any) {
-    console.error("Delete error:", err.response?.data?.error);
-    const msg = err?.response?.data?.error || "Something went wrong while deleting.";
-    setError(`Delete error: ${msg}`);
-
-    Swal.fire({
-      title: "Delete failed",
-      text: msg,
-      icon: "error",
-      confirmButtonText: "OK",
+  const handleDelete = async (id: number) => {
+    const result = await Swal.fire({
+      title: "Delete category?",
+      text: "This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete",
+      cancelButtonText: "Cancel",
       confirmButtonColor: "#EF4444",
+      cancelButtonColor: "#9CA3AF",
+      reverseButtons: true,
     });
-  }
-};
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await api.delete(`/vendor/delete-category/${id}`);
+      fetchCategories();
+      closeDrawer();
+      setCurrentPage(1);
+
+      Swal.fire({
+        title: "Deleted!",
+        text: "Category deleted successfully.",
+        icon: "success",
+        timer: 1400,
+        showConfirmButton: false,
+      });
+    } catch (err: any) {
+      console.error("Delete error:", err.response?.data?.error);
+      const msg =
+        err?.response?.data?.error || "Something went wrong while deleting.";
+      setError(`Delete error: ${msg}`);
+
+      Swal.fire({
+        title: "Delete failed",
+        text: msg,
+        icon: "error",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#EF4444",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen p-8 bg-[#FAFAFE]">
@@ -229,28 +248,27 @@ export default function CategoryManagement() {
         </div>
       )}
       {/* ADD CATEGORY INPUT */}
-     <form
-  onSubmit={handleAdd}
-  className="flex gap-4 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-[60rem]"
->
-  <input
-    value={newCategoryName}
-    onChange={(e) => setNewCategoryName(e.target.value)}
-    className="flex-1 px-5 py-3 text-sm font-semibold bg-transparent outline-none placeholder:text-gray-300"
-    placeholder="Type new category name..."
-  />
+      <form
+        onSubmit={handleAdd}
+        className="flex gap-4 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-[60rem]"
+      >
+        <input
+          value={newCategoryName}
+          onChange={(e) => setNewCategoryName(e.target.value)}
+          className="flex-1 px-5 py-3 text-sm font-semibold bg-transparent outline-none placeholder:text-gray-300"
+          placeholder="Type new category name..."
+        />
 
-  <button
-    type="submit"
-    disabled={loading}
-    className="flex items-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex items-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg
                bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200 cursor-pointer"
-  >
-    <FiPlus /> {loading ? "Adding..." : "Add Category"}
-  </button>
-</form>
-
+        >
+          <FiPlus /> {loading ? "Adding..." : "Add Category"}
+        </button>
+      </form>
 
       {/* TABLE SECTION */}
       <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] border border-gray-100 overflow-hidden">
@@ -273,7 +291,7 @@ export default function CategoryManagement() {
           </thead>
 
           <tbody className="divide-y divide-gray-50">
-            {categories.map((cat) => (
+            {paginatedCategories.map((cat) => (
               <tr
                 key={cat.category_id}
                 className="group transition-colors hover:bg-gray-50/50"
@@ -308,7 +326,6 @@ export default function CategoryManagement() {
                 </td>
                 <td className="px-8 py-5">
                   <div className="flex justify-end gap-2 opacity-100 transition-opacity duration-200">
-
                     <button
                       onClick={() => handleView(cat.category_id)}
                       className="p-2.5 text-gray-400 hover:text-[#852BAF] bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
@@ -325,12 +342,11 @@ export default function CategoryManagement() {
                       <FiEdit size={16} />
                     </button>
                     <button
-  onClick={() => handleDelete(cat.category_id)}
-  className="p-2.5 text-gray-400 hover:text-red-500 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
->
-  <FiTrash2 size={16} />
-</button>
-
+                      onClick={() => handleDelete(cat.category_id)}
+                      className="p-2.5 text-gray-400 hover:text-red-500 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
+                    >
+                      <FiTrash2 size={16} />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -338,6 +354,66 @@ export default function CategoryManagement() {
           </tbody>
         </table>
       </div>
+
+      {/* PAGINATION */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <div className="text-sm text-gray-600">
+            Showing{" "}
+            <span className="font-semibold">
+              {(currentPage - 1) * itemsPerPage + 1}
+            </span>{" "}
+            to{" "}
+            <span className="font-semibold">
+              {Math.min(currentPage * itemsPerPage, categories.length)}
+            </span>{" "}
+            of <span className="font-semibold">{categories.length}</span>{" "}
+            categories
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => p - 1)}
+              className={`px-4 py-2 rounded-lg border text-sm font-medium cursor-pointer ${
+                currentPage === 1
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-white hover:bg-gray-50"
+              }`}
+            >
+              Previous
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .slice(Math.max(0, currentPage - 3), currentPage + 2)
+              .map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold border cursor-pointer ${
+                    currentPage === page
+                      ? "bg-[#852BAF] text-white border-[#852BAF]"
+                      : "bg-white hover:bg-gray-50"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => p + 1)}
+              className={`px-4 py-2 rounded-lg border text-sm font-medium cursor-pointer ${
+                currentPage === totalPages
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-white hover:bg-gray-50"
+              }`}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* DRAWER PANEL */}
       {selected && (
@@ -397,7 +473,7 @@ export default function CategoryManagement() {
            transition-all duration-300 cursor-pointer"
                     onClick={() => setIsEditing(true)}
                   >
-                     Edit
+                    Edit
                   </button>
                 </div>
               ) : (
@@ -444,7 +520,6 @@ export default function CategoryManagement() {
                       className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl 
            hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
            hover:text-white transition-all duration-300 cursor-pointer"
-
                     >
                       Discard
                     </button>
