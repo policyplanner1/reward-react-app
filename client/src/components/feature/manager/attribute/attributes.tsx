@@ -4,6 +4,7 @@ import { FiTrash2, FiEye, FiPlus, FiX, FiSave, FiLayers } from "react-icons/fi";
 import { api } from "../../../../api/api";
 import "datatables.net";
 import "datatables.net-responsive";
+import AttributeValueManager from "./attributeValueManager";
 
 type InputType = "text" | "number" | "select" | "multiselect" | "textarea";
 
@@ -91,7 +92,6 @@ export default function CategoryAttributeManagement() {
     console.log(res.data.data);
     setAttributes(res.data.data || []);
   };
-
 
   useEffect(() => {
     return () => {
@@ -458,6 +458,11 @@ export default function CategoryAttributeManagement() {
                   className="w-full px-4 py-3 rounded-xl"
                 />
               </div>
+
+              {(selected.input_type === "select" ||
+                selected.input_type === "multiselect") && (
+                <AttributeValueManager attributeId={selected.id} />
+              )}
             </div>
 
             <button
