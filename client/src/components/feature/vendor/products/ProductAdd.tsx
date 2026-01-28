@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import type { ComponentType } from "react";
 import { api } from "../../../../api/api";
 import QuillEditor from "../../../QuillEditor";
+import Swal from "sweetalert2";
 
 type IconComp = ComponentType<any>;
 
@@ -515,7 +516,12 @@ export default function ProductListingDynamic() {
       if (!res.data.success)
         throw new Error(res.data.message || "Failed to create product");
 
-      setSuccess("Product created successfully");
+      Swal.fire({
+        icon: "success",
+        title: "Product Created!",
+        text: "Your product has been listed successfully.",
+        confirmButtonColor: "#852BAF",
+      });
       setProduct(initialProductData);
       setDocFiles({});
       setRequiredDocs([]);
