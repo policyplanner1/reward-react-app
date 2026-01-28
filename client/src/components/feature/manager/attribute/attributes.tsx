@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import Swal from "sweetalert2";
 import {
   FiEdit,
@@ -11,6 +11,10 @@ import {
   FiTag,
 } from "react-icons/fi";
 import { api } from "../../../../api/api";
+import $ from "jquery";
+import "datatables.net";
+import "datatables.net-responsive";
+
 
 type InputType = "text" | "number" | "select" | "multiselect" | "textarea";
 
@@ -49,6 +53,8 @@ export default function CategoryAttributeManagement() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<Attribute | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const tableRef = useRef<HTMLTableElement | null>(null);
+  const dataTableRef = useRef<any>(null);
 
   const [form, setForm] = useState({
     attribute_key: "",
@@ -85,6 +91,37 @@ export default function CategoryAttributeManagement() {
     });
     setAttributes(res.data.data || []);
   };
+
+  useEffect(() => {
+    if (!tableRef.current) return;
+    if (attributes.length === 0) return;
+
+    // Wait until React fully paints rows
+    const timer = setTimeout(() => {
+      if (dataTableRef.current) {
+        dataTableRef.current.destroy();
+        dataTableRef.current = null;
+      }
+
+      dataTableRef.current = $(tableRef.current!).DataTable({
+        responsive: true,
+        pageLength: 10,
+        ordering: true,
+        searching: true,
+        columnDefs: [{ orderable: false, targets: 5 }],
+      });
+    }, 300); // <-- important delay
+
+    return () => clearTimeout(timer);
+  }, [attributes]);
+
+  useEffect(() => {
+    return () => {
+      if (dataTableRef.current) {
+        dataTableRef.current.destroy(true);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     fetchCategories();
@@ -251,7 +288,7 @@ export default function CategoryAttributeManagement() {
 
       {/* TABLE */}
       <div className="mt-8 bg-white rounded-2xl overflow-hidden">
-        <table className="w-full">
+        <table ref={tableRef} id="attributeTable" className="w-full display">
           <thead>
             <tr className="text-left text-xs uppercase text-gray-400">
               <th className="px-6 py-4">Key</th>
