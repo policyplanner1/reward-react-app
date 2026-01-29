@@ -33,12 +33,12 @@ class CategoryAttributeModel {
     const params = [];
 
     if (category_id) {
-      sql += " AND category_id = ?";
+      sql += " AND ca.category_id = ?";
       params.push(category_id);
     }
 
     if (subcategory_id) {
-      sql += " AND subcategory_id = ?";
+      sql += " AND ca.subcategory_id = ?";
       params.push(subcategory_id);
     }
 

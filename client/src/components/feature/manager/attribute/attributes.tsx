@@ -45,13 +45,26 @@ export default function CategoryAttributeManagement() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<Attribute | null>(null);
   const dataTableRef = useRef<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
-  const totalPages = Math.ceil(attributes.length / rowsPerPage);
+  const filteredAttributes = attributes.filter((a) => {
+    const term = searchTerm.toLowerCase();
 
-  const paginatedAttributes = attributes.slice(
+    return (
+      a.attribute_key.toLowerCase().includes(term) ||
+      a.attribute_label.toLowerCase().includes(term) ||
+      (a.category_name || "").toLowerCase().includes(term) ||
+      (a.subcategory_name || "").toLowerCase().includes(term) ||
+      (a.input_type || "").toLowerCase().includes(term)
+    );
+  });
+
+  const totalPages = Math.ceil(filteredAttributes.length / rowsPerPage);
+
+  const paginatedAttributes = filteredAttributes.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage,
   );
@@ -105,13 +118,13 @@ export default function CategoryAttributeManagement() {
     fetchSubcategories();
   }, []);
 
-  // useEffect(() => {
-  //   fetchAttributes();
-  // }, [categoryId, subcategoryId]);
-
   useEffect(() => {
     fetchAttributes();
-  }, []);
+  }, [categoryId, subcategoryId]);
+
+  // useEffect(() => {
+  //   fetchAttributes();
+  // }, []);
 
   /* ------------------ HANDLERS ------------------ */
 
@@ -175,8 +188,10 @@ export default function CategoryAttributeManagement() {
         sort_order: selected.sort_order,
       });
 
-      fetchAttributes();
-      setDrawerOpen(false);
+      await fetchAttributes(); 
+      setSelected(null);
+      setDrawerOpen(false); 
+
       Swal.fire("Updated", "", "success");
     } catch (err: any) {
       Swal.fire("Error", err.response?.data?.message, "error");
@@ -267,6 +282,20 @@ export default function CategoryAttributeManagement() {
         </button>
       </form>
 
+      {/* Search */}
+      <div className="mt-8 flex justify-end">
+        <input
+          type="text"
+          placeholder="Search attributes..."
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="w-80 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#852BAF]"
+        />
+      </div>
+
       {/* TABLE */}
       <div className="mt-10 bg-white rounded-2xl shadow-sm border border-gray-100">
         <table className="w-full text-sm">
@@ -346,7 +375,7 @@ export default function CategoryAttributeManagement() {
           <div className="text-sm text-gray-600">
             Showing {(currentPage - 1) * rowsPerPage + 1} to{" "}
             {Math.min(currentPage * rowsPerPage, attributes.length)} of{" "}
-            {attributes.length} entries
+            {filteredAttributes.length} entries
           </div>
 
           <div className="flex gap-2">
@@ -388,7 +417,10 @@ export default function CategoryAttributeManagement() {
             {/* Header */}
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold">Edit Attribute</h2>
-              <button className="cursor-pointer" onClick={() => setDrawerOpen(false)}>
+              <button
+                className="cursor-pointer"
+                onClick={() => setDrawerOpen(false)}
+              >
                 <FiX />
               </button>
             </div>
