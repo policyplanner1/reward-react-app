@@ -45,7 +45,7 @@ export default function AttributeValueManager({ attributeId }: Props) {
               const copy = values.filter((_, i) => i !== index);
               setValues(copy.length ? copy : [""]);
             }}
-            className="text-red-500"
+            className="text-red-500 cursor-pointer"
           >
             <FiTrash2 />
           </button>
@@ -70,7 +70,7 @@ export default function AttributeValueManager({ attributeId }: Props) {
 
           alert("Saved!");
         }}
-        className="mt-4 w-full bg-[#852BAF] text-white py-2 rounded"
+        className="mt-4 w-full bg-[#852BAF] text-white py-2 rounded cursor-pointer"
       >
         Save Options
       </button>

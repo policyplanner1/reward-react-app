@@ -383,19 +383,18 @@ export default function CategoryAttributeManagement() {
 
       {/* DRAWER */}
       {drawerOpen && selected && (
-        <div className="fixed inset-0 bg-black/20 flex justify-end">
-          <div className="w-[420px] bg-white p-6">
-            <button
-              className="cursor-pointer"
-              onClick={() => setDrawerOpen(false)}
-            >
-              <FiX />
-            </button>
+        <div className="fixed inset-0 bg-black/20 flex justify-end z-50">
+          <div className="w-[420px] h-screen bg-white flex flex-col shadow-xl">
+            {/* Header */}
+            <div className="p-6 border-b flex justify-between items-center">
+              <h2 className="text-xl font-bold">Edit Attribute</h2>
+              <button className="cursor-pointer" onClick={() => setDrawerOpen(false)}>
+                <FiX />
+              </button>
+            </div>
 
-            <h2 className="text-xl font-bold mt-4">Edit Attribute</h2>
-
-            <div className="mt-6 space-y-4">
-              {/* Label (readonly) */}
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div>
                 <label className="text-xs text-gray-500">Attribute Label</label>
                 <input
@@ -410,7 +409,6 @@ export default function CategoryAttributeManagement() {
                 />
               </div>
 
-              {/* Is Variant */}
               <div className="flex items-center justify-between">
                 <label className="font-medium">Is Variant Attribute</label>
                 <input
@@ -426,7 +424,6 @@ export default function CategoryAttributeManagement() {
                 />
               </div>
 
-              {/* Is Required */}
               <div className="flex items-center justify-between">
                 <label className="font-medium">Is Required</label>
                 <input
@@ -442,7 +439,6 @@ export default function CategoryAttributeManagement() {
                 />
               </div>
 
-              {/* Sort Order */}
               <div>
                 <label className="text-xs text-gray-500">Sort Order</label>
                 <input
@@ -464,12 +460,15 @@ export default function CategoryAttributeManagement() {
               )}
             </div>
 
-            <button
-              onClick={handleSave}
-              className="mt-8 w-full bg-[#852BAF] text-white py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <FiSave /> Save Changes
-            </button>
+            {/* Footer */}
+            <div className="p-6 border-t">
+              <button
+                onClick={handleSave}
+                className="w-full bg-[#852BAF] text-white py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <FiSave /> Save Changes
+              </button>
+            </div>
           </div>
         </div>
       )}
