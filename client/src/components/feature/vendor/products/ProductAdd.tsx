@@ -249,34 +249,35 @@ export default function ProductListingDynamic() {
   }, [product.categoryId]);
 
   useEffect(() => {
-    if (!product.categoryId) return;
+    if (!product.subCategoryId) {
+      setCategoryAttributes([]);
+      setProductAttributes({});
+      return;
+    }
 
     const params = new URLSearchParams({
       categoryId: String(product.categoryId),
+      subcategoryId: String(product.subCategoryId),
     });
-
-    if (product.subCategoryId) {
-      params.append("subcategoryId", String(product.subCategoryId));
-    }
 
     api.get(`/category/attributes?${params.toString()}`).then((res) => {
-      if (res.data.success) {
-        const attrs = res.data.data;
+        if (res.data.success) {
+          const attrs = res.data.data;
+          setCategoryAttributes(attrs);
 
-        setCategoryAttributes(attrs);
+          setProductAttributes((prev) => {
+            const next: Record<string, any> = {};
 
-        const initialAttrState: Record<string, any> = {};
+            attrs.forEach((attr: any) => {
+              next[attr.attribute_key] = prev[attr.attribute_key] || [];
+            });
 
-        attrs.forEach((attr: any) => {
-          initialAttrState[attr.attribute_key] = [];
-        });
-
-        setProductAttributes(initialAttrState);
-      }
+            return next;
+          });
+        }
     });
-  }, [product.categoryId, product.subCategoryId]);
+  }, [product.subCategoryId]);
 
-  // Fetch sub-subcategories when subcategory changes
   useEffect(() => {
     if (product.subCategoryId) {
       fetchSubSubCategories(product.subCategoryId);
@@ -406,8 +407,9 @@ export default function ProductListingDynamic() {
 
       return (
         !val ||
+        !Array.isArray(val) ||
         val.length === 0 ||
-        (Array.isArray(val) && val.every((v) => !v || v.trim() === ""))
+        val.every((v) => !v || v.trim() === "")
       );
     });
 
@@ -920,141 +922,157 @@ export default function ProductListingDynamic() {
               description="Select available options for this product"
             />
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {categoryAttributes.length === 0 ? (
-                <p className="text-sm text-gray-500 col-span-full">
-                  No attributes found for this category.
-                </p>
-              ) : (
-                categoryAttributes.map((attr) => {
-                  //  NORMALIZE input_type
-                  const inputType =
-                    attr.input_type && attr.input_type.trim()
-                      ? attr.input_type.toLowerCase().trim()
-                      : "textarea";
+            {/* Product Attributes */}
+            {!isCustomCategory && categoryAttributes.length > 0 && (
+              <div className="mt-8">
+                <h2 className="text-lg font-semibold mb-4">
+                  Product Attributes
+                </h2>
 
-                  return (
-                    <div key={attr.attribute_key}>
-                      <label className="block mb-1 text-sm font-medium text-gray-700">
-                        {attr.attribute_label}
-                        {attr.is_required === 1 && (
-                          <span className="text-red-500">*</span>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  {categoryAttributes.map((attr) => {
+                    const inputType = attr.input_type?.trim().toLowerCase();
+
+                    return (
+                      <div key={attr.attribute_key}>
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
+                          {attr.attribute_label}
+                          {attr.is_required === 1 && (
+                            <span className="text-red-500">*</span>
+                          )}
+                        </label>
+
+                        {/* MULTISELECT */}
+                        {inputType === "multiselect" && (
+                          <div className="flex flex-wrap gap-2">
+                            {(attr.options || []).map((opt: string) => {
+                              const selected =
+                                productAttributes[attr.attribute_key]?.includes(
+                                  opt,
+                                );
+
+                              return (
+                                <label
+                                  key={opt}
+                                  className="flex items-center gap-2"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selected}
+                                    onChange={(e) => {
+                                      const prevVals =
+                                        productAttributes[attr.attribute_key] ||
+                                        [];
+
+                                      const newVals = e.target.checked
+                                        ? [...prevVals, opt]
+                                        : prevVals.filter(
+                                            (v: string) => v !== opt,
+                                          );
+
+                                      setProductAttributes((prev) => ({
+                                        ...prev,
+                                        [attr.attribute_key]: newVals,
+                                      }));
+                                    }}
+                                  />
+                                  {opt}
+                                </label>
+                              );
+                            })}
+                          </div>
                         )}
-                      </label>
 
-                      {/* MULTISELECT */}
-                      {inputType === "multiselect" && (
-                        <select
-                          multiple
-                          required={attr.is_required === 1}
-                          value={productAttributes[attr.attribute_key] || []}
-                          onChange={(e) => {
-                            const selected = Array.from(
-                              e.target.selectedOptions,
-                            ).map((o) => o.value);
-                            setProductAttributes((prev) => ({
-                              ...prev,
-                              [attr.attribute_key]: selected,
-                            }));
-                          }}
-                          className="w-full p-2 border rounded-lg"
-                        >
-                          {attr.options?.map((opt: string) => (
-                            <option key={opt} value={opt}>
-                              {opt}
+                        {/* SELECT */}
+                        {inputType === "select" && (
+                          <select
+                            required={attr.is_required === 1}
+                            value={
+                              (productAttributes[attr.attribute_key] ||
+                                [])[0] || ""
+                            }
+                            onChange={(e) =>
+                              setProductAttributes((prev) => ({
+                                ...prev,
+                                [attr.attribute_key]: [e.target.value],
+                              }))
+                            }
+                            className="w-full p-2 border rounded-lg"
+                          >
+                            <option value="">
+                              Select {attr.attribute_label}
                             </option>
-                          ))}
-                        </select>
-                      )}
 
-                      {/* SELECT */}
-                      {inputType === "select" && (
-                        <select
-                          required={attr.is_required === 1}
-                          value={
-                            (productAttributes[attr.attribute_key] || [])[0] ||
-                            ""
-                          }
-                          onChange={(e) =>
-                            setProductAttributes((prev) => ({
-                              ...prev,
-                              [attr.attribute_key]: [e.target.value],
-                            }))
-                          }
-                          className="w-full p-2 border rounded-lg"
-                        >
-                          <option value="">
-                            Select {attr.attribute_label}
-                          </option>
-                          {attr.options?.map((opt: string) => (
-                            <option key={opt} value={opt}>
-                              {opt}
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                            {(attr.options || []).map((opt: string) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        )}
 
-                      {/* NUMBER */}
-                      {inputType === "number" && (
-                        <input
-                          type="number"
-                          required={attr.is_required === 1}
-                          value={
-                            (productAttributes[attr.attribute_key] || [])[0] ||
-                            ""
-                          }
-                          onChange={(e) =>
-                            setProductAttributes((prev) => ({
-                              ...prev,
-                              [attr.attribute_key]: [e.target.value],
-                            }))
-                          }
-                          className="w-full p-2 border rounded-lg"
-                        />
-                      )}
+                        {/* NUMBER */}
+                        {inputType === "number" && (
+                          <input
+                            type="number"
+                            required={attr.is_required === 1}
+                            value={
+                              (productAttributes[attr.attribute_key] ||
+                                [])[0] || ""
+                            }
+                            onChange={(e) =>
+                              setProductAttributes((prev) => ({
+                                ...prev,
+                                [attr.attribute_key]: [e.target.value],
+                              }))
+                            }
+                            className="w-full p-2 border rounded-lg"
+                          />
+                        )}
 
-                      {/* TEXT */}
-                      {inputType === "text" && (
-                        <input
-                          type="text"
-                          required={attr.is_required === 1}
-                          value={(
-                            productAttributes[attr.attribute_key] || []
-                          ).join(",")}
-                          onChange={(e) =>
-                            setProductAttributes((prev) => ({
-                              ...prev,
-                              [attr.attribute_key]: [e.target.value],
-                            }))
-                          }
-                          className="w-full p-2 border rounded-lg"
-                        />
-                      )}
+                        {/* TEXT */}
+                        {inputType === "text" && (
+                          <input
+                            type="text"
+                            required={attr.is_required === 1}
+                            value={(
+                              productAttributes[attr.attribute_key] || []
+                            ).join(",")}
+                            onChange={(e) =>
+                              setProductAttributes((prev) => ({
+                                ...prev,
+                                [attr.attribute_key]: [e.target.value],
+                              }))
+                            }
+                            className="w-full p-2 border rounded-lg"
+                          />
+                        )}
 
-                      {/* TEXTAREA */}
-                      {inputType === "textarea" && (
-                        <textarea
-                          required={attr.is_required === 1}
-                          value={
-                            (productAttributes[attr.attribute_key] || [])[0] ||
-                            ""
-                          }
-                          onChange={(e) =>
-                            setProductAttributes((prev) => ({
-                              ...prev,
-                              [attr.attribute_key]: [e.target.value],
-                            }))
-                          }
-                          className="w-full p-2 border rounded-lg"
-                          rows={3}
-                          placeholder={attr.attribute_label}
-                        />
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
+                        {/* TEXTAREA */}
+                        {inputType === "textarea" && (
+                          <textarea
+                            required={attr.is_required === 1}
+                            value={
+                              (productAttributes[attr.attribute_key] ||
+                                [])[0] || ""
+                            }
+                            onChange={(e) =>
+                              setProductAttributes((prev) => ({
+                                ...prev,
+                                [attr.attribute_key]: [e.target.value],
+                              }))
+                            }
+                            className="w-full p-2 border rounded-lg"
+                            rows={3}
+                            placeholder={attr.attribute_label}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Product Description */}
