@@ -190,4 +190,15 @@ router.delete(
   CategoryAttributeController.remove,
 );
 
+
+// GET    /category-attribute-values/:attributeId
+// DELETE /category-attribute-values
+router.post(
+  "/category-attribute-values",
+  authenticateToken,
+  authorizeRoles("admin", "vendor_manager"),
+  CategoryAttributeController.bulkInsert,
+);
+
+
 module.exports = router;

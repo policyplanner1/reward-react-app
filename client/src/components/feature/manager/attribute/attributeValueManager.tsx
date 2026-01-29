@@ -63,7 +63,7 @@ export default function AttributeValueManager({ attributeId }: Props) {
         onClick={async () => {
           const cleaned = values.map((v) => v.trim()).filter(Boolean);
 
-          await api.post(`/manager/category-attribute-values/bulk`, {
+          await api.post(`/manager/category-attribute-values`, {
             attribute_id: attributeId,
             values: cleaned,
           });

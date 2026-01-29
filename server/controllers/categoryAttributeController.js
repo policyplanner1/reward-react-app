@@ -149,6 +149,26 @@ class CategoryAttributeController {
       return res.status(500).json({ success: false, message: error.message });
     }
   }
+
+  // Bulk Insert
+  async bulkInsert(req, res) {
+    const { attribute_id, values } = req.body;
+
+    await db.query(
+      `DELETE FROM category_attribute_values WHERE attribute_id = ?`,
+      [attribute_id],
+    );
+
+    for (let i = 0; i < values.length; i++) {
+      await db.query(
+        `INSERT INTO category_attribute_values (attribute_id, value, sort_order)
+       VALUES (?, ?, ?)`,
+        [attribute_id, values[i], i + 1],
+      );
+    }
+
+    res.json({ success: true });
+  }
 }
 
 module.exports = new CategoryAttributeController();

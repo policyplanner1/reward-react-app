@@ -89,7 +89,6 @@ export default function CategoryAttributeManagement() {
         subcategory_id: subcategoryId || undefined,
       },
     });
-    console.log(res.data.data);
     setAttributes(res.data.data || []);
   };
 
