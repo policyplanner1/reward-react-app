@@ -261,17 +261,8 @@ export default function ProductListingDynamic() {
 
     api.get(`/category/attributes?${params.toString()}`).then((res) => {
       if (res.data.success) {
-        const attrs = res.data.data;
-
-        setCategoryAttributes(attrs);
-
-        const initialAttrState: Record<string, any> = {};
-
-        attrs.forEach((attr: any) => {
-          initialAttrState[attr.attribute_key] = [];
-        });
-
-        setProductAttributes(initialAttrState);
+        setCategoryAttributes(res.data.data);
+        setProductAttributes({});
       }
     });
   }, [product.categoryId, product.subCategoryId]);
@@ -399,25 +390,15 @@ export default function ProductListingDynamic() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    const missingAttrs = categoryAttributes.filter((attr) => {
-      if (attr.is_required !== 1) return false;
+    const missingRequired = categoryAttributes.some(
+      (attr) =>
+        attr.is_required &&
+        (!productAttributes[attr.attribute_key] ||
+          productAttributes[attr.attribute_key].length === 0),
+    );
 
-      const val = productAttributes[attr.attribute_key];
-
-      return (
-        !val ||
-        val.length === 0 ||
-        (Array.isArray(val) && val.every((v) => !v || v.trim() === ""))
-      );
-    });
-
-    if (missingAttrs.length > 0) {
-      setError(
-        `Please fill required attributes: ${missingAttrs
-          .map((a) => a.attribute_label)
-          .join(", ")}`,
-      );
-      return;
+    if (missingRequired) {
+      throw new Error("Please fill all required product attributes");
     }
 
     setIsSubmitting(true);
@@ -946,11 +927,7 @@ export default function ProductListingDynamic() {
                       {inputType === "multiselect" && (
                         <input
                           type="text"
-                          required={attr.is_required === 1}
                           placeholder="Comma separated (e.g. S,M,L)"
-                          value={(
-                            productAttributes[attr.attribute_key] || []
-                          ).join(",")}
                           onChange={(e) =>
                             setProductAttributes((prev) => ({
                               ...prev,
@@ -968,10 +945,6 @@ export default function ProductListingDynamic() {
                       {inputType === "select" && (
                         <input
                           type="text"
-                          required={attr.is_required === 1}
-                          value={(
-                            productAttributes[attr.attribute_key] || []
-                          ).join(",")}
                           onChange={(e) =>
                             setProductAttributes((prev) => ({
                               ...prev,
@@ -987,11 +960,6 @@ export default function ProductListingDynamic() {
                       {inputType === "number" && (
                         <input
                           type="number"
-                          required={attr.is_required === 1}
-                          value={
-                            (productAttributes[attr.attribute_key] || [])[0] ||
-                            ""
-                          }
                           onChange={(e) =>
                             setProductAttributes((prev) => ({
                               ...prev,
@@ -1006,10 +974,6 @@ export default function ProductListingDynamic() {
                       {inputType === "text" && (
                         <input
                           type="text"
-                          required={attr.is_required === 1}
-                          value={(
-                            productAttributes[attr.attribute_key] || []
-                          ).join(",")}
                           onChange={(e) =>
                             setProductAttributes((prev) => ({
                               ...prev,
@@ -1023,11 +987,6 @@ export default function ProductListingDynamic() {
                       {/* TEXTAREA */}
                       {inputType === "textarea" && (
                         <textarea
-                          required={attr.is_required === 1}
-                          value={
-                            (productAttributes[attr.attribute_key] || [])[0] ||
-                            ""
-                          }
                           onChange={(e) =>
                             setProductAttributes((prev) => ({
                               ...prev,
