@@ -423,6 +423,7 @@ export default function EditProductPage() {
     storedAttributes: any,
   ) => {
     try {
+      console.log("STEP 2 — STORED ATTRIBUTES RECEIVED:", storedAttributes);
       const params = new URLSearchParams();
       params.append("categoryId", String(categoryId));
       params.append("subcategoryId", String(subcategoryId));
@@ -435,12 +436,25 @@ export default function EditProductPage() {
 
         // parse stored JSON from DB
         let parsed: Record<string, any> = {};
+
         if (storedAttributes) {
-          parsed =
+          let raw =
             typeof storedAttributes === "string"
               ? JSON.parse(storedAttributes)
               : storedAttributes;
+
+          // THE REAL FIX
+          if (raw.attributes) {
+            parsed =
+              typeof raw.attributes === "string"
+                ? JSON.parse(raw.attributes)
+                : raw.attributes;
+          } else {
+            parsed = raw;
+          }
         }
+
+        console.log("STEP 3 — PARSED ATTRIBUTES:", parsed);
 
         // merge schema + stored data
         const merged: Record<string, any> = {};
@@ -449,6 +463,7 @@ export default function EditProductPage() {
           merged[attr.attribute_key] = parsed[attr.attribute_key] || [];
         });
 
+        console.log("STEP 4 — MERGED FOR UI:", merged);
         setProductAttributes(merged);
       }
     } catch (err) {
@@ -495,6 +510,16 @@ export default function EditProductPage() {
         await fetchSubSubCategories(p.subcategory_id);
       }
 
+      console.log("STEP 1 — RAW DB ATTRIBUTES:", p.attributes);
+
+      if (p.category_id && p.subcategory_id) {
+        await loadAttributesForEdit(
+          p.category_id,
+          p.subcategory_id,
+          p.attributes,
+        );
+      }
+
       setProduct({
         productName: p.product_name || "",
         brandName: p.brand_name || "",
@@ -518,12 +543,6 @@ export default function EditProductPage() {
         productImages: [],
         existingImages: p.images || [],
       });
-
-      await loadAttributesForEdit(
-        p.category_id,
-        p.subcategory_id,
-        p.attributes,
-      );
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -953,11 +972,17 @@ export default function EditProductPage() {
                         {inputType === "multiselect" && (
                           <div className="flex flex-wrap gap-2">
                             {(attr.options || []).map((opt: string) => {
-                              const selected =
-                                productAttributes[attr.attribute_key]?.includes(
-                                  opt,
-                                );
-
+                              console.log(
+                                "RENDER CHECK:",
+                                attr.attribute_key,
+                                "values:",
+                                productAttributes[attr.attribute_key],
+                                "option:",
+                                opt,
+                              );
+                              const selected = (
+                                productAttributes[attr.attribute_key] || []
+                              ).includes(opt);
                               return (
                                 <label
                                   key={opt}

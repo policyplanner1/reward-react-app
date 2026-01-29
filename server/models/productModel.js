@@ -557,6 +557,29 @@ class ProductModel {
       ],
     );
 
+    //1.2 update attributes
+    if (data.attributes) {
+      const attributes =
+        typeof data.attributes === "string"
+          ? JSON.parse(data.attributes)
+          : data.attributes;
+
+      await connection.execute(
+        `UPDATE product_attributes
+     SET attributes = ?
+     WHERE product_id = ?`,
+        [JSON.stringify(attributes), productId],
+      );
+    }
+
+    // 1.3---------- REGENERATE VARIANTS AFTER ATTRIBUTE CHANGE ----------
+    await this.generateProductVariants(
+      connection,
+      productId,
+      data.category_id,
+      data.subcategory_id,
+    );
+
     // ---------- 2. PROCESS FILES ----------
     const movedFiles = await processUploadedFiles(files, {
       vendorId,
