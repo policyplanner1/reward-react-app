@@ -925,10 +925,6 @@ export default function ProductListingDynamic() {
             {/* Product Attributes */}
             {!isCustomCategory && categoryAttributes.length > 0 && (
               <div className="mt-8">
-                <h2 className="text-lg font-semibold mb-4">
-                  Product Attributes
-                </h2>
-
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   {categoryAttributes.map((attr) => {
                     const inputType = attr.input_type?.trim().toLowerCase();
