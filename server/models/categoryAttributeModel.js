@@ -19,7 +19,7 @@ class CategoryAttributeModel {
   //  LIST
   async list({ category_id, subcategory_id }) {
     let sql = `
-        SELECT 
+    SELECT 
       ca.*,
       c.category_name,
       sc.subcategory_name
@@ -29,20 +29,19 @@ class CategoryAttributeModel {
     LEFT JOIN sub_categories sc 
       ON ca.subcategory_id = sc.subcategory_id
     WHERE ca.is_active = 1
-    `;
-    const params = [];
+  `;
 
-    if (category_id) {
-      sql += " AND ca.category_id = ?";
-      params.push(category_id);
-    }
+    const params = [];
 
     if (subcategory_id) {
       sql += " AND ca.subcategory_id = ?";
       params.push(subcategory_id);
+    } else if (category_id) {
+      sql += " AND ca.category_id = ?";
+      params.push(category_id);
     }
 
-    sql += " ORDER BY ca.sort_order ASC, ca.created_at ASC";
+    sql += " ORDER BY ca.sort_order ASC";
 
     const [rows] = await db.query(sql, params);
     return rows;
@@ -50,17 +49,28 @@ class CategoryAttributeModel {
 
   // CREATE
   async create(data) {
+    const normalizedKey = data.attribute_key.trim().toLowerCase();
+
+    const [[sc]] = await db.query(
+      `SELECT category_id FROM sub_categories WHERE subcategory_id = ?`,
+      [data.subcategory_id],
+    );
+
+    if (!sc) throw new Error("Invalid subcategory");
+
+    const categoryId = sc.category_id;
+
     const [result] = await db.query(
       `
-      INSERT INTO category_attributes
-      (category_id, subcategory_id, attribute_key, attribute_label, input_type, is_variant, is_required, sort_order)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `,
+    INSERT INTO category_attributes
+    (category_id, subcategory_id, attribute_key, attribute_label, input_type, is_variant, is_required, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `,
       [
-        data.category_id || null,
-        data.subcategory_id || null,
-        data.attribute_key,
-        data.attribute_label,
+        categoryId,
+        data.subcategory_id,
+        normalizedKey,
+        data.attribute_label.trim(),
         data.input_type,
         data.is_variant ? 1 : 0,
         data.is_required ? 1 : 0,
@@ -76,12 +86,7 @@ class CategoryAttributeModel {
     const fields = [];
     const values = [];
 
-    const allowed = [
-      "attribute_label",
-      "is_variant",
-      "is_required",
-      "sort_order",
-    ];
+    const allowed = ["attribute_label", "is_variant", "is_required"];
 
     allowed.forEach((key) => {
       if (data[key] !== undefined) {
@@ -90,16 +95,22 @@ class CategoryAttributeModel {
       }
     });
 
+    // Handle sort_order safely
+    if (data.sort_order !== undefined) {
+      fields.push(`sort_order = ?`);
+      values.push(Math.max(0, Number(data.sort_order)));
+    }
+
     if (!fields.length) return false;
 
     values.push(id);
 
     const [result] = await db.query(
       `
-      UPDATE category_attributes
-      SET ${fields.join(", ")}
-      WHERE id = ?
-      `,
+    UPDATE category_attributes
+    SET ${fields.join(", ")}
+    WHERE id = ?
+    `,
       values,
     );
 
@@ -118,26 +129,20 @@ class CategoryAttributeModel {
   }
 
   // Exist check
-  async exists({ category_id, subcategory_id, attribute_key }) {
-    let sql = `
+  async exists({ subcategory_id, attribute_key }) {
+    const normalizedKey = attribute_key.trim().toLowerCase();
+
+    const [rows] = await db.query(
+      `
     SELECT id
     FROM category_attributes
     WHERE attribute_key = ?
+      AND subcategory_id = ?
       AND is_active = 1
-  `;
-    const params = [attribute_key];
+    `,
+      [normalizedKey, subcategory_id],
+    );
 
-    if (category_id) {
-      sql += " AND category_id = ?";
-      params.push(category_id);
-    }
-
-    if (subcategory_id) {
-      sql += " AND subcategory_id = ?";
-      params.push(subcategory_id);
-    }
-
-    const [rows] = await db.query(sql, params);
     return rows.length > 0;
   }
 
@@ -149,7 +154,7 @@ class CategoryAttributeModel {
     FROM product_attributes
     WHERE attributes LIKE ?
     `,
-      [`%"${attributeKey}"%`],
+      [`%"${attributeKey}":%`],
     );
 
     return rows[0].count > 0;

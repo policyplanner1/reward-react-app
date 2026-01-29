@@ -10,8 +10,8 @@ class CategoryAttributeController {
       const { category_id, subcategory_id } = req.query;
 
       const rows = await CategoryAttributeModel.list({
-        category_id,
         subcategory_id,
+        category_id,
       });
 
       return res.json({ success: true, data: rows });
@@ -43,19 +43,12 @@ class CategoryAttributeController {
         });
       }
 
-      if (!category_id && !subcategory_id) {
+      if (!subcategory_id) {
         return res.status(400).json({
           success: false,
-          message: "Either category_id or subcategory_id is required",
+          message: "sub category is required",
         });
       }
-
-      // if (category_id && subcategory_id) {
-      //   return res.status(400).json({
-      //     success: false,
-      //     message: "Provide only one: category_id OR subcategory_id",
-      //   });
-      // }
 
       if (!ALLOWED_TYPES.includes(input_type)) {
         return res.status(400).json({
@@ -65,7 +58,6 @@ class CategoryAttributeController {
       }
 
       const exists = await CategoryAttributeModel.exists({
-        category_id,
         subcategory_id,
         attribute_key,
       });
@@ -175,8 +167,7 @@ class CategoryAttributeController {
     try {
       const { attributeId } = req.params;
 
-      const values =
-        await CategoryAttributeModel.listByAttribute(attributeId);
+      const values = await CategoryAttributeModel.listByAttribute(attributeId);
 
       res.json({ success: true, data: values });
     } catch (err) {
