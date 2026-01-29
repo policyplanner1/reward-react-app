@@ -944,34 +944,37 @@ export default function ProductListingDynamic() {
 
                       {/* MULTISELECT */}
                       {inputType === "multiselect" && (
-                        <input
-                          type="text"
+                        <select
+                          multiple
                           required={attr.is_required === 1}
-                          placeholder="Comma separated (e.g. S,M,L)"
-                          value={(
-                            productAttributes[attr.attribute_key] || []
-                          ).join(",")}
-                          onChange={(e) =>
+                          value={productAttributes[attr.attribute_key] || []}
+                          onChange={(e) => {
+                            const selected = Array.from(
+                              e.target.selectedOptions,
+                            ).map((o) => o.value);
                             setProductAttributes((prev) => ({
                               ...prev,
-                              [attr.attribute_key]: e.target.value
-                                .split(",")
-                                .map((v) => v.trim())
-                                .filter(Boolean),
-                            }))
-                          }
+                              [attr.attribute_key]: selected,
+                            }));
+                          }}
                           className="w-full p-2 border rounded-lg"
-                        />
+                        >
+                          {attr.options?.map((opt: string) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
                       )}
 
                       {/* SELECT */}
                       {inputType === "select" && (
-                        <input
-                          type="text"
+                        <select
                           required={attr.is_required === 1}
-                          value={(
-                            productAttributes[attr.attribute_key] || []
-                          ).join(",")}
+                          value={
+                            (productAttributes[attr.attribute_key] || [])[0] ||
+                            ""
+                          }
                           onChange={(e) =>
                             setProductAttributes((prev) => ({
                               ...prev,
@@ -979,8 +982,16 @@ export default function ProductListingDynamic() {
                             }))
                           }
                           className="w-full p-2 border rounded-lg"
-                          placeholder={`Enter ${attr.attribute_label}`}
-                        />
+                        >
+                          <option value="">
+                            Select {attr.attribute_label}
+                          </option>
+                          {attr.options?.map((opt: string) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
                       )}
 
                       {/* NUMBER */}
