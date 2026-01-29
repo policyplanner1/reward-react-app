@@ -54,7 +54,7 @@ export default function AttributeValueManager({ attributeId }: Props) {
 
       <button
         onClick={() => setValues([...values, ""])}
-        className="flex items-center gap-2 mt-3 text-[#852BAF]"
+        className="flex items-center gap-2 mt-3 text-[#852BAF] cursor-pointer"
       >
         <FiPlus /> Add More
       </button>

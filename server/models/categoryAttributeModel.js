@@ -154,6 +154,34 @@ class CategoryAttributeModel {
 
     return rows[0].count > 0;
   }
+
+  // get attribute value
+  async listByAttribute(attributeId) {
+    const [rows] = await db.query(
+      `
+      SELECT value_id, value, sort_order
+      FROM category_attribute_values
+      WHERE attribute_id = ?
+      ORDER BY sort_order ASC
+      `,
+      [attributeId],
+    );
+
+    return rows;
+  }
+
+  // remove attribute value
+  async deleteValue(attributeId, value) {
+    const [result] = await db.query(
+      `
+      DELETE FROM category_attribute_values
+      WHERE attribute_id = ? AND value = ?
+      `,
+      [attributeId, value],
+    );
+
+    return result.affectedRows > 0;
+  }
 }
 
 module.exports = new CategoryAttributeModel();
