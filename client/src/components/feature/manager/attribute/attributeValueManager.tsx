@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../../../api/api";
 import { FiPlus, FiTrash2 } from "react-icons/fi";
+import Swal from "sweetalert2";
 
 interface Props {
   attributeId: number;
@@ -11,7 +12,7 @@ export default function AttributeValueManager({ attributeId }: Props) {
 
   const fetchValues = async () => {
     const res = await api.get(
-      `/manager/category-attribute-values/${attributeId}`
+      `/manager/category-attribute-values/${attributeId}`,
     );
 
     const fetched = res.data.data.map((v: any) => v.value);
@@ -63,12 +64,34 @@ export default function AttributeValueManager({ attributeId }: Props) {
         onClick={async () => {
           const cleaned = values.map((v) => v.trim()).filter(Boolean);
 
-          await api.post(`/manager/category-attribute-values`, {
-            attribute_id: attributeId,
-            values: cleaned,
-          });
+          if (!cleaned.length) {
+            return Swal.fire(
+              "No values added",
+              "Please add at least one option",
+              "warning",
+            );
+          }
 
-          alert("Saved!");
+          try {
+            await api.post(`/manager/category-attribute-values`, {
+              attribute_id: attributeId,
+              values: cleaned,
+            });
+
+            await fetchValues();
+
+            Swal.fire(
+              "Saved",
+              "Attribute options saved successfully",
+              "success",
+            );
+          } catch (err: any) {
+            Swal.fire(
+              "Error",
+              err.response?.data?.message || "Failed to save options",
+              "error",
+            );
+          }
         }}
         className="mt-4 w-full bg-[#852BAF] text-white py-2 rounded cursor-pointer"
       >
