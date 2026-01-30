@@ -12,37 +12,55 @@ class PaymentController {
   async createOrder(req, res) {
     const { orderId, amount } = req.body;
 
-    const order = await razorpay.orders.create({
-      amount: amount * 100,
+    if (!orderId || !amount) {
+      return res.status(400).json({ message: "orderId and amount required" });
+    }
+
+    const razorpayOrder = await razorpay.orders.create({
+      amount: amount * 100, // paise
       currency: "INR",
       receipt: orderId.toString(),
     });
 
-    res.json({
+    await PaymentModel.createOrder({
+      orderId,
+      razorpayOrderId: razorpayOrder.id,
+      amount,
+    });
+
+    return res.status(200).json({
       key: process.env.RAZOR_API_KEY,
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
+      orderId: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
     });
   }
 
   //   verify Payment
   async verifyPayment(req, res) {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
-      req.body;
+    try {
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+        req.body;
 
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
+      const body = `${razorpay_order_id}|${razorpay_payment_id}`;
 
-    const expected = crypto
-      .createHmac("sha256", process.env.RAZOR_SECRET_KEY)
-      .update(body)
-      .digest("hex");
+      const expectedSignature = crypto
+        .createHmac("sha256", process.env.RAZOR_SECRET_KEY)
+        .update(body)
+        .digest("hex");
 
-    if (expected === razorpay_signature) {
-      return res.json({ status: "success" });
+      if (expectedSignature !== razorpay_signature) {
+        return res.status(400).json({ status: "invalid signature" });
+      }
+
+      // Optional: update payment status here
+      // await PaymentModel.updateStatus(razorpay_order_id, 'paid');
+
+      res.json({ status: "success" });
+    } catch (error) {
+      console.error("Verify Payment Error:", error);
+      res.status(500).json({ message: "Payment verification failed" });
     }
-
-    res.status(400).json({ status: "invalid signature" });
   }
 }
 
