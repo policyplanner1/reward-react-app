@@ -41,19 +41,31 @@ class orderModel {
 
     const [rows] = await db.execute(
       `
-      SELECT
-        o.order_id,
-        o.total_amount,
-        o.status,
-        o.created_at,
+    SELECT
+      o.order_id,
+      o.total_amount,
+      o.status,
+      o.created_at,
 
-        COUNT(oi.order_item_id) AS item_count
-      FROM eorders o
-      LEFT JOIN eorder_items oi ON o.order_id = oi.order_id
-      ${whereClause}
-      GROUP BY o.order_id
-      ORDER BY o.created_at DESC
-      LIMIT ? OFFSET ?
+      COUNT(oi.order_item_id) AS item_count,
+
+      (
+        SELECT pi.image_url
+        FROM eorder_items oii
+        JOIN product_images pi 
+          ON oii.product_id = pi.product_id
+        WHERE oii.order_id = o.order_id
+        ORDER BY pi.sort_order ASC
+        LIMIT 1
+      ) AS image
+
+    FROM eorders o
+    LEFT JOIN eorder_items oi 
+      ON o.order_id = oi.order_id
+    ${whereClause}
+    GROUP BY o.order_id
+    ORDER BY o.created_at DESC
+    LIMIT ? OFFSET ?
       `,
       [...params, limit, offset],
     );
