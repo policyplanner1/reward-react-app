@@ -12,7 +12,7 @@ const dashboardRoute = require("./routes/indexRoute");
 // App Route
 const ecommerceRoute=require('./app/ecommerce/v1/routes/indexRoute')
 const serviceRoute=require('./app/service/v1/routes/indexRoute')
-const paymentRoute=require('./app/common/Routes/indexRoute')
+const paymentRoute=require('./common/Routes/indexRoute')
 
 const app = express();
 
@@ -57,7 +57,7 @@ app.use('/',dashboardRoute)
 // App Routes
 app.use("/v1",ecommerceRoute);
 app.use("/v1",serviceRoute)
-app.use("/v1",paymentRoute)
+app.use("/payment",paymentRoute)
 
 // 404 Handler
 app.use((req, res) => {
