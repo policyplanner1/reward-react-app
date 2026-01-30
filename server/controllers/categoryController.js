@@ -44,7 +44,7 @@ class CategoryController {
     }
   }
 
-  // controller
+  // category attributes
   async getCategoryAttributes(req, res) {
     try {
       const categoryId = Number(req.query.categoryId);
@@ -66,9 +66,12 @@ class CategoryController {
       FROM category_attributes ca
       LEFT JOIN category_attribute_values cav
         ON cav.attribute_id = ca.id
-      WHERE
-        (ca.subcategory_id = ?)
-        OR (ca.category_id = ? AND ca.subcategory_id IS NULL)
+       WHERE
+        ca.is_active = 1
+        AND (
+          ca.subcategory_id = ?
+          OR (ca.category_id = ? AND ca.subcategory_id IS NULL)
+        )
       GROUP BY ca.id
       ORDER BY ca.sort_order ASC
       `,
