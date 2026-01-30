@@ -10,9 +10,8 @@ require("dotenv").config();
 const dashboardRoute = require("./routes/indexRoute");
 
 // App Route
-const ecommerceRoute=require('./app/ecommerce/v1/routes/indexRoute')
-const serviceRoute=require('./app/service/v1/routes/indexRoute')
-const paymentRoute=require('./common/Routes/indexRoute')
+const ecommerceRoute = require("./app/ecommerce/v1/routes/indexRoute");
+const serviceRoute = require("./app/service/v1/routes/indexRoute");
 
 const app = express();
 
@@ -20,18 +19,18 @@ const app = express();
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 
 app.use(
   cors({
-    // origin: process.env.CLIENT_URL || "http://localhost:5173",
+    // origin: "http://localhost:5173",
     origin: process.env.CLIENT_URL || "https://rewardplanners.com",
 
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 app.use(morgan("dev"));
@@ -50,14 +49,12 @@ app.get("/", (req, res) => {
   });
 });
 
-
 // Dashboard Routes
-app.use('/',dashboardRoute)
+app.use("/", dashboardRoute);
 
 // App Routes
-app.use("/v1",ecommerceRoute);
-app.use("/v1",serviceRoute)
-app.use("/payment",paymentRoute)
+app.use("/v1", ecommerceRoute);
+app.use("/v1", serviceRoute);
 
 // 404 Handler
 app.use((req, res) => {
