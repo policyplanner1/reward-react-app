@@ -875,6 +875,7 @@ export default function ProductListingDynamic() {
               <FormInput
                 id="productName"
                 label="Product Name"
+                required
                 value={product.productName}
                 onChange={handleFieldChange}
                 placeholder="Type of product (e.g., Shoes, TV)"

@@ -906,6 +906,7 @@ export default function EditProductPage() {
                 label="Product Name"
                 value={product.productName}
                 onChange={handleFieldChange}
+                required
                 placeholder="Type of product (e.g., Shoes, TV)"
               />
               <FormInput
