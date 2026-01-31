@@ -487,16 +487,21 @@ export default function ProductManagerList() {
   ]);
 
   useEffect(() => {
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
     debounceRef.current = window.setTimeout(() => {
       setPagination((p) => ({ ...p, currentPage: 1 }));
       fetchProducts();
     }, 450);
 
     return () => {
-      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
     };
-  }, [searchQuery, fetchProducts]);
+  }, [searchQuery]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -1069,7 +1074,7 @@ export default function ProductManagerList() {
                     <button
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
-                      className={`px-3 py-2 border text-sm font-medium rounded-md ${
+                      className={`px-3 py-2 border text-sm font-medium rounded-md cursor-pointer ${
                         pagination.currentPage === pageNum
                           ? "bg-[#852BAF] text-white border-[#852BAF]"
                           : "border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -1084,7 +1089,7 @@ export default function ProductManagerList() {
               <button
                 onClick={() => handlePageChange(pagination.currentPage + 1)}
                 disabled={pagination.currentPage === pagination.totalPages}
-                className="px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 Next
               </button>

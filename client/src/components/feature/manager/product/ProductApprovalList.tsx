@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Swal from "sweetalert2";
 import {
   FaCheckCircle,
@@ -199,8 +199,7 @@ export default function ProductManagerList() {
     itemsPerPage: 10,
   });
 
-  // ✅ Debounce ref (important for focus issue)
-  const debounceRef = useRef<number | null>(null);
+  // const debounceRef = useRef<number | null>(null);
 
   const okBtnClass =
     "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
@@ -215,7 +214,9 @@ export default function ProductManagerList() {
     );
   };
 
-  const normalizeManagerStatus = (status: BackendProductStatus): ProductStatus => {
+  const normalizeManagerStatus = (
+    status: BackendProductStatus,
+  ): ProductStatus => {
     if (status === "sent_for_approval") return "pending";
     return status as ProductStatus;
   };
@@ -271,26 +272,48 @@ export default function ProductManagerList() {
     sortOrder,
   ]);
 
-  // ✅ First load only (no debounce)
-  useEffect(() => {
-    fetchProducts();
-  }, [pagination.currentPage, pagination.itemsPerPage, sortBy, sortOrder, fetchProducts]);
+  // useEffect(() => {
+  //   fetchProducts();
+  // }, [
+  //   pagination.currentPage,
+  //   pagination.itemsPerPage,
+  //   sortBy,
+  //   sortOrder,
+  //   fetchProducts,
+  // ]);
 
-  //  Debounced search + filter (THIS FIXES TYPING FOCUS ISSUE)
-  useEffect(() => {
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+  // useEffect(() => {
+  //   if (debounceRef.current) window.clearTimeout(debounceRef.current);
 
-    debounceRef.current = window.setTimeout(() => {
-      setPagination((p) => ({ ...p, currentPage: 1 }));
+  //   debounceRef.current = window.setTimeout(() => {
+  //     setPagination((p) => ({ ...p, currentPage: 1 }));
+  //     fetchProducts();
+  //   }, 450);
+
+  //   return () => {
+  //     if (debounceRef.current) window.clearTimeout(debounceRef.current);
+  //   };
+  // }, [searchQuery, statusFilter, fetchProducts]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
       fetchProducts();
-    }, 450);
+    }, 400);
 
-    return () => {
-      if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    };
-  }, [searchQuery, statusFilter, fetchProducts]);
+    return () => clearTimeout(timer);
+  }, [
+    pagination.currentPage,
+    pagination.itemsPerPage,
+    searchQuery,
+    statusFilter,
+    sortBy,
+    sortOrder,
+  ]);
 
-  const handleProductAction = async (action: ActionType, product: ProductItem) => {
+  const handleProductAction = async (
+    action: ActionType,
+    product: ProductItem,
+  ) => {
     const modalConfigs: Record<
       ActionType,
       {
@@ -360,8 +383,8 @@ export default function ProductManagerList() {
           action === "approve"
             ? "px-6 py-2 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 transition-all duration-300 cursor-pointer active:scale-95"
             : action === "request_resubmission"
-            ? "px-6 py-2 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-300 cursor-pointer active:scale-95"
-            : "px-6 py-2 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-all duration-300 cursor-pointer active:scale-95",
+              ? "px-6 py-2 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-300 cursor-pointer active:scale-95"
+              : "px-6 py-2 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-all duration-300 cursor-pointer active:scale-95",
         cancelButton:
           "px-6 py-2 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all duration-300 cursor-pointer",
         popup: "rounded-2xl",
@@ -370,17 +393,21 @@ export default function ProductManagerList() {
 
     if (!result.isConfirmed) return;
 
-    const reason = cfg.needsReason ? String(result.value || "").trim() : undefined;
+    const reason = cfg.needsReason
+      ? String(result.value || "").trim()
+      : undefined;
 
     try {
-      const endpoint = action === "request_resubmission" ? "resubmission" : action;
+      const endpoint =
+        action === "request_resubmission" ? "resubmission" : action;
 
       const res = await api.put(
         `/manager/product/${endpoint}/${product.product_id}`,
-        reason ? { reason } : {}
+        reason ? { reason } : {},
       );
 
-      if (!res.data.success) throw new Error(res.data.message || "Action failed");
+      if (!res.data.success)
+        throw new Error(res.data.message || "Action failed");
 
       await fetchProducts();
 
@@ -417,9 +444,19 @@ export default function ProductManagerList() {
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
-  const onSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  }, []);
+  // const onSearchChange = useCallback(
+  //   (e: React.ChangeEvent<HTMLInputElement>) => {
+  //     setSearchQuery(e.target.value);
+  //   },
+  //   [],
+  // );
+  const onSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchQuery(e.target.value);
+      setPagination((prev) => ({ ...prev, currentPage: 1 })); 
+    },
+    [],
+  );
 
   return (
     <div className="min-h-screen p-4 md:p-6 bg-gray-50">
@@ -527,7 +564,9 @@ export default function ProductManagerList() {
                   <td className="px-4 py-4 font-medium">
                     {product.product_name}
                   </td>
-                  <td className="px-4 py-4 text-center">{product.brand_name}</td>
+                  <td className="px-4 py-4 text-center">
+                    {product.brand_name}
+                  </td>
                   <td className="px-4 py-4 text-center">
                     <StatusChip status={product.status} />
                   </td>
@@ -538,7 +577,7 @@ export default function ProductManagerList() {
                         <Link
                           to={routes.manager.productView.replace(
                             ":id",
-                            product.product_id.toString()
+                            product.product_id.toString(),
                           )}
                           className="w-9 h-9 inline-flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
                           title="View"
@@ -549,7 +588,9 @@ export default function ProductManagerList() {
                         {product.status === "pending" ? (
                           <>
                             <button
-                              onClick={() => handleProductAction("approve", product)}
+                              onClick={() =>
+                                handleProductAction("approve", product)
+                              }
                               className="w-9 h-9 inline-flex items-center justify-center bg-green-100 text-green-700 rounded cursor-pointer"
                               title="Approve"
                             >
@@ -557,7 +598,9 @@ export default function ProductManagerList() {
                             </button>
 
                             <button
-                              onClick={() => handleProductAction("reject", product)}
+                              onClick={() =>
+                                handleProductAction("reject", product)
+                              }
                               className="w-9 h-9 inline-flex items-center justify-center bg-red-100 text-red-700 rounded cursor-pointer"
                               title="Reject"
                             >
@@ -566,7 +609,10 @@ export default function ProductManagerList() {
 
                             <button
                               onClick={() =>
-                                handleProductAction("request_resubmission", product)
+                                handleProductAction(
+                                  "request_resubmission",
+                                  product,
+                                )
                               }
                               className="w-9 h-9 inline-flex items-center justify-center bg-blue-100 text-blue-700 rounded cursor-pointer"
                               title="Resubmission"
@@ -589,6 +635,87 @@ export default function ProductManagerList() {
             </tbody>
           </table>
         </div>
+
+        {/* PAGINATION */}
+        {pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6">
+            <div className="text-sm text-gray-600">
+              Showing{" "}
+              <span className="font-semibold">
+                {(pagination.currentPage - 1) * pagination.itemsPerPage + 1}
+              </span>{" "}
+              to{" "}
+              <span className="font-semibold">
+                {Math.min(
+                  pagination.currentPage * pagination.itemsPerPage,
+                  pagination.totalItems,
+                )}
+              </span>{" "}
+              of <span className="font-semibold">{pagination.totalItems}</span>{" "}
+              products
+            </div>
+
+            <div className="flex gap-2">
+              {/* Prev */}
+              <button
+                disabled={pagination.currentPage === 1}
+                onClick={() =>
+                  setPagination((p) => ({
+                    ...p,
+                    currentPage: p.currentPage - 1,
+                  }))
+                }
+                className={`px-4 py-2 rounded-lg border text-sm font-medium ${
+                  pagination.currentPage === 1
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white hover:bg-gray-50"
+                }`}
+              >
+                Previous
+              </button>
+
+              {/* Page Numbers */}
+              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                .slice(
+                  Math.max(0, pagination.currentPage - 3),
+                  pagination.currentPage + 2,
+                )
+                .map((page) => (
+                  <button
+                    key={page}
+                    onClick={() =>
+                      setPagination((p) => ({ ...p, currentPage: page }))
+                    }
+                    className={`px-3 py-2 rounded-lg text-sm font-semibold border ${
+                      pagination.currentPage === page
+                        ? "bg-[#852BAF] text-white border-[#852BAF]"
+                        : "bg-white hover:bg-gray-50"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+              {/* Next */}
+              <button
+                disabled={pagination.currentPage === pagination.totalPages}
+                onClick={() =>
+                  setPagination((p) => ({
+                    ...p,
+                    currentPage: p.currentPage + 1,
+                  }))
+                }
+                className={`px-4 py-2 rounded-lg border text-sm font-medium ${
+                  pagination.currentPage === pagination.totalPages
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white hover:bg-gray-50"
+                }`}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* EMPTY STATE */}
         {products.length === 0 && !loading && (

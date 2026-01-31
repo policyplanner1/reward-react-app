@@ -46,3 +46,18 @@
 .read-the-docs {
   color: #888;
 }
+
+
+table.dataTable thead th {
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+table.dataTable.no-footer {
+  border-bottom: none !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+  padding: 4px 10px;
+  border-radius: 8px;
+  margin: 0 2px;
+}

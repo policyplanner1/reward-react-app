@@ -249,35 +249,25 @@ export default function ProductListingDynamic() {
   }, [product.categoryId]);
 
   useEffect(() => {
-    if (!product.subCategoryId) {
-      setCategoryAttributes([]);
-      setProductAttributes({});
-      return;
-    }
+    if (!product.categoryId) return;
 
     const params = new URLSearchParams({
       categoryId: String(product.categoryId),
-      subcategoryId: String(product.subCategoryId),
     });
+
+    if (product.subCategoryId) {
+      params.append("subcategoryId", String(product.subCategoryId));
+    }
 
     api.get(`/category/attributes?${params.toString()}`).then((res) => {
-        if (res.data.success) {
-          const attrs = res.data.data;
-          setCategoryAttributes(attrs);
-
-          setProductAttributes((prev) => {
-            const next: Record<string, any> = {};
-
-            attrs.forEach((attr: any) => {
-              next[attr.attribute_key] = prev[attr.attribute_key] || [];
-            });
-
-            return next;
-          });
-        }
+      if (res.data.success) {
+        setCategoryAttributes(res.data.data);
+        setProductAttributes({});
+      }
     });
-  }, [product.subCategoryId]);
+  }, [product.categoryId, product.subCategoryId]);
 
+  // Fetch sub-subcategories when subcategory changes
   useEffect(() => {
     if (product.subCategoryId) {
       fetchSubSubCategories(product.subCategoryId);
@@ -400,26 +390,15 @@ export default function ProductListingDynamic() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    const missingAttrs = categoryAttributes.filter((attr) => {
-      if (attr.is_required !== 1) return false;
+    const missingRequired = categoryAttributes.some(
+      (attr) =>
+        attr.is_required &&
+        (!productAttributes[attr.attribute_key] ||
+          productAttributes[attr.attribute_key].length === 0),
+    );
 
-      const val = productAttributes[attr.attribute_key];
-
-      return (
-        !val ||
-        !Array.isArray(val) ||
-        val.length === 0 ||
-        val.every((v) => !v || v.trim() === "")
-      );
-    });
-
-    if (missingAttrs.length > 0) {
-      setError(
-        `Please fill required attributes: ${missingAttrs
-          .map((a) => a.attribute_label)
-          .join(", ")}`,
-      );
-      return;
+    if (missingRequired) {
+      throw new Error("Please fill all required product attributes");
     }
 
     setIsSubmitting(true);
@@ -875,7 +854,6 @@ export default function ProductListingDynamic() {
               <FormInput
                 id="productName"
                 label="Product Name"
-                required
                 value={product.productName}
                 onChange={handleFieldChange}
                 placeholder="Type of product (e.g., Shoes, TV)"
@@ -923,153 +901,108 @@ export default function ProductListingDynamic() {
               description="Select available options for this product"
             />
 
-            {/* Product Attributes */}
-            {!isCustomCategory && categoryAttributes.length > 0 && (
-              <div className="mt-8">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  {categoryAttributes.map((attr) => {
-                    const inputType = attr.input_type?.trim().toLowerCase();
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {categoryAttributes.length === 0 ? (
+                <p className="text-sm text-gray-500 col-span-full">
+                  No attributes found for this category.
+                </p>
+              ) : (
+                categoryAttributes.map((attr) => {
+                  //  NORMALIZE input_type
+                  const inputType =
+                    attr.input_type && attr.input_type.trim()
+                      ? attr.input_type.toLowerCase().trim()
+                      : "textarea";
 
-                    return (
-                      <div key={attr.attribute_key}>
-                        <label className="block mb-1 text-sm font-medium text-gray-700">
-                          {attr.attribute_label}
-                          {attr.is_required === 1 && (
-                            <span className="text-red-500">*</span>
-                          )}
-                        </label>
-
-                        {/* MULTISELECT */}
-                        {inputType === "multiselect" && (
-                          <div className="flex flex-wrap gap-2">
-                            {(attr.options || []).map((opt: string) => {
-                              const selected =
-                                productAttributes[attr.attribute_key]?.includes(
-                                  opt,
-                                );
-
-                              return (
-                                <label
-                                  key={opt}
-                                  className="flex items-center gap-2"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={selected}
-                                    onChange={(e) => {
-                                      const prevVals =
-                                        productAttributes[attr.attribute_key] ||
-                                        [];
-
-                                      const newVals = e.target.checked
-                                        ? [...prevVals, opt]
-                                        : prevVals.filter(
-                                            (v: string) => v !== opt,
-                                          );
-
-                                      setProductAttributes((prev) => ({
-                                        ...prev,
-                                        [attr.attribute_key]: newVals,
-                                      }));
-                                    }}
-                                  />
-                                  {opt}
-                                </label>
-                              );
-                            })}
-                          </div>
+                  return (
+                    <div key={attr.attribute_key}>
+                      <label className="block mb-1 text-sm font-medium text-gray-700">
+                        {attr.attribute_label}
+                        {attr.is_required === 1 && (
+                          <span className="text-red-500">*</span>
                         )}
+                      </label>
 
-                        {/* SELECT */}
-                        {inputType === "select" && (
-                          <select
-                            required={attr.is_required === 1}
-                            value={
-                              (productAttributes[attr.attribute_key] ||
-                                [])[0] || ""
-                            }
-                            onChange={(e) =>
-                              setProductAttributes((prev) => ({
-                                ...prev,
-                                [attr.attribute_key]: [e.target.value],
-                              }))
-                            }
-                            className="w-full p-2 border rounded-lg"
-                          >
-                            <option value="">
-                              Select {attr.attribute_label}
-                            </option>
+                      {/* MULTISELECT */}
+                      {inputType === "multiselect" && (
+                        <input
+                          type="text"
+                          placeholder="Comma separated (e.g. S,M,L)"
+                          onChange={(e) =>
+                            setProductAttributes((prev) => ({
+                              ...prev,
+                              [attr.attribute_key]: e.target.value
+                                .split(",")
+                                .map((v) => v.trim())
+                                .filter(Boolean),
+                            }))
+                          }
+                          className="w-full p-2 border rounded-lg"
+                        />
+                      )}
 
-                            {(attr.options || []).map((opt: string) => (
-                              <option key={opt} value={opt}>
-                                {opt}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+                      {/* SELECT */}
+                      {inputType === "select" && (
+                        <input
+                          type="text"
+                          onChange={(e) =>
+                            setProductAttributes((prev) => ({
+                              ...prev,
+                              [attr.attribute_key]: [e.target.value],
+                            }))
+                          }
+                          className="w-full p-2 border rounded-lg"
+                          placeholder={`Enter ${attr.attribute_label}`}
+                        />
+                      )}
 
-                        {/* NUMBER */}
-                        {inputType === "number" && (
-                          <input
-                            type="number"
-                            required={attr.is_required === 1}
-                            value={
-                              (productAttributes[attr.attribute_key] ||
-                                [])[0] || ""
-                            }
-                            onChange={(e) =>
-                              setProductAttributes((prev) => ({
-                                ...prev,
-                                [attr.attribute_key]: [e.target.value],
-                              }))
-                            }
-                            className="w-full p-2 border rounded-lg"
-                          />
-                        )}
+                      {/* NUMBER */}
+                      {inputType === "number" && (
+                        <input
+                          type="number"
+                          onChange={(e) =>
+                            setProductAttributes((prev) => ({
+                              ...prev,
+                              [attr.attribute_key]: [e.target.value],
+                            }))
+                          }
+                          className="w-full p-2 border rounded-lg"
+                        />
+                      )}
 
-                        {/* TEXT */}
-                        {inputType === "text" && (
-                          <input
-                            type="text"
-                            required={attr.is_required === 1}
-                            value={(
-                              productAttributes[attr.attribute_key] || []
-                            ).join(",")}
-                            onChange={(e) =>
-                              setProductAttributes((prev) => ({
-                                ...prev,
-                                [attr.attribute_key]: [e.target.value],
-                              }))
-                            }
-                            className="w-full p-2 border rounded-lg"
-                          />
-                        )}
+                      {/* TEXT */}
+                      {inputType === "text" && (
+                        <input
+                          type="text"
+                          onChange={(e) =>
+                            setProductAttributes((prev) => ({
+                              ...prev,
+                              [attr.attribute_key]: [e.target.value],
+                            }))
+                          }
+                          className="w-full p-2 border rounded-lg"
+                        />
+                      )}
 
-                        {/* TEXTAREA */}
-                        {inputType === "textarea" && (
-                          <textarea
-                            required={attr.is_required === 1}
-                            value={
-                              (productAttributes[attr.attribute_key] ||
-                                [])[0] || ""
-                            }
-                            onChange={(e) =>
-                              setProductAttributes((prev) => ({
-                                ...prev,
-                                [attr.attribute_key]: [e.target.value],
-                              }))
-                            }
-                            className="w-full p-2 border rounded-lg"
-                            rows={3}
-                            placeholder={attr.attribute_label}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                      {/* TEXTAREA */}
+                      {inputType === "textarea" && (
+                        <textarea
+                          onChange={(e) =>
+                            setProductAttributes((prev) => ({
+                              ...prev,
+                              [attr.attribute_key]: [e.target.value],
+                            }))
+                          }
+                          className="w-full p-2 border rounded-lg"
+                          rows={3}
+                          placeholder={attr.attribute_label}
+                        />
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </section>
 
           {/* Product Description */}

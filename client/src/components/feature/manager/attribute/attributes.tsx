@@ -1,20 +1,10 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Swal from "sweetalert2";
-import {
-  FiEdit,
-  FiTrash2,
-  FiEye,
-  FiPlus,
-  FiX,
-  FiSave,
-  FiLayers,
-  FiTag,
-} from "react-icons/fi";
+import { FiTrash2, FiEye, FiPlus, FiX, FiSave, FiLayers } from "react-icons/fi";
 import { api } from "../../../../api/api";
-import $ from "jquery";
 import "datatables.net";
 import "datatables.net-responsive";
-
+import AttributeValueManager from "./attributeValueManager";
 
 type InputType = "text" | "number" | "select" | "multiselect" | "textarea";
 
@@ -33,9 +23,11 @@ interface Attribute {
   id: number;
   category_id?: number;
   subcategory_id?: number;
+  category_name?: string | null;
+  subcategory_name?: string | null;
   attribute_key: string;
   attribute_label: string;
-  input_type: InputType;
+  input_type: InputType | "";
   is_variant: number;
   is_required: number;
   sort_order: number;
@@ -52,9 +44,30 @@ export default function CategoryAttributeManagement() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<Attribute | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const tableRef = useRef<HTMLTableElement | null>(null);
   const dataTableRef = useRef<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+
+  const filteredAttributes = attributes.filter((a) => {
+    const term = searchTerm.toLowerCase();
+
+    return (
+      a.attribute_key.toLowerCase().includes(term) ||
+      a.attribute_label.toLowerCase().includes(term) ||
+      (a.category_name || "").toLowerCase().includes(term) ||
+      (a.subcategory_name || "").toLowerCase().includes(term) ||
+      (a.input_type || "").toLowerCase().includes(term)
+    );
+  });
+
+  const totalPages = Math.ceil(filteredAttributes.length / rowsPerPage);
+
+  const paginatedAttributes = filteredAttributes.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage,
+  );
 
   const [form, setForm] = useState({
     attribute_key: "",
@@ -93,29 +106,6 @@ export default function CategoryAttributeManagement() {
   };
 
   useEffect(() => {
-    if (!tableRef.current) return;
-    if (attributes.length === 0) return;
-
-    // Wait until React fully paints rows
-    const timer = setTimeout(() => {
-      if (dataTableRef.current) {
-        dataTableRef.current.destroy();
-        dataTableRef.current = null;
-      }
-
-      dataTableRef.current = $(tableRef.current!).DataTable({
-        responsive: true,
-        pageLength: 10,
-        ordering: true,
-        searching: true,
-        columnDefs: [{ orderable: false, targets: 5 }],
-      });
-    }, 300); // <-- important delay
-
-    return () => clearTimeout(timer);
-  }, [attributes]);
-
-  useEffect(() => {
     return () => {
       if (dataTableRef.current) {
         dataTableRef.current.destroy(true);
@@ -131,6 +121,10 @@ export default function CategoryAttributeManagement() {
   useEffect(() => {
     fetchAttributes();
   }, [categoryId, subcategoryId]);
+
+  // useEffect(() => {
+  //   fetchAttributes();
+  // }, []);
 
   /* ------------------ HANDLERS ------------------ */
 
@@ -194,8 +188,10 @@ export default function CategoryAttributeManagement() {
         sort_order: selected.sort_order,
       });
 
-      fetchAttributes();
-      setDrawerOpen(false);
+      await fetchAttributes(); 
+      setSelected(null);
+      setDrawerOpen(false); 
+
       Swal.fire("Updated", "", "success");
     } catch (err: any) {
       Swal.fire("Error", err.response?.data?.message, "error");
@@ -286,12 +282,28 @@ export default function CategoryAttributeManagement() {
         </button>
       </form>
 
+      {/* Search */}
+      <div className="mt-8 flex justify-end">
+        <input
+          type="text"
+          placeholder="Search attributes..."
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="w-80 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#852BAF]"
+        />
+      </div>
+
       {/* TABLE */}
-      <div className="mt-8 bg-white rounded-2xl overflow-hidden">
-        <table ref={tableRef} id="attributeTable" className="w-full display">
-          <thead>
-            <tr className="text-left text-xs uppercase text-gray-400">
-              <th className="px-6 py-4">Key</th>
+      <div className="mt-10 bg-white rounded-2xl shadow-sm border border-gray-100">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-gray-600 uppercase text-xs tracking-wider">
+            <tr>
+              <th className="px-6 py-4">Category</th>
+              <th>Subcategory</th>
+              <th>Key</th>
               <th>Label</th>
               <th>Type</th>
               <th>Variant</th>
@@ -299,27 +311,58 @@ export default function CategoryAttributeManagement() {
               <th className="text-right px-6">Actions</th>
             </tr>
           </thead>
+
           <tbody>
-            {attributes.map((a) => (
-              <tr key={a.id} className="border-t">
-                <td className="px-6 py-4 font-mono">{a.attribute_key}</td>
+            {paginatedAttributes.map((a) => (
+              <tr key={a.id} className="border-t hover:bg-gray-50 transition">
+                <td className="px-6 py-4 font-medium">
+                  {a.category_name || "-"}
+                </td>
+
+                <td>{a.subcategory_name || "-"}</td>
+
+                <td className="font-mono text-gray-700">{a.attribute_key}</td>
                 <td>{a.attribute_label}</td>
-                <td>{a.input_type}</td>
-                <td>{a.is_variant ? "Yes" : "No"}</td>
-                <td>{a.is_required ? "Yes" : "No"}</td>
+                <td>{a.input_type || "-"}</td>
+
+                <td>
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      a.is_variant
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {a.is_variant ? "Yes" : "No"}
+                  </span>
+                </td>
+
+                <td>
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      a.is_required
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {a.is_required ? "Yes" : "No"}
+                  </span>
+                </td>
+
                 <td className="px-6 text-right">
-                  <button className="cursor-pointer"
+                  <button
+                    className="p-2 rounded-lg hover:bg-gray-100 cursor-pointer"
                     onClick={() => {
                       setSelected(a);
                       setDrawerOpen(true);
-                      setIsEditing(false);
                     }}
                   >
                     <FiEye />
                   </button>
+
                   <button
                     onClick={() => handleDelete(a.id)}
-                    className="ml-3 text-red-500 cursor-pointer"
+                    className="ml-2 p-2 rounded-lg hover:bg-red-50 text-red-600 cursor-pointer"
                   >
                     <FiTrash2 />
                   </button>
@@ -328,20 +371,62 @@ export default function CategoryAttributeManagement() {
             ))}
           </tbody>
         </table>
+        <div className="flex justify-between items-center px-6 py-4 bg-gray-50">
+          <div className="text-sm text-gray-600">
+            Showing {(currentPage - 1) * rowsPerPage + 1} to{" "}
+            {Math.min(currentPage * rowsPerPage, attributes.length)} of{" "}
+            {filteredAttributes.length} entries
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => p - 1)}
+              className="px-3 py-1 rounded border disabled:opacity-40 cursor-pointer"
+            >
+              Prev
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`px-3 py-1 rounded border cursor-pointer ${
+                  currentPage === i + 1 ? "bg-[#852BAF] text-white" : "bg-white"
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => p + 1)}
+              className="px-3 py-1 rounded border disabled:opacity-40 cursor-pointer"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* DRAWER */}
       {drawerOpen && selected && (
-        <div className="fixed inset-0 bg-black/20 flex justify-end">
-          <div className="w-[420px] bg-white p-6">
-            <button onClick={() => setDrawerOpen(false)}>
-              <FiX />
-            </button>
+        <div className="fixed inset-0 bg-black/20 flex justify-end z-50">
+          <div className="w-[420px] h-screen bg-white flex flex-col shadow-xl">
+            {/* Header */}
+            <div className="p-6 border-b flex justify-between items-center">
+              <h2 className="text-xl font-bold">Edit Attribute</h2>
+              <button
+                className="cursor-pointer"
+                onClick={() => setDrawerOpen(false)}
+              >
+                <FiX />
+              </button>
+            </div>
 
-            <h2 className="text-xl font-bold mt-4">Edit Attribute</h2>
-
-            <div className="mt-6 space-y-4">
-              {/* Label (readonly) */}
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div>
                 <label className="text-xs text-gray-500">Attribute Label</label>
                 <input
@@ -356,7 +441,6 @@ export default function CategoryAttributeManagement() {
                 />
               </div>
 
-              {/* Is Variant */}
               <div className="flex items-center justify-between">
                 <label className="font-medium">Is Variant Attribute</label>
                 <input
@@ -368,11 +452,10 @@ export default function CategoryAttributeManagement() {
                       is_variant: e.target.checked ? 1 : 0,
                     })
                   }
-                  className="w-5 h-5"
+                  className="w-5 h-5 cursor-pointer"
                 />
               </div>
 
-              {/* Is Required */}
               <div className="flex items-center justify-between">
                 <label className="font-medium">Is Required</label>
                 <input
@@ -384,11 +467,10 @@ export default function CategoryAttributeManagement() {
                       is_required: e.target.checked ? 1 : 0,
                     })
                   }
-                  className="w-5 h-5"
+                  className="w-5 h-5 cursor-pointer"
                 />
               </div>
 
-              {/* Sort Order */}
               <div>
                 <label className="text-xs text-gray-500">Sort Order</label>
                 <input
@@ -403,14 +485,22 @@ export default function CategoryAttributeManagement() {
                   className="w-full px-4 py-3 rounded-xl"
                 />
               </div>
+
+              {(selected.input_type === "select" ||
+                selected.input_type === "multiselect") && (
+                <AttributeValueManager attributeId={selected.id} />
+              )}
             </div>
 
-            <button
-              onClick={handleSave}
-              className="mt-8 w-full bg-[#852BAF] text-white py-3 rounded-xl flex items-center justify-center gap-2"
-            >
-              <FiSave /> Save Changes
-            </button>
+            {/* Footer */}
+            <div className="p-6 border-t">
+              <button
+                onClick={handleSave}
+                className="w-full bg-[#852BAF] text-white py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <FiSave /> Save Changes
+              </button>
+            </div>
           </div>
         </div>
       )}

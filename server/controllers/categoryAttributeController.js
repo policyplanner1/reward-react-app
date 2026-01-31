@@ -10,8 +10,8 @@ class CategoryAttributeController {
       const { category_id, subcategory_id } = req.query;
 
       const rows = await CategoryAttributeModel.list({
-        category_id,
         subcategory_id,
+        category_id,
       });
 
       return res.json({ success: true, data: rows });
@@ -43,19 +43,12 @@ class CategoryAttributeController {
         });
       }
 
-      if (!category_id && !subcategory_id) {
+      if (!subcategory_id) {
         return res.status(400).json({
           success: false,
-          message: "Either category_id or subcategory_id is required",
+          message: "sub category is required",
         });
       }
-
-      // if (category_id && subcategory_id) {
-      //   return res.status(400).json({
-      //     success: false,
-      //     message: "Provide only one: category_id OR subcategory_id",
-      //   });
-      // }
 
       if (!ALLOWED_TYPES.includes(input_type)) {
         return res.status(400).json({
@@ -65,7 +58,6 @@ class CategoryAttributeController {
       }
 
       const exists = await CategoryAttributeModel.exists({
-        category_id,
         subcategory_id,
         attribute_key,
       });
@@ -147,6 +139,71 @@ class CategoryAttributeController {
     } catch (error) {
       console.error(error);
       return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // Bulk Insert values
+  async bulkInsert(req, res) {
+    const { attribute_id, values } = req.body;
+
+    await db.query(
+      `DELETE FROM category_attribute_values WHERE attribute_id = ?`,
+      [attribute_id],
+    );
+
+    for (let i = 0; i < values.length; i++) {
+      await db.query(
+        `INSERT INTO category_attribute_values (attribute_id, value, sort_order)
+       VALUES (?, ?, ?)`,
+        [attribute_id, values[i], i + 1],
+      );
+    }
+
+    res.json({ success: true });
+  }
+
+  // get attribute value
+  async listByAttribute(req, res) {
+    try {
+      const { attributeId } = req.params;
+
+      const values = await CategoryAttributeModel.listByAttribute(attributeId);
+
+      res.json({ success: true, data: values });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  // delete attribute value
+  async deleteValue(req, res) {
+    try {
+      const { attribute_id, value } = req.body;
+
+      if (!attribute_id || !value) {
+        return res.status(400).json({
+          success: false,
+          message: "attribute_id and value required",
+        });
+      }
+
+      const deleted = await CategoryAttributeModel.deleteValue(
+        attribute_id,
+        value,
+      );
+
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: "Value not found",
+        });
+      }
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ success: false, message: err.message });
     }
   }
 }

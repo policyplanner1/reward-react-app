@@ -14,8 +14,7 @@ class cartModel {
         p.product_name,
 
         v.variant_id,
-        v.size,
-        v.color,
+        v.variant_attributes,
         v.mrp,
         v.sale_price,
 
@@ -57,6 +56,15 @@ class cartModel {
         });
       }
 
+      let attributes = {};
+
+      if (row.variant_attributes) {
+        try {
+          attributes = JSON.parse(row.variant_attributes);
+        } catch (e) {
+          attributes = {};
+        }
+      }
       cartTotal += Number(row.item_total);
 
       return {
@@ -67,8 +75,7 @@ class cartModel {
         product_name: row.product_name,
         image: images.length ? images[0].image_url : null,
 
-        size: row.size,
-        color: row.color,
+        attributes,
 
         mrp: row.mrp,
         sale_price: row.sale_price,
@@ -91,7 +98,7 @@ class cartModel {
       FROM product_variants
       WHERE variant_id = ? AND product_id = ?
       `,
-      [variantId, productId]
+      [variantId, productId],
     );
 
     if (!variant) {
@@ -110,7 +117,7 @@ class cartModel {
       ON DUPLICATE KEY UPDATE
         quantity = quantity + VALUES(quantity)
       `,
-      [userId, productId, variantId, quantity]
+      [userId, productId, variantId, quantity],
     );
 
     return true;
@@ -126,7 +133,7 @@ class cartModel {
       FROM product_variants
       WHERE variant_id = ?
       `,
-      [variantId]
+      [variantId],
     );
 
     if (!row) {
@@ -154,7 +161,7 @@ class cartModel {
         ON ci.variant_id = v.variant_id
       WHERE ci.cart_item_id = ? AND ci.user_id = ?
       `,
-      [cartItemId, userId]
+      [cartItemId, userId],
     );
 
     if (!row) {
@@ -181,7 +188,7 @@ class cartModel {
       SET quantity = ?
       WHERE cart_item_id = ?
       `,
-      [quantity, cartItemId]
+      [quantity, cartItemId],
     );
 
     return { updated: true };
@@ -194,7 +201,7 @@ class cartModel {
       DELETE FROM cart_items
       WHERE cart_item_id = ? AND user_id = ?
       `,
-      [cartItemId, userId]
+      [cartItemId, userId],
     );
 
     if (result.affectedRows === 0) {
@@ -211,7 +218,7 @@ class cartModel {
       DELETE FROM cart_items
       WHERE user_id = ?
       `,
-      [userId]
+      [userId],
     );
 
     return true;

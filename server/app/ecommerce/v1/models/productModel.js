@@ -18,6 +18,8 @@ class ProductModel {
       }
 
       conditions.push("p.status = 'approved'");
+      conditions.push("p.is_visible = 1");
+      conditions.push("p.is_searchable = 1");
 
       const whereClause = conditions.length
         ? `WHERE ${conditions.join(" AND ")}`
@@ -66,6 +68,7 @@ class ProductModel {
               MIN(sale_price) AS min_sale_price
             FROM product_variants
             WHERE sale_price IS NOT NULL
+              AND is_visible = 1
             GROUP BY product_id
           ) minv
             ON pv.product_id = minv.product_id
@@ -73,9 +76,12 @@ class ProductModel {
           INNER JOIN (
             SELECT product_id, MIN(variant_id) AS min_variant_id
             FROM product_variants
+            WHERE is_visible = 1
             GROUP BY product_id
           ) tie
             ON pv.product_id = tie.product_id
+            AND pv.variant_id = tie.min_variant_id
+            WHERE pv.is_visible = 1
         ) v ON p.product_id = v.product_id
 
 
@@ -178,11 +184,11 @@ class ProductModel {
 
       // 3 Get product variants
       const [variants] = await db.execute(
-        `SELECT * FROM product_variants WHERE product_id = ?`,
+        `SELECT * FROM product_variants WHERE product_id = ? AND is_visible = 1`,
         [productId],
       );
 
-      const attributeMap = {}; 
+      const attributeMap = {};
 
       for (const variant of variants) {
         variant.variant_attributes = JSON.parse(
@@ -615,7 +621,6 @@ class ProductModel {
     });
   }
 
- 
   async getSimilarProducts({
     productId,
     categoryId,

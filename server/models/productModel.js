@@ -132,24 +132,104 @@ class ProductModel {
   }
 
   async getVariantAttributeKeys(connection, categoryId, subcategoryId) {
+    const safe = (v) => (v === undefined ? null : v);
+
     const [rows] = await connection.execute(
       `
-    SELECT attribute_key
-    FROM category_attributes
-    WHERE is_variant = 1
-      AND (
-        subcategory_id = ?
-        OR (category_id = ? AND subcategory_id IS NULL)
-      )
-    ORDER BY sort_order
-    `,
-      [subcategoryId, categoryId],
+  SELECT attribute_key
+  FROM category_attributes
+  WHERE is_variant = 1
+    AND (
+      subcategory_id = ?
+      OR (category_id = ? AND subcategory_id IS NULL)
+    )
+  ORDER BY sort_order
+  `,
+      [safe(subcategoryId), safe(categoryId)],
     );
 
     return rows.map((r) => r.attribute_key);
   }
 
   // generate product variants
+  // async generateProductVariants(
+  //   connection,
+  //   productId,
+  //   categoryId,
+  //   subcategoryId,
+  // ) {
+  //   if (!categoryId && !subcategoryId) {
+  //     return;
+  //   }
+
+  //   const [[row]] = await connection.execute(
+  //     `SELECT attributes FROM product_attributes WHERE product_id = ?`,
+  //     [productId],
+  //   );
+
+  //   if (!row) return;
+
+  //   const allAttributes =
+  //     typeof row.attributes === "string"
+  //       ? JSON.parse(row.attributes)
+  //       : row.attributes;
+
+  //   const normalize = (arr) =>
+  //     arr.flatMap((v) =>
+  //       typeof v === "string"
+  //         ? v
+  //             .split(",")
+  //             .map((x) => x.trim())
+  //             .filter(Boolean)
+  //         : v,
+  //     );
+
+  //   const variantKeys = await this.getVariantAttributeKeys(
+  //     connection,
+  //     categoryId,
+  //     subcategoryId,
+  //   );
+
+  //   const variantAttributes = {};
+  //   variantKeys.forEach((k) => {
+  //     if (Array.isArray(allAttributes[k])) {
+  //       const normalized = normalize(allAttributes[k]);
+  //       if (normalized.length) {
+  //         variantAttributes[k] = normalized;
+  //       }
+  //     }
+  //   });
+
+  //   if (!Object.keys(variantAttributes).length) return;
+
+  //   const combinations = generateCombinations(variantAttributes);
+
+  //   for (const combo of combinations) {
+  //     const comboJson = JSON.stringify(combo);
+
+  //     const [exists] = await connection.execute(
+  //       `SELECT variant_id
+  //      FROM product_variants
+  //      WHERE product_id = ?
+  //        AND variant_attributes = ?`,
+  //       [productId, comboJson],
+  //     );
+
+  //     if (exists.length) continue;
+
+  //     const sku = await generateUniqueSKU(connection, productId);
+
+  //     if (!sku) throw new Error("SKU generation failed");
+
+  //     await connection.execute(
+  //       `INSERT INTO product_variants
+  //      (product_id, variant_attributes, sku, stock)
+  //      VALUES (?, ?, ?, 0)`,
+  //       [productId, comboJson, sku],
+  //     );
+  //   }
+  // }
+
   async generateProductVariants(
     connection,
     productId,
@@ -161,12 +241,13 @@ class ProductModel {
       [productId],
     );
 
-    if (!row) return;
-
-    const allAttributes =
-      typeof row.attributes === "string"
-        ? JSON.parse(row.attributes)
-        : row.attributes;
+    let allAttributes = {};
+    if (row && row.attributes) {
+      allAttributes =
+        typeof row.attributes === "string"
+          ? JSON.parse(row.attributes)
+          : row.attributes;
+    }
 
     const normalize = (arr) =>
       arr.flatMap((v) =>
@@ -178,11 +259,15 @@ class ProductModel {
           : v,
       );
 
-    const variantKeys = await this.getVariantAttributeKeys(
-      connection,
-      categoryId,
-      subcategoryId,
-    );
+    // Get variant keys only if category/subcategory exist
+    let variantKeys = [];
+    if (categoryId || subcategoryId) {
+      variantKeys = await this.getVariantAttributeKeys(
+        connection,
+        categoryId,
+        subcategoryId,
+      );
+    }
 
     const variantAttributes = {};
     variantKeys.forEach((k) => {
@@ -194,30 +279,51 @@ class ProductModel {
       }
     });
 
-    if (!Object.keys(variantAttributes).length) return;
+    // CASE 1: Real variant combinations
+    if (Object.keys(variantAttributes).length) {
+      const combinations = generateCombinations(variantAttributes);
 
-    const combinations = generateCombinations(variantAttributes);
+      for (const combo of combinations) {
+        const comboJson = JSON.stringify(combo);
 
-    for (const combo of combinations) {
-      const comboJson = JSON.stringify(combo);
+        const [exists] = await connection.execute(
+          `SELECT variant_id
+         FROM product_variants
+         WHERE product_id = ?
+           AND variant_attributes = ?`,
+          [productId, comboJson],
+        );
 
-      const [exists] = await connection.execute(
-        `SELECT variant_id
-       FROM product_variants
-       WHERE product_id = ?
-         AND variant_attributes = ?`,
-        [productId, comboJson],
-      );
+        if (exists.length) continue;
 
-      if (exists.length) continue;
+        const sku = await generateUniqueSKU(connection, productId);
+        if (!sku) throw new Error("SKU generation failed");
 
+        await connection.execute(
+          `INSERT INTO product_variants
+         (product_id, variant_attributes, sku, stock)
+         VALUES (?, ?, ?, 0)`,
+          [productId, comboJson, sku],
+        );
+      }
+    }
+
+    // CASE 2: Fallback single variant (VERY IMPORTANT)
+    const [existing] = await connection.execute(
+      `SELECT variant_id FROM product_variants WHERE product_id = ?`,
+      [productId],
+    );
+
+    if (!existing.length) {
       const sku = await generateUniqueSKU(connection, productId);
 
       await connection.execute(
-        `INSERT INTO product_variants
-       (product_id, variant_attributes, sku, stock)
-       VALUES (?, ?, ?, 0)`,
-        [productId, comboJson, sku],
+        `
+      INSERT INTO product_variants
+      (product_id, variant_attributes, sku, stock)
+      VALUES (?, ?, ?, 0)
+      `,
+        [productId, JSON.stringify({}), sku],
       );
     }
   }
@@ -248,6 +354,8 @@ class ProductModel {
     for (const file of files) {
       const docId = parseInt(file.fieldname);
       if (!validDocumentIds.includes(docId)) continue;
+
+      if (!file.mimetype) continue;
 
       await connection.execute(
         `INSERT INTO product_documents 
@@ -447,6 +555,29 @@ class ProductModel {
         safe(data.shipping_class),
         productId,
       ],
+    );
+
+    //1.2 update attributes
+    if (data.attributes) {
+      const attributes =
+        typeof data.attributes === "string"
+          ? JSON.parse(data.attributes)
+          : data.attributes;
+
+      await connection.execute(
+        `UPDATE product_attributes
+     SET attributes = ?
+     WHERE product_id = ?`,
+        [JSON.stringify(attributes), productId],
+      );
+    }
+
+    // 1.3---------- REGENERATE VARIANTS AFTER ATTRIBUTE CHANGE ----------
+    await this.generateProductVariants(
+      connection,
+      productId,
+      data.category_id,
+      data.subcategory_id,
     );
 
     // ---------- 2. PROCESS FILES ----------

@@ -1,0 +1,20 @@
+//webhook url
+https://rewardplanners.com/api/payments/webhook
+
+and then
+Copy webhook secret →
+
+
+//frontend after Razorpay closes → call this API.
+router.get('payment-status/:orderId',PaymentController.paymentStatus)
+
+
+//edge cases to test
+Action	                        Expected DB result
+
+Successful payment	            order_payments = success, eorders = paid
+Failed payment	                order_payments = failed
+Retry payment	                new row created
+Close tab after paying	        webhook still marks paid
+
+
