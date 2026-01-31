@@ -8,7 +8,7 @@ declare global {
 }
 
 const Payment: React.FC = () => {
-  const orderId = 101; // later this comes from real checkout/order
+  const orderId = 101; 
 
   const handlePayment = async () => {
     try {
