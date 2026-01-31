@@ -30,13 +30,13 @@ const Payment: React.FC = () => {
         description: "Test Payment",
 
         handler: async function (response: any) {
-          await axios.post("/payment/verify-payment", response);
+          await axios.post("http://localhost:5000/payment/verify-payment", response);
 
           let attempts = 0;
 
           const checkStatus = async () => {
             const statusRes = await axios.get(
-              `http://localhost:5000/api/orders/${orderId}/payment-status`,
+              `http://localhost:5000/payment/payment-status/${orderId}`,
             );
 
             if (statusRes.data.status === "paid") {
