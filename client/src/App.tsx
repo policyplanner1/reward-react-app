@@ -40,6 +40,7 @@ import VendorApprovalList from "./components/feature/manager/vendor/VendorApprov
 import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprovalForm";
 import NotFoundPage from "./pages/NotFound";
 import AttributeManagement from "./components/feature/manager/attribute/attributes";
+import Payment from "./payment";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />
+        <Route path="/test-payment" element={<Payment />} />
       </Route>
 
       {/* ========== VENDOR ========== */}
