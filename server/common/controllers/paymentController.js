@@ -1,6 +1,7 @@
 const PaymentModel = require("../models/paymentModel");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
+const db = require("../../config/database");
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZOR_API_KEY,
@@ -14,6 +15,20 @@ class PaymentController {
 
     if (!orderId || !amount) {
       return res.status(400).json({ message: "orderId and amount required" });
+    }
+
+    // check if already paid
+    const existing = await db.query(
+      `SELECT * FROM order_payments 
+        WHERE order_id = ? AND status = 'success' 
+        LIMIT 1`,
+      [orderId],
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({
+        message: "Order already paid",
+      });
     }
 
     const razorpayOrder = await razorpay.orders.create({
@@ -53,14 +68,48 @@ class PaymentController {
         return res.status(400).json({ status: "invalid signature" });
       }
 
-      // Optional: update payment status here
-      // await PaymentModel.updateStatus(razorpay_order_id, 'paid');
+      // check status
+      const [payment] = await db.query(
+        `SELECT status, order_id 
+       FROM order_payments 
+       WHERE razorpay_order_id = ?`,
+        [razorpay_order_id],
+      );
 
-      res.json({ status: "success" });
+      if (!payment) {
+        return res.status(404).json({ status: "payment not found" });
+      }
+
+      // If webhook already updated
+      if (payment.status === "success") {
+        return res.json({
+          status: "success",
+          orderId: payment.order_id,
+        });
+      }
+
+      return res.json({
+        status: "pending",
+        message: "Waiting for confirmation",
+      });
     } catch (error) {
       console.error("Verify Payment Error:", error);
       res.status(500).json({ message: "Payment verification failed" });
     }
+  }
+
+  // payment status
+  async paymentStatus(req, res) {
+    const { orderId } = req.params;
+
+    const [order] = await db.query(
+      `SELECT status FROM eorders WHERE order_id = ?`,
+      [orderId],
+    );
+
+    return res.json({
+      paymentStatus: order.status,
+    });
   }
 }
 
