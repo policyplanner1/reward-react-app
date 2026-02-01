@@ -313,7 +313,7 @@ export default function ReviewProductPage() {
             <h1 className="mb-1 text-3xl font-bold text-gray-900">
               Product Review
             </h1>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm font-bold text-gray-900">
               Viewing product ID: {product.productId}
             </div>
           </div>
