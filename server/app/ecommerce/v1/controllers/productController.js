@@ -30,27 +30,29 @@ class ProductController {
             ? product.images[0].image_url
             : null;
 
+        const salePrice = product.sale_price ? Number(product.sale_price) : 0;
+
+        const discountPercent = product.reward_redemption_limit
+          ? Number(product.reward_redemption_limit)
+          : 0;
+
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+
+        const finalPrice = salePrice - discountAmount;
+
         return {
           id: product.product_id,
           title: product.product_name,
           brand: product.brand_name,
           image: mainImage,
 
-          // Variant pricing
-          price: product.sale_price
-            ? `₹${Number(product.sale_price).toFixed(0)}`
-            : null,
-
-          originalPrice: product.mrp
-            ? `₹${Number(product.mrp).toFixed(0)}`
-            : null,
-
-          // Dummy values
-          discount: "40%",
+          price: salePrice ? `₹${salePrice}` : null,
+          originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
+          discount: `${discountPercent}%`,
           rating: 4.6,
           reviews: "18.9K",
-          pointsPrice: "₹3,736",
-          points: 264,
+          pointsPrice: salePrice ? `₹${finalPrice}` : null,
+          points: discountAmount,
         };
       });
 
@@ -266,14 +268,14 @@ class ProductController {
         c.category_name 
         FROM categories c 
         where c.status = 1
-        ORDER BY c.category_name ASC`
+        ORDER BY c.category_name ASC`,
       );
 
       const processedCategories = rows.map((category) => ({
         id: category.category_id,
         name: category.category_name,
         image: `https://via.placeholder.com/150?text=${encodeURIComponent(
-          category.category_name
+          category.category_name,
         )}`,
       }));
 
@@ -304,14 +306,14 @@ class ProductController {
           sc.subcategory_name
         FROM sub_categories sc 
         WHERE sc.category_id = ? AND sc.status = 1`,
-        [categoryId]
+        [categoryId],
       );
 
       const processedSubCategories = data.map((subcategory) => ({
         id: subcategory.subcategory_id,
         name: subcategory.subcategory_name,
         image: `https://via.placeholder.com/150?text=${encodeURIComponent(
-          subcategory.subcategory_name
+          subcategory.subcategory_name,
         )}`,
       }));
 
@@ -445,7 +447,7 @@ class ProductController {
       VALUES (?, ?)
       ON DUPLICATE KEY UPDATE created_at = CURRENT_TIMESTAMP
       `,
-        [userId, keyword]
+        [userId, keyword],
       );
 
       return res.json({ success: true });
@@ -471,7 +473,7 @@ class ProductController {
       ORDER BY created_at DESC
       LIMIT 10
       `,
-        [userId]
+        [userId],
       );
 
       return res.json({
