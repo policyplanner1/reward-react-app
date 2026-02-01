@@ -40,15 +40,20 @@ class ProductController {
 
         const finalPrice = salePrice - discountAmount;
 
+        // extra discount
+        const mrp = product.mrp ? Number(product.mrp) : 0;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
         return {
           id: product.product_id,
           title: product.product_name,
           brand: product.brand_name,
           image: mainImage,
-
           price: salePrice ? `₹${salePrice}` : null,
           originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
-          discount: `${discountPercent}%`,
+          discount: `${mrpDiscountPercent}%`,
           rating: 4.6,
           reviews: "18.9K",
           pointsPrice: salePrice ? `₹${finalPrice}` : null,
