@@ -96,7 +96,7 @@ class cartModel {
         mrp: row.mrp,
         sale_price: salePrice,
         quantity,
-
+        perUnitDiscount: Number(row.mrp - salePrice),
         item_total: itemTotal,
         points: rewardDiscountAmount,
         final_item_total: finalItemTotal,

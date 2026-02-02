@@ -246,7 +246,7 @@ class CheckoutModel {
         mrp: row.mrp,
         price: salePrice,
         quantity,
-
+        perUnitDiscount: Number(row.mrp) - salePrice,
         item_total: itemTotal,
         points: rewardDiscountAmount,
         final_item_total: finalItemTotal,
@@ -270,6 +270,7 @@ class CheckoutModel {
       p.product_id,
       p.product_name,
       v.variant_id,
+      v.mrp,
       v.sale_price,
       v.stock,
       v.reward_redemption_limit,
@@ -308,7 +309,7 @@ class CheckoutModel {
         image: row.images ? row.images.split(",")[0] : null,
         price: salePrice,
         quantity,
-
+        perUnitDiscount: Number((row.mrp) - salePrice),
         item_total: itemTotal,
         points: rewardDiscountAmount,
         final_item_total: finalItemTotal,
