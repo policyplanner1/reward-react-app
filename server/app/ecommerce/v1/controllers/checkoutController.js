@@ -15,27 +15,27 @@ class CheckoutController {
 
       const orderId = await CheckoutModel.checkoutCart(userId, companyId);
 
-      // ✅ Fetch order + customer info for WhatsApp
-      const orderCtx = await getOrderWhatsAppContext(orderId);
+      // WhatsApp notification
+      // const orderCtx = await getOrderWhatsAppContext(orderId);
 
-      if (orderCtx?.phone) {
-        // ✅ enqueue (non-blocking)
-        enqueueWhatsApp({
-          eventName: "ORDER_PLACED",
-          ctx: {
-            phone: orderCtx.phone,
-            company_id: orderCtx.company_id ?? companyId ?? null,
-            customer_name: orderCtx.customer_name || "User",
-            order_id: orderCtx.order_id,
-            total_amount: orderCtx.total_amount,
-          },
-        }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
-      } else {
-        console.warn(
-          "WA not enqueued: missing customer phone for order:",
-          orderId,
-        );
-      }
+      // if (orderCtx?.phone) {
+      //   // ✅ enqueue (non-blocking)
+      //   enqueueWhatsApp({
+      //     eventName: "ORDER_PLACED",
+      //     ctx: {
+      //       phone: orderCtx.phone,
+      //       company_id: orderCtx.company_id ?? companyId ?? null,
+      //       customer_name: orderCtx.customer_name || "User",
+      //       order_id: orderCtx.order_id,
+      //       total_amount: orderCtx.total_amount,
+      //     },
+      //   }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
+      // } else {
+      //   console.warn(
+      //     "WA not enqueued: missing customer phone for order:",
+      //     orderId,
+      //   );
+      // }
 
       return res.json({
         success: true,
@@ -80,26 +80,26 @@ class CheckoutController {
         companyId: company_id || null,
       });
 
-      // ✅ Fetch order + customer info for WhatsApp
-      const orderCtx = await getOrderWhatsAppContext(orderId);
+      // WhatsApp Notification
+      // const orderCtx = await getOrderWhatsAppContext(orderId);
 
-      if (orderCtx?.phone) {
-        enqueueWhatsApp({
-          eventName: "ORDER_PLACED",
-          ctx: {
-            phone: orderCtx.phone,
-            company_id: orderCtx.company_id ?? company_id ?? null,
-            customer_name: orderCtx.customer_name || "User",
-            order_id: orderCtx.order_id,
-            total_amount: orderCtx.total_amount,
-          },
-        }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
-      } else {
-        console.warn(
-          "WA not enqueued: missing customer phone for order:",
-          orderId,
-        );
-      }
+      // if (orderCtx?.phone) {
+      //   enqueueWhatsApp({
+      //     eventName: "ORDER_PLACED",
+      //     ctx: {
+      //       phone: orderCtx.phone,
+      //       company_id: orderCtx.company_id ?? company_id ?? null,
+      //       customer_name: orderCtx.customer_name || "User",
+      //       order_id: orderCtx.order_id,
+      //       total_amount: orderCtx.total_amount,
+      //     },
+      //   }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
+      // } else {
+      //   console.warn(
+      //     "WA not enqueued: missing customer phone for order:",
+      //     orderId,
+      //   );
+      // }
 
       return res.json({
         success: true,
@@ -233,28 +233,28 @@ class CheckoutController {
   }
 }
 
-async function getOrderWhatsAppContext(orderId) {
-  const [rows] = await db.execute(
-    `
-    SELECT 
-      o.order_ref,
-      o.company_id,
-      o.total_amount,
-      o.user_id,
-      cu.name AS customer_name,
+// async function getOrderWhatsAppContext(orderId) {
+//   const [rows] = await db.execute(
+//     `
+//     SELECT 
+//       o.order_ref,
+//       o.company_id,
+//       o.total_amount,
+//       o.user_id,
+//       cu.name AS customer_name,
 
-      -- IMPORTANT: change this column name as per your table
-      cu.phone AS phone
+//       -- IMPORTANT: change this column name as per your table
+//       cu.phone AS phone
 
-    FROM eorders o
-    JOIN customer cu ON cu.user_id = o.user_id
-    WHERE o.order_id = ?
-    LIMIT 1
-    `,
-    [orderId],
-  );
+//     FROM eorders o
+//     JOIN customer cu ON cu.user_id = o.user_id
+//     WHERE o.order_id = ?
+//     LIMIT 1
+//     `,
+//     [orderId],
+//   );
 
-  return rows[0] || null;
-}
+//   return rows[0] || null;
+// }
 
 module.exports = new CheckoutController();
