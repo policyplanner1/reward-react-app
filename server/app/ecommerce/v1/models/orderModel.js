@@ -43,6 +43,7 @@ class orderModel {
       `
         SELECT
         o.order_id,
+        o.order_ref,
         o.total_amount,
         o.status,
         o.created_at,
@@ -111,6 +112,7 @@ class orderModel {
       `
       SELECT
         order_id,
+        order_ref,
         total_amount,
         status,
         created_at
@@ -173,6 +175,7 @@ class orderModel {
       `
     SELECT 
       o.order_id,
+      o.order_ref,
       o.address_id,
       o.status, 
       o.total_amount,
