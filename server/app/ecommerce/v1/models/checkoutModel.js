@@ -2,6 +2,13 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 
+function generateOrderRef() {
+  const date = new Date();
+  const ymd = date.toISOString().slice(0, 10).replace(/-/g, "");
+  const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `ORD-${ymd}-${rand}`;
+}
+
 class CheckoutModel {
   async checkoutCart(userId, companyId = null) {
     const conn = await db.getConnection();
@@ -22,7 +29,7 @@ class CheckoutModel {
         JOIN product_variants v ON ci.variant_id = v.variant_id
         WHERE ci.user_id = ?
         `,
-        [userId]
+        [userId],
       );
 
       if (cartItems.length === 0) {
@@ -39,16 +46,18 @@ class CheckoutModel {
       // 3 Calculate total
       const totalAmount = cartItems.reduce(
         (sum, i) => sum + i.quantity * i.sale_price,
-        0
+        0,
       );
 
       // 4 Create order
+      const orderRef = generateOrderRef();
+
       const [orderRes] = await conn.execute(
         `
-        INSERT INTO eorders (user_id, company_id, total_amount)
-        VALUES (?, ?, ?)
+        INSERT INTO eorders (user_id, company_id, total_amount,order_ref)
+        VALUES (?, ?, ?, ?)
         `,
-        [userId, companyId, totalAmount]
+        [userId, companyId, totalAmount, orderRef],
       );
 
       const orderId = orderRes.insertId;
@@ -67,7 +76,7 @@ class CheckoutModel {
             item.variant_id,
             item.quantity,
             item.sale_price,
-          ]
+          ],
         );
 
         // 6 Deduct stock
@@ -77,7 +86,7 @@ class CheckoutModel {
           SET stock = stock - ?
           WHERE variant_id = ?
           `,
-          [item.quantity, item.variant_id]
+          [item.quantity, item.variant_id],
         );
       }
 
@@ -107,7 +116,7 @@ class CheckoutModel {
       FROM product_variants
       WHERE variant_id = ? AND product_id = ?
       `,
-        [variantId, productId]
+        [variantId, productId],
       );
 
       if (!variant) {
@@ -121,12 +130,15 @@ class CheckoutModel {
       const totalAmount = quantity * variant.sale_price;
 
       // 2 Create order
+
+      const orderRef = generateOrderRef();
+
       const [orderRes] = await conn.execute(
         `
-      INSERT INTO eorders (user_id, company_id, total_amount)
-      VALUES (?, ?, ?)
+      INSERT INTO eorders (user_id, company_id, total_amount, order_ref)
+      VALUES (?, ?, ?, ?)
       `,
-        [userId, companyId, totalAmount]
+        [userId, companyId, totalAmount, orderRef],
       );
 
       const orderId = orderRes.insertId;
@@ -138,7 +150,7 @@ class CheckoutModel {
         (order_id, product_id, variant_id, quantity, price)
       VALUES (?, ?, ?, ?, ?)
       `,
-        [orderId, productId, variantId, quantity, variant.sale_price]
+        [orderId, productId, variantId, quantity, variant.sale_price],
       );
 
       // 4 Deduct stock
@@ -148,7 +160,7 @@ class CheckoutModel {
       SET stock = stock - ?
       WHERE variant_id = ?
       `,
-        [quantity, variantId]
+        [quantity, variantId],
       );
 
       await conn.commit();
@@ -192,7 +204,7 @@ class CheckoutModel {
       WHERE ci.user_id = ?
       GROUP BY ci.cart_item_id
       `,
-      [userId]
+      [userId],
     );
 
     if (rows.length === 0) {
@@ -245,7 +257,7 @@ class CheckoutModel {
     WHERE v.variant_id = ? AND p.product_id = ?
     GROUP BY v.variant_id
     `,
-      [variantId, productId]
+      [variantId, productId],
     );
 
     if (!row) {
@@ -287,7 +299,7 @@ class CheckoutModel {
     WHERE v.variant_id = ? AND p.product_id = ?
     GROUP BY v.variant_id
     `,
-      [variantId, productId]
+      [variantId, productId],
     );
 
     if (!row) {
@@ -320,6 +332,7 @@ class CheckoutModel {
       `
     SELECT 
       o.order_id,
+      o.order_ref,
       o.address_id,
       o.total_amount,
       o.created_at,
@@ -348,7 +361,7 @@ class CheckoutModel {
     WHERE o.order_id = ?
       AND o.user_id = ?
     `,
-      [orderId, userId]
+      [orderId, userId],
     );
 
     if (!order) {
@@ -377,7 +390,7 @@ class CheckoutModel {
     JOIN eproducts p ON oi.product_id = p.product_id
     WHERE oi.order_id = ?
     `,
-      [orderId]
+      [orderId],
     );
 
     const itemTotal = items.reduce((sum, i) => sum + i.quantity * i.price, 0);
