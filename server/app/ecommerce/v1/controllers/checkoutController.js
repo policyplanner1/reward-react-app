@@ -1,5 +1,8 @@
 const CheckoutModel = require("../models/checkoutModel");
 const db = require("../../../../config/database");
+const {
+  enqueueWhatsApp,
+} = require("../../../../services/whatsapp/waEnqueueService");
 const fs = require("fs");
 const path = require("path");
 
@@ -7,15 +10,32 @@ class CheckoutController {
   // checkout cart Items
   async checkoutCart(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1; // Temporary hardcoded user ID for testing
-
+      const userId = 1; // temporary
       const companyId = req.body?.company_id ?? null;
 
-      const orderId = await CheckoutModel.checkoutCart(
-        userId,
-        companyId
-      );
+      const orderId = await CheckoutModel.checkoutCart(userId, companyId);
+
+      // ✅ Fetch order + customer info for WhatsApp
+      const orderCtx = await getOrderWhatsAppContext(orderId);
+
+      if (orderCtx?.phone) {
+        // ✅ enqueue (non-blocking)
+        enqueueWhatsApp({
+          eventName: "ORDER_PLACED",
+          ctx: {
+            phone: orderCtx.phone,
+            company_id: orderCtx.company_id ?? companyId ?? null,
+            customer_name: orderCtx.customer_name || "User",
+            order_id: orderCtx.order_id,
+            total_amount: orderCtx.total_amount,
+          },
+        }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
+      } else {
+        console.warn(
+          "WA not enqueued: missing customer phone for order:",
+          orderId,
+        );
+      }
 
       return res.json({
         success: true,
@@ -48,15 +68,9 @@ class CheckoutController {
   // checkout buy now Items
   async buyNow(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1; // Temporary hardcoded user ID for testing
+      const userId = 1;
 
-      const {
-        product_id,
-        variant_id,
-        quantity = 1,
-        company_id,
-      } = req.body;
+      const { product_id, variant_id, quantity = 1, company_id } = req.body;
 
       const orderId = await CheckoutModel.buyNow({
         userId,
@@ -65,6 +79,27 @@ class CheckoutController {
         quantity,
         companyId: company_id || null,
       });
+
+      // ✅ Fetch order + customer info for WhatsApp
+      const orderCtx = await getOrderWhatsAppContext(orderId);
+
+      if (orderCtx?.phone) {
+        enqueueWhatsApp({
+          eventName: "ORDER_PLACED",
+          ctx: {
+            phone: orderCtx.phone,
+            company_id: orderCtx.company_id ?? company_id ?? null,
+            customer_name: orderCtx.customer_name || "User",
+            order_id: orderCtx.order_id,
+            total_amount: orderCtx.total_amount,
+          },
+        }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
+      } else {
+        console.warn(
+          "WA not enqueued: missing customer phone for order:",
+          orderId,
+        );
+      }
 
       return res.json({
         success: true,
@@ -192,6 +227,30 @@ class CheckoutController {
       });
     }
   }
+}
+
+async function getOrderWhatsAppContext(orderId) {
+  const [rows] = await db.execute(
+    `
+    SELECT 
+      o.order_id,
+      o.company_id,
+      o.total_amount,
+      o.user_id,
+      cu.name AS customer_name,
+
+      -- IMPORTANT: change this column name as per your table
+      cu.phone AS phone
+
+    FROM eorders o
+    JOIN customer cu ON cu.user_id = o.user_id
+    WHERE o.order_id = ?
+    LIMIT 1
+    `,
+    [orderId],
+  );
+
+  return rows[0] || null;
 }
 
 module.exports = new CheckoutController();

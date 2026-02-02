@@ -1,31 +1,45 @@
 const axios = require("axios");
 
-async function sendTemplateMessage({ phone, templateName, languageCode = "en", bodyValues = [] }) {
-  const baseUrl = process.env.INTERAKT_BASE_URL; // e.g. https://api.interakt.ai/v1/public/message/
+async function sendTemplateMessage({
+  phone,
+  templateName,
+  languageCode = "en",
+  bodyValues = [],
+  buttonValues = null,     // ✅ add
+  headerValues = null,     // optional (future)
+  callbackData = null,     // optional (future)
+}) {
+  const baseUrl = process.env.INTERAKT_BASE_URL;
   const apiKey = process.env.INTERAKT_API_KEY;
 
-  if (!baseUrl || !apiKey) throw new Error("Interakt env missing (INTERAKT_BASE_URL / INTERAKT_API_KEY)");
-
   const payload = {
-    countryCode: phone.startsWith("+") ? phone.slice(0, 3) : "+91", // simple default
+    countryCode: "+91",
     phoneNumber: phone.replace("+91", "").replace("+", ""),
     type: "Template",
+    ...(callbackData ? { callbackData } : {}),
     template: {
       name: templateName,
       languageCode,
-      bodyValues
-    }
+      ...(headerValues?.length ? { headerValues } : {}),
+      bodyValues,
+      ...(buttonValues && Object.keys(buttonValues).length ? { buttonValues } : {}),
+    },
   };
 
-  const res = await axios.post(baseUrl, payload, {
-    headers: {
-      Authorization: `Basic ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    timeout: 15000
-  });
-
-  return res.data;
+  try {
+    const res = await axios.post(baseUrl, payload, {
+      headers: {
+        Authorization: `Basic ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      timeout: 15000,
+    });
+    return res.data;
+  } catch (err) {
+    console.log("❌ Interakt 400 payload:", JSON.stringify(payload));
+    console.log("❌ Interakt error response:", err.response?.status, err.response?.data);
+    throw err;
+  }
 }
 
 module.exports = { sendTemplateMessage };
