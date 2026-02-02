@@ -244,11 +244,33 @@ class ProductController {
 
       const processedProduct = {
         ...product,
-        discount: "40%",
-        rating: 4.6,
-        reviews: "18.9K",
-        pointsPrice: "₹3,736",
-        points: 264,
+        variants: product.variants.map((variant) => {
+          // Numbers only
+          const salePrice = Number(variant.sale_price) || 0;
+          const mrp = Number(variant.mrp) || 0;
+          const rewardDiscountPercent =
+            Number(variant.reward_redemption_limit) || 0;
+
+          // Reward discount on sale price
+          const rewardDiscountAmount = Math.round(
+            (salePrice * rewardDiscountPercent) / 100,
+          );
+
+          const finalPrice = salePrice - rewardDiscountAmount;
+
+          // Effective discount from MRP
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+          return {
+            ...variant,
+            discount: `${mrpDiscountPercent}%`,
+            rating: 4.6,
+            reviews: "18.9K",
+            pointsPrice: finalPrice ? `₹${finalPrice}` : null,
+            points: rewardDiscountAmount,
+          };
+        }),
       };
 
       return res.json({
