@@ -249,7 +249,7 @@ class CheckoutModel {
 
         item_total: itemTotal,
         points: rewardDiscountAmount,
-        final_item_total: finalItemTotal, 
+        final_item_total: finalItemTotal,
         stock: row.stock,
       };
     });
@@ -272,6 +272,7 @@ class CheckoutModel {
       v.variant_id,
       v.sale_price,
       v.stock,
+      v.reward_redemption_limit,
       GROUP_CONCAT(pi.image_url ORDER BY pi.sort_order ASC) AS images
     FROM product_variants v
     JOIN eproducts p ON v.product_id = p.product_id
@@ -290,18 +291,32 @@ class CheckoutModel {
       throw new Error("OUT_OF_STOCK");
     }
 
+    const salePrice = Number(row.sale_price) || 0;
+    const rewardPercent = Number(row.reward_redemption_limit) || 0;
+
+    const itemTotal = salePrice * quantity;
+
+    const rewardDiscountAmount = Math.round((itemTotal * rewardPercent) / 100);
+
+    const finalItemTotal = itemTotal - rewardDiscountAmount;
+
     return {
       item: {
         product_id: row.product_id,
         variant_id: row.variant_id,
         title: row.product_name,
         image: row.images ? row.images.split(",")[0] : null,
-        price: row.sale_price,
+        price: salePrice,
         quantity,
-        item_total: quantity * row.sale_price,
+
+        item_total: itemTotal,
+        points: rewardDiscountAmount,
+        final_item_total: finalItemTotal,
         stock: row.stock,
       },
-      totalAmount: quantity * row.sale_price,
+      totalAmount: itemTotal,
+      totalDiscount: rewardDiscountAmount,
+      payableAmount: finalItemTotal,
     };
   }
 
