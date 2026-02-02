@@ -22,6 +22,7 @@ class CartController {
         success: true,
         items: cart.items,
         cartTotal: cart.cartTotal,
+        totalDiscount: cart.totalDiscount,
       });
     } catch (error) {
       console.error("Get cart error:", error);

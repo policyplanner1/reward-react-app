@@ -8,18 +8,19 @@ declare global {
 }
 
 const Payment: React.FC = () => {
+  const orderId = 101; 
+
   const handlePayment = async () => {
     try {
       // Step 1: Create order from backend
       const { data } = await axios.post(
         "http://localhost:5000/payment/create-order",
         {
-          orderId: 101,
+          orderId: orderId,
           amount: 300,
-        }
+        },
       );
 
-      // Step 2: Razorpay options
       const options = {
         key: data.key,
         amount: data.amount,
@@ -27,21 +28,41 @@ const Payment: React.FC = () => {
         order_id: data.orderId,
         name: "Reward Planners",
         description: "Test Payment",
-        handler: async function (response: any) {
-          // Step 3: Verify payment
-          await axios.post(
-            "http://localhost:5000/payment/verify-payment",
-            response
-          );
 
-          alert("Payment Successful");
+        handler: async function (response: any) {
+          await axios.post("http://localhost:5000/payment/verify-payment", response);
+
+          let attempts = 0;
+
+          const checkStatus = async () => {
+            const statusRes = await axios.get(
+              `http://localhost:5000/payment/payment-status/${orderId}`,
+            );
+
+            if (statusRes.data.status === "paid") {
+              alert("Payment Successful");
+              return;
+            }
+
+            attempts++;
+
+            if (attempts < 5) {
+              setTimeout(checkStatus, 2000);
+            } else {
+              alert(
+                "Payment is being verified. Please check your orders page.",
+              );
+            }
+          };
+
+          checkStatus();
         },
+
         theme: {
           color: "#3399cc",
         },
       };
 
-      // Step 4: Open Razorpay
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (err) {

@@ -453,7 +453,7 @@ export default function ProductManagerList() {
   const onSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearchQuery(e.target.value);
-      setPagination((prev) => ({ ...prev, currentPage: 1 })); 
+      setPagination((prev) => ({ ...prev, currentPage: 1 }));
     },
     [],
   );
@@ -528,7 +528,7 @@ export default function ProductManagerList() {
 
         {/* TABLE */}
         <div className="relative overflow-x-auto border rounded-lg">
-          {/* ✅ Loading overlay (focus never breaks) */}
+          {/*  Loading overlay (focus never breaks) */}
           {loading && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-[1px]">
               <FaSpinner className="animate-spin text-3xl text-[#852BAF]" />
@@ -573,7 +573,14 @@ export default function ProductManagerList() {
 
                   <td className="px-4 py-4 align-top">
                     <div className="flex justify-end">
-                      <div className="grid grid-cols-4 gap-2 w-[176px] justify-items-center">
+                      <div
+                        className={`grid gap-2 justify-items-center ${
+                          product.status === "pending"
+                            ? "grid-cols-4 w-[176px]"
+                            : "grid-cols-2 w-[88px]"
+                        }`}
+                      >
+                        {/* View */}
                         <Link
                           to={routes.manager.productView.replace(
                             ":id",
@@ -585,7 +592,8 @@ export default function ProductManagerList() {
                           <FaEye />
                         </Link>
 
-                        {product.status === "pending" ? (
+                        {/* Approve & Reject only for pending */}
+                        {product.status === "pending" && (
                           <>
                             <button
                               onClick={() =>
@@ -606,27 +614,19 @@ export default function ProductManagerList() {
                             >
                               <FaTimes />
                             </button>
-
-                            <button
-                              onClick={() =>
-                                handleProductAction(
-                                  "request_resubmission",
-                                  product,
-                                )
-                              }
-                              className="w-9 h-9 inline-flex items-center justify-center bg-blue-100 text-blue-700 rounded cursor-pointer"
-                              title="Resubmission"
-                            >
-                              <FaRedo />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-9 h-9 opacity-0 pointer-events-none" />
-                            <div className="w-9 h-9 opacity-0 pointer-events-none" />
-                            <div className="w-9 h-9 opacity-0 pointer-events-none" />
                           </>
                         )}
+
+                        {/* Redo — always visible */}
+                        <button
+                          onClick={() =>
+                            handleProductAction("request_resubmission", product)
+                          }
+                          className="w-9 h-9 inline-flex items-center justify-center bg-blue-100 text-blue-700 rounded cursor-pointer"
+                          title="Resubmission"
+                        >
+                          <FaRedo />
+                        </button>
                       </div>
                     </div>
                   </td>
@@ -665,7 +665,7 @@ export default function ProductManagerList() {
                     currentPage: p.currentPage - 1,
                   }))
                 }
-                className={`px-4 py-2 rounded-lg border text-sm font-medium ${
+                className={`px-4 py-2 rounded-lg border text-sm font-medium cursor-pointer ${
                   pagination.currentPage === 1
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                     : "bg-white hover:bg-gray-50"
@@ -686,7 +686,7 @@ export default function ProductManagerList() {
                     onClick={() =>
                       setPagination((p) => ({ ...p, currentPage: page }))
                     }
-                    className={`px-3 py-2 rounded-lg text-sm font-semibold border ${
+                    className={`px-3 py-2 rounded-lg text-sm font-semibold border cursor-pointer ${
                       pagination.currentPage === page
                         ? "bg-[#852BAF] text-white border-[#852BAF]"
                         : "bg-white hover:bg-gray-50"
@@ -705,7 +705,7 @@ export default function ProductManagerList() {
                     currentPage: p.currentPage + 1,
                   }))
                 }
-                className={`px-4 py-2 rounded-lg border text-sm font-medium ${
+                className={`px-4 py-2 rounded-lg border text-sm font-medium cursor-pointer ${
                   pagination.currentPage === pagination.totalPages
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                     : "bg-white hover:bg-gray-50"

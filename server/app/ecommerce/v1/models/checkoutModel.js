@@ -2,6 +2,13 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 
+function generateOrderRef() {
+  const date = new Date();
+  const ymd = date.toISOString().slice(0, 10).replace(/-/g, "");
+  const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `ORD-${ymd}-${rand}`;
+}
+
 class CheckoutModel {
   async checkoutCart(userId, companyId = null) {
     const conn = await db.getConnection();
@@ -22,7 +29,7 @@ class CheckoutModel {
         JOIN product_variants v ON ci.variant_id = v.variant_id
         WHERE ci.user_id = ?
         `,
-        [userId]
+        [userId],
       );
 
       if (cartItems.length === 0) {
@@ -39,16 +46,18 @@ class CheckoutModel {
       // 3 Calculate total
       const totalAmount = cartItems.reduce(
         (sum, i) => sum + i.quantity * i.sale_price,
-        0
+        0,
       );
 
       // 4 Create order
+      const orderRef = generateOrderRef();
+
       const [orderRes] = await conn.execute(
         `
-        INSERT INTO eorders (user_id, company_id, total_amount)
-        VALUES (?, ?, ?)
+        INSERT INTO eorders (user_id, company_id, total_amount,order_ref)
+        VALUES (?, ?, ?, ?)
         `,
-        [userId, companyId, totalAmount]
+        [userId, companyId, totalAmount, orderRef],
       );
 
       const orderId = orderRes.insertId;
@@ -67,7 +76,7 @@ class CheckoutModel {
             item.variant_id,
             item.quantity,
             item.sale_price,
-          ]
+          ],
         );
 
         // 6 Deduct stock
@@ -77,7 +86,7 @@ class CheckoutModel {
           SET stock = stock - ?
           WHERE variant_id = ?
           `,
-          [item.quantity, item.variant_id]
+          [item.quantity, item.variant_id],
         );
       }
 
@@ -107,7 +116,7 @@ class CheckoutModel {
       FROM product_variants
       WHERE variant_id = ? AND product_id = ?
       `,
-        [variantId, productId]
+        [variantId, productId],
       );
 
       if (!variant) {
@@ -121,12 +130,15 @@ class CheckoutModel {
       const totalAmount = quantity * variant.sale_price;
 
       // 2 Create order
+
+      const orderRef = generateOrderRef();
+
       const [orderRes] = await conn.execute(
         `
-      INSERT INTO eorders (user_id, company_id, total_amount)
-      VALUES (?, ?, ?)
+      INSERT INTO eorders (user_id, company_id, total_amount, order_ref)
+      VALUES (?, ?, ?, ?)
       `,
-        [userId, companyId, totalAmount]
+        [userId, companyId, totalAmount, orderRef],
       );
 
       const orderId = orderRes.insertId;
@@ -138,7 +150,7 @@ class CheckoutModel {
         (order_id, product_id, variant_id, quantity, price)
       VALUES (?, ?, ?, ?, ?)
       `,
-        [orderId, productId, variantId, quantity, variant.sale_price]
+        [orderId, productId, variantId, quantity, variant.sale_price],
       );
 
       // 4 Deduct stock
@@ -148,7 +160,7 @@ class CheckoutModel {
       SET stock = stock - ?
       WHERE variant_id = ?
       `,
-        [quantity, variantId]
+        [quantity, variantId],
       );
 
       await conn.commit();
@@ -176,6 +188,7 @@ class CheckoutModel {
         v.mrp,
         v.sale_price,
         v.stock,
+        v.reward_redemption_limit,
 
         (ci.quantity * v.sale_price) AS item_total,
 
@@ -192,7 +205,7 @@ class CheckoutModel {
       WHERE ci.user_id = ?
       GROUP BY ci.cart_item_id
       `,
-      [userId]
+      [userId],
     );
 
     if (rows.length === 0) {
@@ -200,13 +213,29 @@ class CheckoutModel {
     }
 
     let totalAmount = 0;
+    let totalDiscount = 0;
+    let payableAmount = 0;
 
     const items = rows.map((row) => {
       if (row.quantity > row.stock) {
         throw new Error("OUT_OF_STOCK");
       }
 
-      totalAmount += Number(row.item_total);
+      const salePrice = Number(row.sale_price) || 0;
+      const quantity = Number(row.quantity) || 0;
+      const rewardPercent = Number(row.reward_redemption_limit) || 0;
+
+      const itemTotal = salePrice * quantity;
+
+      const rewardDiscountAmount = Math.round(
+        (itemTotal * rewardPercent) / 100,
+      );
+
+      const finalItemTotal = itemTotal - rewardDiscountAmount;
+
+      totalAmount += itemTotal;
+      totalDiscount += rewardDiscountAmount;
+      payableAmount += finalItemTotal;
 
       return {
         cart_item_id: row.cart_item_id,
@@ -215,9 +244,12 @@ class CheckoutModel {
         title: row.product_name,
         image: row.images ? row.images.split(",")[0] : null,
         mrp: row.mrp,
-        price: row.sale_price,
-        quantity: row.quantity,
-        item_total: row.item_total,
+        price: salePrice,
+        quantity,
+        perUnitDiscount: Number(row.mrp) - salePrice,
+        item_total: itemTotal,
+        points: rewardDiscountAmount,
+        final_item_total: finalItemTotal,
         stock: row.stock,
       };
     });
@@ -225,6 +257,8 @@ class CheckoutModel {
     return {
       items,
       totalAmount,
+      totalDiscount,
+      payableAmount,
     };
   }
 
@@ -236,8 +270,10 @@ class CheckoutModel {
       p.product_id,
       p.product_name,
       v.variant_id,
+      v.mrp,
       v.sale_price,
       v.stock,
+      v.reward_redemption_limit,
       GROUP_CONCAT(pi.image_url ORDER BY pi.sort_order ASC) AS images
     FROM product_variants v
     JOIN eproducts p ON v.product_id = p.product_id
@@ -245,7 +281,7 @@ class CheckoutModel {
     WHERE v.variant_id = ? AND p.product_id = ?
     GROUP BY v.variant_id
     `,
-      [variantId, productId]
+      [variantId, productId],
     );
 
     if (!row) {
@@ -256,47 +292,14 @@ class CheckoutModel {
       throw new Error("OUT_OF_STOCK");
     }
 
-    return {
-      item: {
-        product_id: row.product_id,
-        variant_id: row.variant_id,
-        title: row.product_name,
-        image: row.images ? row.images.split(",")[0] : null,
-        price: row.sale_price,
-        quantity,
-        item_total: quantity * row.sale_price,
-        stock: row.stock,
-      },
-      totalAmount: quantity * row.sale_price,
-    };
-  }
+    const salePrice = Number(row.sale_price) || 0;
+    const rewardPercent = Number(row.reward_redemption_limit) || 0;
 
-  async getBuyNowCheckout({ productId, variantId, quantity }) {
-    const [[row]] = await db.execute(
-      `
-    SELECT 
-      p.product_id,
-      p.product_name,
-      v.variant_id,
-      v.sale_price,
-      v.stock,
-      GROUP_CONCAT(pi.image_url ORDER BY pi.sort_order ASC) AS images
-    FROM product_variants v
-    JOIN eproducts p ON v.product_id = p.product_id
-    LEFT JOIN product_images pi ON p.product_id = pi.product_id
-    WHERE v.variant_id = ? AND p.product_id = ?
-    GROUP BY v.variant_id
-    `,
-      [variantId, productId]
-    );
+    const itemTotal = salePrice * quantity;
 
-    if (!row) {
-      throw new Error("INVALID_VARIANT");
-    }
+    const rewardDiscountAmount = Math.round((itemTotal * rewardPercent) / 100);
 
-    if (quantity > row.stock) {
-      throw new Error("OUT_OF_STOCK");
-    }
+    const finalItemTotal = itemTotal - rewardDiscountAmount;
 
     return {
       item: {
@@ -304,12 +307,17 @@ class CheckoutModel {
         variant_id: row.variant_id,
         title: row.product_name,
         image: row.images ? row.images.split(",")[0] : null,
-        price: row.sale_price,
+        price: salePrice,
         quantity,
-        item_total: quantity * row.sale_price,
+        perUnitDiscount: Number((row.mrp) - salePrice),
+        item_total: itemTotal,
+        points: rewardDiscountAmount,
+        final_item_total: finalItemTotal,
         stock: row.stock,
       },
-      totalAmount: quantity * row.sale_price,
+      totalAmount: itemTotal,
+      totalDiscount: rewardDiscountAmount,
+      payableAmount: finalItemTotal,
     };
   }
 
@@ -320,6 +328,7 @@ class CheckoutModel {
       `
     SELECT 
       o.order_id,
+      o.order_ref,
       o.address_id,
       o.total_amount,
       o.created_at,
@@ -348,7 +357,7 @@ class CheckoutModel {
     WHERE o.order_id = ?
       AND o.user_id = ?
     `,
-      [orderId, userId]
+      [orderId, userId],
     );
 
     if (!order) {
@@ -377,7 +386,7 @@ class CheckoutModel {
     JOIN eproducts p ON oi.product_id = p.product_id
     WHERE oi.order_id = ?
     `,
-      [orderId]
+      [orderId],
     );
 
     const itemTotal = items.reduce((sum, i) => sum + i.quantity * i.price, 0);
