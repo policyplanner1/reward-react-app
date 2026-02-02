@@ -237,7 +237,7 @@ async function getOrderWhatsAppContext(orderId) {
   const [rows] = await db.execute(
     `
     SELECT 
-      o.order_id,
+      o.order_ref,
       o.company_id,
       o.total_amount,
       o.user_id,
