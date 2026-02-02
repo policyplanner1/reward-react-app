@@ -7,9 +7,12 @@ import {
   FaSpinner,
   FaArrowLeft,
   FaDownload,
+  FaCheck,
 } from "react-icons/fa";
+
 import { useNavigate, useParams } from "react-router-dom";
 import QuillEditor from "../../../QuillEditor";
+import Swal from "sweetalert2";
 
 // const API_BASE = import.meta.env.VITE_API_URL;
 import { api } from "../../../../api/api";
@@ -26,6 +29,7 @@ type ProductVariant = {
   manufacturing_date: string | null;
   expiry_date: string | null;
   created_at: string;
+  reward_redemption_limit?: number | null;
 };
 
 interface ProductView {
@@ -120,6 +124,9 @@ export default function ReviewProductPage() {
   const [productAttributes, setProductAttributes] = useState<
     Record<string, string[]>
   >({});
+  const [attributeSchema, setAttributeSchema] = useState<any[]>([]);
+  const [rewardLimits, setRewardLimits] = useState<Record<number, number>>({});
+  const [savingLimit, setSavingLimit] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     if (!productId) {
@@ -207,6 +214,28 @@ export default function ReviewProductPage() {
       }
 
       setProduct(mapped);
+
+      // reward Limit
+      const initialLimits: Record<number, number> = {};
+
+      (mapped.variants || []).forEach((v: any) => {
+        initialLimits[v.variant_id] = v.reward_redemption_limit ?? 0;
+      });
+
+      setRewardLimits(initialLimits);
+
+      if (mapped.subCategoryId) {
+        const params = new URLSearchParams({
+          categoryId: String(mapped.categoryId),
+          subcategoryId: String(mapped.subCategoryId),
+        });
+
+        api.get(`/category/attributes?${params.toString()}`).then((res) => {
+          if (res.data.success) {
+            setAttributeSchema(res.data.data);
+          }
+        });
+      }
     } catch (err: any) {
       console.error(err);
       setError(err?.message ?? "Failed to load product");
@@ -222,6 +251,49 @@ export default function ReviewProductPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const updateRewardLimit = async (variantId: number) => {
+    try {
+      if (!product?.productId) return;
+
+      setSavingLimit((prev) => ({ ...prev, [variantId]: true }));
+
+      const newLimit = rewardLimits[variantId];
+
+      await api.post("/variant/update-reward-limit", {
+        product_id: product.productId,
+        variant_id: variantId,
+        reward_redemption_limit: newLimit,
+      });
+
+      // ✅ sync UI with saved value
+      setRewardLimits((prev) => ({
+        ...prev,
+        [variantId]: newLimit,
+      }));
+
+      await Swal.fire({
+        title: "Success!",
+        text: "Reward Limit Updated Successfully",
+        icon: "success",
+        timer: 1200,
+        showConfirmButton: false,
+        customClass: { popup: "rounded-2xl" },
+      });
+    } catch (err) {
+      console.error("Failed to update reward limit", err);
+
+      await Swal.fire({
+        title: "Failed",
+        text: "Failed to update reward limit",
+        icon: "error",
+        confirmButtonText: "OK",
+        buttonsStyling: false,
+      });
+    } finally {
+      setSavingLimit((prev) => ({ ...prev, [variantId]: false }));
+    }
   };
 
   if (loading) {
@@ -261,7 +333,7 @@ export default function ReviewProductPage() {
             <h1 className="mb-1 text-3xl font-bold text-gray-900">
               Product Review
             </h1>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-900 font-bold">
               Viewing product ID: {product.productId}
             </div>
           </div>
@@ -359,7 +431,7 @@ export default function ReviewProductPage() {
         </section>
 
         {/* ================= PRODUCT ATTRIBUTES ================= */}
-        {productAttributes && Object.keys(productAttributes).length > 0 && (
+        {attributeSchema.length > 0 && (
           <section className="mt-6">
             <SectionHeader
               icon={FaBox}
@@ -368,19 +440,42 @@ export default function ReviewProductPage() {
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(productAttributes).map(([key, values]) => (
-                <div key={key} className="bg-gray-50 border rounded-xl p-4">
-                  <p className="text-xs font-semibold uppercase text-gray-500 mb-1">
-                    {key.replace(/_/g, " ")}
-                  </p>
+              {attributeSchema.map((attr) => {
+                const values = productAttributes[attr.attribute_key] || [];
 
-                  <p className="text-sm font-medium text-gray-900">
-                    {Array.isArray(values) && values.length > 0
-                      ? values.join(", ")
-                      : "—"}
-                  </p>
-                </div>
-              ))}
+                return (
+                  <div
+                    key={attr.attribute_key}
+                    className="bg-gray-50 border rounded-xl p-4"
+                  >
+                    <p className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                      {attr.attribute_label}
+                    </p>
+
+                    <p className="text-sm font-medium text-gray-900">
+                      {values.length > 0 ? values.join(", ") : "—"}
+                    </p>
+                  </div>
+                );
+              })}
+
+              {/* Show legacy attributes if schema changed */}
+              {Object.keys(productAttributes)
+                .filter(
+                  (key) =>
+                    !attributeSchema.some((a) => a.attribute_key === key),
+                )
+                .map((key) => (
+                  <div key={key} className="bg-yellow-50 border rounded-xl p-4">
+                    <p className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                      {key.replace(/_/g, " ")} (Legacy)
+                    </p>
+
+                    <p className="text-sm font-medium text-gray-900">
+                      {productAttributes[key].join(", ")}
+                    </p>
+                  </div>
+                ))}
             </div>
           </section>
         )}
@@ -404,6 +499,7 @@ export default function ReviewProductPage() {
                     <th className="px-4 py-3">Sale Price</th>
                     <th className="px-4 py-3">Stock</th>
                     <th className="px-4 py-3">Visibility</th>
+                    <th className="px-4 py-3">Reward Redemption Limit (%)</th>
                   </tr>
                 </thead>
 
@@ -463,6 +559,38 @@ export default function ReviewProductPage() {
                         >
                           {variant.is_visible ? "Visible" : "Hidden"}
                         </span>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={0}
+                            value={rewardLimits[variant.variant_id] ?? 0}
+                            onChange={(e) =>
+                              setRewardLimits((prev) => ({
+                                ...prev,
+                                [variant.variant_id]: Number(e.target.value),
+                              }))
+                            }
+                            className="w-24 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#852BAF]"
+                            placeholder="Limit"
+                          />
+
+                          <button
+                            onClick={() =>
+                              updateRewardLimit(variant.variant_id)
+                            }
+                            disabled={savingLimit[variant.variant_id]}
+                            className="p-2 text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center cursor-pointer"
+                          >
+                            {savingLimit[variant.variant_id] ? (
+                              <FaSpinner className="animate-spin text-sm" />
+                            ) : (
+                              <FaCheck className="text-sm" />
+                            )}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

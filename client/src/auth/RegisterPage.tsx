@@ -219,12 +219,21 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-3 py-3.5 rounded-xl text-white font-bold
-                         bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-                         shadow-md transition hover:from-[#FC3F78] hover:to-[#852BAF]
-                         disabled:opacity-60"
+              className="w-full mt-6 text-white font-bold py-3.5 rounded-full text-xl
+               bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+               shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer
+               hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+               hover:shadow-xl active:scale-95
+               disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? "Creating account..." : "Register"}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Creating Account...
+                </span>
+              ) : (
+                "Register"
+              )}
             </button>
 
             <p className="text-center text-sm text-gray-600">

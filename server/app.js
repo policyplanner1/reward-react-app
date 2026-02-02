@@ -10,9 +10,8 @@ require("dotenv").config();
 const dashboardRoute = require("./routes/indexRoute");
 
 // App Route
-const ecommerceRoute=require('./app/ecommerce/v1/routes/indexRoute')
-const serviceRoute=require('./app/service/v1/routes/indexRoute')
-const paymentRoute=require('./app/common/Routes/indexRoute')
+const ecommerceRoute = require("./app/ecommerce/v1/routes/indexRoute");
+const serviceRoute = require("./app/service/v1/routes/indexRoute");
 
 
 const app = express(); 
@@ -21,7 +20,7 @@ const app = express();
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 
 app.use(
@@ -35,6 +34,10 @@ app.use(
 );
 
 app.use(morgan("dev"));
+
+// webhook
+app.use("/payment/webhook", require("express").raw({ type: "*/*" }));
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
   
@@ -53,14 +56,12 @@ app.get("/", (req, res) => {
   });
 });
 
-
 // Dashboard Routes
-app.use('/',dashboardRoute)
+app.use("/", dashboardRoute);
 
 // App Routes
-app.use("/v1",ecommerceRoute);
-app.use("/v1",serviceRoute)
-app.use("/v1",paymentRoute)
+app.use("/v1", ecommerceRoute);
+app.use("/v1", serviceRoute);
 
 // 404 Handler
 app.use((req, res) => {

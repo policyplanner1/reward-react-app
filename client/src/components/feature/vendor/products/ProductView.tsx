@@ -165,6 +165,7 @@ export default function ReviewProductPage() {
   const [productAttributes, setProductAttributes] = useState<
     Record<string, string[]>
   >({});
+  const [attributeSchema, setAttributeSchema] = useState<any[]>([]);
 
   useEffect(() => {
     if (!productId) {
@@ -255,6 +256,18 @@ export default function ReviewProductPage() {
       }
 
       setProduct(mapped);
+      if (mapped.subCategoryId) {
+        const params = new URLSearchParams({
+          categoryId: String(mapped.categoryId),
+          subcategoryId: String(mapped.subCategoryId),
+        });
+
+        api.get(`/category/attributes?${params.toString()}`).then((res) => {
+          if (res.data.success) {
+            setAttributeSchema(res.data.data);
+          }
+        });
+      }
     } catch (err: any) {
       console.error(err);
       setError(
@@ -300,7 +313,7 @@ export default function ReviewProductPage() {
             <h1 className="mb-1 text-3xl font-bold text-gray-900">
               Product Review
             </h1>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm font-bold text-gray-900">
               Viewing product ID: {product.productId}
             </div>
           </div>
@@ -423,7 +436,7 @@ export default function ReviewProductPage() {
         </section>
 
         {/* ================= PRODUCT ATTRIBUTES ================= */}
-        {productAttributes && Object.keys(productAttributes).length > 0 && (
+        {attributeSchema.length > 0 && (
           <section className="mt-6">
             <SectionHeader
               icon={FaBox}
@@ -432,19 +445,42 @@ export default function ReviewProductPage() {
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(productAttributes).map(([key, values]) => (
-                <div key={key} className="bg-gray-50 border rounded-xl p-4">
-                  <p className="text-xs font-semibold uppercase text-gray-500 mb-1">
-                    {key.replace(/_/g, " ")}
-                  </p>
+              {attributeSchema.map((attr) => {
+                const values = productAttributes[attr.attribute_key] || [];
 
-                  <p className="text-sm font-medium text-gray-900">
-                    {Array.isArray(values) && values.length > 0
-                      ? values.join(", ")
-                      : "—"}
-                  </p>
-                </div>
-              ))}
+                return (
+                  <div
+                    key={attr.attribute_key}
+                    className="bg-gray-50 border rounded-xl p-4"
+                  >
+                    <p className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                      {attr.attribute_label}
+                    </p>
+
+                    <p className="text-sm font-medium text-gray-900">
+                      {values.length > 0 ? values.join(", ") : "—"}
+                    </p>
+                  </div>
+                );
+              })}
+
+              {/* Show legacy attributes if schema changed */}
+              {Object.keys(productAttributes)
+                .filter(
+                  (key) =>
+                    !attributeSchema.some((a) => a.attribute_key === key),
+                )
+                .map((key) => (
+                  <div key={key} className="bg-yellow-50 border rounded-xl p-4">
+                    <p className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                      {key.replace(/_/g, " ")} (Legacy)
+                    </p>
+
+                    <p className="text-sm font-medium text-gray-900">
+                      {productAttributes[key].join(", ")}
+                    </p>
+                  </div>
+                ))}
             </div>
           </section>
         )}

@@ -136,6 +136,8 @@ class CheckoutController {
         mode: "cart",
         items: checkoutData.items,
         totalAmount: checkoutData.totalAmount,
+        totalDiscount: checkoutData.totalDiscount,
+        payableAmount: checkoutData.payableAmount,
       });
     } catch (error) {
       console.error("Checkout cart fetch error:", error);
@@ -177,6 +179,8 @@ class CheckoutController {
         mode: "buy_now",
         item: checkoutData.item,
         totalAmount: checkoutData.totalAmount,
+        totalDiscount: checkoutData.totalDiscount,
+        payableAmount: checkoutData.payableAmount,
       });
     } catch (error) {
       console.error("Buy now checkout fetch error:", error);

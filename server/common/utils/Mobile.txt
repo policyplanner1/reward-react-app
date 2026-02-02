@@ -1,0 +1,108 @@
+Razorpay React Native SDK. setup
+
+
+1)step 1
+npm install react-native-razorpay
+npx pod-install
+
+2)step
+PaymentScreen.tsx
+
+import React from "react";
+import { View, Button, Alert } from "react-native";
+import RazorpayCheckout from "react-native-razorpay";
+import axios from "axios";
+
+const PaymentScreen = () => {
+  const orderId = 101; // real order id from your checkout
+
+  const startPayment = async () => {
+    try {
+      // Step 1: Create Razorpay order from backend
+      const { data } = await axios.post(
+        "https://yourdomain.com/payment/create-order",
+        {
+          orderId,
+          amount: 300,
+        }
+      );
+
+      const options = {
+        key: data.key,
+        amount: data.amount,
+        currency: data.currency,
+        order_id: data.orderId,
+        name: "Reward Planners",
+        description: "Order Payment",
+        prefill: {
+          email: "test@test.com",
+          contact: "9999999999",
+        },
+        theme: { color: "#3399cc" },
+      };
+
+      RazorpayCheckout.open(options)
+        .then(async (response) => {
+          // Step 2: Verify signature
+          await axios.post(
+            "https://yourdomain.com/payment/verify-payment",
+            response
+          );
+
+          // Step 3: Check real payment status (poll)
+          checkPaymentStatus();
+        })
+        .catch(() => {
+          Alert.alert("Payment cancelled or failed");
+        });
+    } catch (err) {
+      Alert.alert("Error starting payment");
+    }
+  };
+
+  const checkPaymentStatus = async () => {
+    let attempts = 0;
+
+    const poll = async () => {
+      const res = await axios.get(
+        `https://yourdomain.com/api/orders/${orderId}/payment-status`
+      );
+
+      if (res.data.status === "paid") {
+        Alert.alert("Payment Successful");
+        return;
+      }
+
+      attempts++;
+      if (attempts < 5) {
+        setTimeout(poll, 2000);
+      } else {
+        Alert.alert("Payment is being verified. Check orders page.");
+      }
+    };
+
+    poll();
+  };
+
+  return (
+    <View style={{ padding: 20 }}>
+      <Button title="Pay ₹300" onPress={startPayment} />
+    </View>
+  );
+};
+
+export default PaymentScreen;
+
+
+
+Step 3 — Razorpay Dashboard setting
+Enable:
+Settings → Checkout → Enable Mobile SDK
+
+
+
+
+Note
+Do not add any web scripts.
+Do not use WebView.
+SDK handles everything natively.

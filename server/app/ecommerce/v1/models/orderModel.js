@@ -41,19 +41,51 @@ class orderModel {
 
     const [rows] = await db.execute(
       `
-      SELECT
+        SELECT
         o.order_id,
+        o.order_ref,
         o.total_amount,
         o.status,
         o.created_at,
 
-        COUNT(oi.order_item_id) AS item_count
+        COUNT(oi.order_item_id) AS item_count,
+
+        (
+          SELECT p.product_name
+          FROM eorder_items oii
+          JOIN eproducts p ON oii.product_id = p.product_id
+          WHERE oii.order_id = o.order_id
+          LIMIT 1
+        ) AS product_name,
+
+        (
+          SELECT p.brand_name
+          FROM eorder_items oii
+          JOIN eproducts p ON oii.product_id = p.product_id
+          WHERE oii.order_id = o.order_id
+          LIMIT 1
+        ) AS brand_name,
+
+        (
+          SELECT pi.image_url
+          FROM eorder_items oii
+          JOIN product_images pi
+            ON oii.product_id = pi.product_id
+          WHERE oii.order_id = o.order_id
+          ORDER BY pi.sort_order ASC
+          LIMIT 1
+        ) AS image
+
       FROM eorders o
-      LEFT JOIN eorder_items oi ON o.order_id = oi.order_id
+      LEFT JOIN eorder_items oi 
+        ON o.order_id = oi.order_id
+
       ${whereClause}
+
       GROUP BY o.order_id
       ORDER BY o.created_at DESC
       LIMIT ? OFFSET ?
+
       `,
       [...params, limit, offset],
     );
@@ -80,6 +112,7 @@ class orderModel {
       `
       SELECT
         order_id,
+        order_ref,
         total_amount,
         status,
         created_at
@@ -142,6 +175,7 @@ class orderModel {
       `
     SELECT 
       o.order_id,
+      o.order_ref,
       o.address_id,
       o.status, 
       o.total_amount,
