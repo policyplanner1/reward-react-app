@@ -188,6 +188,7 @@ class CheckoutModel {
         v.mrp,
         v.sale_price,
         v.stock,
+        v.reward_redemption_limit,
 
         (ci.quantity * v.sale_price) AS item_total,
 
@@ -212,13 +213,29 @@ class CheckoutModel {
     }
 
     let totalAmount = 0;
+    let totalDiscount = 0;
+    let payableAmount = 0;
 
     const items = rows.map((row) => {
       if (row.quantity > row.stock) {
         throw new Error("OUT_OF_STOCK");
       }
 
-      totalAmount += Number(row.item_total);
+      const salePrice = Number(row.sale_price) || 0;
+      const quantity = Number(row.quantity) || 0;
+      const rewardPercent = Number(row.reward_redemption_limit) || 0;
+
+      const itemTotal = salePrice * quantity;
+
+      const rewardDiscountAmount = Math.round(
+        (itemTotal * rewardPercent) / 100,
+      );
+
+      const finalItemTotal = itemTotal - rewardDiscountAmount;
+
+      totalAmount += itemTotal;
+      totalDiscount += rewardDiscountAmount;
+      payableAmount += finalItemTotal;
 
       return {
         cart_item_id: row.cart_item_id,
@@ -227,9 +244,12 @@ class CheckoutModel {
         title: row.product_name,
         image: row.images ? row.images.split(",")[0] : null,
         mrp: row.mrp,
-        price: row.sale_price,
-        quantity: row.quantity,
-        item_total: row.item_total,
+        price: salePrice,
+        quantity,
+
+        item_total: itemTotal,
+        points: rewardDiscountAmount,
+        final_item_total: finalItemTotal, 
         stock: row.stock,
       };
     });
@@ -237,6 +257,8 @@ class CheckoutModel {
     return {
       items,
       totalAmount,
+      totalDiscount,
+      payableAmount,
     };
   }
 
