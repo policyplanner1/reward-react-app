@@ -37,8 +37,6 @@ class PaymentController {
       receipt: orderId.toString(),
     });
 
-    console.log(razorpayOrder,"payOrder")
-
     await PaymentModel.createOrder({
       orderId,
       razorpayOrderId: razorpayOrder.id,
