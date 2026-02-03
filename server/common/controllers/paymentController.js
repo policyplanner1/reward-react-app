@@ -100,6 +100,7 @@ class PaymentController {
 
   // payment status
   async paymentStatus(req, res) {
+    res.set("Cache-Control", "no-store");
     const { orderId } = req.params;
 
     const [order] = await db.query(
