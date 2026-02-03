@@ -18,7 +18,7 @@ class PaymentController {
     }
 
     // check if already paid
-    const existing = await db.query(
+    const [existing] = await db.query(
       `SELECT * FROM order_payments 
         WHERE order_id = ? AND status = 'success' 
         LIMIT 1`,
@@ -36,6 +36,8 @@ class PaymentController {
       currency: "INR",
       receipt: orderId.toString(),
     });
+
+    console.log(razorpayOrder,"payOrder")
 
     await PaymentModel.createOrder({
       orderId,
