@@ -9,6 +9,9 @@ require("dotenv").config();
 // dashboard Route
 const dashboardRoute = require("./routes/indexRoute");
 
+// web hook Route
+const webhook = require("./common/utils/paymentWebHook");
+
 // App Route
 const ecommerceRoute = require("./app/ecommerce/v1/routes/indexRoute");
 const serviceRoute = require("./app/service/v1/routes/indexRoute");
@@ -34,8 +37,12 @@ app.use(
 
 app.use(morgan("dev"));
 
-// webhook
-app.use("/payment/webhook", require("express").raw({ type: "*/*" }));
+// webhook use
+app.post(
+  "/payment/webhook",
+  express.raw({ type: "*/*" }),
+  webhook.handleWebhook,
+);
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
