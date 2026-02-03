@@ -8,7 +8,7 @@ declare global {
 }
 
 const Payment: React.FC = () => {
-  const orderId = 101; 
+  const orderId = 6; 
 
   const handlePayment = async () => {
     try {
@@ -17,7 +17,7 @@ const Payment: React.FC = () => {
         "http://localhost:5000/payment/create-order",
         {
           orderId: orderId,
-          amount: 300,
+          amount: 2199,
         },
       );
 
@@ -75,7 +75,7 @@ const Payment: React.FC = () => {
     <div style={{ padding: "40px" }}>
       <h2>Razorpay Test Payment</h2>
       <button onClick={handlePayment} style={{ padding: "10px 20px" }}>
-        Pay ₹300
+        Pay ₹2199
       </button>
     </div>
   );

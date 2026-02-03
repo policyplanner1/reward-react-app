@@ -35,6 +35,7 @@ class PaymentController {
       amount: amount * 100, // paise
       currency: "INR",
       receipt: orderId.toString(),
+      payment_capture: 1,
     });
 
     await PaymentModel.createOrder({
