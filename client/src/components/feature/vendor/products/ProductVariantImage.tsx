@@ -3,8 +3,69 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
 import { FaArrowLeft, FaImages, FaTrash } from "react-icons/fa";
 import Swal from "sweetalert2";
+import {
+  DndContext,
+  closestCenter,
+  useSensor,
+  useSensors,
+  PointerSensor,
+} from "@dnd-kit/core";
+
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+
+import { CSS } from "@dnd-kit/utilities";
 
 const BASE_IMAGE_URL = "https://rewardplanners.com/api/crm/uploads";
+
+function SortableImage({
+  img,
+  onDelete,
+}: {
+  img: VariantImage;
+  onDelete: (id: number) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: img.image_id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="relative group rounded-xl overflow-hidden border bg-gray-100 cursor-grab active:cursor-grabbing"
+    >
+      <img
+        src={`${BASE_IMAGE_URL}/${img.image_url}`}
+        className="h-44 w-full object-cover"
+      />
+
+      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+        <button
+          onClick={() => onDelete(img.image_id)}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition"
+        >
+          <FaTrash size={12} /> Delete
+        </button>
+      </div>
+
+      {/* order badge */}
+      <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+        #{img.sort_order}
+      </div>
+    </div>
+  );
+}
 
 function SectionHeader({ icon: Icon, title, description }: any) {
   return (
@@ -25,6 +86,7 @@ function SectionHeader({ icon: Icon, title, description }: any) {
 type VariantImage = {
   image_id: number;
   image_url: string;
+  sort_order: number;
 };
 
 type PreviewImage = {
@@ -35,6 +97,7 @@ type PreviewImage = {
 export default function ProductVariantImages() {
   const { variantId } = useParams<{ variantId: string }>();
   const navigate = useNavigate();
+  const sensors = useSensors(useSensor(PointerSensor));
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,13 +107,51 @@ export default function ProductVariantImages() {
 
   const fetchImages = async () => {
     if (!variantId) return;
+
     const res = await api.get(`/variant/${variantId}/images`);
-    if (res.data.success) setImages(res.data.images);
+
+    if (res.data.success) {
+      const sorted = [...res.data.images].sort((a, b) => {
+        // if all are 0 → keep original order
+        if (a.sort_order === 0 && b.sort_order === 0) return 0;
+
+        // otherwise sort by sort_order
+        return a.sort_order - b.sort_order;
+      });
+
+      setImages(sorted);
+    }
   };
 
   useEffect(() => {
     fetchImages();
   }, [variantId]);
+
+  // drag and drop handlers
+  const handleDragEnd = async (event: any) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = images.findIndex((i) => i.image_id === active.id);
+    const newIndex = images.findIndex((i) => i.image_id === over.id);
+
+    const newOrder = arrayMove(images, oldIndex, newIndex).map(
+      (img, index) => ({
+        ...img,
+        sort_order: index + 1,
+      }),
+    );
+
+    setImages(newOrder);
+
+    // persist to backend
+    await api.put(`/variant/${variantId}/images/reorder`, {
+      images: newOrder.map((i) => ({
+        image_id: i.image_id,
+        sort_order: i.sort_order,
+      })),
+    });
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
@@ -84,7 +185,7 @@ export default function ProductVariantImages() {
       selectedFiles.map((file) => ({
         file,
         preview: URL.createObjectURL(file),
-      }))
+      })),
     );
   };
 
@@ -160,7 +261,10 @@ export default function ProductVariantImages() {
       <div className="flex items-center justify-between mb-10">
         <div>
           <h1 className="text-4xl font-black text-gray-900 tracking-tight">
-            Variant <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#852BAF] to-[#FC3F78]">Images</span>
+            Variant{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#852BAF] to-[#FC3F78]">
+              Images
+            </span>
           </h1>
           <p className="text-gray-500 mt-2 font-medium">
             Upload and manage images for this variant (max 5)
@@ -231,7 +335,10 @@ export default function ProductVariantImages() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {previews.map((p, idx) => (
-              <div key={idx} className="relative rounded-xl overflow-hidden border bg-gray-50">
+              <div
+                key={idx}
+                className="relative rounded-xl overflow-hidden border bg-gray-50"
+              >
                 <img src={p.preview} className="h-40 w-full object-cover" />
               </div>
             ))}
@@ -252,28 +359,26 @@ export default function ProductVariantImages() {
             No images uploaded for this variant yet.
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-            {images.map((img) => (
-              <div
-                key={img.image_id}
-                className="relative group rounded-xl overflow-hidden border bg-gray-100"
-              >
-                <img
-                  src={`${BASE_IMAGE_URL}/${img.image_url}`}
-                  className="h-44 w-full object-cover"
-                />
-
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                  <button
-                    onClick={() => handleDelete(img.image_id)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition cursor-pointer"
-                  >
-                    <FaTrash size={12} /> Delete
-                  </button>
-                </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={images.map((i) => i.image_id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                {images.map((img) => (
+                  <SortableImage
+                    key={img.image_id}
+                    img={img}
+                    onDelete={handleDelete}
+                  />
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         )}
       </section>
     </div>

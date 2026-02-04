@@ -53,6 +53,14 @@ router.post(
   VariantController.uploadVariantImages
 );
 
+// reorder variant images
+router.put(
+  "/:variantId/images/reorder",
+  authenticateToken,
+  authorizeRoles("vendor"),
+  VariantController.reorderVariantImages
+);
+
 //  Delete variant image 
 router.delete(
   "/images/:imageId",

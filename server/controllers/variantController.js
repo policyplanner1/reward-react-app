@@ -182,7 +182,7 @@ class VariantController {
 
       const [rows] = await db.execute(
         `
-      SELECT image_id, image_url
+      SELECT image_id, image_url,sort_order
       FROM product_variant_images
       WHERE variant_id = ?
       ORDER BY image_id ASC
@@ -285,6 +285,22 @@ class VariantController {
         message: "Internal server error",
       });
     }
+  }
+
+  // async reorder variant images
+  async reorderVariantImages(req, res) {
+    const { images } = req.body;
+
+    for (const img of images) {
+      await db.execute(
+        `UPDATE product_variant_images 
+       SET sort_order = ? 
+       WHERE image_id = ?`,
+        [img.sort_order, img.image_id],
+      );
+    }
+
+    res.json({ success: true });
   }
 }
 module.exports = new VariantController();

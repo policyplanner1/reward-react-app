@@ -203,7 +203,17 @@ class ProductModel {
         }
 
         const [variantImages] = await db.execute(
-          `SELECT image_url FROM product_variant_images WHERE variant_id = ?`,
+          `
+            SELECT image_url
+            FROM product_variant_images
+            WHERE variant_id = ?
+            ORDER BY
+              CASE
+                WHEN sort_order = 0 THEN 999999
+                ELSE sort_order
+              END ASC,
+              image_id ASC
+          `,
           [variant.variant_id],
         );
         variant.images = variantImages.map((img) => img.image_url);
