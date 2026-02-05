@@ -42,24 +42,27 @@ function SortableImage({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      className="relative group rounded-xl overflow-hidden border bg-gray-100 cursor-grab active:cursor-grabbing"
+      className="relative group rounded-xl overflow-hidden border bg-gray-100"
     >
+      {/* Drag handle only on image */}
       <img
         src={`${BASE_IMAGE_URL}/${img.image_url}`}
-        className="h-44 w-full object-cover"
+        className="h-44 w-full object-cover cursor-grab active:cursor-grabbing"
+        {...listeners}
       />
 
       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
         <button
-          onClick={() => onDelete(img.image_id)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition"
+          onClick={(e) => {
+            e.stopPropagation(); 
+            onDelete(img.image_id);
+          }}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition cursor-pointer"
         >
           <FaTrash size={12} /> Delete
         </button>
       </div>
 
-      {/* order badge */}
       <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
         #{img.sort_order}
       </div>
