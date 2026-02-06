@@ -31,6 +31,8 @@ export default function CategoryManagement() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [coverImage, setCoverImage] = useState<File | null>(null);
   const itemsPerPage = 10;
 
   const totalPages = Math.ceil(categories.length / itemsPerPage);
@@ -76,21 +78,22 @@ export default function CategoryManagement() {
   const handleAdd = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
-    //  EMPTY INPUT CHECK WITH POPUP
     if (!newCategoryName.trim()) {
       await Swal.fire({
         title: "Category name required",
         text: "Please enter a category name before adding.",
         icon: "warning",
         confirmButtonText: "OK",
+      });
+      return;
+    }
 
-        buttonsStyling: false,
-        customClass: {
-          confirmButton:
-            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
-            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95",
-          popup: "rounded-2xl",
-        },
+    if (!coverImage) {
+      await Swal.fire({
+        title: "Cover image required",
+        text: "Please upload a cover image for this category.",
+        icon: "warning",
+        confirmButtonText: "OK",
       });
       return;
     }
@@ -98,45 +101,32 @@ export default function CategoryManagement() {
     try {
       setLoading(true);
 
-      await api.post("/vendor/create-category", {
-        name: newCategoryName,
-        status: 1,
+      const formData = new FormData();
+      formData.append("name", newCategoryName);
+      formData.append("status", "1");
+      if (coverImage) formData.append("cover_image", coverImage);
+
+      await api.post("/vendor/create-category", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       setNewCategoryName("");
-      setCurrentPage(1);
+      setCoverImage(null);
+      setAddModalOpen(false);
       fetchCategories();
 
-      //  SUCCESS POPUP (IMPORTANT: await)
       await Swal.fire({
         title: "Added!",
         text: "Category added successfully.",
         icon: "success",
         timer: 1200,
         showConfirmButton: false,
-        customClass: { popup: "rounded-2xl" },
       });
     } catch (err: any) {
-      console.error("Add category error:", err.response?.data || err.message);
-
-      setError("Failed to add category. Make sure you are a vendor_manager.");
-
-      //  ERROR POPUP (await + same hover gradient)
       await Swal.fire({
         title: "Failed",
-        text:
-          err?.response?.data?.error ||
-          "Failed to add category. Please try again.",
+        text: err?.response?.data?.error || "Failed to add category.",
         icon: "error",
-        confirmButtonText: "OK",
-
-        buttonsStyling: false,
-        customClass: {
-          confirmButton:
-            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
-            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95",
-          popup: "rounded-2xl",
-        },
       });
     } finally {
       setLoading(false);
@@ -248,27 +238,16 @@ export default function CategoryManagement() {
         </div>
       )}
       {/* ADD CATEGORY INPUT */}
-      <form
-        onSubmit={handleAdd}
-        className="flex gap-4 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-[60rem]"
-      >
-        <input
-          value={newCategoryName}
-          onChange={(e) => setNewCategoryName(e.target.value)}
-          className="flex-1 px-5 py-3 text-sm font-semibold bg-transparent outline-none placeholder:text-gray-300"
-          placeholder="Type new category name..."
-        />
-
+      <div className="flex justify-end mb-6">
         <button
-          type="submit"
-          disabled={loading}
-          className="flex items-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg
-               bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-               rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200 cursor-pointer"
+          onClick={() => setAddModalOpen(true)}
+          className="flex items-center gap-2 px-6 py-3 font-bold text-white
+                    bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+                    rounded-xl shadow-lg shadow-purple-200 hover:opacity-90 transition-all cursor-pointer"
         >
-          <FiPlus /> {loading ? "Adding..." : "Add Category"}
+          <FiPlus /> Add New Category
         </button>
-      </form>
+      </div>
 
       {/* TABLE SECTION */}
       <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] border border-gray-100 overflow-hidden">
@@ -411,6 +390,58 @@ export default function CategoryManagement() {
             >
               Next
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ADD CATEGORY MODAL */}
+      {addModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-[450px] bg-white rounded-3xl p-8 shadow-2xl relative">
+            <button
+              onClick={() => setAddModalOpen(false)}
+              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700"
+            >
+              <FiX size={22} />
+            </button>
+
+            <h2 className="text-2xl font-black mb-8">Add New Category</h2>
+
+            <div className="space-y-6">
+              <div>
+                <label className="text-xs font-bold text-gray-400 block mb-2">
+                  Category Name
+                </label>
+                <input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl font-semibold outline-none"
+                  placeholder="Enter category name"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-400 block mb-2 cursor-pointer">
+                  Cover Image
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) =>
+                    setCoverImage(e.target.files ? e.target.files[0] : null)
+                  }
+                  className="w-full cursor-pointer"
+                />
+              </div>
+
+              <button
+                onClick={handleAdd}
+                disabled={loading}
+                className="w-full py-4 font-black text-white bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-2xl cursor-pointer"
+              >
+                {loading ? "Adding..." : "Create Category"}
+              </button>
+            </div>
           </div>
         </div>
       )}

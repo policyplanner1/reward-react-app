@@ -266,21 +266,29 @@ class VendorController {
   // vendor manager creates category
   async createCategory(req, res) {
     try {
-      const data = req.body;
+      const { name } = req.body;
 
-      await categoryModel.createCategory(data);
+      if (!name?.trim()) {
+        return res.status(400).json({ message: "Category name required" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "Cover image is mandatory" });
+      }
+
+      const imagePath = `/category-image/${req.file.filename}`;
+
+      await categoryModel.createCategory({
+        name: name.trim(),
+        cover_image: imagePath,
+      });
 
       res.status(201).json({
         success: true,
         message: "Category created successfully",
       });
     } catch (error) {
-      console.error("category creation error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Category creation error",
-        error: error.message,
-      });
+      res.status(500).json({ message: error.message });
     }
   }
 
