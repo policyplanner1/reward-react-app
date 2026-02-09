@@ -276,18 +276,41 @@ class VendorController {
         return res.status(400).json({ message: "Cover image is mandatory" });
       }
 
-      const imagePath = `/category-image/${req.file.filename}`;
+      //  Validate image
+      if (!req.file.mimetype.startsWith("image/")) {
+        return res.status(400).json({ message: "Only image files allowed" });
+      }
 
-      await categoryModel.createCategory({
-        name: name.trim(),
-        cover_image: imagePath,
-      });
+      // 1 Create category (without image)
+      const categoryId = await categoryModel.createCategory(name.trim());
+
+      // 2 Folder creation
+      const categoryDir = path.join(
+        __dirname,
+        `../uploads/category-images/${categoryId}`,
+      );
+
+      if (!fs.existsSync(categoryDir)) {
+        fs.mkdirSync(categoryDir, { recursive: true });
+      }
+
+      // 3 Move file from temp to image folder
+      const ext = path.extname(req.file.originalname);
+      const finalFilePath = path.join(categoryDir, `cover${ext}`);
+
+      fs.renameSync(req.file.path, finalFilePath);
+
+      const dbPath = `/uploads/category-images/${categoryId}/cover${ext}`;
+
+      // 4 Update DB with image path
+      await categoryModel.updateCategoryImage(categoryId, dbPath);
 
       res.status(201).json({
         success: true,
         message: "Category created successfully",
       });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: error.message });
     }
   }
@@ -296,31 +319,61 @@ class VendorController {
   async updateCategory(req, res) {
     try {
       const categoryID = req.params.id;
-      const data = req.body;
+      const { name, status } = req.body;
 
-      const updatedCategory = await categoryModel.updateCategory(
-        categoryID,
-        data,
-      );
+      // 1 Update name and status
+      const updatedCategory = await categoryModel.updateCategory(categoryID, {
+        name,
+        status,
+      });
 
       if (!updatedCategory) {
         return res.status(404).json({
           success: false,
-          message: "Category not found or no changes made",
+          message: "Category not found",
         });
+      }
+
+      // 2 If new image uploaded => replace it
+      if (req.file) {
+        if (!req.file.mimetype.startsWith("image/")) {
+          return res.status(400).json({ message: "Only images allowed" });
+        }
+
+        const categoryDir = path.join(
+          __dirname,
+          `../uploads/category-images/${categoryID}`,
+        );
+
+        if (!fs.existsSync(categoryDir)) {
+          fs.mkdirSync(categoryDir, { recursive: true });
+        }
+
+        const ext = path.extname(req.file.originalname);
+        const finalPath = path.join(categoryDir, `cover${ext}`);
+
+        // remove old files inside folder
+        fs.readdirSync(categoryDir).forEach((file) => {
+          fs.unlinkSync(path.join(categoryDir, file));
+        });
+
+        // move new file
+        fs.renameSync(req.file.path, finalPath);
+
+        const dbPath = `/uploads/category-images/${categoryID}/cover${ext}`;
+
+        await categoryModel.updateCategoryImage(categoryID, dbPath);
       }
 
       res.status(200).json({
         success: true,
-        data: updatedCategory,
         message: "Category updated successfully",
       });
     } catch (error) {
       console.error("category updating error:", error);
       res.status(500).json({
         success: false,
-        message: "Category updating error",
-        error: error.message,
+        message: error.message,
       });
     }
   }

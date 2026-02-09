@@ -1,13 +1,22 @@
 const db = require("../config/database");
 
 class CategoryModel {
-  async createCategory(data) {
-    const { name, cover_image } = data;
+  async createCategory(name) {
+    const [result] = await db.execute(
+      `INSERT INTO categories (category_name, created_at)
+     VALUES (?, NOW())`,
+      [name],
+    );
 
+    return result.insertId;
+  }
+
+  async updateCategoryImage(categoryId, imagePath) {
     await db.execute(
-      `INSERT INTO categories (category_name, cover_image, created_at)
-     VALUES (?, ?, NOW())`,
-      [name, cover_image],
+      `UPDATE categories
+     SET cover_image = ?
+     WHERE category_id = ?`,
+      [imagePath, categoryId],
     );
   }
 
@@ -62,6 +71,13 @@ class CategoryModel {
       console.error("Error updating category:", error);
       throw error;
     }
+  }
+
+  async updateCategoryImage(id, imagePath) {
+    await db.execute(
+      `UPDATE categories SET cover_image = ? WHERE category_id = ?`,
+      [imagePath, id],
+    );
   }
 
   // DELETE CATEGORY

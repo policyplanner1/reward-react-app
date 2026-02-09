@@ -4,6 +4,7 @@ const DocumentController = require("../controllers/documentController");
 const upload = require("../middleware/uploadVendor");
 const { authenticateToken, authorizeRoles } = require("../middleware/auth");
 const vendorController = require("../controllers/vendorController");
+const { productUpload } = require("../middleware/productUpload");
 
 const router = express.Router();
 
@@ -66,7 +67,7 @@ router.post(
   "/create-category",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  uploadCategory.single("cover_image"),
+  productUpload.single("cover_image"),
   VendorController.createCategory,
 );
 
@@ -86,6 +87,7 @@ router.put(
   "/update-category/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
+  productUpload.single("cover_image"),
   VendorController.updateCategory,
 );
 
