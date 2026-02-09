@@ -184,6 +184,13 @@ class ProductModel {
       );
       product.images = images.map((img) => img.image_url);
 
+      //2.5 Get product videos
+      const [videos] = await db.execute(
+        `SELECT video_url FROM product_videos WHERE product_id = ? LIMIT 1`,
+        [productId],
+      );
+      product.video = videos.length ? videos[0].video_url : null;
+
       // 3 Get product variants
       const [variants] = await db.execute(
         `SELECT * FROM product_variants WHERE product_id = ? AND is_visible = 1`,
