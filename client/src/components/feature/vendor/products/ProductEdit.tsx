@@ -134,6 +134,7 @@ interface ProductData {
   hsnSacCode: string;
   description: string;
   shortDescription: string;
+  brandDescription: string;
   categoryId: number | null;
   subCategoryId: number | null;
   subSubCategoryId: number | null;
@@ -160,6 +161,7 @@ const initialProductData: ProductData = {
   hsnSacCode: "",
   description: "",
   shortDescription: "",
+  brandDescription: "",
   categoryId: null,
   subCategoryId: null,
   subSubCategoryId: null,
@@ -574,6 +576,7 @@ export default function EditProductPage() {
         hsnSacCode: p.hsn_sac_code || "",
         description: p.description || "",
         shortDescription: p.short_description || "",
+        brandDescription: p.brand_description || "",
         categoryId: p.category_id || null,
         subCategoryId: p.subcategory_id || null,
         subSubCategoryId: p.sub_subcategory_id || null,
@@ -658,6 +661,7 @@ export default function EditProductPage() {
       formData.append("productName", product.productName);
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
+      formData.append("brandDescription", product.brandDescription);
 
       if (product.gstSlab) {
         formData.append("gstSlab", product.gstSlab);
@@ -1189,6 +1193,25 @@ export default function EditProductPage() {
                     setProduct((prev) => ({
                       ...prev,
                       description: val,
+                    }))
+                  }
+                />
+              </div>
+
+              {/* ===================== BRAND DESCRIPTION ===================== */}
+              <div className="mt-8">
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Brand Description <span className="text-red-500">*</span>
+                </label>
+
+                <QuillEditor
+                  value={product.brandDescription}
+                  placeholder="Describe the brand story, quality, values and background..."
+                  minHeight={260}
+                  onChange={(val) =>
+                    setProduct((prev) => ({
+                      ...prev,
+                      brandDescription: val,
                     }))
                   }
                 />
