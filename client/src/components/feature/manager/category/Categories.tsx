@@ -11,6 +11,7 @@ import {
 } from "react-icons/fi";
 import { api } from "../../../../api/api";
 import Swal from "sweetalert2";
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 type Status = "active" | "inactive";
 
@@ -19,6 +20,7 @@ interface Category {
   name: string;
   status: Status;
   created_at: string;
+  cover_image: string;
 }
 
 export default function CategoryManagement() {
@@ -33,6 +35,8 @@ export default function CategoryManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [newCoverImage, setNewCoverImage] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   const totalPages = Math.ceil(categories.length / itemsPerPage);
@@ -47,6 +51,14 @@ export default function CategoryManagement() {
       setCurrentPage(totalPages || 1);
     }
   }, [categories, totalPages, currentPage]);
+
+  const resolveImageUrl = (path?: string) => {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    return `${API_BASEIMAGE_URL}/uploads/${path.replace(/^\/+/, "")}`;
+  };
 
   const fetchCategories = async () => {
     try {
@@ -63,6 +75,7 @@ export default function CategoryManagement() {
         name: c.category_name || "Unnamed",
         status: c.status === 1 ? "active" : "inactive",
         created_at: c.created_at,
+        cover_image: c.cover_image,
       }));
 
       setCategories(formatted);
@@ -141,8 +154,11 @@ export default function CategoryManagement() {
         name: res.data.data.category_name,
         status: res.data.data.status === 1 ? "active" : "inactive",
         created_at: res.data.data.created_at,
+        cover_image: res.data.data.cover_image,
       };
       setSelected(data);
+      setPreviewImage(resolveImageUrl(data.cover_image));
+      setNewCoverImage(null);
       setEditName(data.name);
       setDrawerOpen(true);
       setIsEditing(false);
@@ -159,18 +175,28 @@ export default function CategoryManagement() {
 
   const handleSaveEdit = async () => {
     if (!selected) return;
+
     try {
-      await api.put(`/vendor/update-category/${selected.category_id}`, {
-        name: editName,
-        status: selected.status === "active" ? 1 : 0,
-      });
+      const formData = new FormData();
+      formData.append("name", editName);
+      formData.append("status", selected.status === "active" ? "1" : "0");
+
+      if (newCoverImage) {
+        formData.append("cover_image", newCoverImage);
+      }
+
+      await api.put(
+        `/vendor/update-category/${selected.category_id}`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
+
       fetchCategories();
-      setIsEditing(false);
-      setCurrentPage(1);
       closeDrawer();
-    } catch (err: any) {
-      console.error("Update error:", err.response?.data || err.message);
-      setError("Failed to update category.");
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -461,9 +487,10 @@ export default function CategoryManagement() {
           />
 
           <div
-            className={`absolute right-0 top-0 h-full w-[450px] bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.05)] transition-transform duration-500 ease-out ${
-              drawerOpen ? "translate-x-0" : "translate-x-full"
-            }`}
+            className={`absolute right-0 top-0 h-full w-[450px] bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.05)]
+  transition-transform duration-500 ease-out flex flex-col ${
+    drawerOpen ? "translate-x-0" : "translate-x-full"
+  }`}
           >
             {/* DRAWER HEADER */}
             <div className="p-8 border-b border-gray-50">
@@ -488,7 +515,7 @@ export default function CategoryManagement() {
             </div>
 
             {/* DRAWER BODY */}
-            <div className="p-8 space-y-8">
+            <div className="flex-1 overflow-y-auto p-8 space-y-8">
               {!isEditing ? (
                 <div className="space-y-6">
                   <div className="p-6 bg-gray-50 rounded-[2rem] border border-gray-100">
@@ -499,9 +526,19 @@ export default function CategoryManagement() {
                       {selected.status}
                     </p>
                   </div>
+
+                  {/*  Image Preview in view mode */}
+                  {selected.cover_image && (
+                    <img
+                      src={resolveImageUrl(selected.cover_image)}
+                      className="w-full h-40 object-cover rounded-2xl border"
+                    />
+                  )}
+
                   <button
-                    className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
-           transition-all duration-300 cursor-pointer"
+                    className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl
+        hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+        transition-all duration-300 cursor-pointer"
                     onClick={() => setIsEditing(true)}
                   >
                     Edit
@@ -509,6 +546,7 @@ export default function CategoryManagement() {
                 </div>
               ) : (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                  {/* Category Name */}
                   <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
                       Category Name
@@ -516,10 +554,11 @@ export default function CategoryManagement() {
                     <input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="w-full px-5 py-4 font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#852BAF]/20 focus:bg-white transition-all outline-none"
+                      className="w-full px-5 py-4 font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-2xl outline-none"
                     />
                   </div>
 
+                  {/* Status */}
                   <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
                       Display Status
@@ -539,6 +578,34 @@ export default function CategoryManagement() {
                     </select>
                   </div>
 
+                  {/* Cover Image Section */}
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
+                      Cover Image
+                    </label>
+
+                    {previewImage && (
+                      <img
+                        src={previewImage}
+                        className="w-full h-40 object-cover rounded-2xl mb-4 border"
+                      />
+                    )}
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setNewCoverImage(file);
+                          setPreviewImage(URL.createObjectURL(file));
+                        }
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Buttons */}
                   <div className="pt-4 space-y-3">
                     <button
                       onClick={handleSaveEdit}
@@ -546,11 +613,12 @@ export default function CategoryManagement() {
                     >
                       <FiSave className="inline-block mr-2" /> Save Changes
                     </button>
+
                     <button
                       onClick={() => setIsEditing(false)}
-                      className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl 
-           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
-           hover:text-white transition-all duration-300 cursor-pointer"
+                      className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl
+          hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+          hover:text-white transition-all duration-300 cursor-pointer"
                     >
                       Discard
                     </button>

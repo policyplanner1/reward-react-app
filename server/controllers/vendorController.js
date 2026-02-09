@@ -300,7 +300,7 @@ class VendorController {
 
       fs.renameSync(req.file.path, finalFilePath);
 
-      const dbPath = `/uploads/category-images/${categoryId}/cover${ext}`;
+      const dbPath = `category-images/${categoryId}/cover${ext}`;
 
       // 4 Update DB with image path
       await categoryModel.updateCategoryImage(categoryId, dbPath);
@@ -360,7 +360,8 @@ class VendorController {
         // move new file
         fs.renameSync(req.file.path, finalPath);
 
-        const dbPath = `/uploads/category-images/${categoryID}/cover${ext}`;
+        const dbPath = `category-images/${categoryID}/cover${ext}`;
+        
 
         await categoryModel.updateCategoryImage(categoryID, dbPath);
       }
