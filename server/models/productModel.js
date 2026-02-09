@@ -123,9 +123,9 @@ class ProductModel {
 
     const [result] = await connection.execute(
       `INSERT INTO eproducts 
-     (vendor_id, category_id, subcategory_id, sub_subcategory_id, brand_name, manufacturer,product_name, gst_slab,hsn_sac_code,description, short_description,
+     (vendor_id, category_id, subcategory_id, sub_subcategory_id, brand_name, manufacturer,product_name, gst_slab,hsn_sac_code,description, short_description,brand_description,
       custom_category, custom_subcategory, custom_sub_subcategory,is_discount_eligible,is_returnable,return_window_days,delivery_sla_min_days,delivery_sla_max_days,shipping_class, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
       [
         safe(vendorId),
         safe(data.category_id),
@@ -138,6 +138,7 @@ class ProductModel {
         safe(data.hsnSacCode),
         safe(data.description),
         safe(data.shortDescription),
+        safe(data.brandDescription),
         custom_category,
         custom_subcategory,
         custom_sub_subcategory,
