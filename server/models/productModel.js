@@ -436,6 +436,14 @@ class ProductModel {
       );
       product.images = images.map((img) => img.image_url);
 
+      // 2.5 Get product video
+      const [videos] = await db.execute(
+        `SELECT video_url FROM product_videos WHERE product_id = ? LIMIT 1`,
+        [productId],
+      );
+
+      product.video = videos.length ? videos[0].video_url : null;
+
       // 3 Get product documents
       const [documents] = await db.execute(
         `SELECT pd.id, pd.file_path, pd.mime_type,pd.status, d.document_name
