@@ -143,6 +143,7 @@ interface ProductView {
   deliverySlaMaxDays?: number;
   shippingClass?: "standard" | "bulky" | "fragile";
   productImages?: string[];
+  productVideo?: string | null;
   requiredDocs?: Array<{
     id: number;
     document_name: string;
@@ -226,6 +227,7 @@ export default function ReviewProductPage() {
         productImages: Array.isArray(raw.productImages)
           ? raw.productImages
           : (raw.images ?? []),
+        productVideo: raw.video ?? null,
 
         requiredDocs: raw.documents ?? [],
         variants: Array.isArray(raw.variants) ? raw.variants : [],
@@ -692,6 +694,29 @@ export default function ReviewProductPage() {
               </div>
             )}
           </div>
+        </section>
+
+        {/* Product Video */}
+        <section className="mt-6">
+          <SectionHeader
+            icon={FaImages}
+            title="Product Video"
+            description="Vendor uploaded demo video"
+          />
+
+          {product.productVideo ? (
+            <div className="w-72 border rounded overflow-hidden">
+              <video
+                src={resolveImageUrl(product.productVideo)}
+                controls
+                className="w-full h-full"
+              />
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500">
+              No product video available
+            </div>
+          )}
         </section>
 
         {/* Required Documents (if any) */}
