@@ -26,6 +26,7 @@ interface Category {
 export default function CategoryManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<Category | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -39,9 +40,15 @@ export default function CategoryManagement() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const itemsPerPage = 10;
 
-  const totalPages = Math.ceil(categories.length / itemsPerPage);
+  // FILTER FIRST
+  const filteredCategories = categories.filter((cat) =>
+    cat.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
 
-  const paginatedCategories = categories.slice(
+  // THEN PAGINATE
+  const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
+
+  const paginatedCategories = filteredCategories.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
   );
@@ -50,7 +57,11 @@ export default function CategoryManagement() {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages || 1);
     }
-  }, [categories, totalPages, currentPage]);
+  }, [filteredCategories, totalPages, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const resolveImageUrl = (path?: string) => {
     if (!path) return "";
@@ -263,13 +274,28 @@ export default function CategoryManagement() {
           {error}
         </div>
       )}
+
       {/* ADD CATEGORY INPUT */}
-      <div className="flex justify-end mb-6">
+      <div className="flex items-center justify-between mb-6">
+        {/* 🔎 Search */}
+        <div className="w-[320px]">
+          <input
+            type="text"
+            placeholder="Search category..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl
+                 shadow-sm outline-none font-semibold text-gray-700
+                 focus:border-[#852BAF] focus:ring-2 focus:ring-purple-100"
+          />
+        </div>
+
+        {/* ➕ Add Button */}
         <button
           onClick={() => setAddModalOpen(true)}
           className="flex items-center gap-2 px-6 py-3 font-bold text-white
-                    bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-                    rounded-xl shadow-lg shadow-purple-200 hover:opacity-90 transition-all cursor-pointer"
+              bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+              rounded-xl shadow-lg shadow-purple-200 hover:opacity-90 transition-all cursor-pointer"
         >
           <FiPlus /> Add New Category
         </button>
@@ -370,9 +396,10 @@ export default function CategoryManagement() {
             </span>{" "}
             to{" "}
             <span className="font-semibold">
-              {Math.min(currentPage * itemsPerPage, categories.length)}
+              {Math.min(currentPage * itemsPerPage, filteredCategories.length)}
             </span>{" "}
-            of <span className="font-semibold">{categories.length}</span>{" "}
+            of{" "}
+            <span className="font-semibold">{filteredCategories.length}</span>{" "}
             categories
           </div>
 
