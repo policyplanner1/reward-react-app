@@ -822,7 +822,7 @@ export default function SubcategoryManagement() {
 
               <button
                 onClick={handleAdd}
-                className="w-full py-4 text-white font-black rounded-2xl bg-gradient-to-r from-[#852BAF] to-[#FC3F78]"
+                className="w-full py-4 text-white font-black rounded-2xl bg-gradient-to-r from-[#852BAF] to-[#FC3F78] cursor-pointer hover:opacity-90 transition-all"
               >
                 Create Subcategory
               </button>
