@@ -34,6 +34,8 @@ type BackendProductStatus =
 
 type ProductStatus = "pending" | "approved" | "rejected" | "resubmission";
 
+type SortColumn = "product_id" | "product_name";
+
 interface ProductDocument {
   document_id: number;
   document_name: string;
@@ -170,6 +172,11 @@ const StatCard = ({ title, value, icon: Icon, color }: StatCardProps) => {
   );
 };
 
+const SORT_FIELD_MAP: Record<SortColumn, string> = {
+  product_id: "product_id",
+  product_name: "product_name",
+};
+
 /* ================================
        MAIN COMPONENT
 ================================ */
@@ -189,7 +196,7 @@ export default function ProductManagerList() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("created_at");
+  const [sortBy, setSortBy] = useState<SortColumn>("product_id");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const [pagination, setPagination] = useState({
@@ -199,13 +206,11 @@ export default function ProductManagerList() {
     itemsPerPage: 10,
   });
 
-  // const debounceRef = useRef<number | null>(null);
-
   const okBtnClass =
     "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
     "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95";
 
-  const getSortIcon = (column: string) => {
+  const getSortIcon = (column: SortColumn) => {
     if (sortBy !== column) return <FaSort className="ml-1 opacity-30" />;
     return sortOrder === "asc" ? (
       <FaSortUp className="ml-1 text-[#852BAF]" />
@@ -236,7 +241,8 @@ export default function ProductManagerList() {
         status:
           statusFilter !== "all" ? normalizeStatusForApi(statusFilter) : "",
         search: searchQuery,
-        sortBy,
+
+        sortBy: SORT_FIELD_MAP[sortBy],
         sortOrder,
       };
 
@@ -271,29 +277,6 @@ export default function ProductManagerList() {
     sortBy,
     sortOrder,
   ]);
-
-  // useEffect(() => {
-  //   fetchProducts();
-  // }, [
-  //   pagination.currentPage,
-  //   pagination.itemsPerPage,
-  //   sortBy,
-  //   sortOrder,
-  //   fetchProducts,
-  // ]);
-
-  // useEffect(() => {
-  //   if (debounceRef.current) window.clearTimeout(debounceRef.current);
-
-  //   debounceRef.current = window.setTimeout(() => {
-  //     setPagination((p) => ({ ...p, currentPage: 1 }));
-  //     fetchProducts();
-  //   }, 450);
-
-  //   return () => {
-  //     if (debounceRef.current) window.clearTimeout(debounceRef.current);
-  //   };
-  // }, [searchQuery, statusFilter, fetchProducts]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -434,22 +417,17 @@ export default function ProductManagerList() {
     }
   };
 
-  const handleSort = (column: string) => {
+  const handleSort = (column: SortColumn) => {
     if (sortBy === column) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
       setSortBy(column);
-      setSortOrder("desc");
+      setSortOrder("asc");
     }
+
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
-  // const onSearchChange = useCallback(
-  //   (e: React.ChangeEvent<HTMLInputElement>) => {
-  //     setSearchQuery(e.target.value);
-  //   },
-  //   [],
-  // );
   const onSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearchQuery(e.target.value);
@@ -538,6 +516,16 @@ export default function ProductManagerList() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                {/* NEW: Product ID column */}
+                <th
+                  onClick={() => handleSort("product_id")}
+                  className="px-4 py-3 cursor-pointer text-xs font-bold uppercase text-gray-700"
+                >
+                  <div className="flex items-center">
+                    Product ID {getSortIcon("product_id")}
+                  </div>
+                </th>
+
                 <th
                   onClick={() => handleSort("product_name")}
                   className="px-4 py-3 cursor-pointer text-xs font-bold uppercase text-gray-700"
@@ -546,12 +534,15 @@ export default function ProductManagerList() {
                     Product {getSortIcon("product_name")}
                   </div>
                 </th>
+
                 <th className="px-4 py-3 text-xs font-bold uppercase text-gray-700">
                   Brand
                 </th>
+
                 <th className="px-4 py-3 text-xs font-bold uppercase text-gray-700">
                   Status
                 </th>
+
                 <th className="px-4 py-3 pl-0 text-xs font-bold uppercase text-gray-700">
                   Actions
                 </th>
@@ -561,12 +552,19 @@ export default function ProductManagerList() {
             <tbody className="divide-y divide-gray-200">
               {products.map((product) => (
                 <tr key={product.product_id} className="hover:bg-gray-50">
+                  {/* NEW: Product ID cell */}
+                  <td className="px-4 py-4 font-medium text-gray-600">
+                    {product.product_id}
+                  </td>
+
                   <td className="px-4 py-4 font-medium">
                     {product.product_name}
                   </td>
+
                   <td className="px-4 py-4 text-center">
                     {product.brand_name}
                   </td>
+
                   <td className="px-4 py-4 text-center">
                     <StatusChip status={product.status} />
                   </td>
@@ -580,7 +578,6 @@ export default function ProductManagerList() {
                             : "grid-cols-2 w-[88px]"
                         }`}
                       >
-                        {/* View */}
                         <Link
                           to={routes.manager.productView.replace(
                             ":id",
@@ -592,7 +589,6 @@ export default function ProductManagerList() {
                           <FaEye />
                         </Link>
 
-                        {/* Approve & Reject only for pending */}
                         {product.status === "pending" && (
                           <>
                             <button
@@ -617,7 +613,6 @@ export default function ProductManagerList() {
                           </>
                         )}
 
-                        {/* Redo — always visible */}
                         <button
                           onClick={() =>
                             handleProductAction("request_resubmission", product)
