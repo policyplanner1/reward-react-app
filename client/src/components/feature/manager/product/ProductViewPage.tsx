@@ -41,6 +41,7 @@ interface ProductView {
   hsnSacCode: string;
   description?: string;
   shortDescription?: string;
+  brandDescription?: string;
   categoryId?: number | null;
   subCategoryId?: number | null;
   subSubCategoryId?: number | null;
@@ -165,6 +166,7 @@ export default function ReviewProductPage() {
         hsnSacCode: raw.hsn_sac_code ?? "",
         description: raw.description ?? "",
         shortDescription: raw.short_description ?? raw.shortDescription ?? "",
+        brandDescription: raw.brand_description ?? raw.brandDescription ?? "",
         categoryId: raw.category_id ?? raw.categoryId ?? null,
         subCategoryId: raw.subcategory_id ?? raw.subCategoryId ?? null,
         subSubCategoryId:
@@ -623,6 +625,19 @@ export default function ReviewProductPage() {
                 minHeight={260}
               />
             </div>
+
+            <div className="mt-4">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Brand Description
+              </label>
+
+              <QuillEditor
+                value={product.brandDescription || ""}
+                readOnly
+                minHeight={220}
+              />
+            </div>
+            
             <div className="mt-4">
               <FormInput
                 id="shortDescription"
