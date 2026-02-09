@@ -183,7 +183,7 @@ export default function SubcategoryManagement() {
       const formData = new FormData();
       formData.append("category_id", String(selectedCategoryId));
       formData.append("name", newSubcategoryName);
-      formData.append("cover_image", newCoverImage); 
+      formData.append("cover_image", newCoverImage);
 
       await api.post("/vendor/create-subcategory", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -621,28 +621,50 @@ export default function SubcategoryManagement() {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-3 block">
                       Cover Image
                     </label>
 
-                    {previewImage && (
-                      <img
-                        src={previewImage}
-                        className="w-full h-40 object-cover rounded-2xl mb-4 border"
-                      />
-                    )}
+                    <label className="relative flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 cursor-pointer hover:border-[#852BAF] hover:bg-white transition-all group overflow-hidden">
+                      {previewImage ? (
+                        <>
+                          <img
+                            src={previewImage}
+                            alt="Preview"
+                            className="h-full w-full object-cover rounded-2xl"
+                          />
 
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setNewCoverImage(file);
-                          setPreviewImage(URL.createObjectURL(file));
-                        }
-                      }}
-                    />
+                          {/* Overlay on hover */}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-white">
+                            <FiEdit size={28} className="mb-2" />
+                            <p className="text-sm font-bold">
+                              Click to change image
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-gray-400 group-hover:text-[#852BAF] transition-all">
+                          <FiPlus size={28} className="mb-2" />
+                          <p className="text-sm font-semibold">
+                            Click to upload cover image
+                          </p>
+                          <p className="text-xs">PNG, JPG, WEBP up to 2MB</p>
+                        </div>
+                      )}
+
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setNewCoverImage(file);
+                            setPreviewImage(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                    </label>
                   </div>
 
                   {/* Status */}
@@ -728,13 +750,48 @@ export default function SubcategoryManagement() {
                 placeholder="Subcategory name"
               />
 
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) =>
-                  setNewCoverImage(e.target.files ? e.target.files[0] : null)
-                }
-              />
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-3 block">
+                  Cover Image
+                </label>
+
+                <label className="relative flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 cursor-pointer hover:border-[#852BAF] hover:bg-white transition-all group overflow-hidden">
+                  {newCoverImage ? (
+                    <>
+                      <img
+                        src={URL.createObjectURL(newCoverImage)}
+                        alt="Preview"
+                        className="h-full w-full object-cover rounded-2xl"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-white">
+                        <FiEdit size={26} className="mb-2" />
+                        <p className="text-sm font-bold">
+                          Click to change image
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-gray-400 group-hover:text-[#852BAF] transition-all">
+                      <FiPlus size={28} className="mb-2" />
+                      <p className="text-sm font-semibold">
+                        Click to upload cover image
+                      </p>
+                      <p className="text-xs">PNG, JPG, WEBP up to 2MB</p>
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) =>
+                      setNewCoverImage(
+                        e.target.files ? e.target.files[0] : null,
+                      )
+                    }
+                  />
+                </label>
+              </div>
 
               <button
                 onClick={handleAdd}
