@@ -290,20 +290,15 @@ class ProductController {
   async getCategories(req, res) {
     try {
       const [rows] = await db.execute(
-        `SELECT 
-        c.category_id, 
-        c.category_name 
-        FROM categories c 
-        where c.status = 1
-        ORDER BY c.category_name ASC`,
+        `SELECT * FROM categories
+        WHERE status = 1
+        ORDER BY category_name ASC`,
       );
 
       const processedCategories = rows.map((category) => ({
         id: category.category_id,
         name: category.category_name,
-        image: `https://via.placeholder.com/150?text=${encodeURIComponent(
-          category.category_name,
-        )}`,
+        image: category.cover_image,
       }));
 
       res.json({
