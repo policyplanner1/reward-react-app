@@ -50,6 +50,9 @@ class ProductController {
           id: product.product_id,
           title: product.product_name,
           brand: product.brand_name,
+          category: product.category_name,
+          subcategory: product.subcategory_name,
+          sub_subcategory: product.sub_subcategory_name,
           image: mainImage,
           price: salePrice ? `₹${salePrice}` : null,
           originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
@@ -116,28 +119,45 @@ class ProductController {
           priceMax,
         });
 
-      const processedProducts = products.map((product) => ({
-        id: product.product_id,
-        title: product.product_name,
-        image:
+      const processedProducts = products.map((product) => {
+        const mainImage =
           product.images && product.images.length
             ? product.images[0].image_url
-            : null,
+            : null;
 
-        price: product.sale_price
-          ? `₹${Number(product.sale_price).toFixed(0)}`
-          : null,
+        const salePrice = product.sale_price ? Number(product.sale_price) : 0;
 
-        originalPrice: product.mrp
-          ? `₹${Number(product.mrp).toFixed(0)}`
-          : null,
+        const discountPercent = product.reward_redemption_limit
+          ? Number(product.reward_redemption_limit)
+          : 0;
 
-        discount: "40%",
-        rating: 4.6,
-        reviews: "18.9K",
-        pointsPrice: "₹3,736",
-        points: 264,
-      }));
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+
+        const finalPrice = salePrice - discountAmount;
+
+        // extra discount
+        const mrp = product.mrp ? Number(product.mrp) : 0;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        return {
+          id: product.product_id,
+          title: product.product_name,
+          brand: product.brand_name,
+          category: product.category_name,
+          subcategory: product.subcategory_name,
+          sub_subcategory: product.sub_subcategory_name,
+          image: mainImage,
+          price: salePrice ? `₹${salePrice}` : null,
+          originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
+          discount: `${mrpDiscountPercent}%`,
+          rating: 4.6,
+          reviews: "18.9K",
+          pointsPrice: salePrice ? `₹${finalPrice}` : null,
+          points: discountAmount,
+        };
+      });
 
       return res.json({
         success: true,
