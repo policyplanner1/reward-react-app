@@ -14,6 +14,7 @@ import {
 } from "react-icons/fi";
 
 import { api } from "../../../../api/api";
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 type Status = "active" | "inactive";
 
@@ -29,6 +30,7 @@ interface Subcategory {
   category_name: string;
   status: Status;
   created_at: string;
+  cover_image: string;
 }
 
 export default function SubcategoryManagement() {
@@ -40,6 +42,10 @@ export default function SubcategoryManagement() {
   const [selected, setSelected] = useState<Subcategory | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [newCoverImage, setNewCoverImage] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
   const [loadingAdd, setLoadingAdd] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +57,14 @@ export default function SubcategoryManagement() {
     if (status === "inactive") return "inactive";
     if (status === 1 || status === "1") return "active";
     return "inactive";
+  };
+
+  const resolveImageUrl = (path?: string) => {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    return `${API_BASEIMAGE_URL}/uploads/${path.replace(/^\/+/, "")}`;
   };
 
   const fetchCategories = async () => {
@@ -83,8 +97,6 @@ export default function SubcategoryManagement() {
           ? res.data.data
           : [];
 
-      console.log("Fetched subcategories:", subArray);
-
       const formatted = subArray.map((s: any) => ({
         subcategory_id: s?.subcategory_id ?? "",
         category_id: s?.category_id ?? "",
@@ -93,6 +105,7 @@ export default function SubcategoryManagement() {
         // status: Number(s?.status) === 1 ? "active" : "inactive",
         status: normalizeStatus(s.status),
         created_at: s?.created_at ?? "",
+        cover_image: s?.cover_image ?? "",
       }));
 
       setSubcategories(formatted);
@@ -140,14 +153,6 @@ export default function SubcategoryManagement() {
         text: "Please choose a category before adding a subcategory.",
         icon: "warning",
         confirmButtonText: "OK",
-
-        buttonsStyling: false,
-        customClass: {
-          confirmButton:
-            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
-            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
-          popup: "rounded-2xl",
-        },
       });
       return;
     }
@@ -158,14 +163,16 @@ export default function SubcategoryManagement() {
         text: "Please enter a subcategory name before adding.",
         icon: "warning",
         confirmButtonText: "OK",
+      });
+      return;
+    }
 
-        buttonsStyling: false,
-        customClass: {
-          confirmButton:
-            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
-            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
-          popup: "rounded-2xl",
-        },
+    if (!newCoverImage) {
+      await Swal.fire({
+        title: "Cover image required",
+        text: "Please upload a cover image for this subcategory.",
+        icon: "warning",
+        confirmButtonText: "OK",
       });
       return;
     }
@@ -173,27 +180,30 @@ export default function SubcategoryManagement() {
     setLoadingAdd(true);
 
     try {
-      await api.post("/vendor/create-subcategory", {
-        category_id: selectedCategoryId,
-        name: newSubcategoryName,
+      const formData = new FormData();
+      formData.append("category_id", String(selectedCategoryId));
+      formData.append("name", newSubcategoryName);
+      formData.append("cover_image", newCoverImage); 
+
+      await api.post("/vendor/create-subcategory", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
+      // Reset
       setNewSubcategoryName("");
-      fetchSubcategories();
+      setNewCoverImage(null);
+      setAddModalOpen(false);
       setCurrentPage(1);
+      fetchSubcategories();
 
-      //  SUCCESS POPUP (IMPORTANT: await)
       await Swal.fire({
         title: "Added!",
         text: "Subcategory added successfully.",
         icon: "success",
         timer: 1200,
         showConfirmButton: false,
-        customClass: { popup: "rounded-2xl" },
       });
     } catch (err: any) {
-      console.log("Add error:", err);
-
       await Swal.fire({
         title: "Failed",
         text:
@@ -201,14 +211,6 @@ export default function SubcategoryManagement() {
           "Failed to add subcategory. Please try again.",
         icon: "error",
         confirmButtonText: "OK",
-
-        buttonsStyling: false,
-        customClass: {
-          confirmButton:
-            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
-            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
-          popup: "rounded-2xl",
-        },
       });
     } finally {
       setLoadingAdd(false);
@@ -226,11 +228,14 @@ export default function SubcategoryManagement() {
         category_name: s.category_name,
         status: normalizeStatus(s.status),
         created_at: s.created_at,
+        cover_image: s.cover_image,
       };
       setSelected(formatted);
       setEditName(formatted.subcategory_name);
       setIsEditing(false);
       setDrawerOpen(true);
+      setPreviewImage(resolveImageUrl(s.cover_image));
+      setNewCoverImage(null);
     } catch (err) {
       console.log("View error:", err);
     }
@@ -240,11 +245,21 @@ export default function SubcategoryManagement() {
     if (!selected) return;
     setLoadingSave(true);
     try {
-      await api.put(`/vendor/update-subcategory/${selected.subcategory_id}`, {
-        category_id: selected.category_id,
-        name: editName,
-        status: selected.status === "active" ? 1 : 0,
-      });
+      const formData = new FormData();
+      formData.append("name", editName);
+      formData.append("status", selected.status === "active" ? "1" : "0");
+
+      if (newCoverImage) {
+        formData.append("cover_image", newCoverImage);
+      }
+
+      await api.put(
+        `/vendor/update-subcategory/${selected.subcategory_id}`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
 
       setSelected({
         ...selected,
@@ -357,42 +372,16 @@ export default function SubcategoryManagement() {
         </div>
       )}
       {/* ADD FORM */}
-      <form
-        onSubmit={handleAdd}
-        className="flex flex-col gap-4 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-[60rem] md:flex-row"
-      >
-        <select
-          value={selectedCategoryId}
-          onChange={(e) =>
-            setSelectedCategoryId(
-              e.target.value === "" ? "" : Number(e.target.value),
-            )
-          }
-          className="px-5 py-3 text-sm font-bold bg-gray-50 rounded-xl outline-none text-gray-700 md:w-1/3"
-        >
-          <option value="">Filter by Category</option>
-          {categories.map((c) => (
-            <option key={c.category_id} value={c.category_id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-
-        <input
-          value={newSubcategoryName}
-          onChange={(e) => setNewSubcategoryName(e.target.value)}
-          className="flex-1 px-5 py-3 text-sm font-semibold bg-transparent outline-none placeholder:text-gray-300"
-          placeholder="Enter subcategory name..."
-        />
-
+      <div className="flex justify-end mb-6">
         <button
-          type="submit"
-          disabled={loadingAdd}
-          className="flex items-center justify-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200 cursor-pointer"
+          onClick={() => setAddModalOpen(true)}
+          className="flex items-center gap-2 px-6 py-3 font-bold text-white
+    bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+    rounded-xl shadow-lg shadow-purple-200"
         >
-          <FiPlus /> {loadingAdd ? "Adding…" : "Add Subcategory"}
+          <FiPlus /> Add Subcategory
         </button>
-      </form>
+      </div>
 
       {/* TABLE */}
       <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] border border-gray-100 overflow-hidden">
@@ -552,7 +541,7 @@ export default function SubcategoryManagement() {
       {/* DRAWER */}
       {selected && (
         <div
-          className={`fixed inset-0 z-50 transition-all duration-500 ${
+          className={`fixed inset-0 z-50 transition-all duration-500${
             drawerOpen ? "visible" : "invisible"
           }`}
         >
@@ -564,7 +553,7 @@ export default function SubcategoryManagement() {
           />
 
           <div
-            className={`absolute right-0 top-0 h-full w-[450px] bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.05)] transition-transform duration-500 ease-out ${
+            className={`absolute right-0 top-0 h-full w-[450px] bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.05)] transition-transform duration-500 ease-out flex flex-col ${
               drawerOpen ? "translate-x-0" : "translate-x-full"
             }`}
           >
@@ -589,7 +578,7 @@ export default function SubcategoryManagement() {
               </p>
             </div>
 
-            <div className="p-8 space-y-8">
+            <div className="flex-1 overflow-y-auto p-8 space-y-8">
               {!isEditing ? (
                 <div className="space-y-6">
                   <div className="p-6 bg-gray-50 rounded-[2rem] border border-gray-100">
@@ -600,9 +589,18 @@ export default function SubcategoryManagement() {
                       {selected.category_name}
                     </p>
                   </div>
+
+                  {previewImage && (
+                    <img
+                      src={previewImage}
+                      className="w-full h-40 object-cover rounded-2xl border"
+                    />
+                  )}
+
                   <button
-                    className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
-           transition-all duration-300 cursor-pointer"
+                    className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl
+        hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+        transition-all duration-300 cursor-pointer"
                     onClick={() => setIsEditing(true)}
                   >
                     Edit
@@ -610,6 +608,7 @@ export default function SubcategoryManagement() {
                 </div>
               ) : (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                  {/* Name */}
                   <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
                       Name
@@ -617,10 +616,36 @@ export default function SubcategoryManagement() {
                     <input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="w-full px-5 py-4 font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#852BAF]/20 focus:bg-white transition-all outline-none"
+                      className="w-full px-5 py-4 font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-2xl outline-none"
                     />
                   </div>
 
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
+                      Cover Image
+                    </label>
+
+                    {previewImage && (
+                      <img
+                        src={previewImage}
+                        className="w-full h-40 object-cover rounded-2xl mb-4 border"
+                      />
+                    )}
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setNewCoverImage(file);
+                          setPreviewImage(URL.createObjectURL(file));
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Status */}
                   <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
                       Status
@@ -640,26 +665,83 @@ export default function SubcategoryManagement() {
                     </select>
                   </div>
 
+                  {/* Buttons */}
                   <div className="pt-4 space-y-3">
                     <button
                       onClick={handleSaveEdit}
                       disabled={loadingSave}
                       className="w-full py-4 font-black text-white bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-2xl shadow-lg shadow-purple-200 hover:opacity-90 transition-all cursor-pointer"
                     >
-                      <FiSave className="inline-block mr-2" />{" "}
+                      <FiSave className="inline-block mr-2" />
                       {loadingSave ? "Saving…" : "Save Changes"}
                     </button>
+
                     <button
                       onClick={() => setIsEditing(false)}
-                      className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl 
-           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
-           hover:text-white transition-all duration-300 cursor-pointer"
+                      className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl
+          hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+          hover:text-white transition-all duration-300 cursor-pointer"
                     >
                       Discard
                     </button>
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* modal */}
+      {addModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-[500px] bg-white rounded-3xl p-8 shadow-2xl relative">
+            <FiX
+              className="absolute top-5 right-5 cursor-pointer"
+              onClick={() => setAddModalOpen(false)}
+            />
+
+            <h2 className="text-2xl font-black mb-8">Add Subcategory</h2>
+
+            <div className="space-y-6">
+              <select
+                value={selectedCategoryId}
+                onChange={(e) =>
+                  setSelectedCategoryId(
+                    e.target.value === "" ? "" : Number(e.target.value),
+                  )
+                }
+                className="w-full px-5 py-4 bg-gray-50 rounded-2xl"
+              >
+                <option value="">Select Category</option>
+                {categories.map((c) => (
+                  <option key={c.category_id} value={c.category_id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                value={newSubcategoryName}
+                onChange={(e) => setNewSubcategoryName(e.target.value)}
+                className="w-full px-5 py-4 bg-gray-50 rounded-2xl"
+                placeholder="Subcategory name"
+              />
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) =>
+                  setNewCoverImage(e.target.files ? e.target.files[0] : null)
+                }
+              />
+
+              <button
+                onClick={handleAdd}
+                className="w-full py-4 text-white font-black rounded-2xl bg-gradient-to-r from-[#852BAF] to-[#FC3F78]"
+              >
+                Create Subcategory
+              </button>
             </div>
           </div>
         </div>

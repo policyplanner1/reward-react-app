@@ -105,6 +105,7 @@ router.post(
   "/create-subcategory",
   authenticateToken,
   authorizeRoles("vendor_manager"),
+  productUpload.single("cover_image"),
   VendorController.createSubCategory,
 );
 
@@ -129,6 +130,7 @@ router.put(
   "/update-subcategory/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
+  productUpload.single("cover_image"),
   VendorController.updateSubCategory,
 );
 
