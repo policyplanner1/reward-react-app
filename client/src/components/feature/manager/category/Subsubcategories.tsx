@@ -56,7 +56,7 @@ export default function SubSubCategoryManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [subsub, setSubSub] = useState<SubSubcategory[]>([]);
-
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | "">("");
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<
     number | ""
@@ -153,10 +153,18 @@ export default function SubSubCategoryManagement() {
     return subcategories.filter((s) => s.category_id === selectedCategoryId);
   }, [selectedCategoryId, subcategories]);
 
-  const filterSubSub = useMemo(() => {
+  // 1️⃣ Filter by subcategory
+  const subcategoryFiltered = useMemo(() => {
     if (selectedSubcategoryId === "") return subsub;
     return subsub.filter((s) => s.subcategory_id === selectedSubcategoryId);
   }, [selectedSubcategoryId, subsub]);
+
+  // 2️⃣ Then search filter
+  const filterSubSub = useMemo(() => {
+    return subcategoryFiltered.filter((s) =>
+      s.name.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+  }, [subcategoryFiltered, searchTerm]);
 
   // Pagination
   const totalPages = Math.ceil(filterSubSub.length / itemsPerPage);
@@ -168,7 +176,7 @@ export default function SubSubCategoryManagement() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategoryId, selectedSubcategoryId]);
+  }, [selectedCategoryId, selectedSubcategoryId, searchTerm]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -420,6 +428,21 @@ export default function SubSubCategoryManagement() {
           <FiPlus /> Add Type
         </button>
       </form>
+
+      {/* Search */}
+      <div className="flex justify-between items-center mb-6">
+        <div className="w-[320px]">
+          <input
+            type="text"
+            placeholder="Search Type / Sub-Type..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl
+                 shadow-sm outline-none font-semibold text-gray-700
+                 focus:border-[#852BAF] focus:ring-2 focus:ring-purple-100"
+          />
+        </div>
+      </div>
 
       {/* TABLE */}
       <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] border border-gray-100 overflow-hidden">
