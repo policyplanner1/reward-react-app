@@ -339,6 +339,16 @@ class ProductModel {
     }
   }
 
+  // video insertion
+  async insertProductVideo(connection, productId, videoPath) {
+    await connection.execute(
+      `INSERT INTO product_videos (product_id, video_url)
+     VALUES (?, ?)`,
+      [productId, videoPath],
+    );
+  }
+
+  // insert documents
   async insertProductDocuments(connection, productId, categoryId, files) {
     if (!categoryId) return;
     const [docTypes] = await connection.execute(
@@ -366,6 +376,7 @@ class ProductModel {
     }
   }
 
+  // variant images insertion
   async insertProductVariantImages(connection, variantId, files) {
     for (const file of files) {
       await connection.execute(
