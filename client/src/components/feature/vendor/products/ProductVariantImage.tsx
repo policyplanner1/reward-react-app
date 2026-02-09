@@ -21,6 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 const BASE_IMAGE_URL = "https://rewardplanners.com/api/crm/uploads";
+const MAX_IMAGES = 7;
 
 function SortableImage({
   img,
@@ -168,13 +169,13 @@ export default function ProductVariantImages() {
     if (!e.target.files) return;
 
     const selectedFiles = Array.from(e.target.files);
-    const remainingSlots = 5 - images.length;
+    const remainingSlots = MAX_IMAGES - images.length;
 
     if (remainingSlots <= 0) {
       await Swal.fire({
         icon: "warning",
         title: "Image limit reached",
-        text: "You can upload a maximum of 5 images for a variant.",
+        text: `You can upload a maximum of ${MAX_IMAGES} images for a variant.`,
         confirmButtonText: "OK",
       });
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -278,7 +279,7 @@ export default function ProductVariantImages() {
             </span>
           </h1>
           <p className="text-gray-500 mt-2 font-medium">
-            Upload and manage images for this variant (max 5)
+            Upload and manage images for this variant (max {MAX_IMAGES})
           </p>
         </div>
 
@@ -318,7 +319,7 @@ export default function ProductVariantImages() {
             </button>
 
             <span className="text-sm text-gray-500 font-medium">
-              {images.length}/5 uploaded
+              {images.length}/{MAX_IMAGES} uploaded
             </span>
           </div>
 
