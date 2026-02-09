@@ -712,7 +712,7 @@ export default function ReviewProductPage() {
                   downloadFile(resolveImageUrl(coverImage), "cover-image.jpg")
                 }
                 className="absolute bottom-1 right-1 p-1 text-xs text-white bg-black/60 rounded
-                   opacity-0 group-hover:opacity-100 transition"
+                   opacity-0 group-hover:opacity-100 transition cursor-pointer"
               >
                 <FaDownload className="text-sm" />
               </button>
