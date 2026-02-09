@@ -336,9 +336,6 @@ class VendorController {
 
       // 2 If new image uploaded => replace it
       if (req.file) {
-        if (!req.file.mimetype.startsWith("image/")) {
-          return res.status(400).json({ message: "Only images allowed" });
-        }
 
         const categoryDir = path.join(
           __dirname,
@@ -352,13 +349,13 @@ class VendorController {
         const ext = path.extname(req.file.originalname);
         const finalPath = path.join(categoryDir, `cover${ext}`);
 
-        // remove old files inside folder
-        fs.readdirSync(categoryDir).forEach((file) => {
-          fs.unlinkSync(path.join(categoryDir, file));
-        });
-
-        // move new file
         fs.renameSync(req.file.path, finalPath);
+
+        fs.readdirSync(categoryDir).forEach((file) => {
+          if (path.join(categoryDir, file) !== finalPath) {
+            fs.unlinkSync(path.join(categoryDir, file));
+          }
+        });
 
         const dbPath = `category-images/${categoryID}/cover${ext}`;
 

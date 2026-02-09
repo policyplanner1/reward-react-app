@@ -447,17 +447,36 @@ export default function CategoryManagement() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-400 block mb-2 cursor-pointer">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-3 block">
                   Cover Image
                 </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) =>
-                    setCoverImage(e.target.files ? e.target.files[0] : null)
-                  }
-                  className="w-full cursor-pointer"
-                />
+
+                <label className="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 cursor-pointer hover:border-[#852BAF] hover:bg-white transition-all group">
+                  {coverImage ? (
+                    <img
+                      src={URL.createObjectURL(coverImage)}
+                      alt="Preview"
+                      className="h-full w-full object-cover rounded-2xl"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-gray-400 group-hover:text-[#852BAF] transition-all">
+                      <FiPlus size={28} className="mb-2" />
+                      <p className="text-sm font-semibold">
+                        Click to upload cover image
+                      </p>
+                      <p className="text-xs">PNG, JPG, WEBP up to 2MB</p>
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) =>
+                      setCoverImage(e.target.files ? e.target.files[0] : null)
+                    }
+                  />
+                </label>
               </div>
 
               <button
@@ -580,29 +599,40 @@ export default function CategoryManagement() {
 
                   {/* Cover Image Section */}
                   <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-3 block">
                       Cover Image
                     </label>
 
-                    {previewImage && (
-                      <img
-                        src={previewImage}
-                        className="w-full h-40 object-cover rounded-2xl mb-4 border"
-                      />
-                    )}
+                    <label className="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 cursor-pointer hover:border-[#852BAF] hover:bg-white transition-all group">
+                      {previewImage ? (
+                        <img
+                          src={previewImage}
+                          alt="Preview"
+                          className="h-full w-full object-cover rounded-2xl"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-gray-400 group-hover:text-[#852BAF] transition-all">
+                          <FiPlus size={28} className="mb-2" />
+                          <p className="text-sm font-semibold">
+                            Click to change cover image
+                          </p>
+                          <p className="text-xs">PNG, JPG, WEBP up to 2MB</p>
+                        </div>
+                      )}
 
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setNewCoverImage(file);
-                          setPreviewImage(URL.createObjectURL(file));
-                        }
-                      }}
-                      className="w-full"
-                    />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setNewCoverImage(file);
+                            setPreviewImage(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                    </label>
                   </div>
 
                   {/* Buttons */}
