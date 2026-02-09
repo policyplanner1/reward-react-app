@@ -312,7 +312,7 @@ export default function ProductManagerList() {
       approve: {
         title: "Approve Product?",
         text: `Do you want to approve "${product.product_name}"?`,
-        icon: "question",
+        icon: "success",
         confirmText: "Approve",
         confirmColor: "#16A34A",
         needsReason: false,
@@ -320,7 +320,7 @@ export default function ProductManagerList() {
       reject: {
         title: "Reject Product?",
         text: `Do you want to reject "${product.product_name}"?`,
-        icon: "warning",
+        icon: "error",
         confirmText: "Reject",
         confirmColor: "#DC2626",
         needsReason: true,
@@ -329,7 +329,7 @@ export default function ProductManagerList() {
       request_resubmission: {
         title: "Allow Resubmission?",
         text: `Allow vendor to resubmit "${product.product_name}"?`,
-        icon: "warning",
+        icon: "info",
         confirmText: "Allow",
         confirmColor: "#2563EB",
         needsReason: true,
