@@ -36,6 +36,7 @@ interface Subcategory {
 export default function SubcategoryManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | "">("");
   const [newSubcategoryName, setNewSubcategoryName] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -120,12 +121,20 @@ export default function SubcategoryManagement() {
     fetchSubcategories();
   }, []);
 
-  const filteredSubcategories = useMemo(() => {
+  // 1️⃣ Filter by category
+  const categoryFiltered = useMemo(() => {
     if (selectedCategoryId === "") return subcategories;
     return subcategories.filter(
       (item) => item.category_id === selectedCategoryId,
     );
   }, [subcategories, selectedCategoryId]);
+
+  // 2️⃣ Then filter by search
+  const filteredSubcategories = useMemo(() => {
+    return categoryFiltered.filter((item) =>
+      item.subcategory_name.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+  }, [categoryFiltered, searchTerm]);
 
   const totalPages = Math.ceil(filteredSubcategories.length / itemsPerPage);
 
@@ -143,6 +152,10 @@ export default function SubcategoryManagement() {
       setCurrentPage(totalPages || 1);
     }
   }, [filteredSubcategories, totalPages, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const handleAdd = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -372,7 +385,21 @@ export default function SubcategoryManagement() {
         </div>
       )}
       {/* ADD FORM */}
-      <div className="flex justify-end mb-6">
+      <div className="flex items-center justify-between mb-6">
+        {/* 🔎 Search */}
+        <div className="w-[320px]">
+          <input
+            type="text"
+            placeholder="Search subcategory..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl
+                 shadow-sm outline-none font-semibold text-gray-700
+                 focus:border-[#852BAF] focus:ring-2 focus:ring-purple-100"
+          />
+        </div>
+
+        {/* ➕ Add */}
         <button
           onClick={() => setAddModalOpen(true)}
           className="flex items-center gap-2 px-6 py-3 font-bold text-white
