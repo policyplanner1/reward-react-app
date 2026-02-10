@@ -311,7 +311,7 @@ class ProductController {
     try {
       const [rows] = await db.execute(
         `SELECT * FROM categories
-        WHERE status = 1
+        WHERE status = 1 AND is_visible_in_ui = 1
         ORDER BY category_name ASC`,
       );
 
