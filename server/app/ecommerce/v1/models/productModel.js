@@ -270,6 +270,12 @@ class ProductModel {
        SEARCH
     =============================== */
 
+      /* ===============================
+            PRODUCT MUST BE APPROVED
+          =============================== */
+      conditions.push("p.status = ?");
+      params.push("approved");
+
       if (categoryId) {
         conditions.push("p.category_id = ?");
         params.push(categoryId);
