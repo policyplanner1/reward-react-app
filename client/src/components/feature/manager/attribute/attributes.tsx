@@ -207,80 +207,111 @@ export default function CategoryAttributeManagement() {
       </h1>
 
       {/* FILTERS */}
-      <div className="flex gap-4 mt-6">
-        <select
-          value={categoryId}
-          onChange={(e) =>
-            setCategoryId(e.target.value ? Number(e.target.value) : "")
-          }
-          className="px-4 py-3 rounded-xl"
-        >
-          <option value="">Category</option>
-          {categories.map((c) => (
-            <option key={c.category_id} value={c.category_id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+      <div className="flex gap-8 mt-6 items-start">
+  {/* Category */}
+  <div className="flex flex-col">
+    <label className="text-sm text-gray-500 mb-1">Category</label>
+    <select
+      value={categoryId}
+      onChange={(e) =>
+        setCategoryId(e.target.value ? Number(e.target.value) : "")
+      }
+      className="w-56 h-10 px-3 rounded-xl border border-slate-200 bg-white outline-none focus:ring-4 focus:ring-[#852BAF]/15"
+    >
+      <option value="">Select</option>
+      {categories.map((c) => (
+        <option key={c.category_id} value={c.category_id}>
+          {c.name}
+        </option>
+      ))}
+    </select>
+  </div>
 
-        <select
-          value={subcategoryId}
-          onChange={(e) =>
-            setSubcategoryId(e.target.value ? Number(e.target.value) : "")
-          }
-          className="px-4 py-3 rounded-xl"
-        >
-          <option value="">Subcategory</option>
-          {subcategories
-            .filter((s) => s.category_id === categoryId)
-            .map((s) => (
-              <option key={s.subcategory_id} value={s.subcategory_id}>
-                {s.subcategory_name}
-              </option>
-            ))}
-        </select>
-      </div>
+  {/* Subcategory */}
+  <div className="flex flex-col">
+    <label className="text-sm text-gray-500 mb-1">Subcategory</label>
+    <select
+      value={subcategoryId}
+      onChange={(e) =>
+        setSubcategoryId(e.target.value ? Number(e.target.value) : "")
+      }
+      className="w-56 h-10 px-3 rounded-xl border border-slate-200 bg-white outline-none focus:ring-4 focus:ring-[#852BAF]/15"
+    >
+      <option value="">Select</option>
+      {subcategories
+        .filter((s) => s.category_id === categoryId)
+        .map((s) => (
+          <option key={s.subcategory_id} value={s.subcategory_id}>
+            {s.subcategory_name}
+          </option>
+        ))}
+    </select>
+  </div>
+</div>
+
 
       {/* ADD FORM */}
-      <form
-        onSubmit={handleAdd}
-        className="grid grid-cols-6 gap-4 mt-6 bg-white p-6 rounded-2xl"
-      >
-        <input
-          placeholder="Key"
-          value={form.attribute_key}
-          onChange={(e) => setForm({ ...form, attribute_key: e.target.value })}
-          className="col-span-1 px-4 py-3 rounded-xl"
-        />
-        <input
-          placeholder="Label"
-          value={form.attribute_label}
-          onChange={(e) =>
-            setForm({ ...form, attribute_label: e.target.value })
-          }
-          className="col-span-2 px-4 py-3 rounded-xl"
-        />
-        <select
-          value={form.input_type}
-          onChange={(e) =>
-            setForm({ ...form, input_type: e.target.value as InputType })
-          }
-          className="col-span-1 px-4 py-3 rounded-xl"
-        >
-          <option value="text">Text</option>
-          <option value="number">Number</option>
-          <option value="select">Select</option>
-          <option value="multiselect">Multi Select</option>
-          <option value="textarea">Textarea</option>
-        </select>
+    <form
+  onSubmit={handleAdd}
+  className="grid grid-cols-6 gap-4 mt-6 bg-white p-6 rounded-2xl items-end"
+>
+  {/* Key */}
+  <div className="col-span-2">
+    <label className="block text-sm text-gray-500 mb-1">Key</label>
+    <input
+      placeholder="Key"
+      value={form.attribute_key}
+      onChange={(e) => setForm({ ...form, attribute_key: e.target.value })}
+      className="w-full h-10 px-3 rounded-xl border border-slate-200 outline-none focus:ring-4 focus:ring-[#852BAF]/15"
+    />
+  </div>
 
-        <button
-          type="submit"
-          className="col-span-2 flex items-center justify-center gap-2 bg-[#852BAF] text-white rounded-xl cursor-pointer"
-        >
-          <FiPlus /> Add Attribute
-        </button>
-      </form>
+  {/* Label */}
+  <div className="col-span-2">
+    <label className="block text-sm text-gray-500 mb-1">Label</label>
+    <input
+      placeholder="Label"
+      value={form.attribute_label}
+      onChange={(e) => setForm({ ...form, attribute_label: e.target.value })}
+      className="w-full h-10 px-3 rounded-xl border border-slate-200 outline-none focus:ring-4 focus:ring-[#852BAF]/15"
+    />
+  </div>
+
+  {/* Type */}
+  <div className="col-span-1 pr-4">
+    <label className="block text-sm text-gray-500 mb-1">Text</label>
+    <select
+      value={form.input_type}
+      onChange={(e) =>
+        setForm({ ...form, input_type: e.target.value as InputType })
+      }
+      className="w-full h-10 px-3 rounded-xl border border-slate-200 outline-none focus:ring-4 focus:ring-[#852BAF]/15 bg-white"
+    >
+      <option value="text">Text</option>
+      <option value="number">Number</option>
+      <option value="select">Select</option>
+      <option value="multiselect">Multi Select</option>
+      <option value="textarea">Textarea</option>
+    </select>
+  </div>
+
+  {/* Button */}
+  <div className="col-span-1 flex justify-end pl-2">
+    <button
+      type="submit"
+      className="h-10 px-5 whitespace-nowrap flex items-center justify-center gap-2 bg-[#852BAF] text-white rounded-xl
+               hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+               hover:shadow-xl active:scale-95
+               disabled:opacity-60 disabled:cursor-not-allowed
+               cursor-pointer"
+    >
+      <FiPlus /> Add Attribute
+    </button>
+  </div>
+</form>
+
+
+
 
       {/* Search */}
       <div className="mt-8 flex justify-end">
@@ -496,7 +527,10 @@ export default function CategoryAttributeManagement() {
             <div className="p-6 border-t">
               <button
                 onClick={handleSave}
-                className="w-full bg-[#852BAF] text-white py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full bg-[#852BAF] text-white py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+                           hover:shadow-xl active:scale-95
+                           disabled:opacity-60 disabled:cursor-not-allowed
+                           inline-flex items-center justify-center cursor-pointer"
               >
                 <FiSave /> Save Changes
               </button>

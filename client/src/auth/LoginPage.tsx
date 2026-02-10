@@ -72,7 +72,7 @@ export default function LoginPage() {
           <div className="pointer-events-none absolute top-0 right-[-10px] h-full w-[22px] bg-gradient-to-l from-[#852BAF]/10 via-[#FC3F78]/5 to-transparent blur-xl" />
         </div>
 
-        <div className="w-full bg-white py-10 px-10 relative">
+        <div className="w-full bg-white py-5 px-10 relative">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_0%,rgba(133,43,175,0.05),transparent_45%)]" />
 
           {/* Header */}
@@ -216,8 +216,8 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="relative mt-10 text-center">
-            <p className="mt-10 text-md text-center text-gray-700">
+          <div className="relative mt-5 text-center">
+            <p className="mt-5 text-md text-center text-gray-700">
               Don&apos;t have an account?{" "}
               <Link
                 to="/register"

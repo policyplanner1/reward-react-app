@@ -264,7 +264,10 @@ export default function CategoryManagement() {
           disabled={loading}
           className="flex items-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg
                bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-               rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200 cursor-pointer"
+               rounded-xl hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+                           hover:shadow-xl active:scale-95
+                           disabled:opacity-60 disabled:cursor-not-allowed
+                           inline-flex items-center justify-center cursor-pointer"
         >
           <FiPlus /> {loading ? "Adding..." : "Add Category"}
         </button>

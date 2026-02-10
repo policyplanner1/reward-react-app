@@ -55,9 +55,11 @@ export default function NotFoundPage() {
                 className="
                   px-6 py-3 rounded-xl font-semibold text-white
                   bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-                  hover:opacity-90 transition-all
-                  shadow-lg shadow-purple-200
-                "
+                  hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+                           hover:shadow-xl active:scale-95
+                           disabled:opacity-60 disabled:cursor-not-allowed
+                           inline-flex items-center justify-center cursor-pointer"
+                
               >
                 Go to Home
               </button>
@@ -67,7 +69,7 @@ export default function NotFoundPage() {
                 className="
                   px-6 py-3 rounded-xl font-semibold
                   border border-gray-300 text-gray-700
-                  hover:bg-gray-100 transition-all
+                  hover:bg-gray-100 transition-all cursor-pointer
                 "
               >
                 Go Back
