@@ -401,10 +401,12 @@ export default function SubcategoryManagement() {
 
         {/* ➕ Add */}
         <button
-          onClick={() => setAddModalOpen(true)}
-          className="flex items-center gap-2 px-6 py-3 font-bold text-white
-    bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-    rounded-xl shadow-lg shadow-purple-200"
+          type="submit"
+          disabled={loadingAdd}
+          className="flex items-center justify-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-xl hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+                           hover:shadow-xl active:scale-95
+                           disabled:opacity-60 disabled:cursor-not-allowed
+                           inline-flex items-center justify-center cursor-pointer"
         >
           <FiPlus /> Add Subcategory
         </button>

@@ -292,10 +292,14 @@ export default function CategoryManagement() {
 
         {/* ➕ Add Button */}
         <button
-          onClick={() => setAddModalOpen(true)}
-          className="flex items-center gap-2 px-6 py-3 font-bold text-white
-              bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-              rounded-xl shadow-lg shadow-purple-200 hover:opacity-90 transition-all cursor-pointer"
+          type="submit"
+          disabled={loading}
+          className="flex items-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg
+               bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+               rounded-xl hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+                           hover:shadow-xl active:scale-95
+                           disabled:opacity-60 disabled:cursor-not-allowed
+                           inline-flex items-center justify-center cursor-pointer"
         >
           <FiPlus /> Add New Category
         </button>

@@ -2,6 +2,7 @@ import DashboardCharts from "../../chart/manager/ManagerChart";
 import { useState, useEffect } from "react";
 import { api } from "../../api/api";
 import { FaUsers, FaBox, FaClock, FaRupeeSign } from "react-icons/fa";
+import { FiGrid } from "react-icons/fi";
 
 export default function ManagerDashboard() {
   const [managerStats, setManagerStats] = useState({
@@ -35,12 +36,19 @@ export default function ManagerDashboard() {
   return (
     <div className="w-full min-h-screen p-8 bg-gray-50">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Manager Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Overview of platform performance and activity
-        </p>
-      </div>
+      <div className="mb-8 flex items-start">
+  <div className="w-12 h-12 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-full flex items-center justify-center mr-4 shrink-0">
+    <FiGrid className="text-white text-xl" />
+  </div>
+
+  <div>
+    <h1 className="text-3xl font-bold text-gray-900">Manager Dashboard</h1>
+    <p className="mt-1 text-sm text-gray-500">
+      Overview of platform performance and activity
+    </p>
+  </div>
+</div>
+
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-6 mb-10 sm:grid-cols-2 lg:grid-cols-4">

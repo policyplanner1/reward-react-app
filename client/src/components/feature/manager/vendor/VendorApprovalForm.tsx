@@ -573,7 +573,7 @@ export default function VendorApprovalForm() {
               type="button"
               onClick={() => handleFinalDecision("rejected")}
               disabled={isSubmitting}
-              className="px-8 py-3 text-lg font-semibold rounded-full transition duration-300 border border-red-500 text-red-600 bg-white hover:bg-red-50 shadow-md disabled:opacity-50"
+              className="px-8 py-3 text-lg font-semibold rounded-full transition duration-300 border border-red-500 text-red-600 bg-white hover:bg-red-100 shadow-md disabled:opacity-50 cursor-pointer"
             >
               <FaTimesCircle className="inline mr-2" />
               {isSubmitting ? "Rejecting..." : "Final Reject"}
@@ -583,7 +583,7 @@ export default function VendorApprovalForm() {
               type="button"
               onClick={() => handleFinalDecision("approved")}
               disabled={isSubmitting}
-              className="px-8 py-3 text-lg font-semibold text-white rounded-full transition duration-300 hover:shadow-xl disabled:opacity-50"
+              className="px-8 py-3 text-lg font-semibold text-white rounded-full transition duration-300 hover:shadow-xl disabled:opacity-50 cursor-pointer"
               style={{
                 background: "linear-gradient(to right, #2ECC71, #27AE60)",
               }}

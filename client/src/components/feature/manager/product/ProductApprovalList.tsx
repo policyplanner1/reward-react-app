@@ -19,6 +19,7 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
+import { FiBox } from "react-icons/fi";
 import { routes } from "../../../../routes";
 import { api } from "../../../../api/api";
 
@@ -439,6 +440,18 @@ export default function ProductManagerList() {
   return (
     <div className="min-h-screen p-4 md:p-6 bg-gray-50">
       <div className="p-4 bg-white border border-gray-200 shadow-lg rounded-2xl md:p-6">
+         <div className="mt-1 mb-8 flex items-start gap-3">
+  <div className="w-12 h-12 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-full flex items-center justify-center shrink-0">
+    <FiBox className="text-white text-xl" />
+  </div>
+
+  <div>
+    <h2 className="text-3xl font-bold text-gray-900">Products</h2>
+    <p className="mt-1 text-sm text-gray-500">
+      Manage your products, pricing, and stock — all in one place.
+    </p>
+  </div>
+</div>
         {/* STATS CARDS */}
         <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard
