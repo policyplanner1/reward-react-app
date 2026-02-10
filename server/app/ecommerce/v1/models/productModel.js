@@ -593,17 +593,7 @@ class ProductModel {
 
   // Search Suggestions
   async getSearchSuggestions({ search, limit }) {
-    const conditions = [];
     const params = [];
-
-    if (search) {
-      conditions.push("p.product_name LIKE ?");
-      params.push(`%${search}%`);
-    }
-
-    const whereClause = conditions.length
-      ? `WHERE ${conditions.join(" AND ")}`
-      : "";
 
     const query = `
     SELECT 
@@ -620,14 +610,35 @@ class ProductModel {
       ) AS images
 
     FROM eproducts p
+
+    /* ---- ensure at least one visible variant exists ---- */
+    LEFT JOIN product_variants v
+      ON v.variant_id = (
+        SELECT pv2.variant_id
+        FROM product_variants pv2
+        WHERE pv2.product_id = p.product_id
+          AND pv2.is_visible = 1
+          AND pv2.sale_price IS NOT NULL
+        ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+        LIMIT 1
+      )
+
     LEFT JOIN product_images pi ON p.product_id = pi.product_id
-    ${whereClause}
+
+    WHERE
+      p.status = 'approved'
+      AND p.is_visible = 1
+      AND v.variant_id IS NOT NULL
+      AND p.product_name LIKE ?
+
     GROUP BY p.product_id
     ORDER BY p.created_at DESC
     LIMIT ?
   `;
 
-    const [rows] = await db.execute(query, [...params, limit]);
+    params.push(`%${search}%`, limit);
+
+    const [rows] = await db.execute(query, params);
 
     return rows.map((row) => ({
       product_id: row.product_id,
@@ -643,12 +654,15 @@ class ProductModel {
 
   // Load Products
   async loadProducts({ search, limit, offset }) {
-    return this.getAllProducts({
+    return this.getProductsByCategory({
       search,
       sortBy: "created_at",
       sortOrder: "DESC",
       limit,
       offset,
+      categoryId: null,
+      priceMin: null,
+      priceMax: null,
     });
   }
 
