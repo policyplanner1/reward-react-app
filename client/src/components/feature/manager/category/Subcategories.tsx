@@ -47,7 +47,7 @@ export default function SubcategoryManagement() {
   const [newCoverImage, setNewCoverImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  const [loadingAdd, setLoadingAdd] = useState(false);
+  // const [loadingAdd, setLoadingAdd] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -190,7 +190,7 @@ export default function SubcategoryManagement() {
       return;
     }
 
-    setLoadingAdd(true);
+    // setLoadingAdd(true);
 
     try {
       const formData = new FormData();
@@ -226,7 +226,7 @@ export default function SubcategoryManagement() {
         confirmButtonText: "OK",
       });
     } finally {
-      setLoadingAdd(false);
+      // setLoadingAdd(false);
     }
   };
 
