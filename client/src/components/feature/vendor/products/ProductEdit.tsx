@@ -12,6 +12,11 @@ interface ImagePreview {
   url: string;
 }
 
+interface VideoPreview {
+  file: File;
+  url: string;
+}
+
 function SectionHeader({
   icon: Icon,
   title,
@@ -129,12 +134,16 @@ interface ProductData {
   hsnSacCode: string;
   description: string;
   shortDescription: string;
+  brandDescription: string;
   categoryId: number | null;
   subCategoryId: number | null;
   subSubCategoryId: number | null;
   productImages: ImagePreview[];
   existingImages?: string[];
   removedImages?: string[];
+  existingVideo?: string | null;
+  productVideo?: VideoPreview | null;
+  removedVideo?: boolean;
   isDiscountEligible: 1 | 0;
   isReturnable: 1 | 0;
   returnWindowDays: string;
@@ -152,6 +161,7 @@ const initialProductData: ProductData = {
   hsnSacCode: "",
   description: "",
   shortDescription: "",
+  brandDescription: "",
   categoryId: null,
   subCategoryId: null,
   subSubCategoryId: null,
@@ -245,6 +255,44 @@ export default function EditProductPage() {
 
     e.target.value = "";
     setImageError("");
+  };
+
+  const handleProductVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+
+    const file = e.target.files[0];
+
+    const preview = {
+      file,
+      url: URL.createObjectURL(file),
+    };
+
+    setProduct((prev) => ({
+      ...prev,
+      productVideo: preview,
+      removedVideo: false,
+    }));
+
+    e.target.value = "";
+  };
+
+  const removeExistingVideo = () => {
+    setProduct((prev) => ({
+      ...prev,
+      existingVideo: null,
+      removedVideo: true,
+    }));
+  };
+
+  const removeNewVideo = () => {
+    if (product.productVideo) {
+      URL.revokeObjectURL(product.productVideo.url);
+    }
+
+    setProduct((prev) => ({
+      ...prev,
+      productVideo: null,
+    }));
   };
 
   const removeExistingMainImage = (img: string) => {
@@ -528,6 +576,7 @@ export default function EditProductPage() {
         hsnSacCode: p.hsn_sac_code || "",
         description: p.description || "",
         shortDescription: p.short_description || "",
+        brandDescription: p.brand_description || "",
         categoryId: p.category_id || null,
         subCategoryId: p.subcategory_id || null,
         subSubCategoryId: p.sub_subcategory_id || null,
@@ -542,6 +591,9 @@ export default function EditProductPage() {
         shippingClass: p.shipping_class ?? "standard",
         productImages: [],
         existingImages: p.images || [],
+        existingVideo: p.video || null,
+        productVideo: null,
+        removedVideo: false,
       });
     } catch (err: any) {
       setError(err.message);
@@ -609,6 +661,7 @@ export default function EditProductPage() {
       formData.append("productName", product.productName);
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
+      formData.append("brandDescription", product.brandDescription);
 
       if (product.gstSlab) {
         formData.append("gstSlab", product.gstSlab);
@@ -640,6 +693,16 @@ export default function EditProductPage() {
       formData.append(
         "removedMainImages",
         JSON.stringify(product.removedImages || []),
+      );
+
+      // video
+      if (product.productVideo) {
+        formData.append("video", product.productVideo.file);
+      }
+
+      formData.append(
+        "removedVideo",
+        JSON.stringify(product.removedVideo || false),
       );
 
       // Documents
@@ -1135,6 +1198,25 @@ export default function EditProductPage() {
                 />
               </div>
 
+              {/* ===================== BRAND DESCRIPTION ===================== */}
+              <div className="mt-8">
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Brand Description <span className="text-red-500">*</span>
+                </label>
+
+                <QuillEditor
+                  value={product.brandDescription}
+                  placeholder="Describe the brand story, quality, values and background..."
+                  minHeight={260}
+                  onChange={(val) =>
+                    setProduct((prev) => ({
+                      ...prev,
+                      brandDescription: val,
+                    }))
+                  }
+                />
+              </div>
+
               {/* ===================== SHORT DESCRIPTION ===================== */}
               <div className="mt-6">
                 <FormInput
@@ -1365,6 +1447,78 @@ export default function EditProductPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+          </section>
+
+          {/* Product Video */}
+          <section>
+            <SectionHeader
+              icon={FaImages}
+              title="Product Video"
+              description="Upload or replace product demo video"
+            />
+
+            {/* Existing video */}
+            {product.existingVideo && !product.productVideo && (
+              <div className="mb-3">
+                <div className="relative w-72 group border rounded overflow-hidden">
+                  <video
+                    src={`${API_BASEIMAGE_URL}/uploads/${product.existingVideo}`}
+                    controls
+                    className="w-full h-full"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeExistingVideo}
+                    className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
+          opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                  >
+                    <FaTrash size={12} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Upload new video */}
+            <div className="flex items-center p-3 bg-white border border-gray-400 border-dashed rounded-lg">
+              <span className="flex-1 text-sm text-gray-600">
+                {product.productVideo
+                  ? "New video selected"
+                  : product.existingVideo
+                    ? "Existing video present"
+                    : "No video chosen"}
+              </span>
+
+              <label className="cursor-pointer bg-[#852BAF] text-white px-3 py-1 text-xs rounded-full hover:bg-[#7a1c94]">
+                Choose Video
+                <input
+                  type="file"
+                  hidden
+                  accept="video/mp4,video/webm,video/quicktime"
+                  onChange={handleProductVideo}
+                />
+              </label>
+            </div>
+
+            {/* New video preview */}
+            {product.productVideo && (
+              <div className="mt-3">
+                <div className="relative w-72 group border rounded overflow-hidden">
+                  <video
+                    src={product.productVideo.url}
+                    controls
+                    className="w-full h-full"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeNewVideo}
+                    className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full
+          opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                  >
+                    <FaTrash size={12} />
+                  </button>
+                </div>
               </div>
             )}
           </section>

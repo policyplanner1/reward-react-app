@@ -9,7 +9,7 @@ router.get(
   "/product/:productId",
   authenticateToken,
   authorizeRoles("vendor", "vendor_manager", "admin"),
-  VariantController.getVariantsByProduct
+  VariantController.getVariantsByProduct,
 );
 
 // Get single variant
@@ -17,7 +17,7 @@ router.get(
   "/:variantId",
   authenticateToken,
   authorizeRoles("vendor", "vendor_manager", "admin"),
-  VariantController.getVariantById
+  VariantController.getVariantById,
 );
 
 // Update variant
@@ -25,23 +25,23 @@ router.put(
   "/:variantId",
   authenticateToken,
   authorizeRoles("vendor"),
-  VariantController.updateVariant
+  VariantController.updateVariant,
 );
 
 // create variant discount
 router.post(
   "/update-reward-limit",
-   authenticateToken,
+  authenticateToken,
   authorizeRoles("vendor_manager"),
-  VariantController.updateRewardRedemptionLimit
+  VariantController.updateRewardRedemptionLimit,
 );
 
-//  GET variant images 
+//  GET variant images
 router.get(
   "/:variantId/images",
   authenticateToken,
   authorizeRoles("vendor", "vendor_manager", "admin"),
-  VariantController.getVariantImages
+  VariantController.getVariantImages,
 );
 
 // Upload variant images
@@ -49,16 +49,24 @@ router.post(
   "/:variantId/images",
   authenticateToken,
   authorizeRoles("vendor"),
-  productUpload.array("images", 5),
-  VariantController.uploadVariantImages
+  productUpload.array("images", 7),
+  VariantController.uploadVariantImages,
 );
 
-//  Delete variant image 
+// reorder variant images
+router.put(
+  "/:variantId/images/reorder",
+  authenticateToken,
+  authorizeRoles("vendor"),
+  VariantController.reorderVariantImages,
+);
+
+//  Delete variant image
 router.delete(
   "/images/:imageId",
   authenticateToken,
   authorizeRoles("vendor"),
-  VariantController.deleteVariantImage
+  VariantController.deleteVariantImage,
 );
 
 // Visibility

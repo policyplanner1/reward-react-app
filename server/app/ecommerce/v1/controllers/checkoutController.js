@@ -8,30 +8,28 @@ class CheckoutController {
   // checkout cart Items
   async checkoutCart(req, res) {
     try {
-      const userId = 1; // temporary
+      const userId = 1; 
       const companyId = req.body?.company_id ?? null;
 
       const orderId = await CheckoutModel.checkoutCart(userId, companyId);
 
-      // ✅ Fetch order + customer info for WhatsApp
-      const orderCtx = await getOrderWhatsAppContext(orderId);
+      // WhatsApp notification
+      // const orderCtx = await getOrderWhatsAppContext(orderId);
 
-      if (orderCtx?.phone) {
-        // ✅ enqueue (non-blocking)
-        enqueueWhatsApp({
-          eventName: "order_place_confirm",
-          ctx: {
-            phone: orderCtx.phone,
-            company_id: orderCtx.company_id ?? companyId ?? null,
-            customer_name: orderCtx.customer_name || "User",
-            // ✅ prefer order_ref for customer-facing ID
-            order_id: orderCtx.order_ref || orderCtx.order_id,
-            total_amount: orderCtx.total_amount,
-          },
-        }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
-      } else {
-        console.warn("WA not enqueued: missing customer phone for order:", orderId);
-      }
+      // if (orderCtx?.phone) {
+      //   enqueueWhatsApp({
+      //     eventName: "order_place_confirm",
+      //     ctx: {
+      //       phone: orderCtx.phone,
+      //       company_id: orderCtx.company_id ?? companyId ?? null,
+      //       customer_name: orderCtx.customer_name || "User",
+      //       order_id: orderCtx.order_ref || orderCtx.order_id,
+      //       total_amount: orderCtx.total_amount,
+      //     },
+      //   }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
+      // } else {
+      //   console.warn("WA not enqueued: missing customer phone for order:", orderId);
+      // }
 
       return res.json({
         success: true,
@@ -76,24 +74,23 @@ class CheckoutController {
         companyId: company_id || null,
       });
 
-      // ✅ Fetch order + customer info for WhatsApp
-      const orderCtx = await getOrderWhatsAppContext(orderId);
+      // WhatsApp Notification
+      // const orderCtx = await getOrderWhatsAppContext(orderId);
 
-      if (orderCtx?.phone) {
-        enqueueWhatsApp({
-          eventName: "order_place_confirm",
-          ctx: {
-            phone: orderCtx.phone,
-            company_id: orderCtx.company_id ?? company_id ?? null,
-            customer_name: orderCtx.customer_name || "User",
-            // ✅ prefer order_ref for customer-facing ID
-            order_id: orderCtx.order_ref || orderCtx.order_id,
-            total_amount: orderCtx.total_amount,
-          },
-        }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
-      } else {
-        console.warn("WA not enqueued: missing customer phone for order:", orderId);
-      }
+      // if (orderCtx?.phone) {
+      //   enqueueWhatsApp({
+      //     eventName: "order_place_confirm",
+      //     ctx: {
+      //       phone: orderCtx.phone,
+      //       company_id: orderCtx.company_id ?? company_id ?? null,
+      //       customer_name: orderCtx.customer_name || "User",
+      //       order_id: orderCtx.order_ref || orderCtx.order_id,
+      //       total_amount: orderCtx.total_amount,
+      //     },
+      //   }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
+      // } else {
+      //   console.warn("WA not enqueued: missing customer phone for order:", orderId);
+      // }
 
       return res.json({
         success: true,
@@ -225,26 +222,26 @@ class CheckoutController {
   }
 }
 
-async function getOrderWhatsAppContext(orderId) {
-  const [rows] = await db.execute(
-    `
-    SELECT 
-      o.order_id,
-      o.order_ref,
-      o.company_id,
-      o.total_amount,
-      o.user_id,
-      cu.name AS customer_name,
-      cu.phone AS phone
-    FROM eorders o
-    JOIN customer cu ON cu.user_id = o.user_id
-    WHERE o.order_id = ?
-    LIMIT 1
-    `,
-    [orderId]
-  );
+// async function getOrderWhatsAppContext(orderId) {
+//   const [rows] = await db.execute(
+//     `
+//     SELECT 
+//       o.order_id,
+//       o.order_ref,
+//       o.company_id,
+//       o.total_amount,
+//       o.user_id,
+//       cu.name AS customer_name,
+//       cu.phone AS phone
+//     FROM eorders o
+//     JOIN customer cu ON cu.user_id = o.user_id
+//     WHERE o.order_id = ?
+//     LIMIT 1
+//     `,
+//     [orderId]
+//   );
 
-  return rows[0] || null;
-}
+//   return rows[0] || null;
+// }
 
 module.exports = new CheckoutController();

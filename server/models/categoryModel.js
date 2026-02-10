@@ -1,20 +1,23 @@
 const db = require("../config/database");
 
 class CategoryModel {
-  async createCategory(data) {
-    try {
-      const categoryName = data.name ? data.name : "";
+  async createCategory(name) {
+    const [result] = await db.execute(
+      `INSERT INTO categories (category_name, created_at)
+     VALUES (?, NOW())`,
+      [name],
+    );
 
-      const [result] = await db.execute(
-        `INSERT INTO categories (category_name, created_at) VALUES (?, NOW())`,
-        [categoryName]
-      );
+    return result.insertId;
+  }
 
-      return result.insertId;
-    } catch (error) {
-      console.error("Error creating category:", error);
-      throw error;
-    }
+  async updateCategoryImage(categoryId, imagePath) {
+    await db.execute(
+      `UPDATE categories
+     SET cover_image = ?
+     WHERE category_id = ?`,
+      [imagePath, categoryId],
+    );
   }
 
   // GET ALL CATEGORIES
@@ -33,7 +36,7 @@ class CategoryModel {
     try {
       const [rows] = await db.execute(
         `SELECT * FROM categories WHERE category_id = ?`,
-        [id]
+        [id],
       );
       return rows[0];
     } catch (error) {
@@ -50,7 +53,7 @@ class CategoryModel {
 
       const [result] = await db.execute(
         `UPDATE categories SET category_name = ?,status = ? WHERE category_id = ?`,
-        [categoryName, categoryStatus, id]
+        [categoryName, categoryStatus, id],
       );
 
       if (result.affectedRows === 0) {
@@ -60,7 +63,7 @@ class CategoryModel {
       // fetch the updated category
       const [rows] = await db.execute(
         `SELECT * FROM categories WHERE category_id = ?`,
-        [id]
+        [id],
       );
 
       return rows[0];
@@ -70,12 +73,19 @@ class CategoryModel {
     }
   }
 
+  async updateCategoryImage(id, imagePath) {
+    await db.execute(
+      `UPDATE categories SET cover_image = ? WHERE category_id = ?`,
+      [imagePath, id],
+    );
+  }
+
   // DELETE CATEGORY
   async deleteCategory(id) {
     try {
       const [subCats] = await db.execute(
         `SELECT COUNT(*) as count FROM sub_categories WHERE category_id = ?`,
-        [id]
+        [id],
       );
 
       if (subCats[0].count > 0) {
@@ -84,7 +94,7 @@ class CategoryModel {
 
       const [result] = await db.execute(
         `DELETE FROM categories WHERE category_id = ?`,
-        [id]
+        [id],
       );
 
       return result.affectedRows;

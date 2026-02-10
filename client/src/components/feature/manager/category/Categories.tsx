@@ -11,6 +11,7 @@ import {
 } from "react-icons/fi";
 import { api } from "../../../../api/api";
 import Swal from "sweetalert2";
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 type Status = "active" | "inactive";
 
@@ -19,11 +20,13 @@ interface Category {
   name: string;
   status: Status;
   created_at: string;
+  cover_image: string;
 }
 
 export default function CategoryManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<Category | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -31,11 +34,21 @@ export default function CategoryManagement() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [newCoverImage, setNewCoverImage] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const itemsPerPage = 10;
 
-  const totalPages = Math.ceil(categories.length / itemsPerPage);
+  // FILTER FIRST
+  const filteredCategories = categories.filter((cat) =>
+    cat.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
 
-  const paginatedCategories = categories.slice(
+  // THEN PAGINATE
+  const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
+
+  const paginatedCategories = filteredCategories.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
   );
@@ -44,7 +57,19 @@ export default function CategoryManagement() {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages || 1);
     }
-  }, [categories, totalPages, currentPage]);
+  }, [filteredCategories, totalPages, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const resolveImageUrl = (path?: string) => {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    return `${API_BASEIMAGE_URL}/uploads/${path.replace(/^\/+/, "")}`;
+  };
 
   const fetchCategories = async () => {
     try {
@@ -61,6 +86,7 @@ export default function CategoryManagement() {
         name: c.category_name || "Unnamed",
         status: c.status === 1 ? "active" : "inactive",
         created_at: c.created_at,
+        cover_image: c.cover_image,
       }));
 
       setCategories(formatted);
@@ -76,21 +102,22 @@ export default function CategoryManagement() {
   const handleAdd = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
-    //  EMPTY INPUT CHECK WITH POPUP
     if (!newCategoryName.trim()) {
       await Swal.fire({
         title: "Category name required",
         text: "Please enter a category name before adding.",
         icon: "warning",
         confirmButtonText: "OK",
+      });
+      return;
+    }
 
-        buttonsStyling: false,
-        customClass: {
-          confirmButton:
-            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
-            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95",
-          popup: "rounded-2xl",
-        },
+    if (!coverImage) {
+      await Swal.fire({
+        title: "Cover image required",
+        text: "Please upload a cover image for this category.",
+        icon: "warning",
+        confirmButtonText: "OK",
       });
       return;
     }
@@ -98,45 +125,32 @@ export default function CategoryManagement() {
     try {
       setLoading(true);
 
-      await api.post("/vendor/create-category", {
-        name: newCategoryName,
-        status: 1,
+      const formData = new FormData();
+      formData.append("name", newCategoryName);
+      formData.append("status", "1");
+      if (coverImage) formData.append("cover_image", coverImage);
+
+      await api.post("/vendor/create-category", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       setNewCategoryName("");
-      setCurrentPage(1);
+      setCoverImage(null);
+      setAddModalOpen(false);
       fetchCategories();
 
-      //  SUCCESS POPUP (IMPORTANT: await)
       await Swal.fire({
         title: "Added!",
         text: "Category added successfully.",
         icon: "success",
         timer: 1200,
         showConfirmButton: false,
-        customClass: { popup: "rounded-2xl" },
       });
     } catch (err: any) {
-      console.error("Add category error:", err.response?.data || err.message);
-
-      setError("Failed to add category. Make sure you are a vendor_manager.");
-
-      //  ERROR POPUP (await + same hover gradient)
       await Swal.fire({
         title: "Failed",
-        text:
-          err?.response?.data?.error ||
-          "Failed to add category. Please try again.",
+        text: err?.response?.data?.error || "Failed to add category.",
         icon: "error",
-        confirmButtonText: "OK",
-
-        buttonsStyling: false,
-        customClass: {
-          confirmButton:
-            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
-            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95",
-          popup: "rounded-2xl",
-        },
       });
     } finally {
       setLoading(false);
@@ -151,8 +165,11 @@ export default function CategoryManagement() {
         name: res.data.data.category_name,
         status: res.data.data.status === 1 ? "active" : "inactive",
         created_at: res.data.data.created_at,
+        cover_image: res.data.data.cover_image,
       };
       setSelected(data);
+      setPreviewImage(resolveImageUrl(data.cover_image));
+      setNewCoverImage(null);
       setEditName(data.name);
       setDrawerOpen(true);
       setIsEditing(false);
@@ -169,18 +186,28 @@ export default function CategoryManagement() {
 
   const handleSaveEdit = async () => {
     if (!selected) return;
+
     try {
-      await api.put(`/vendor/update-category/${selected.category_id}`, {
-        name: editName,
-        status: selected.status === "active" ? 1 : 0,
-      });
+      const formData = new FormData();
+      formData.append("name", editName);
+      formData.append("status", selected.status === "active" ? "1" : "0");
+
+      if (newCoverImage) {
+        formData.append("cover_image", newCoverImage);
+      }
+
+      await api.put(
+        `/vendor/update-category/${selected.category_id}`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
+
       fetchCategories();
-      setIsEditing(false);
-      setCurrentPage(1);
       closeDrawer();
-    } catch (err: any) {
-      console.error("Update error:", err.response?.data || err.message);
-      setError("Failed to update category.");
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -247,28 +274,32 @@ export default function CategoryManagement() {
           {error}
         </div>
       )}
-      {/* ADD CATEGORY INPUT */}
-      <form
-        onSubmit={handleAdd}
-        className="flex gap-4 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-[60rem]"
-      >
-        <input
-          value={newCategoryName}
-          onChange={(e) => setNewCategoryName(e.target.value)}
-          className="flex-1 px-5 py-3 text-sm font-semibold bg-transparent outline-none placeholder:text-gray-300"
-          placeholder="Type new category name..."
-        />
 
+      {/* ADD CATEGORY INPUT */}
+      <div className="flex items-center justify-between mb-6">
+        {/* 🔎 Search */}
+        <div className="w-[320px]">
+          <input
+            type="text"
+            placeholder="Search category..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl
+                 shadow-sm outline-none font-semibold text-gray-700
+                 focus:border-[#852BAF] focus:ring-2 focus:ring-purple-100"
+          />
+        </div>
+
+        {/* ➕ Add Button */}
         <button
-          type="submit"
-          disabled={loading}
-          className="flex items-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg
-               bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
-               rounded-xl hover:opacity-90 active:scale-95 shadow-purple-200 cursor-pointer"
+          onClick={() => setAddModalOpen(true)}
+          className="flex items-center gap-2 px-6 py-3 font-bold text-white
+              bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+              rounded-xl shadow-lg shadow-purple-200 hover:opacity-90 transition-all cursor-pointer"
         >
-          <FiPlus /> {loading ? "Adding..." : "Add Category"}
+          <FiPlus /> Add New Category
         </button>
-      </form>
+      </div>
 
       {/* TABLE SECTION */}
       <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] border border-gray-100 overflow-hidden">
@@ -365,9 +396,10 @@ export default function CategoryManagement() {
             </span>{" "}
             to{" "}
             <span className="font-semibold">
-              {Math.min(currentPage * itemsPerPage, categories.length)}
+              {Math.min(currentPage * itemsPerPage, filteredCategories.length)}
             </span>{" "}
-            of <span className="font-semibold">{categories.length}</span>{" "}
+            of{" "}
+            <span className="font-semibold">{filteredCategories.length}</span>{" "}
             categories
           </div>
 
@@ -415,6 +447,77 @@ export default function CategoryManagement() {
         </div>
       )}
 
+      {/* ADD CATEGORY MODAL */}
+      {addModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-[450px] bg-white rounded-3xl p-8 shadow-2xl relative">
+            <button
+              onClick={() => setAddModalOpen(false)}
+              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700"
+            >
+              <FiX size={22} />
+            </button>
+
+            <h2 className="text-2xl font-black mb-8">Add New Category</h2>
+
+            <div className="space-y-6">
+              <div>
+                <label className="text-xs font-bold text-gray-400 block mb-2">
+                  Category Name
+                </label>
+                <input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl font-semibold outline-none"
+                  placeholder="Enter category name"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-3 block">
+                  Cover Image
+                </label>
+
+                <label className="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 cursor-pointer hover:border-[#852BAF] hover:bg-white transition-all group">
+                  {coverImage ? (
+                    <img
+                      src={URL.createObjectURL(coverImage)}
+                      alt="Preview"
+                      className="h-full w-full object-cover rounded-2xl"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-gray-400 group-hover:text-[#852BAF] transition-all">
+                      <FiPlus size={28} className="mb-2" />
+                      <p className="text-sm font-semibold">
+                        Click to upload cover image
+                      </p>
+                      <p className="text-xs">PNG, JPG, WEBP up to 2MB</p>
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) =>
+                      setCoverImage(e.target.files ? e.target.files[0] : null)
+                    }
+                  />
+                </label>
+              </div>
+
+              <button
+                onClick={handleAdd}
+                disabled={loading}
+                className="w-full py-4 font-black text-white bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-2xl cursor-pointer"
+              >
+                {loading ? "Adding..." : "Create Category"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* DRAWER PANEL */}
       {selected && (
         <div
@@ -430,9 +533,10 @@ export default function CategoryManagement() {
           />
 
           <div
-            className={`absolute right-0 top-0 h-full w-[450px] bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.05)] transition-transform duration-500 ease-out ${
-              drawerOpen ? "translate-x-0" : "translate-x-full"
-            }`}
+            className={`absolute right-0 top-0 h-full w-[450px] bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.05)]
+  transition-transform duration-500 ease-out flex flex-col ${
+    drawerOpen ? "translate-x-0" : "translate-x-full"
+  }`}
           >
             {/* DRAWER HEADER */}
             <div className="p-8 border-b border-gray-50">
@@ -457,7 +561,7 @@ export default function CategoryManagement() {
             </div>
 
             {/* DRAWER BODY */}
-            <div className="p-8 space-y-8">
+            <div className="flex-1 overflow-y-auto p-8 space-y-8">
               {!isEditing ? (
                 <div className="space-y-6">
                   <div className="p-6 bg-gray-50 rounded-[2rem] border border-gray-100">
@@ -468,9 +572,19 @@ export default function CategoryManagement() {
                       {selected.status}
                     </p>
                   </div>
+
+                  {/*  Image Preview in view mode */}
+                  {selected.cover_image && (
+                    <img
+                      src={resolveImageUrl(selected.cover_image)}
+                      className="w-full h-40 object-cover rounded-2xl border"
+                    />
+                  )}
+
                   <button
-                    className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
-           transition-all duration-300 cursor-pointer"
+                    className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl
+        hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+        transition-all duration-300 cursor-pointer"
                     onClick={() => setIsEditing(true)}
                   >
                     Edit
@@ -478,6 +592,7 @@ export default function CategoryManagement() {
                 </div>
               ) : (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                  {/* Category Name */}
                   <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
                       Category Name
@@ -485,10 +600,11 @@ export default function CategoryManagement() {
                     <input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="w-full px-5 py-4 font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#852BAF]/20 focus:bg-white transition-all outline-none"
+                      className="w-full px-5 py-4 font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-2xl outline-none"
                     />
                   </div>
 
+                  {/* Status */}
                   <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
                       Display Status
@@ -508,6 +624,45 @@ export default function CategoryManagement() {
                     </select>
                   </div>
 
+                  {/* Cover Image Section */}
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-3 block">
+                      Cover Image
+                    </label>
+
+                    <label className="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 cursor-pointer hover:border-[#852BAF] hover:bg-white transition-all group">
+                      {previewImage ? (
+                        <img
+                          src={previewImage}
+                          alt="Preview"
+                          className="h-full w-full object-cover rounded-2xl"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-gray-400 group-hover:text-[#852BAF] transition-all">
+                          <FiPlus size={28} className="mb-2" />
+                          <p className="text-sm font-semibold">
+                            Click to change cover image
+                          </p>
+                          <p className="text-xs">PNG, JPG, WEBP up to 2MB</p>
+                        </div>
+                      )}
+
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setNewCoverImage(file);
+                            setPreviewImage(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Buttons */}
                   <div className="pt-4 space-y-3">
                     <button
                       onClick={handleSaveEdit}
@@ -515,11 +670,12 @@ export default function CategoryManagement() {
                     >
                       <FiSave className="inline-block mr-2" /> Save Changes
                     </button>
+
                     <button
                       onClick={() => setIsEditing(false)}
-                      className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl 
-           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
-           hover:text-white transition-all duration-300 cursor-pointer"
+                      className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl
+          hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+          hover:text-white transition-all duration-300 cursor-pointer"
                     >
                       Discard
                     </button>

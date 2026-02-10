@@ -12,6 +12,11 @@ interface ImagePreview {
   url: string;
 }
 
+interface VideoPreview {
+  file: File;
+  url: string;
+}
+
 function SectionHeader({
   icon: Icon,
   title,
@@ -125,6 +130,7 @@ interface ProductData {
   hsnSacCode: string;
   description: string;
   shortDescription: string;
+  brandDescription: string;
   categoryId: number | null;
   subCategoryId: number | null;
   subSubCategoryId: number | null;
@@ -135,6 +141,7 @@ interface ProductData {
   deliveryMinDays: string;
   deliveryMaxDays: string;
   shippingClass: "standard" | "bulky" | "fragile";
+  productVideo: VideoPreview | null;
 }
 
 const initialProductData: ProductData = {
@@ -145,6 +152,7 @@ const initialProductData: ProductData = {
   hsnSacCode: "",
   description: "",
   shortDescription: "",
+  brandDescription: "",
   categoryId: null,
   subCategoryId: null,
   subSubCategoryId: null,
@@ -156,6 +164,7 @@ const initialProductData: ProductData = {
   deliveryMinDays: "1",
   deliveryMaxDays: "3",
   shippingClass: "standard",
+  productVideo: null,
 };
 
 // --- UI Components ---
@@ -180,6 +189,7 @@ export default function ProductListingDynamic() {
   const [isCustomSubcategory, setIsCustomSubcategory] = useState(false);
   const [isCustomSubSubcategory, setIsCustomSubSubcategory] = useState(false);
   const [imageError, setImageError] = useState("");
+  const [videoError, setVideoError] = useState("");
   const [custom_category, setCustomCategory] = useState("");
   const [custom_subcategory, setCustomSubCategory] = useState("");
   const [custom_subsubcategory, setCustomSubSubCategory] = useState("");
@@ -235,6 +245,44 @@ export default function ProductListingDynamic() {
     e.target.value = "";
   };
 
+  // handle video upload
+  const handleProductVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+
+    const file = e.target.files[0];
+
+    // Optional size validation (50MB example)
+    if (file.size > 50 * 1024 * 1024) {
+      setVideoError("Video size must be under 50MB.");
+      return;
+    }
+
+    const preview = {
+      file,
+      url: URL.createObjectURL(file),
+    };
+
+    setProduct((prev) => ({
+      ...prev,
+      productVideo: preview,
+    }));
+
+    setVideoError("");
+    e.target.value = "";
+  };
+
+  // remove video
+  const removeVideo = () => {
+    if (product.productVideo) {
+      URL.revokeObjectURL(product.productVideo.url);
+    }
+
+    setProduct((prev) => ({
+      ...prev,
+      productVideo: null,
+    }));
+  };
+
   // Fetch subcategories when category changes
   useEffect(() => {
     if (product.categoryId) {
@@ -261,20 +309,20 @@ export default function ProductListingDynamic() {
     });
 
     api.get(`/category/attributes?${params.toString()}`).then((res) => {
-        if (res.data.success) {
-          const attrs = res.data.data;
-          setCategoryAttributes(attrs);
+      if (res.data.success) {
+        const attrs = res.data.data;
+        setCategoryAttributes(attrs);
 
-          setProductAttributes((prev) => {
-            const next: Record<string, any> = {};
+        setProductAttributes((prev) => {
+          const next: Record<string, any> = {};
 
-            attrs.forEach((attr: any) => {
-              next[attr.attribute_key] = prev[attr.attribute_key] || [];
-            });
-
-            return next;
+          attrs.forEach((attr: any) => {
+            next[attr.attribute_key] = prev[attr.attribute_key] || [];
           });
-        }
+
+          return next;
+        });
+      }
     });
   }, [product.subCategoryId]);
 
@@ -489,6 +537,7 @@ export default function ProductListingDynamic() {
       formData.append("productName", product.productName);
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
+      formData.append("brandDescription", product.brandDescription);
 
       if (product.gstSlab) {
         formData.append("gstSlab", product.gstSlab);
@@ -519,6 +568,11 @@ export default function ProductListingDynamic() {
       product.productImages.forEach(({ file }) => {
         formData.append("images", file);
       });
+
+      //optional video
+      if (product.productVideo) {
+        formData.append("video", product.productVideo.file);
+      }
 
       // Add document files - map document_id to field names
       Object.entries(docFiles).forEach(([docId, file]) => {
@@ -1097,6 +1151,22 @@ export default function ProductListingDynamic() {
                 />
               </div>
 
+              {/* Brand Description */}
+              <div className="mt-8">
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Brand Description <span className="text-red-500">*</span>
+                </label>
+
+                <QuillEditor
+                  value={product.brandDescription}
+                  placeholder="Describe the brand story, values, quality standards, and brand background..."
+                  minHeight={200}
+                  onChange={(val) =>
+                    setProduct((prev) => ({ ...prev, brandDescription: val }))
+                  }
+                />
+              </div>
+
               {/* Short Description */}
               <div className="mt-6">
                 <FormInput
@@ -1279,19 +1349,18 @@ export default function ProductListingDynamic() {
                   ? "No cover image chosen"
                   : "1 cover image selected"}
               </span>
+
               <label
                 className={`cursor-pointer px-3 py-1 text-xs rounded-full
-    ${
-      product.productImages.length >= 5
-        ? "bg-gray-400 cursor-not-allowed"
-        : "bg-[#852BAF] hover:bg-[#7a1c94] text-white"
-    }
-  `}
+        ${
+          product.productImages.length >= 1
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-[#852BAF] hover:bg-[#7a1c94] text-white"
+        }`}
               >
-                Choose Files
+                Choose Image
                 <input
                   type="file"
-                  multiple
                   hidden
                   disabled={product.productImages.length >= 1}
                   accept="image/*"
@@ -1308,8 +1377,6 @@ export default function ProductListingDynamic() {
               <p className="mt-1 text-xs text-red-500">{imageError}</p>
             )}
 
-            {/* Image Previews */}
-
             {product.productImages.length > 0 && (
               <div className="mt-3 flex gap-2 flex-wrap">
                 {product.productImages.map((img, index) => (
@@ -1322,13 +1389,11 @@ export default function ProductListingDynamic() {
                       alt={`Preview ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
-
-                    {/* Remove button */}
                     <button
                       type="button"
                       onClick={() => removeMainImage(index)}
                       className="absolute top-1 right-1 bg-black/80 text-white rounded-full p-1
-                     opacity-0 group-hover:opacity-100 transition cursor-pointer"
+            opacity-0 group-hover:opacity-100 transition cursor-pointer"
                     >
                       <FaTrash size={10} />
                     </button>
@@ -1337,6 +1402,60 @@ export default function ProductListingDynamic() {
               </div>
             )}
           </section>
+
+          {/* video section */}
+          <section className="mt-6">
+            <SectionHeader
+              icon={FaImages}
+              title="Product Video"
+              description="Upload one product demo video (optional)"
+            />
+
+            <div className="flex items-center p-3 bg-white border border-gray-400 border-dashed rounded-lg">
+              <span className="flex-1 text-sm text-gray-600">
+                {product.productVideo
+                  ? "1 video selected"
+                  : "No product video chosen"}
+              </span>
+
+              <label className="cursor-pointer px-3 py-1 text-xs rounded-full bg-[#852BAF] hover:bg-[#7a1c94] text-white">
+                Choose Video
+                <input
+                  type="file"
+                  hidden
+                  accept="video/mp4,video/webm,video/quicktime"
+                  onChange={handleProductVideo}
+                />
+              </label>
+            </div>
+
+            <p className="mt-2 text-xs text-gray-500">
+              Accepted formats: MP4, WEBM, MOV (Max 50MB)
+            </p>
+
+            {videoError && (
+              <p className="mt-1 text-xs text-red-500">{videoError}</p>
+            )}
+
+            {product.productVideo && (
+              <div className="mt-3 relative w-56 border rounded overflow-hidden group">
+                <video
+                  src={product.productVideo.url}
+                  controls
+                  className="w-full h-full"
+                />
+                <button
+                  type="button"
+                  onClick={removeVideo}
+                  className="absolute top-1 right-1 bg-black/80 text-white rounded-full p-1
+        opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                >
+                  <FaTrash size={10} />
+                </button>
+              </div>
+            )}
+          </section>
+
           {/* Documents */}
           {renderDocUploads()}
           {/* Submit Button */}

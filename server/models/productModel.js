@@ -33,7 +33,7 @@ function generateCombinations(attributes) {
   );
 }
 
-// for image
+// for Media handling (images, video, documents)
 async function processUploadedFiles(
   files,
   { vendorId, productId, imagesFolder, docsFolder, variantFolder },
@@ -44,20 +44,51 @@ async function processUploadedFiles(
     const filename = path.basename(file.path);
     let newPath;
 
+    // ================= IMAGES =================
     if (file.fieldname === "images") {
       newPath = path.join(imagesFolder, filename);
       file.finalPath = `products/${vendorId}/${productId}/images/${filename}`;
-    } else if (!isNaN(parseInt(file.fieldname))) {
+    }
+
+    // ================= PRODUCT VIDEO =================
+    else if (file.fieldname === "video") {
+      const videoFolder = path.join(
+        UPLOAD_BASE,
+        vendorId.toString(),
+        productId.toString(),
+        "video",
+      );
+
+      newPath = path.join(videoFolder, filename);
+      file.finalPath = `products/${vendorId}/${productId}/video/${filename}`;
+    }
+
+    // ================= DOCUMENTS =================
+    else if (!isNaN(parseInt(file.fieldname))) {
       newPath = path.join(docsFolder, filename);
       file.finalPath = `products/${vendorId}/${productId}/documents/${filename}`;
-    } else if (file.fieldname.startsWith("variant_")) {
+    }
+
+    // ================= VARIANT IMAGES =================
+    else if (file.fieldname.startsWith("variant_")) {
       newPath = path.join(variantFolder, filename);
       file.finalPath = `products/${vendorId}/${productId}/variants/${filename}`;
-    } else {
+    }
+
+    // ================= UNKNOWN FIELD =================
+    else {
       continue;
     }
 
+    // 🔴 CRITICAL: ensure folder exists (prevents production crashes)
+    const targetDir = path.dirname(newPath);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    // Move file from temp → final
     await moveFile(file.path, newPath);
+
     movedFiles.push(file);
   }
 
@@ -92,9 +123,9 @@ class ProductModel {
 
     const [result] = await connection.execute(
       `INSERT INTO eproducts 
-     (vendor_id, category_id, subcategory_id, sub_subcategory_id, brand_name, manufacturer,product_name, gst_slab,hsn_sac_code,description, short_description,
+     (vendor_id, category_id, subcategory_id, sub_subcategory_id, brand_name, manufacturer,product_name, gst_slab,hsn_sac_code,description, short_description,brand_description,
       custom_category, custom_subcategory, custom_sub_subcategory,is_discount_eligible,is_returnable,return_window_days,delivery_sla_min_days,delivery_sla_max_days,shipping_class, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
       [
         safe(vendorId),
         safe(data.category_id),
@@ -107,6 +138,7 @@ class ProductModel {
         safe(data.hsnSacCode),
         safe(data.description),
         safe(data.shortDescription),
+        safe(data.brandDescription),
         custom_category,
         custom_subcategory,
         custom_sub_subcategory,
@@ -339,6 +371,16 @@ class ProductModel {
     }
   }
 
+  // video insertion
+  async insertProductVideo(connection, productId, videoPath) {
+    await connection.execute(
+      `INSERT INTO product_videos (product_id, video_url)
+     VALUES (?, ?)`,
+      [productId, videoPath],
+    );
+  }
+
+  // insert documents
   async insertProductDocuments(connection, productId, categoryId, files) {
     if (!categoryId) return;
     const [docTypes] = await connection.execute(
@@ -366,6 +408,7 @@ class ProductModel {
     }
   }
 
+  // variant images insertion
   async insertProductVariantImages(connection, variantId, files) {
     for (const file of files) {
       await connection.execute(
@@ -424,6 +467,14 @@ class ProductModel {
         [productId],
       );
       product.images = images.map((img) => img.image_url);
+
+      // 2.5 Get product video
+      const [videos] = await db.execute(
+        `SELECT video_url FROM product_videos WHERE product_id = ? LIMIT 1`,
+        [productId],
+      );
+
+      product.video = videos.length ? videos[0].video_url : null;
 
       // 3 Get product documents
       const [documents] = await db.execute(
@@ -497,6 +548,13 @@ class ProductModel {
       "images",
     );
 
+    const videoFolder = path.join(
+      UPLOAD_BASE,
+      vendorId.toString(),
+      productId.toString(),
+      "video",
+    );
+
     const docsFolder = path.join(
       UPLOAD_BASE,
       vendorId.toString(),
@@ -524,6 +582,7 @@ class ProductModel {
       product_name = ?, 
       description = ?, 
       short_description = ?, 
+      brand_description = ?, 
       custom_category = ?, 
       custom_subcategory = ?, 
       custom_sub_subcategory = ?,
@@ -545,6 +604,7 @@ class ProductModel {
         safe(data.productName),
         safe(data.description),
         safe(data.shortDescription),
+        safe(data.brandDescription),
         custom_category,
         custom_subcategory,
         custom_sub_subcategory,
@@ -587,6 +647,7 @@ class ProductModel {
       productId,
       imagesFolder,
       docsFolder,
+      variantFolder,
     });
 
     // ============================================================
@@ -619,18 +680,63 @@ class ProductModel {
     }
 
     // ============================================================
-    // 4. INSERT NEW MAIN IMAGES + DOCUMENTS
+    // 3.5 HANDLE PRODUCT VIDEO (EDIT MODE)
+    // ============================================================
+
+    // Case 1: Remove existing video
+    if (data.removedVideo === "true") {
+      const [rows] = await connection.execute(
+        `SELECT video_url FROM product_videos WHERE product_id = ?`,
+        [productId],
+      );
+
+      if (rows.length) {
+        const videoPath = rows[0].video_url;
+
+        await connection.execute(
+          `DELETE FROM product_videos WHERE product_id = ?`,
+          [productId],
+        );
+
+        const fullPath = path.join(UPLOAD_BASE, videoPath);
+        if (fs.existsSync(fullPath)) {
+          fs.unlinkSync(fullPath);
+        }
+      }
+    }
+
+    // ============================================================
+    // 4. INSERT NEW MAIN IMAGES + VIDEO + DOCUMENTS
     // ============================================================
     if (movedFiles.length) {
       const mainImages = movedFiles.filter((f) => f.fieldname === "images");
-      const otherFiles = movedFiles.filter((f) => f.fieldname !== "images");
+      const videoFile = movedFiles.find((f) => f.fieldname === "video");
+      const otherFiles = movedFiles.filter(
+        (f) => f.fieldname !== "images" && f.fieldname !== "video",
+      );
 
-      //  Append new images only
+      // ---------- IMAGES ----------
       if (mainImages.length) {
         await this.insertProductImages(connection, productId, mainImages);
       }
 
-      // Documents are still full replace (category-based)
+      // ---------- VIDEO (ADD THIS BLOCK HERE) ----------
+      if (videoFile) {
+        // remove old video if exists
+        await connection.execute(
+          `DELETE FROM product_videos WHERE product_id = ?`,
+          [productId],
+        );
+
+        // insert new one
+        await connection.execute(
+          `INSERT INTO product_videos (product_id, video_url)
+       VALUES (?, ?)`,
+          [productId, videoFile.finalPath],
+        );
+      }
+
+      // ---------- DOCUMENTS ----------
       if (otherFiles.length && data.category_id) {
         await connection.execute(
           `DELETE FROM product_documents WHERE product_id = ?`,

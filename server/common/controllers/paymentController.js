@@ -18,7 +18,7 @@ class PaymentController {
     }
 
     // check if already paid
-    const existing = await db.query(
+    const [existing] = await db.query(
       `SELECT * FROM order_payments 
         WHERE order_id = ? AND status = 'success' 
         LIMIT 1`,
@@ -35,6 +35,7 @@ class PaymentController {
       amount: amount * 100, // paise
       currency: "INR",
       receipt: orderId.toString(),
+      payment_capture: 1,
     });
 
     await PaymentModel.createOrder({
@@ -100,6 +101,7 @@ class PaymentController {
 
   // payment status
   async paymentStatus(req, res) {
+    res.set("Cache-Control", "no-store");
     const { orderId } = req.params;
 
     const [order] = await db.query(

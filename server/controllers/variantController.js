@@ -65,7 +65,9 @@ class VariantController {
     try {
       const vendorId = req.user.vendor_id;
       const variantId = Number(req.params.variantId);
+      const MAX_IMAGES = 7;
 
+      // 1. Validate files first
       if (!req.files || !req.files.length) {
         return res.status(400).json({
           success: false,
@@ -73,7 +75,7 @@ class VariantController {
         });
       }
 
-      // Product Id
+      // 2. Validate variant exists
       const [[variant]] = await db.execute(
         `SELECT product_id FROM product_variants WHERE variant_id = ?`,
         [variantId],
@@ -88,7 +90,20 @@ class VariantController {
 
       const productId = variant.product_id;
 
-      // images
+      // 3. Check total image count
+      const [[{ count }]] = await db.execute(
+        `SELECT COUNT(*) as count FROM product_variant_images WHERE variant_id = ?`,
+        [variantId],
+      );
+
+      if (count + req.files.length > MAX_IMAGES) {
+        return res.status(400).json({
+          success: false,
+          message: `You can upload maximum ${MAX_IMAGES} images for this variant`,
+        });
+      }
+
+      // 4. Prepare folder
       const variantFolder = path.join(
         __dirname,
         "../uploads/products",
@@ -102,21 +117,26 @@ class VariantController {
         fs.mkdirSync(variantFolder, { recursive: true });
       }
 
-      const imagesToInsert = [];
-
-      for (const file of req.files) {
+      // 5. Prepare DB paths (DO NOT MOVE FILES YET)
+      const imagesToInsert = req.files.map((file) => {
         const filename = path.basename(file.path);
-        const newPath = path.join(variantFolder, filename);
+        return {
+          file,
+          finalPath: `products/${vendorId}/${productId}/variants/${variantId}/${filename}`,
+          newPath: path.join(variantFolder, filename),
+        };
+      });
 
-        //  Move file from temp → final location
-        fs.renameSync(file.path, newPath);
+      // 6. Insert into DB FIRST
+      await VariantModel.insertVariantImages(
+        variantId,
+        imagesToInsert.map((i) => ({ path: i.finalPath })),
+      );
 
-        const finalPath = `products/${vendorId}/${productId}/variants/${variantId}/${filename}`;
-
-        imagesToInsert.push({ path: finalPath });
+      // 7. Move files AFTER DB success
+      for (const img of imagesToInsert) {
+        fs.renameSync(img.file.path, img.newPath);
       }
-
-      await VariantModel.insertVariantImages(variantId, imagesToInsert);
 
       return res.json({
         success: true,
@@ -182,7 +202,7 @@ class VariantController {
 
       const [rows] = await db.execute(
         `
-      SELECT image_id, image_url
+      SELECT image_id, image_url,sort_order
       FROM product_variant_images
       WHERE variant_id = ?
       ORDER BY image_id ASC
@@ -285,6 +305,22 @@ class VariantController {
         message: "Internal server error",
       });
     }
+  }
+
+  // async reorder variant images
+  async reorderVariantImages(req, res) {
+    const { images } = req.body;
+
+    for (const img of images) {
+      await db.execute(
+        `UPDATE product_variant_images 
+       SET sort_order = ? 
+       WHERE image_id = ?`,
+        [img.sort_order, img.image_id],
+      );
+    }
+
+    res.json({ success: true });
   }
 }
 module.exports = new VariantController();
