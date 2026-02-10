@@ -17,6 +17,7 @@ class cartModel {
         v.variant_attributes,
         v.mrp,
         v.sale_price,
+        v.reward_redemption_limit,
 
         (ci.quantity * v.sale_price) AS item_total,
 
@@ -45,6 +46,7 @@ class cartModel {
     const [rows] = await db.execute(query, [userId]);
 
     let cartTotal = 0;
+    let totalDiscount = 0;
 
     const items = rows.map((row) => {
       let images = [];
@@ -57,7 +59,6 @@ class cartModel {
       }
 
       let attributes = {};
-
       if (row.variant_attributes) {
         try {
           attributes = JSON.parse(row.variant_attributes);
@@ -65,7 +66,22 @@ class cartModel {
           attributes = {};
         }
       }
-      cartTotal += Number(row.item_total);
+
+      const salePrice = Number(row.sale_price) || 0;
+      const quantity = Number(row.quantity) || 0;
+      const rewardPercent = Number(row.reward_redemption_limit) || 0;
+
+      const itemTotal = salePrice * quantity;
+
+      const rewardDiscountAmount = Math.round(
+        (itemTotal * rewardPercent) / 100,
+      );
+
+      const finalItemTotal = itemTotal - rewardDiscountAmount;
+
+      // accumulate cart values
+      cartTotal += finalItemTotal;
+      totalDiscount += rewardDiscountAmount;
 
       return {
         cart_item_id: row.cart_item_id,
@@ -78,15 +94,19 @@ class cartModel {
         attributes,
 
         mrp: row.mrp,
-        sale_price: row.sale_price,
-        quantity: row.quantity,
-        item_total: row.item_total,
+        sale_price: salePrice,
+        quantity,
+        perUnitDiscount: Number(row.mrp - salePrice),
+        item_total: itemTotal,
+        points: rewardDiscountAmount,
+        final_item_total: finalItemTotal,
       };
     });
 
     return {
       items,
       cartTotal,
+      totalDiscount,
     };
   }
 

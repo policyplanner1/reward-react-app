@@ -9,6 +9,9 @@ router.post('/create-order', PaymentController.createOrder);
 router.post('/verify-payment', PaymentController.verifyPayment);
 
 // Payment status
-router.get('payment-status/:orderId',PaymentController.paymentStatus)
+router.get('/payment-status/:orderId',PaymentController.paymentStatus)
+
+// refund
+router.post('/refund', PaymentController.refundPayment);
 
 module.exports = router;

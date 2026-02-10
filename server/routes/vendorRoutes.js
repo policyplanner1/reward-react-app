@@ -4,6 +4,7 @@ const DocumentController = require("../controllers/documentController");
 const upload = require("../middleware/uploadVendor");
 const { authenticateToken, authorizeRoles } = require("../middleware/auth");
 const vendorController = require("../controllers/vendorController");
+const { productUpload } = require("../middleware/productUpload");
 
 const router = express.Router();
 
@@ -25,7 +26,7 @@ router.post(
     { name: "rightsAdvisoryFile", maxCount: 1 },
     { name: "nocFile", maxCount: 1 },
   ]),
-  VendorController.onboardVendor
+  VendorController.onboardVendor,
 );
 
 // vendor stats
@@ -33,7 +34,7 @@ router.get(
   "/stats",
   authenticateToken,
   authorizeRoles("vendor"),
-  vendorController.getStats
+  vendorController.getStats,
 );
 
 // get approved vendor List
@@ -41,7 +42,7 @@ router.get(
   "/approved-list",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin", "warehouse_manager"),
-  VendorController.approvedVendorList
+  VendorController.approvedVendorList,
 );
 
 // Update vendor status
@@ -49,7 +50,7 @@ router.put(
   "/status/:vendorId",
   authenticateToken,
   authorizeRoles("admin", "vendor_manager"),
-  VendorController.updateVendorStatus
+  VendorController.updateVendorStatus,
 );
 
 // Update document verification
@@ -57,7 +58,7 @@ router.put(
   "/documents/:documentId/status",
   authenticateToken,
   authorizeRoles("admin", "vendor_manager"),
-  DocumentController.updateDocumentStatus
+  DocumentController.updateDocumentStatus,
 );
 
 // vendor Manager category Routes
@@ -66,7 +67,8 @@ router.post(
   "/create-category",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.createCategory
+  productUpload.single("cover_image"),
+  VendorController.createCategory,
 );
 
 // 2)All categories
@@ -77,7 +79,7 @@ router.get(
   "/category/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.getCategoryById
+  VendorController.getCategoryById,
 );
 
 // 4)update category
@@ -85,7 +87,8 @@ router.put(
   "/update-category/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.updateCategory
+  productUpload.single("cover_image"),
+  VendorController.updateCategory,
 );
 
 // 5)delete a category
@@ -93,7 +96,7 @@ router.delete(
   "/delete-category/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.deleteCategory
+  VendorController.deleteCategory,
 );
 
 // vendor Manager subCategory Routes
@@ -102,7 +105,8 @@ router.post(
   "/create-subcategory",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.createSubCategory
+  productUpload.single("cover_image"),
+  VendorController.createSubCategory,
 );
 
 // 2)All sub subCategory
@@ -110,7 +114,7 @@ router.get(
   "/subcategory",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.getAllSubCategories
+  VendorController.getAllSubCategories,
 );
 
 // 3)get subCategory by ID
@@ -118,7 +122,7 @@ router.get(
   "/subcategory/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.getSubCategoryById
+  VendorController.getSubCategoryById,
 );
 
 // 4)update subCategory
@@ -126,7 +130,8 @@ router.put(
   "/update-subcategory/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.updateSubCategory
+  productUpload.single("cover_image"),
+  VendorController.updateSubCategory,
 );
 
 // 5)delete a subCategory
@@ -134,7 +139,7 @@ router.delete(
   "/delete-subcategory/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.deleteSubCategory
+  VendorController.deleteSubCategory,
 );
 
 // vendor Manager sub_subCategory Routes
@@ -143,7 +148,7 @@ router.post(
   "/create-sub-subcategory",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.createSubSubCategory
+  VendorController.createSubSubCategory,
 );
 
 // 2)Fetch all sub_subcategories
@@ -151,7 +156,7 @@ router.get(
   "/sub-subcategory",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.getAllSubSubCategories
+  VendorController.getAllSubSubCategories,
 );
 
 // 3)fetch sub_subcategory by id
@@ -159,7 +164,7 @@ router.get(
   "/sub-subcategory/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.getSubSubCategoryById
+  VendorController.getSubSubCategoryById,
 );
 
 // 4)update sub_subcategory
@@ -167,7 +172,7 @@ router.put(
   "/update-sub-subcategory/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.updateSubSubCategory
+  VendorController.updateSubSubCategory,
 );
 
 // 5)delete sub_subcategory
@@ -175,7 +180,7 @@ router.delete(
   "/delete-sub-subcategory/:id",
   authenticateToken,
   authorizeRoles("vendor_manager"),
-  VendorController.deleteSubSubCategory
+  VendorController.deleteSubSubCategory,
 );
 
 // Get all vendors
@@ -183,14 +188,14 @@ router.get(
   "/",
   authenticateToken,
   authorizeRoles("admin", "vendor_manager"),
-  VendorController.getAllVendors
+  VendorController.getAllVendors,
 );
 
 router.get(
   "/my-details",
   authenticateToken,
   authorizeRoles("vendor"),
-  VendorController.getMyDetails
+  VendorController.getMyDetails,
 );
 
 // get vendor existing details
@@ -198,7 +203,7 @@ router.get(
   "/onboarding-data",
   authenticateToken,
   authorizeRoles("vendor"),
-  vendorController.getMyOnboardingData
+  vendorController.getMyOnboardingData,
 );
 
 // Get vendor by ID
@@ -206,7 +211,7 @@ router.get(
   "/:vendorId",
   authenticateToken,
   authorizeRoles("admin", "vendor_manager"),
-  VendorController.getVendor
+  VendorController.getVendor,
 );
 
 module.exports = router;

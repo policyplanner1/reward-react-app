@@ -18,3 +18,26 @@ Retry payment	                new row created
 Close tab after paying	        webhook still marks paid
 
 
+
+// frontend
+handler: async (response) => {
+  await axios.post('/verify-payment', response);
+
+  // wait 1 second (optional small delay)
+  const status = await axios.get(`/orders/${orderId}/payment-status`);
+
+  if (status.data.status === 'paid') {
+    showSuccess();
+  } else {
+    showPending(); // very rare, webhook lag
+  }
+}
+
+
+//steps
+1)POST /api/payments/create-order
+{
+  "orderId": 123,
+  "amount": 4500
+}
+

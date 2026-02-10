@@ -266,21 +266,52 @@ class VendorController {
   // vendor manager creates category
   async createCategory(req, res) {
     try {
-      const data = req.body;
+      const { name } = req.body;
 
-      await categoryModel.createCategory(data);
+      if (!name?.trim()) {
+        return res.status(400).json({ message: "Category name required" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "Cover image is mandatory" });
+      }
+
+      //  Validate image
+      if (!req.file.mimetype.startsWith("image/")) {
+        return res.status(400).json({ message: "Only image files allowed" });
+      }
+
+      // 1 Create category (without image)
+      const categoryId = await categoryModel.createCategory(name.trim());
+
+      // 2 Folder creation
+      const categoryDir = path.join(
+        __dirname,
+        `../uploads/category-images/${categoryId}`,
+      );
+
+      if (!fs.existsSync(categoryDir)) {
+        fs.mkdirSync(categoryDir, { recursive: true });
+      }
+
+      // 3 Move file from temp to image folder
+      const ext = path.extname(req.file.originalname);
+      const finalFilePath = path.join(categoryDir, `cover${ext}`);
+
+      fs.renameSync(req.file.path, finalFilePath);
+
+      const dbPath = `category-images/${categoryId}/cover${ext}`;
+
+      // 4 Update DB with image path
+      await categoryModel.updateCategoryImage(categoryId, dbPath);
 
       res.status(201).json({
         success: true,
         message: "Category created successfully",
       });
     } catch (error) {
-      console.error("category creation error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Category creation error",
-        error: error.message,
-      });
+      console.error(error);
+      res.status(500).json({ message: error.message });
     }
   }
 
@@ -288,31 +319,58 @@ class VendorController {
   async updateCategory(req, res) {
     try {
       const categoryID = req.params.id;
-      const data = req.body;
+      const { name, status } = req.body;
 
-      const updatedCategory = await categoryModel.updateCategory(
-        categoryID,
-        data,
-      );
+      // 1 Update name and status
+      const updatedCategory = await categoryModel.updateCategory(categoryID, {
+        name,
+        status,
+      });
 
       if (!updatedCategory) {
         return res.status(404).json({
           success: false,
-          message: "Category not found or no changes made",
+          message: "Category not found",
         });
+      }
+
+      // 2 If new image uploaded => replace it
+      if (req.file) {
+
+        const categoryDir = path.join(
+          __dirname,
+          `../uploads/category-images/${categoryID}`,
+        );
+
+        if (!fs.existsSync(categoryDir)) {
+          fs.mkdirSync(categoryDir, { recursive: true });
+        }
+
+        const ext = path.extname(req.file.originalname);
+        const finalPath = path.join(categoryDir, `cover${ext}`);
+
+        fs.renameSync(req.file.path, finalPath);
+
+        fs.readdirSync(categoryDir).forEach((file) => {
+          if (path.join(categoryDir, file) !== finalPath) {
+            fs.unlinkSync(path.join(categoryDir, file));
+          }
+        });
+
+        const dbPath = `category-images/${categoryID}/cover${ext}`;
+
+        await categoryModel.updateCategoryImage(categoryID, dbPath);
       }
 
       res.status(200).json({
         success: true,
-        data: updatedCategory,
         message: "Category updated successfully",
       });
     } catch (error) {
       console.error("category updating error:", error);
       res.status(500).json({
         success: false,
-        message: "Category updating error",
-        error: error.message,
+        message: error.message,
       });
     }
   }
@@ -391,20 +449,56 @@ class VendorController {
   // create Sub Categories
   async createSubCategory(req, res) {
     try {
-      const data = req.body;
+      const { name, category_id } = req.body;
 
-      await subCategoryModel.createSubCategory(data);
+      if (!name?.trim()) {
+        return res.status(400).json({ message: "Subcategory name required" });
+      }
+
+      if (!category_id) {
+        return res.status(400).json({ message: "Category required" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "Cover image is mandatory" });
+      }
+
+      // 1️⃣ Create subcategory first (your existing model)
+      const subcategoryId = await subCategoryModel.createSubCategory({
+        name: name.trim(),
+        category_id,
+      });
+
+      // 2️⃣ Create folder
+      const subDir = path.join(
+        __dirname,
+        `../uploads/subcategory-images/${subcategoryId}`,
+      );
+
+      if (!fs.existsSync(subDir)) {
+        fs.mkdirSync(subDir, { recursive: true });
+      }
+
+      // 3️⃣ Move image from temp
+      const ext = path.extname(req.file.originalname);
+      const finalPath = path.join(subDir, `cover${ext}`);
+
+      fs.renameSync(req.file.path, finalPath);
+
+      // 4️⃣ Store relative path in DB
+      const dbPath = `subcategory-images/${subcategoryId}/cover${ext}`;
+
+      await subCategoryModel.updateSubCategoryImage(subcategoryId, dbPath);
 
       res.status(201).json({
         success: true,
-        message: "sub category created successfully",
+        message: "Sub category created successfully",
       });
     } catch (error) {
       console.error("sub category creation error:", error);
       res.status(500).json({
         success: false,
-        message: "sub category creation error",
-        error: error.message,
+        message: error.message,
       });
     }
   }
@@ -460,9 +554,14 @@ class VendorController {
   async updateSubCategory(req, res) {
     try {
       const id = req.params.id;
-      const data = req.body;
+      const { name, category_id, status } = req.body;
 
-      const updated = await subCategoryModel.updateSubCategory(id, data);
+      // 1️⃣ Update basic fields (your existing model)
+      const updated = await subCategoryModel.updateSubCategory(id, {
+        name,
+        category_id,
+        status,
+      });
 
       if (!updated) {
         return res.status(404).json({
@@ -471,17 +570,36 @@ class VendorController {
         });
       }
 
+      // 2️⃣ If new image uploaded → replace it
+      if (req.file) {
+        const dir = path.join(__dirname, `../uploads/subcategory-images/${id}`);
+
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+
+        // remove old files
+        fs.readdirSync(dir).forEach((f) => fs.unlinkSync(path.join(dir, f)));
+
+        const ext = path.extname(req.file.originalname);
+        const finalPath = path.join(dir, `cover${ext}`);
+
+        fs.renameSync(req.file.path, finalPath);
+
+        const dbPath = `subcategory-images/${id}/cover${ext}`;
+
+        await subCategoryModel.updateSubCategoryImage(id, dbPath);
+      }
+
       res.status(200).json({
         success: true,
         message: "Sub category updated successfully",
-        data: updated,
       });
     } catch (error) {
       console.error("Update sub category error:", error);
       res.status(500).json({
         success: false,
-        message: "Error updating sub category",
-        error: error.message,
+        message: error.message,
       });
     }
   }

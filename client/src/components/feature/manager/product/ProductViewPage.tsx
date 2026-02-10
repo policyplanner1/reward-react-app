@@ -7,9 +7,12 @@ import {
   FaSpinner,
   FaArrowLeft,
   FaDownload,
+  FaCheck,
 } from "react-icons/fa";
+
 import { useNavigate, useParams } from "react-router-dom";
 import QuillEditor from "../../../QuillEditor";
+import Swal from "sweetalert2";
 
 // const API_BASE = import.meta.env.VITE_API_URL;
 import { api } from "../../../../api/api";
@@ -26,6 +29,7 @@ type ProductVariant = {
   manufacturing_date: string | null;
   expiry_date: string | null;
   created_at: string;
+  reward_redemption_limit?: number | null;
 };
 
 interface ProductView {
@@ -37,6 +41,7 @@ interface ProductView {
   hsnSacCode: string;
   description?: string;
   shortDescription?: string;
+  brandDescription?: string;
   categoryId?: number | null;
   subCategoryId?: number | null;
   subSubCategoryId?: number | null;
@@ -52,6 +57,7 @@ interface ProductView {
   deliverySlaMaxDays?: number;
   shippingClass?: "standard" | "bulky" | "fragile";
   productImages?: string[];
+  productVideo?: string | null;
   requiredDocs?: Array<{
     id: number;
     document_name: string;
@@ -121,6 +127,8 @@ export default function ReviewProductPage() {
     Record<string, string[]>
   >({});
   const [attributeSchema, setAttributeSchema] = useState<any[]>([]);
+  const [rewardLimits, setRewardLimits] = useState<Record<number, number>>({});
+  const [savingLimit, setSavingLimit] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     if (!productId) {
@@ -158,6 +166,7 @@ export default function ReviewProductPage() {
         hsnSacCode: raw.hsn_sac_code ?? "",
         description: raw.description ?? "",
         shortDescription: raw.short_description ?? raw.shortDescription ?? "",
+        brandDescription: raw.brand_description ?? raw.brandDescription ?? "",
         categoryId: raw.category_id ?? raw.categoryId ?? null,
         subCategoryId: raw.subcategory_id ?? raw.subCategoryId ?? null,
         subSubCategoryId:
@@ -179,6 +188,7 @@ export default function ReviewProductPage() {
         productImages: Array.isArray(raw.productImages)
           ? raw.productImages
           : (raw.images ?? []),
+        productVideo: raw.video ?? null,
         requiredDocs: raw.documents ?? [],
         variants: Array.isArray(raw.variants) ? raw.variants : [],
       };
@@ -208,6 +218,16 @@ export default function ReviewProductPage() {
       }
 
       setProduct(mapped);
+
+      // reward Limit
+      const initialLimits: Record<number, number> = {};
+
+      (mapped.variants || []).forEach((v: any) => {
+        initialLimits[v.variant_id] = v.reward_redemption_limit ?? 0;
+      });
+
+      setRewardLimits(initialLimits);
+
       if (mapped.subCategoryId) {
         const params = new URLSearchParams({
           categoryId: String(mapped.categoryId),
@@ -235,6 +255,49 @@ export default function ReviewProductPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const updateRewardLimit = async (variantId: number) => {
+    try {
+      if (!product?.productId) return;
+
+      setSavingLimit((prev) => ({ ...prev, [variantId]: true }));
+
+      const newLimit = rewardLimits[variantId];
+
+      await api.post("/variant/update-reward-limit", {
+        product_id: product.productId,
+        variant_id: variantId,
+        reward_redemption_limit: newLimit,
+      });
+
+      // ✅ sync UI with saved value
+      setRewardLimits((prev) => ({
+        ...prev,
+        [variantId]: newLimit,
+      }));
+
+      await Swal.fire({
+        title: "Success!",
+        text: "Reward Limit Updated Successfully",
+        icon: "success",
+        timer: 1200,
+        showConfirmButton: false,
+        customClass: { popup: "rounded-2xl" },
+      });
+    } catch (err) {
+      console.error("Failed to update reward limit", err);
+
+      await Swal.fire({
+        title: "Failed",
+        text: "Failed to update reward limit",
+        icon: "error",
+        confirmButtonText: "OK",
+        buttonsStyling: false,
+      });
+    } finally {
+      setSavingLimit((prev) => ({ ...prev, [variantId]: false }));
+    }
   };
 
   if (loading) {
@@ -274,7 +337,7 @@ export default function ReviewProductPage() {
             <h1 className="mb-1 text-3xl font-bold text-gray-900">
               Product Review
             </h1>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-900 font-bold">
               Viewing product ID: {product.productId}
             </div>
           </div>
@@ -440,6 +503,7 @@ export default function ReviewProductPage() {
                     <th className="px-4 py-3">Sale Price</th>
                     <th className="px-4 py-3">Stock</th>
                     <th className="px-4 py-3">Visibility</th>
+                    <th className="px-4 py-3">Reward Redemption Limit (%)</th>
                   </tr>
                 </thead>
 
@@ -500,6 +564,38 @@ export default function ReviewProductPage() {
                           {variant.is_visible ? "Visible" : "Hidden"}
                         </span>
                       </td>
+
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={0}
+                            value={rewardLimits[variant.variant_id] ?? 0}
+                            onChange={(e) =>
+                              setRewardLimits((prev) => ({
+                                ...prev,
+                                [variant.variant_id]: Number(e.target.value),
+                              }))
+                            }
+                            className="w-24 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#852BAF]"
+                            placeholder="Limit"
+                          />
+
+                          <button
+                            onClick={() =>
+                              updateRewardLimit(variant.variant_id)
+                            }
+                            disabled={savingLimit[variant.variant_id]}
+                            className="p-2 text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center cursor-pointer"
+                          >
+                            {savingLimit[variant.variant_id] ? (
+                              <FaSpinner className="animate-spin text-sm" />
+                            ) : (
+                              <FaCheck className="text-sm" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -529,6 +625,19 @@ export default function ReviewProductPage() {
                 minHeight={260}
               />
             </div>
+
+            <div className="mt-4">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Brand Description
+              </label>
+
+              <QuillEditor
+                value={product.brandDescription || ""}
+                readOnly
+                minHeight={220}
+              />
+            </div>
+            
             <div className="mt-4">
               <FormInput
                 id="shortDescription"
@@ -620,7 +729,7 @@ export default function ReviewProductPage() {
                   downloadFile(resolveImageUrl(coverImage), "cover-image.jpg")
                 }
                 className="absolute bottom-1 right-1 p-1 text-xs text-white bg-black/60 rounded
-                   opacity-0 group-hover:opacity-100 transition"
+                   opacity-0 group-hover:opacity-100 transition cursor-pointer"
               >
                 <FaDownload className="text-sm" />
               </button>
@@ -628,6 +737,29 @@ export default function ReviewProductPage() {
           ) : (
             <div className="text-sm text-gray-500">
               No cover image available
+            </div>
+          )}
+        </section>
+
+        {/* Product Video */}
+        <section className="mt-6">
+          <SectionHeader
+            icon={FaImages}
+            title="Product Video"
+            description="Vendor uploaded demo video"
+          />
+
+          {product.productVideo ? (
+            <div className="w-72 border rounded overflow-hidden">
+              <video
+                src={resolveImageUrl(product.productVideo)}
+                controls
+                className="w-full h-full"
+              />
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500">
+              No product video available
             </div>
           )}
         </section>

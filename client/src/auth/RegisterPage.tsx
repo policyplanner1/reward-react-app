@@ -220,8 +220,38 @@ export default function RegisterPage() {
                   {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-            </Field>
-          </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-6 text-white font-bold py-3.5 rounded-full text-xl
+               bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
+               shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer
+               hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
+               hover:shadow-xl active:scale-95
+               disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Creating Account...
+                </span>
+              ) : (
+                "Register"
+              )}
+            </button>
+
+            <p className="text-center text-sm text-gray-600">
+              Already have an account?{" "}
+              <Link
+                to="/login"
+                className="font-semibold text-[#852BAF] hover:underline"
+              >
+                Login
+              </Link>
+            </p>
+          </form>
         </div>
 
         <button

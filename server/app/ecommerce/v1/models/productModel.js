@@ -42,9 +42,12 @@ class ProductModel {
           p.product_name,
           p.brand_name,
           p.created_at,
-
+          c.category_name,
+          sc.subcategory_name,
+          ssc.name AS sub_subcategory_name,
           v.mrp,
           v.sale_price,
+          v.reward_redemption_limit,
 
           GROUP_CONCAT(
             DISTINCT CONCAT(
@@ -89,6 +92,11 @@ class ProductModel {
         LEFT JOIN product_images pi 
           ON p.product_id = pi.product_id
 
+        /* ---- Categories ---- */
+        LEFT JOIN categories c ON p.category_id = c.category_id
+        LEFT JOIN sub_categories sc ON p.subcategory_id = sc.subcategory_id
+        LEFT JOIN sub_sub_categories ssc ON p.sub_subcategory_id = ssc.sub_subcategory_id
+
         ${whereClause}
 
         GROUP BY p.product_id
@@ -121,10 +129,14 @@ class ProductModel {
         return {
           product_id: row.product_id,
           product_name: row.product_name,
+          category_name: row.category_name,
+          subcategory_name: row.subcategory_name,
+          sub_subcategory_name: row.sub_subcategory_name,
           brand_name: row.brand_name,
           created_at: row.created_at,
           mrp: row.mrp,
           sale_price: row.sale_price,
+          reward_redemption_limit: row.reward_redemption_limit,
           images,
         };
       });
@@ -182,6 +194,13 @@ class ProductModel {
       );
       product.images = images.map((img) => img.image_url);
 
+      //2.5 Get product videos
+      const [videos] = await db.execute(
+        `SELECT video_url FROM product_videos WHERE product_id = ? LIMIT 1`,
+        [productId],
+      );
+      product.video = videos.length ? videos[0].video_url : null;
+
       // 3 Get product variants
       const [variants] = await db.execute(
         `SELECT * FROM product_variants WHERE product_id = ? AND is_visible = 1`,
@@ -201,7 +220,17 @@ class ProductModel {
         }
 
         const [variantImages] = await db.execute(
-          `SELECT image_url FROM product_variant_images WHERE variant_id = ?`,
+          `
+            SELECT image_url
+            FROM product_variant_images
+            WHERE variant_id = ?
+            ORDER BY
+              CASE
+                WHEN sort_order = 0 THEN 999999
+                ELSE sort_order
+              END ASC,
+              image_id ASC
+          `,
           [variant.variant_id],
         );
         variant.images = variantImages.map((img) => img.image_url);
@@ -238,8 +267,8 @@ class ProductModel {
       const params = [];
 
       /* ===============================
-         SEARCH
-      =============================== */
+       SEARCH
+    =============================== */
 
       if (categoryId) {
         conditions.push("p.category_id = ?");
@@ -251,7 +280,7 @@ class ProductModel {
         params.push(`%${search}%`);
       }
 
-      // price filters
+      // price filters (now SAFE because v is correct)
       if (priceMin !== null) {
         conditions.push("v.sale_price >= ?");
         params.push(priceMin);
@@ -267,87 +296,80 @@ class ProductModel {
         : "";
 
       /* ===============================
-         SORT 
-      =============================== */
+       SORT
+    =============================== */
       const sortableColumns = ["created_at", "product_name", "brand_name"];
-
-      if (!sortableColumns.includes(sortBy)) {
-        sortBy = "created_at";
-      }
-
+      if (!sortableColumns.includes(sortBy)) sortBy = "created_at";
       sortOrder = sortOrder === "ASC" ? "ASC" : "DESC";
 
+      /* ===============================
+       MAIN QUERY
+    =============================== */
+
       const query = `
-        SELECT 
-          p.product_id,
-          p.product_name,
-          p.brand_name,
-          p.created_at,
-          c.category_name,
-          v.mrp,
-          v.sale_price,
+      SELECT 
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+        p.created_at,
+        c.category_name,
+        sc.subcategory_name,
+        ssc.name AS sub_subcategory_name,
+        v.mrp,
+        v.sale_price,
+        v.reward_redemption_limit,
 
-          GROUP_CONCAT(
-            DISTINCT CONCAT(
-              pi.image_id, '::',
-              pi.image_url, '::',
-              pi.type, '::',
-              pi.sort_order
-            )
-            ORDER BY pi.sort_order ASC
-          ) AS images
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id, '::',
+            pi.image_url, '::',
+            pi.type, '::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
+        ) AS images
 
-        FROM eproducts p
+      FROM eproducts p
 
-        /* ---- First Variant Only ---- */
-       LEFT JOIN (
-          SELECT pv.*
-          FROM product_variants pv
-          INNER JOIN (
-            SELECT 
-              product_id, 
-              MIN(sale_price) AS min_sale_price
-            FROM product_variants
-            WHERE sale_price IS NOT NULL
-            GROUP BY product_id
-          ) minv
-            ON pv.product_id = minv.product_id
-          AND pv.sale_price = minv.min_sale_price
-          INNER JOIN (
-            SELECT product_id, MIN(variant_id) AS min_variant_id
-            FROM product_variants
-            GROUP BY product_id
-          ) tie
-            ON pv.product_id = tie.product_id
-        ) v ON p.product_id = v.product_id
+      /* ---- Correct Cheapest Visible Variant ---- */
+      LEFT JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+          LIMIT 1
+        )
 
-        /* ---- categories ---- */
-        LEFT JOIN categories c ON c.category_id = p.category_id
+      /* ---- categories ---- */
+      LEFT JOIN categories c ON c.category_id = p.category_id
+      LEFT JOIN sub_categories sc ON sc.subcategory_id = p.subcategory_id 
+      LEFT JOIN sub_sub_categories ssc ON ssc.sub_subcategory_id = p.sub_subcategory_id 
 
-        /* ---- Images ---- */
-        LEFT JOIN product_images pi 
-          ON p.product_id = pi.product_id
+      /* ---- Images ---- */
+      LEFT JOIN product_images pi ON p.product_id = pi.product_id
 
-        ${whereClause}
+      ${whereClause}
 
-        GROUP BY p.product_id
-        ORDER BY p.${sortBy} ${sortOrder}
-        LIMIT ? OFFSET ?
-      `;
+      GROUP BY p.product_id
+      ORDER BY p.${sortBy} ${sortOrder}
+      LIMIT ? OFFSET ?
+    `;
 
       const dataParams = [...params, limit, offset];
       const [rows] = await db.execute(query, dataParams);
 
       /* ===============================
-         IMAGE PARSING
-      =============================== */
+       IMAGE PARSING
+    =============================== */
       const products = rows.map((row) => {
         let images = [];
 
         if (row.images) {
           images = row.images.split(",").map((item) => {
             const [image_id, image_url, type, sort_order] = item.split("::");
-
             return {
               image_id: Number(image_id),
               image_url,
@@ -361,40 +383,38 @@ class ProductModel {
           product_id: row.product_id,
           product_name: row.product_name,
           brand_name: row.brand_name,
+          category_name: row.category_name,
+          subcategory_name: row.subcategory_name,
+          sub_subcategory_name: row.sub_subcategory_name,
           created_at: row.created_at,
           mrp: row.mrp,
           sale_price: row.sale_price,
+          reward_redemption_limit: row.reward_redemption_limit,
           images,
         };
       });
 
       /* ===============================
-         TOTAL COUNT
-      =============================== */
+       TOTAL COUNT (uses SAME logic)
+    =============================== */
       const [[{ total }]] = await db.execute(
         `
-          SELECT COUNT(DISTINCT p.product_id) AS total
-            FROM eproducts p
-            LEFT JOIN (
-              SELECT pv.*
-              FROM product_variants pv
-              INNER JOIN (
-                SELECT product_id, MIN(sale_price) AS min_sale_price
-                FROM product_variants
-                WHERE sale_price IS NOT NULL
-                GROUP BY product_id
-              ) minv
-                ON pv.product_id = minv.product_id
-              AND pv.sale_price = minv.min_sale_price
-              INNER JOIN (
-                SELECT product_id, MIN(variant_id) AS min_variant_id
-                FROM product_variants
-                GROUP BY product_id
-              ) tie
-                ON pv.product_id = tie.product_id
-            ) v ON p.product_id = v.product_id
-            ${whereClause}
-        `,
+      SELECT COUNT(DISTINCT p.product_id) AS total
+      FROM eproducts p
+
+      LEFT JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+          LIMIT 1
+        )
+
+      ${whereClause}
+      `,
         params,
       );
 
@@ -404,7 +424,7 @@ class ProductModel {
         totalItems: total,
       };
     } catch (error) {
-      console.error("Error fetching all products:", error);
+      console.error("Error fetching products:", error);
       throw error;
     }
   }

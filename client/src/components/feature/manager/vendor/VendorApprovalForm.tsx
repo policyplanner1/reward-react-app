@@ -400,7 +400,7 @@ export default function VendorApprovalForm() {
         <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
           Vendor Review: {formData.companyName}
         </h1>
-        <p className="text-gray-500 mb-6 border-b pb-4">
+        <p className="text-gray-900 font-bold mb-6 border-b pb-4">
           Vendor ID: {vendorId}. Review all submitted data.
         </p>
 

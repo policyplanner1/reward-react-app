@@ -14,6 +14,7 @@ import {
 } from "react-icons/fi";
 
 import { api } from "../../../../api/api";
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 type Status = "active" | "inactive";
 
@@ -29,18 +30,24 @@ interface Subcategory {
   category_name: string;
   status: Status;
   created_at: string;
+  cover_image: string;
 }
 
 export default function SubcategoryManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | "">("");
   const [newSubcategoryName, setNewSubcategoryName] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<Subcategory | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
-  const [loadingAdd, setLoadingAdd] = useState(false);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [newCoverImage, setNewCoverImage] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // const [loadingAdd, setLoadingAdd] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -51,6 +58,14 @@ export default function SubcategoryManagement() {
     if (status === "inactive") return "inactive";
     if (status === 1 || status === "1") return "active";
     return "inactive";
+  };
+
+  const resolveImageUrl = (path?: string) => {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    return `${API_BASEIMAGE_URL}/uploads/${path.replace(/^\/+/, "")}`;
   };
 
   const fetchCategories = async () => {
@@ -83,8 +98,6 @@ export default function SubcategoryManagement() {
           ? res.data.data
           : [];
 
-      console.log("Fetched subcategories:", subArray);
-
       const formatted = subArray.map((s: any) => ({
         subcategory_id: s?.subcategory_id ?? "",
         category_id: s?.category_id ?? "",
@@ -93,6 +106,7 @@ export default function SubcategoryManagement() {
         // status: Number(s?.status) === 1 ? "active" : "inactive",
         status: normalizeStatus(s.status),
         created_at: s?.created_at ?? "",
+        cover_image: s?.cover_image ?? "",
       }));
 
       setSubcategories(formatted);
@@ -107,12 +121,20 @@ export default function SubcategoryManagement() {
     fetchSubcategories();
   }, []);
 
-  const filteredSubcategories = useMemo(() => {
+  // 1️⃣ Filter by category
+  const categoryFiltered = useMemo(() => {
     if (selectedCategoryId === "") return subcategories;
     return subcategories.filter(
       (item) => item.category_id === selectedCategoryId,
     );
   }, [subcategories, selectedCategoryId]);
+
+  // 2️⃣ Then filter by search
+  const filteredSubcategories = useMemo(() => {
+    return categoryFiltered.filter((item) =>
+      item.subcategory_name.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+  }, [categoryFiltered, searchTerm]);
 
   const totalPages = Math.ceil(filteredSubcategories.length / itemsPerPage);
 
@@ -131,6 +153,10 @@ export default function SubcategoryManagement() {
     }
   }, [filteredSubcategories, totalPages, currentPage]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   const handleAdd = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
@@ -140,14 +166,6 @@ export default function SubcategoryManagement() {
         text: "Please choose a category before adding a subcategory.",
         icon: "warning",
         confirmButtonText: "OK",
-
-        buttonsStyling: false,
-        customClass: {
-          confirmButton:
-            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
-            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
-          popup: "rounded-2xl",
-        },
       });
       return;
     }
@@ -158,42 +176,47 @@ export default function SubcategoryManagement() {
         text: "Please enter a subcategory name before adding.",
         icon: "warning",
         confirmButtonText: "OK",
-
-        buttonsStyling: false,
-        customClass: {
-          confirmButton:
-            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
-            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
-          popup: "rounded-2xl",
-        },
       });
       return;
     }
 
-    setLoadingAdd(true);
+    if (!newCoverImage) {
+      await Swal.fire({
+        title: "Cover image required",
+        text: "Please upload a cover image for this subcategory.",
+        icon: "warning",
+        confirmButtonText: "OK",
+      });
+      return;
+    }
+
+    // setLoadingAdd(true);
 
     try {
-      await api.post("/vendor/create-subcategory", {
-        category_id: selectedCategoryId,
-        name: newSubcategoryName,
+      const formData = new FormData();
+      formData.append("category_id", String(selectedCategoryId));
+      formData.append("name", newSubcategoryName);
+      formData.append("cover_image", newCoverImage);
+
+      await api.post("/vendor/create-subcategory", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
+      // Reset
       setNewSubcategoryName("");
-      fetchSubcategories();
+      setNewCoverImage(null);
+      setAddModalOpen(false);
       setCurrentPage(1);
+      fetchSubcategories();
 
-      //  SUCCESS POPUP (IMPORTANT: await)
       await Swal.fire({
         title: "Added!",
         text: "Subcategory added successfully.",
         icon: "success",
         timer: 1200,
         showConfirmButton: false,
-        customClass: { popup: "rounded-2xl" },
       });
     } catch (err: any) {
-      console.log("Add error:", err);
-
       await Swal.fire({
         title: "Failed",
         text:
@@ -201,17 +224,9 @@ export default function SubcategoryManagement() {
           "Failed to add subcategory. Please try again.",
         icon: "error",
         confirmButtonText: "OK",
-
-        buttonsStyling: false,
-        customClass: {
-          confirmButton:
-            "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 " +
-            "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95 cursor-pointer",
-          popup: "rounded-2xl",
-        },
       });
     } finally {
-      setLoadingAdd(false);
+      // setLoadingAdd(false);
     }
   };
 
@@ -226,11 +241,14 @@ export default function SubcategoryManagement() {
         category_name: s.category_name,
         status: normalizeStatus(s.status),
         created_at: s.created_at,
+        cover_image: s.cover_image,
       };
       setSelected(formatted);
       setEditName(formatted.subcategory_name);
       setIsEditing(false);
       setDrawerOpen(true);
+      setPreviewImage(resolveImageUrl(s.cover_image));
+      setNewCoverImage(null);
     } catch (err) {
       console.log("View error:", err);
     }
@@ -240,11 +258,21 @@ export default function SubcategoryManagement() {
     if (!selected) return;
     setLoadingSave(true);
     try {
-      await api.put(`/vendor/update-subcategory/${selected.subcategory_id}`, {
-        category_id: selected.category_id,
-        name: editName,
-        status: selected.status === "active" ? 1 : 0,
-      });
+      const formData = new FormData();
+      formData.append("name", editName);
+      formData.append("status", selected.status === "active" ? "1" : "0");
+
+      if (newCoverImage) {
+        formData.append("cover_image", newCoverImage);
+      }
+
+      await api.put(
+        `/vendor/update-subcategory/${selected.subcategory_id}`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
 
       setSelected({
         ...selected,
@@ -357,34 +385,21 @@ export default function SubcategoryManagement() {
         </div>
       )}
       {/* ADD FORM */}
-      <form
-        onSubmit={handleAdd}
-        className="flex flex-col gap-4 p-2 mb-10 bg-white shadow-sm rounded-2xl border border-gray-100/50 max-w-[60rem] md:flex-row"
-      >
-        <select
-          value={selectedCategoryId}
-          onChange={(e) =>
-            setSelectedCategoryId(
-              e.target.value === "" ? "" : Number(e.target.value),
-            )
-          }
-          className="px-5 py-3 text-sm font-bold bg-gray-50 rounded-xl outline-none text-gray-700 md:w-1/3"
-        >
-          <option value="">Filter by Category</option>
-          {categories.map((c) => (
-            <option key={c.category_id} value={c.category_id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+      <div className="flex items-center justify-between mb-6">
+        {/* 🔎 Search */}
+        <div className="w-[320px]">
+          <input
+            type="text"
+            placeholder="Search subcategory..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl
+                 shadow-sm outline-none font-semibold text-gray-700
+                 focus:border-[#852BAF] focus:ring-2 focus:ring-purple-100"
+          />
+        </div>
 
-        <input
-          value={newSubcategoryName}
-          onChange={(e) => setNewSubcategoryName(e.target.value)}
-          className="flex-1 px-5 py-3 text-sm font-semibold bg-transparent outline-none placeholder:text-gray-300"
-          placeholder="Enter subcategory name..."
-        />
-
+        {/* ➕ Add */}
         <button
           type="submit"
           disabled={loadingAdd}
@@ -393,9 +408,9 @@ export default function SubcategoryManagement() {
                            disabled:opacity-60 disabled:cursor-not-allowed
                            inline-flex items-center justify-center cursor-pointer"
         >
-          <FiPlus /> {loadingAdd ? "Adding…" : "Add Subcategory"}
+          <FiPlus /> Add Subcategory
         </button>
-      </form>
+      </div>
 
       {/* TABLE */}
       <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] border border-gray-100 overflow-hidden">
@@ -555,7 +570,7 @@ export default function SubcategoryManagement() {
       {/* DRAWER */}
       {selected && (
         <div
-          className={`fixed inset-0 z-50 transition-all duration-500 ${
+          className={`fixed inset-0 z-50 transition-all duration-500${
             drawerOpen ? "visible" : "invisible"
           }`}
         >
@@ -567,7 +582,7 @@ export default function SubcategoryManagement() {
           />
 
           <div
-            className={`absolute right-0 top-0 h-full w-[450px] bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.05)] transition-transform duration-500 ease-out ${
+            className={`absolute right-0 top-0 h-full w-[450px] bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.05)] transition-transform duration-500 ease-out flex flex-col ${
               drawerOpen ? "translate-x-0" : "translate-x-full"
             }`}
           >
@@ -592,7 +607,7 @@ export default function SubcategoryManagement() {
               </p>
             </div>
 
-            <div className="p-8 space-y-8">
+            <div className="flex-1 overflow-y-auto p-8 space-y-8">
               {!isEditing ? (
                 <div className="space-y-6">
                   <div className="p-6 bg-gray-50 rounded-[2rem] border border-gray-100">
@@ -603,9 +618,18 @@ export default function SubcategoryManagement() {
                       {selected.category_name}
                     </p>
                   </div>
+
+                  {previewImage && (
+                    <img
+                      src={previewImage}
+                      className="w-full h-40 object-cover rounded-2xl border"
+                    />
+                  )}
+
                   <button
-                    className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
-           transition-all duration-300 cursor-pointer"
+                    className="w-full py-4 font-black text-white bg-gray-900 rounded-2xl
+        hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+        transition-all duration-300 cursor-pointer"
                     onClick={() => setIsEditing(true)}
                   >
                     Edit
@@ -613,6 +637,7 @@ export default function SubcategoryManagement() {
                 </div>
               ) : (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                  {/* Name */}
                   <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
                       Name
@@ -620,10 +645,58 @@ export default function SubcategoryManagement() {
                     <input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="w-full px-5 py-4 font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#852BAF]/20 focus:bg-white transition-all outline-none"
+                      className="w-full px-5 py-4 font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-2xl outline-none"
                     />
                   </div>
 
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-3 block">
+                      Cover Image
+                    </label>
+
+                    <label className="relative flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 cursor-pointer hover:border-[#852BAF] hover:bg-white transition-all group overflow-hidden">
+                      {previewImage ? (
+                        <>
+                          <img
+                            src={previewImage}
+                            alt="Preview"
+                            className="h-full w-full object-cover rounded-2xl"
+                          />
+
+                          {/* Overlay on hover */}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-white">
+                            <FiEdit size={28} className="mb-2" />
+                            <p className="text-sm font-bold">
+                              Click to change image
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-gray-400 group-hover:text-[#852BAF] transition-all">
+                          <FiPlus size={28} className="mb-2" />
+                          <p className="text-sm font-semibold">
+                            Click to upload cover image
+                          </p>
+                          <p className="text-xs">PNG, JPG, WEBP up to 2MB</p>
+                        </div>
+                      )}
+
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setNewCoverImage(file);
+                            setPreviewImage(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Status */}
                   <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-2 block">
                       Status
@@ -643,26 +716,118 @@ export default function SubcategoryManagement() {
                     </select>
                   </div>
 
+                  {/* Buttons */}
                   <div className="pt-4 space-y-3">
                     <button
                       onClick={handleSaveEdit}
                       disabled={loadingSave}
                       className="w-full py-4 font-black text-white bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-2xl shadow-lg shadow-purple-200 hover:opacity-90 transition-all cursor-pointer"
                     >
-                      <FiSave className="inline-block mr-2" />{" "}
+                      <FiSave className="inline-block mr-2" />
                       {loadingSave ? "Saving…" : "Save Changes"}
                     </button>
+
                     <button
                       onClick={() => setIsEditing(false)}
-                      className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl 
-           hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] 
-           hover:text-white transition-all duration-300 cursor-pointer"
+                      className="w-full py-4 font-bold text-gray-400 bg-white border border-gray-100 rounded-2xl
+          hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78]
+          hover:text-white transition-all duration-300 cursor-pointer"
                     >
                       Discard
                     </button>
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* modal */}
+      {addModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-[500px] bg-white rounded-3xl p-8 shadow-2xl relative">
+            <FiX
+              className="absolute top-5 right-5 cursor-pointer"
+              onClick={() => setAddModalOpen(false)}
+            />
+
+            <h2 className="text-2xl font-black mb-8">Add Subcategory</h2>
+
+            <div className="space-y-6">
+              <select
+                value={selectedCategoryId}
+                onChange={(e) =>
+                  setSelectedCategoryId(
+                    e.target.value === "" ? "" : Number(e.target.value),
+                  )
+                }
+                className="w-full px-5 py-4 bg-gray-50 rounded-2xl"
+              >
+                <option value="">Select Category</option>
+                {categories.map((c) => (
+                  <option key={c.category_id} value={c.category_id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                value={newSubcategoryName}
+                onChange={(e) => setNewSubcategoryName(e.target.value)}
+                className="w-full px-5 py-4 bg-gray-50 rounded-2xl"
+                placeholder="Subcategory name"
+              />
+
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2 mb-3 block">
+                  Cover Image
+                </label>
+
+                <label className="relative flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 cursor-pointer hover:border-[#852BAF] hover:bg-white transition-all group overflow-hidden">
+                  {newCoverImage ? (
+                    <>
+                      <img
+                        src={URL.createObjectURL(newCoverImage)}
+                        alt="Preview"
+                        className="h-full w-full object-cover rounded-2xl"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-white">
+                        <FiEdit size={26} className="mb-2" />
+                        <p className="text-sm font-bold">
+                          Click to change image
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-gray-400 group-hover:text-[#852BAF] transition-all">
+                      <FiPlus size={28} className="mb-2" />
+                      <p className="text-sm font-semibold">
+                        Click to upload cover image
+                      </p>
+                      <p className="text-xs">PNG, JPG, WEBP up to 2MB</p>
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) =>
+                      setNewCoverImage(
+                        e.target.files ? e.target.files[0] : null,
+                      )
+                    }
+                  />
+                </label>
+              </div>
+
+              <button
+                onClick={handleAdd}
+                className="w-full py-4 text-white font-black rounded-2xl bg-gradient-to-r from-[#852BAF] to-[#FC3F78] cursor-pointer hover:opacity-90 transition-all"
+              >
+                Create Subcategory
+              </button>
             </div>
           </div>
         </div>

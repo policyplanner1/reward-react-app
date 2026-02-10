@@ -30,27 +30,37 @@ class ProductController {
             ? product.images[0].image_url
             : null;
 
+        const salePrice = product.sale_price ? Number(product.sale_price) : 0;
+
+        const discountPercent = product.reward_redemption_limit
+          ? Number(product.reward_redemption_limit)
+          : 0;
+
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+
+        const finalPrice = salePrice - discountAmount;
+
+        // extra discount
+        const mrp = product.mrp ? Number(product.mrp) : 0;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
         return {
           id: product.product_id,
           title: product.product_name,
           brand: product.brand_name,
+          category: product.category_name,
+          subcategory: product.subcategory_name,
+          sub_subcategory: product.sub_subcategory_name,
           image: mainImage,
-
-          // Variant pricing
-          price: product.sale_price
-            ? `₹${Number(product.sale_price).toFixed(0)}`
-            : null,
-
-          originalPrice: product.mrp
-            ? `₹${Number(product.mrp).toFixed(0)}`
-            : null,
-
-          // Dummy values
-          discount: "40%",
+          price: salePrice ? `₹${salePrice}` : null,
+          originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
+          discount: `${mrpDiscountPercent}%`,
           rating: 4.6,
           reviews: "18.9K",
-          pointsPrice: "₹3,736",
-          points: 264,
+          pointsPrice: salePrice ? `₹${finalPrice}` : null,
+          points: discountAmount,
         };
       });
 
@@ -109,28 +119,45 @@ class ProductController {
           priceMax,
         });
 
-      const processedProducts = products.map((product) => ({
-        id: product.product_id,
-        title: product.product_name,
-        image:
+      const processedProducts = products.map((product) => {
+        const mainImage =
           product.images && product.images.length
             ? product.images[0].image_url
-            : null,
+            : null;
 
-        price: product.sale_price
-          ? `₹${Number(product.sale_price).toFixed(0)}`
-          : null,
+        const salePrice = product.sale_price ? Number(product.sale_price) : 0;
 
-        originalPrice: product.mrp
-          ? `₹${Number(product.mrp).toFixed(0)}`
-          : null,
+        const discountPercent = product.reward_redemption_limit
+          ? Number(product.reward_redemption_limit)
+          : 0;
 
-        discount: "40%",
-        rating: 4.6,
-        reviews: "18.9K",
-        pointsPrice: "₹3,736",
-        points: 264,
-      }));
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+
+        const finalPrice = salePrice - discountAmount;
+
+        // extra discount
+        const mrp = product.mrp ? Number(product.mrp) : 0;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        return {
+          id: product.product_id,
+          title: product.product_name,
+          brand: product.brand_name,
+          category: product.category_name,
+          subcategory: product.subcategory_name,
+          sub_subcategory: product.sub_subcategory_name,
+          image: mainImage,
+          price: salePrice ? `₹${salePrice}` : null,
+          originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
+          discount: `${mrpDiscountPercent}%`,
+          rating: 4.6,
+          reviews: "18.9K",
+          pointsPrice: salePrice ? `₹${finalPrice}` : null,
+          points: discountAmount,
+        };
+      });
 
       return res.json({
         success: true,
@@ -237,11 +264,33 @@ class ProductController {
 
       const processedProduct = {
         ...product,
-        discount: "40%",
-        rating: 4.6,
-        reviews: "18.9K",
-        pointsPrice: "₹3,736",
-        points: 264,
+        variants: product.variants.map((variant) => {
+          // Numbers only
+          const salePrice = Number(variant.sale_price) || 0;
+          const mrp = Number(variant.mrp) || 0;
+          const rewardDiscountPercent =
+            Number(variant.reward_redemption_limit) || 0;
+
+          // Reward discount on sale price
+          const rewardDiscountAmount = Math.round(
+            (salePrice * rewardDiscountPercent) / 100,
+          );
+
+          const finalPrice = salePrice - rewardDiscountAmount;
+
+          // Effective discount from MRP
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+          return {
+            ...variant,
+            discount: `${mrpDiscountPercent}%`,
+            rating: 4.6,
+            reviews: "18.9K",
+            pointsPrice: finalPrice ? `₹${finalPrice}` : null,
+            points: rewardDiscountAmount,
+          };
+        }),
       };
 
       return res.json({
@@ -261,20 +310,15 @@ class ProductController {
   async getCategories(req, res) {
     try {
       const [rows] = await db.execute(
-        `SELECT 
-        c.category_id, 
-        c.category_name 
-        FROM categories c 
-        where c.status = 1
-        ORDER BY c.category_name ASC`
+        `SELECT * FROM categories
+        WHERE status = 1
+        ORDER BY category_name ASC`,
       );
 
       const processedCategories = rows.map((category) => ({
         id: category.category_id,
         name: category.category_name,
-        image: `https://via.placeholder.com/150?text=${encodeURIComponent(
-          category.category_name
-        )}`,
+        image: category.cover_image,
       }));
 
       res.json({
@@ -304,14 +348,14 @@ class ProductController {
           sc.subcategory_name
         FROM sub_categories sc 
         WHERE sc.category_id = ? AND sc.status = 1`,
-        [categoryId]
+        [categoryId],
       );
 
       const processedSubCategories = data.map((subcategory) => ({
         id: subcategory.subcategory_id,
         name: subcategory.subcategory_name,
         image: `https://via.placeholder.com/150?text=${encodeURIComponent(
-          subcategory.subcategory_name
+          subcategory.subcategory_name,
         )}`,
       }));
 
@@ -445,7 +489,7 @@ class ProductController {
       VALUES (?, ?)
       ON DUPLICATE KEY UPDATE created_at = CURRENT_TIMESTAMP
       `,
-        [userId, keyword]
+        [userId, keyword],
       );
 
       return res.json({ success: true });
@@ -471,7 +515,7 @@ class ProductController {
       ORDER BY created_at DESC
       LIMIT 10
       `,
-        [userId]
+        [userId],
       );
 
       return res.json({

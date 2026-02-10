@@ -35,6 +35,8 @@ type BackendProductStatus =
 
 type ProductStatus = "pending" | "approved" | "rejected" | "resubmission";
 
+type SortColumn = "product_id" | "product_name";
+
 interface ProductDocument {
   document_id: number;
   document_name: string;
@@ -171,6 +173,11 @@ const StatCard = ({ title, value, icon: Icon, color }: StatCardProps) => {
   );
 };
 
+const SORT_FIELD_MAP: Record<SortColumn, string> = {
+  product_id: "product_id",
+  product_name: "product_name",
+};
+
 /* ================================
        MAIN COMPONENT
 ================================ */
@@ -190,7 +197,7 @@ export default function ProductManagerList() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("created_at");
+  const [sortBy, setSortBy] = useState<SortColumn>("product_id");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const [pagination, setPagination] = useState({
@@ -200,13 +207,11 @@ export default function ProductManagerList() {
     itemsPerPage: 10,
   });
 
-  // const debounceRef = useRef<number | null>(null);
-
   const okBtnClass =
     "px-6 py-2 rounded-xl font-bold text-white bg-[#852BAF] transition-all duration-300 cursor-pointer " +
     "hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] active:scale-95";
 
-  const getSortIcon = (column: string) => {
+  const getSortIcon = (column: SortColumn) => {
     if (sortBy !== column) return <FaSort className="ml-1 opacity-30" />;
     return sortOrder === "asc" ? (
       <FaSortUp className="ml-1 text-[#852BAF]" />
@@ -237,7 +242,8 @@ export default function ProductManagerList() {
         status:
           statusFilter !== "all" ? normalizeStatusForApi(statusFilter) : "",
         search: searchQuery,
-        sortBy,
+
+        sortBy: SORT_FIELD_MAP[sortBy],
         sortOrder,
       };
 
@@ -273,29 +279,6 @@ export default function ProductManagerList() {
     sortOrder,
   ]);
 
-  // useEffect(() => {
-  //   fetchProducts();
-  // }, [
-  //   pagination.currentPage,
-  //   pagination.itemsPerPage,
-  //   sortBy,
-  //   sortOrder,
-  //   fetchProducts,
-  // ]);
-
-  // useEffect(() => {
-  //   if (debounceRef.current) window.clearTimeout(debounceRef.current);
-
-  //   debounceRef.current = window.setTimeout(() => {
-  //     setPagination((p) => ({ ...p, currentPage: 1 }));
-  //     fetchProducts();
-  //   }, 450);
-
-  //   return () => {
-  //     if (debounceRef.current) window.clearTimeout(debounceRef.current);
-  //   };
-  // }, [searchQuery, statusFilter, fetchProducts]);
-
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchProducts();
@@ -330,7 +313,7 @@ export default function ProductManagerList() {
       approve: {
         title: "Approve Product?",
         text: `Do you want to approve "${product.product_name}"?`,
-        icon: "question",
+        icon: "success",
         confirmText: "Approve",
         confirmColor: "#16A34A",
         needsReason: false,
@@ -338,7 +321,7 @@ export default function ProductManagerList() {
       reject: {
         title: "Reject Product?",
         text: `Do you want to reject "${product.product_name}"?`,
-        icon: "warning",
+        icon: "error",
         confirmText: "Reject",
         confirmColor: "#DC2626",
         needsReason: true,
@@ -347,7 +330,7 @@ export default function ProductManagerList() {
       request_resubmission: {
         title: "Allow Resubmission?",
         text: `Allow vendor to resubmit "${product.product_name}"?`,
-        icon: "warning",
+        icon: "info",
         confirmText: "Allow",
         confirmColor: "#2563EB",
         needsReason: true,
@@ -435,26 +418,21 @@ export default function ProductManagerList() {
     }
   };
 
-  const handleSort = (column: string) => {
+  const handleSort = (column: SortColumn) => {
     if (sortBy === column) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
       setSortBy(column);
-      setSortOrder("desc");
+      setSortOrder("asc");
     }
+
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
-  // const onSearchChange = useCallback(
-  //   (e: React.ChangeEvent<HTMLInputElement>) => {
-  //     setSearchQuery(e.target.value);
-  //   },
-  //   [],
-  // );
   const onSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearchQuery(e.target.value);
-      setPagination((prev) => ({ ...prev, currentPage: 1 })); 
+      setPagination((prev) => ({ ...prev, currentPage: 1 }));
     },
     [],
   );
@@ -541,7 +519,7 @@ export default function ProductManagerList() {
 
         {/* TABLE */}
         <div className="relative overflow-x-auto border rounded-lg">
-          {/* ✅ Loading overlay (focus never breaks) */}
+          {/*  Loading overlay (focus never breaks) */}
           {loading && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-[1px]">
               <FaSpinner className="animate-spin text-3xl text-[#852BAF]" />
@@ -551,6 +529,16 @@ export default function ProductManagerList() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                {/* NEW: Product ID column */}
+                <th
+                  onClick={() => handleSort("product_id")}
+                  className="px-4 py-3 cursor-pointer text-xs font-bold uppercase text-gray-700"
+                >
+                  <div className="flex items-center">
+                    Product ID {getSortIcon("product_id")}
+                  </div>
+                </th>
+
                 <th
                   onClick={() => handleSort("product_name")}
                   className="px-4 py-3 cursor-pointer text-xs font-bold uppercase text-gray-700"
@@ -559,12 +547,15 @@ export default function ProductManagerList() {
                     Product {getSortIcon("product_name")}
                   </div>
                 </th>
+
                 <th className="px-4 py-3 text-xs font-bold uppercase text-gray-700">
                   Brand
                 </th>
+
                 <th className="px-4 py-3 text-xs font-bold uppercase text-gray-700">
                   Status
                 </th>
+
                 <th className="px-4 py-3 pl-0 text-xs font-bold uppercase text-gray-700">
                   Actions
                 </th>
@@ -574,19 +565,32 @@ export default function ProductManagerList() {
             <tbody className="divide-y divide-gray-200">
               {products.map((product) => (
                 <tr key={product.product_id} className="hover:bg-gray-50">
+                  {/* NEW: Product ID cell */}
+                  <td className="px-4 py-4 font-medium text-gray-600">
+                    {product.product_id}
+                  </td>
+
                   <td className="px-4 py-4 font-medium">
                     {product.product_name}
                   </td>
+
                   <td className="px-4 py-4 text-center">
                     {product.brand_name}
                   </td>
+
                   <td className="px-4 py-4 text-center">
                     <StatusChip status={product.status} />
                   </td>
 
                   <td className="px-4 py-4 align-top">
                     <div className="flex justify-end">
-                      <div className="grid grid-cols-4 gap-2 w-[176px] justify-items-center">
+                      <div
+                        className={`grid gap-2 justify-items-center ${
+                          product.status === "pending"
+                            ? "grid-cols-4 w-[176px]"
+                            : "grid-cols-2 w-[88px]"
+                        }`}
+                      >
                         <Link
                           to={routes.manager.productView.replace(
                             ":id",
@@ -598,7 +602,7 @@ export default function ProductManagerList() {
                           <FaEye />
                         </Link>
 
-                        {product.status === "pending" ? (
+                        {product.status === "pending" && (
                           <>
                             <button
                               onClick={() =>
@@ -619,27 +623,18 @@ export default function ProductManagerList() {
                             >
                               <FaTimes />
                             </button>
-
-                            <button
-                              onClick={() =>
-                                handleProductAction(
-                                  "request_resubmission",
-                                  product,
-                                )
-                              }
-                              className="w-9 h-9 inline-flex items-center justify-center bg-blue-100 text-blue-700 rounded cursor-pointer"
-                              title="Resubmission"
-                            >
-                              <FaRedo />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-9 h-9 opacity-0 pointer-events-none" />
-                            <div className="w-9 h-9 opacity-0 pointer-events-none" />
-                            <div className="w-9 h-9 opacity-0 pointer-events-none" />
                           </>
                         )}
+
+                        <button
+                          onClick={() =>
+                            handleProductAction("request_resubmission", product)
+                          }
+                          className="w-9 h-9 inline-flex items-center justify-center bg-blue-100 text-blue-700 rounded cursor-pointer"
+                          title="Resubmission"
+                        >
+                          <FaRedo />
+                        </button>
                       </div>
                     </div>
                   </td>
@@ -678,7 +673,7 @@ export default function ProductManagerList() {
                     currentPage: p.currentPage - 1,
                   }))
                 }
-                className={`px-4 py-2 rounded-lg border text-sm font-medium ${
+                className={`px-4 py-2 rounded-lg border text-sm font-medium cursor-pointer ${
                   pagination.currentPage === 1
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                     : "bg-white hover:bg-gray-50"
@@ -699,7 +694,7 @@ export default function ProductManagerList() {
                     onClick={() =>
                       setPagination((p) => ({ ...p, currentPage: page }))
                     }
-                    className={`px-3 py-2 rounded-lg text-sm font-semibold border ${
+                    className={`px-3 py-2 rounded-lg text-sm font-semibold border cursor-pointer ${
                       pagination.currentPage === page
                         ? "bg-[#852BAF] text-white border-[#852BAF]"
                         : "bg-white hover:bg-gray-50"
@@ -718,7 +713,7 @@ export default function ProductManagerList() {
                     currentPage: p.currentPage + 1,
                   }))
                 }
-                className={`px-4 py-2 rounded-lg border text-sm font-medium ${
+                className={`px-4 py-2 rounded-lg border text-sm font-medium cursor-pointer ${
                   pagination.currentPage === pagination.totalPages
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                     : "bg-white hover:bg-gray-50"

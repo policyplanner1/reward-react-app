@@ -18,7 +18,7 @@ class PaymentController {
     }
 
     // check if already paid
-    const existing = await db.query(
+    const [existing] = await db.query(
       `SELECT * FROM order_payments 
         WHERE order_id = ? AND status = 'success' 
         LIMIT 1`,
@@ -35,6 +35,7 @@ class PaymentController {
       amount: amount * 100, // paise
       currency: "INR",
       receipt: orderId.toString(),
+      payment_capture: 1,
     });
 
     await PaymentModel.createOrder({
@@ -100,6 +101,7 @@ class PaymentController {
 
   // payment status
   async paymentStatus(req, res) {
+    res.set("Cache-Control", "no-store");
     const { orderId } = req.params;
 
     const [order] = await db.query(
@@ -110,6 +112,60 @@ class PaymentController {
     return res.json({
       paymentStatus: order.status,
     });
+  }
+
+  async refundPayment(req, res) {
+    try {
+      const { orderId } = req.body;
+
+      // Get successful payment for this order
+      const [payment] = await db.query(
+        `SELECT razorpay_payment_id, amount 
+       FROM order_payments
+       WHERE order_id = ? AND status = 'success'
+       LIMIT 1`,
+        [orderId],
+      );
+
+      if (!payment) {
+        return res.status(400).json({ message: "No successful payment found" });
+      }
+
+      // Call Razorpay refund API
+      const refund = await razorpay.payments.refund(
+        payment.razorpay_payment_id,
+        {
+          amount: payment.amount * 100, // full refund
+        },
+      );
+
+      // Insert refund as new payment row (audit trail)
+      await db.query(
+        `INSERT INTO order_payments 
+       (order_id, razorpay_order_id, razorpay_payment_id, amount, status, payment_method, raw_webhook)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          orderId,
+          refund.order_id || null,
+          refund.id,
+          payment.amount,
+          "refunded",
+          "refund",
+          JSON.stringify(refund),
+        ],
+      );
+
+      // Update order status
+      await db.query(
+        `UPDATE eorders SET status = 'cancelled' WHERE order_id = ?`,
+        [orderId],
+      );
+
+      res.json({ message: "Refund successful", refund });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Refund failed" });
+    }
   }
 }
 

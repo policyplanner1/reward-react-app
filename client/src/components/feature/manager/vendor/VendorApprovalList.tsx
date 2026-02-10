@@ -59,9 +59,20 @@ export default function VendorApprovalList() {
     "All" | "sent_for_approval" | "approved" | "rejected"
   >("All");
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const filteredVendors =
-    filter === "All" ? vendors : vendors.filter((v) => v.status === filter);
+  const filteredVendors = vendors.filter((v) => {
+    const matchesStatus = filter === "All" ? true : v.status === filter;
+
+    const matchesSearch =
+      v.company_name.toLowerCase().includes(debouncedSearch) ||
+      v.full_name.toLowerCase().includes(debouncedSearch) ||
+      v.email.toLowerCase().includes(debouncedSearch) ||
+      (v.phone || "").toLowerCase().includes(debouncedSearch);
+
+    return matchesStatus && matchesSearch;
+  });
 
   /* ============================
           FETCH VENDORS
@@ -84,6 +95,14 @@ export default function VendorApprovalList() {
     fetchVendors();
   }, []);
 
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.toLowerCase());
+    }, 300);
+
+    return () => clearTimeout(t);
+  }, [search]);
+
   if (loading) return <p className="p-10 text-center">Loading vendors...</p>;
 
   return (
@@ -105,24 +124,42 @@ export default function VendorApprovalList() {
         </div>
 
         {/* FILTER */}
-        {[
-          { label: "All", value: "All" },
-          { label: "Pending", value: "sent_for_approval" },
-          { label: "Approved", value: "approved" },
-          { label: "Rejected", value: "rejected" },
-        ].map(({ label, value }) => (
-          <button
-            key={value}
-            onClick={() => setFilter(value as any)}
-            className={`px-4 py-2 text-sm font-medium rounded-md cursor-pointer ${
-              filter === value
-                ? "bg-white text-[#852BAF] shadow"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+        {/* FILTER + SEARCH ROW */}
+        <div className="flex items-center justify-between mb-6">
+          {/* Tabs */}
+          <div className="flex gap-2">
+            {[
+              { label: "All", value: "All" },
+              { label: "Pending", value: "sent_for_approval" },
+              { label: "Approved", value: "approved" },
+              { label: "Rejected", value: "rejected" },
+            ].map(({ label, value }) => (
+              <button
+                key={value}
+                onClick={() => setFilter(value as any)}
+                className={`px-4 py-2 text-sm font-medium rounded-md cursor-pointer ${
+                  filter === value
+                    ? "bg-white text-[#852BAF] shadow"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search vendors..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#852BAF]"
+            />
+            <FaEye className="absolute left-3 top-2.5 text-gray-400" />
+          </div>
+        </div>
 
         {/* TABLE */}
         <div className="overflow-x-auto">
@@ -182,7 +219,6 @@ export default function VendorApprovalList() {
                   <td className="px-6 py-4">
                     <Link to={`/manager/vendor-review/${v.vendor_id}`}>
                       <button className="flex items-center px-4 py-2 bg-[#852BAF] text-white rounded-lg hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition text-sm cursor-pointer">
-
                         <FaEye className="mr-2" /> Review
                       </button>
                     </Link>

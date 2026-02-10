@@ -128,6 +128,7 @@ interface ProductView {
   hsnSacCode: string;
   description?: string;
   shortDescription?: string;
+  brandDescription?: string;
   categoryId?: number | null;
   subCategoryId?: number | null;
   subSubCategoryId?: number | null;
@@ -143,6 +144,7 @@ interface ProductView {
   deliverySlaMaxDays?: number;
   shippingClass?: "standard" | "bulky" | "fragile";
   productImages?: string[];
+  productVideo?: string | null;
   requiredDocs?: Array<{
     id: number;
     document_name: string;
@@ -205,6 +207,7 @@ export default function ReviewProductPage() {
         hsnSacCode: raw.hsn_sac_code ?? "",
         description: raw.description ?? "",
         shortDescription: raw.short_description ?? raw.shortDescription ?? "",
+        brandDescription: raw.brand_description ?? raw.brandDescription ?? "",
         categoryId: raw.category_id ?? raw.categoryId ?? null,
         subCategoryId: raw.subcategory_id ?? raw.subCategoryId ?? null,
         subSubCategoryId:
@@ -226,6 +229,7 @@ export default function ReviewProductPage() {
         productImages: Array.isArray(raw.productImages)
           ? raw.productImages
           : (raw.images ?? []),
+        productVideo: raw.video ?? null,
 
         requiredDocs: raw.documents ?? [],
         variants: Array.isArray(raw.variants) ? raw.variants : [],
@@ -313,7 +317,7 @@ export default function ReviewProductPage() {
             <h1 className="mb-1 text-3xl font-bold text-gray-900">
               Product Review
             </h1>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm font-bold text-gray-900">
               Viewing product ID: {product.productId}
             </div>
           </div>
@@ -595,6 +599,18 @@ export default function ReviewProductPage() {
             </div>
 
             <div className="mt-4">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Brand Description
+              </label>
+
+              <QuillEditor
+                value={product.brandDescription || ""}
+                readOnly
+                minHeight={220}
+              />
+            </div>
+
+            <div className="mt-4">
               <FormInput
                 id="shortDescription"
                 label="Short Description"
@@ -692,6 +708,29 @@ export default function ReviewProductPage() {
               </div>
             )}
           </div>
+        </section>
+
+        {/* Product Video */}
+        <section className="mt-6">
+          <SectionHeader
+            icon={FaImages}
+            title="Product Video"
+            description="Vendor uploaded demo video"
+          />
+
+          {product.productVideo ? (
+            <div className="w-72 border rounded overflow-hidden">
+              <video
+                src={resolveImageUrl(product.productVideo)}
+                controls
+                className="w-full h-full"
+              />
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500">
+              No product video available
+            </div>
+          )}
         </section>
 
         {/* Required Documents (if any) */}

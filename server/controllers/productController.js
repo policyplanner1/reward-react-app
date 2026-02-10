@@ -110,8 +110,16 @@ class ProductController {
           else if (file.fieldname.startsWith("variant_")) {
             newPath = path.join(variantFolder, filename);
             file.finalPath = `products/${vendorId}/${productId}/variants/${filename}`;
+          } else if (file.fieldname === "video") {
+            const videoFolder = path.join(baseFolder, "video");
+            if (!fs.existsSync(videoFolder)) {
+              fs.mkdirSync(videoFolder, { recursive: true });
+            }
+
+            newPath = path.join(videoFolder, filename);
+            file.finalPath = `products/${vendorId}/${productId}/video/${filename}`;
           } else {
-            continue; // skip unknown field
+            continue;
           }
 
           await moveFile(file.path, newPath);
@@ -126,6 +134,16 @@ class ProductController {
           connection,
           productId,
           mainImages,
+        );
+      }
+
+      // 4.5 Insert video if exists
+      const videoFile = movedFiles.find((f) => f.fieldname === "video");
+      if (videoFile) {
+        await ProductModel.insertProductVideo(
+          connection,
+          productId,
+          videoFile.finalPath,
         );
       }
 
@@ -664,7 +682,7 @@ class ProductController {
   }
 
   // Product Searchable
-   async Searchable(req, res) {
+  async Searchable(req, res) {
     try {
       const { productId } = req.params;
       const { is_searchable } = req.body;
