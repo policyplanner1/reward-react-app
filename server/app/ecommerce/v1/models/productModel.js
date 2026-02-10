@@ -276,6 +276,11 @@ class ProductModel {
       conditions.push("p.status = ?");
       params.push("approved");
 
+      conditions.push("p.is_visible = ?");
+      params.push(1);
+
+      // conditions.push("v.variant_id IS NOT NULL");
+
       if (categoryId) {
         conditions.push("p.category_id = ?");
         params.push(categoryId);
