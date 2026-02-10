@@ -292,8 +292,7 @@ export default function CategoryManagement() {
 
         {/* ➕ Add Button */}
         <button
-          type="submit"
-          disabled={loading}
+          onClick={() => setAddModalOpen(true)}
           className="flex items-center gap-2 px-8 py-3 font-bold text-white transition-all shadow-lg
                bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                rounded-xl hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
