@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../../api/api";
+import "./flashsalecreate.css"
 
 const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
@@ -16,26 +17,21 @@ const FlashSaleForm: React.FC = () => {
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // ✅ Fetch existing data if edit
   useEffect(() => {
     const fetchFlashSale = async () => {
-      try {
-        if (isEdit && id) {
-          const res = await api.get(`/admin/flash-sales/${id}`);
-          const data = res.data;
+      if (isEdit && id) {
+        const res = await api.get(`/admin/flash-sales/${id}`);
+        const data = res.data;
 
-          setTitle(data.title);
-          setStartAt(data.start_at?.slice(0, 16));
-          setEndAt(data.end_at?.slice(0, 16));
+        setTitle(data.title);
+        setStartAt(data.start_at?.slice(0, 16));
+        setEndAt(data.end_at?.slice(0, 16));
 
-          if (data.banner_image) {
-            setBannerPreview(
-              `${API_BASEIMAGE_URL}/uploads/flash-banners/${data.banner_image}`
-            );
-          }
+        if (data.banner_image) {
+          setBannerPreview(
+            `${API_BASEIMAGE_URL}/uploads/flash-banners/${data.banner_image}`
+          );
         }
-      } catch (error) {
-        console.error("Failed to fetch flash sale", error);
       }
     };
 
@@ -67,30 +63,15 @@ const FlashSaleForm: React.FC = () => {
     try {
       setLoading(true);
 
-      let res;
+      const url = isEdit && id
+        ? `/flash/flash-sales/${id}`
+        : `/flash/flash-sale`;
 
-      if (isEdit && id) {
-        res = await api.post(
-          `/flash/flash-sales/${id}`,
-          formData,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-          }
-        );
-      } else {
-        res = await api.post(
-          `/flash/flash-sale`,
-          formData,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-          }
-        );
-      }
+      const res = await api.post(url, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
-      const data = res.data;
-
-      // redirect to variants page
-      navigate(`/admin/flash-sales/${data.flash_id}/variants`);
+      navigate(`/admin/flash-sales/${res.data.flash_id}/variants`);
     } catch (err) {
       console.error("Save failed", err);
     } finally {
@@ -99,73 +80,69 @@ const FlashSaleForm: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 24, maxWidth: 600 }}>
-      <h2>{isEdit ? "Edit Flash Sale" : "Create Flash Sale"}</h2>
+    <div className="fs-page">
+      <div className="fs-card">
+        <h2 className="fs-title">
+          {isEdit ? "Edit Flash Sale" : "Create Flash Sale"}
+        </h2>
 
-      {/* Title */}
-      <div style={{ marginBottom: 16 }}>
-        <label>Title</label>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          style={{ width: "100%", padding: 8 }}
-        />
-      </div>
-
-      {/* Start Time */}
-      <div style={{ marginBottom: 16 }}>
-        <label>Start Time</label>
-        <input
-          type="datetime-local"
-          value={startAt}
-          onChange={(e) => setStartAt(e.target.value)}
-          style={{ width: "100%", padding: 8 }}
-        />
-      </div>
-
-      {/* End Time */}
-      <div style={{ marginBottom: 16 }}>
-        <label>End Time</label>
-        <input
-          type="datetime-local"
-          value={endAt}
-          onChange={(e) => setEndAt(e.target.value)}
-          style={{ width: "100%", padding: 8 }}
-        />
-      </div>
-
-      {/* Banner Upload */}
-      <div style={{ marginBottom: 16 }}>
-        <label>Banner Image</label>
-        <input type="file" onChange={handleBannerChange} />
-      </div>
-
-      {bannerPreview && (
-        <div style={{ marginBottom: 16 }}>
-          <img
-            src={bannerPreview}
-            alt="preview"
-            style={{ width: "100%", borderRadius: 8 }}
+        {/* Title */}
+        <div className="fs-field">
+          <label>Flash Sale Title</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="eg. Diwali Mega Offer"
           />
         </div>
-      )}
 
-      {/* Submit */}
-      <button
-        onClick={handleSubmit}
-        disabled={loading}
-        style={{
-          padding: "10px 16px",
-          background: "#2563eb",
-          color: "#fff",
-          border: "none",
-          borderRadius: 6,
-          cursor: "pointer",
-        }}
-      >
-        {loading ? "Saving..." : "Save & Manage Variants"}
-      </button>
+        {/* Date Row */}
+        <div className="fs-row">
+          <div className="fs-field">
+            <label>Start Time</label>
+            <input
+              type="datetime-local"
+              value={startAt}
+              onChange={(e) => setStartAt(e.target.value)}
+            />
+          </div>
+
+          <div className="fs-field">
+            <label>End Time</label>
+            <input
+              type="datetime-local"
+              value={endAt}
+              onChange={(e) => setEndAt(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Banner Upload */}
+        <div className="fs-field">
+          <label>Banner Image</label>
+          <div className="fs-upload">
+            <input type="file" onChange={handleBannerChange} />
+            <span>Click to upload banner</span>
+          </div>
+        </div>
+
+        {/* Preview */}
+        {bannerPreview && (
+          <div className="fs-preview">
+            <img src={bannerPreview} alt="preview" />
+          </div>
+        )}
+
+        {/* Submit */}
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="fs-btn"
+        >
+          {loading ? "Saving..." : "Save & Manage Variants"}
+        </button>
+      </div>
     </div>
   );
 };

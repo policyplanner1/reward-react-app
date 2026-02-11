@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "./flashsalelist.css";
 
 interface FlashSale {
   flash_id: number;
@@ -13,7 +14,7 @@ interface FlashSale {
 const FlashSaleList: React.FC = () => {
   const navigate = useNavigate();
   const [sales, setSales] = useState<FlashSale[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
 
   const fetchFlashSales = async () => {
     try {
@@ -21,7 +22,7 @@ const FlashSaleList: React.FC = () => {
       const data = await res.json();
       setSales(data);
     } catch (err) {
-      console.error("Failed to fetch flash sales", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -31,142 +32,106 @@ const FlashSaleList: React.FC = () => {
     fetchFlashSales();
   }, []);
 
-  const getStatusColor = (status: string) => {
+  const getStatusClass = (status: string) => {
     switch (status) {
       case "Live":
-        return "#16a34a";
+        return "fs-badge live";
       case "Upcoming":
-        return "#f59e0b";
+        return "fs-badge upcoming";
       case "Expired":
-        return "#dc2626";
+        return "fs-badge expired";
       default:
-        return "#6b7280";
+        return "fs-badge";
     }
   };
 
-  if (loading) return <div>Loading flash sales...</div>;
-
   return (
-    <div style={{ padding: "20px" }}>
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-        }}
-      >
-        <h2>Flash Sale Campaigns</h2>
-        <button
-          onClick={() => navigate("/manager/flash-create")}
-          style={{
-            padding: "10px 16px",
-            background: "#2563eb",
-            color: "#fff",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-          }}
-        >
-          + Create Flash Sale
-        </button>
-      </div>
+    <div className="fs-page">
+      <div className="fs-card wide">
+        {/* Header */}
+        <div className="fs-header">
+          <h2>Flash Sale Campaign</h2>
+          <button
+            className="fs-primary-btn"
+            onClick={() => navigate("/manager/flash-create")}
+          >
+            + Create Flash Sale
+          </button>
+        </div>
 
-      {/* Table */}
-      <table
-        width="100%"
-        cellPadding={12}
-        style={{ borderCollapse: "collapse", background: "#fff" }}
-      >
-        <thead style={{ background: "#f3f4f6" }}>
-          <tr>
-            <th>Banner</th>
-            <th>Title</th>
-            <th>Start</th>
-            <th>End</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {sales.length === 0 ? (
-            <tr>
-              <td colSpan={6} style={{ textAlign: "center", padding: "20px" }}>
-                No flash sales found
-              </td>
-            </tr>
-          ) : (
-            sales.map((sale) => (
-              <tr key={sale.flash_id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                {/* Banner */}
-                <td>
-                  <img
-                    src={`/uploads/flash-banners/${sale.banner_image}`}
-                    alt="banner"
-                    width={90}
-                    style={{ borderRadius: "6px" }}
-                  />
-                </td>
-
-                {/* Title */}
-                <td>{sale.title}</td>
-
-                {/* Dates */}
-                <td>{new Date(sale.start_at).toLocaleString()}</td>
-                <td>{new Date(sale.end_at).toLocaleString()}</td>
-
-                {/* Status */}
-                <td>
-                  <span
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: "20px",
-                      color: "#fff",
-                      background: getStatusColor(sale.status),
-                      fontSize: "12px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {sale.status}
-                  </span>
-                </td>
-
-                {/* Actions */}
-                <td>
-                  <button
-                    onClick={() =>
-                      navigate(`/admin/flash-sales/${sale.flash_id}`)
-                    }
-                    style={{
-                      marginRight: "8px",
-                      padding: "6px 10px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      navigate(
-                        `/admin/flash-sales/${sale.flash_id}/variants`
-                      )
-                    }
-                    style={{
-                      padding: "6px 10px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Variants
-                  </button>
-                </td>
+        {/* Table */}
+        {loading ? (
+          <div className="fs-loading">Loading flash sales...</div>
+        ) : (
+          <table className="fs-table">
+            <thead>
+              <tr>
+                <th>Banner</th>
+                <th>Title</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Status</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            </thead>
+
+            <tbody>
+              {sales.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="fs-empty">
+                    No flash sales found
+                  </td>
+                </tr>
+              ) : (
+                sales.map((sale) => (
+                  <tr key={sale.flash_id}>
+                    <td>
+                      <img
+                        src={`/uploads/flash-banners/${sale.banner_image}`}
+                        alt="banner"
+                        className="fs-thumb"
+                      />
+                    </td>
+
+                    <td className="fs-title-cell">{sale.title}</td>
+
+                    <td>{new Date(sale.start_at).toLocaleString()}</td>
+                    <td>{new Date(sale.end_at).toLocaleString()}</td>
+
+                    <td>
+                      <span className={getStatusClass(sale.status)}>
+                        {sale.status}
+                      </span>
+                    </td>
+
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        className="fs-action-btn"
+                        onClick={() =>
+                          navigate(`/admin/flash-sales/${sale.flash_id}`)
+                        }
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        className="fs-action-btn primary"
+                        onClick={() =>
+                          navigate(
+                            `/admin/flash-sales/${sale.flash_id}/variants`
+                          )
+                        }
+                      >
+                        Variants
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 };
