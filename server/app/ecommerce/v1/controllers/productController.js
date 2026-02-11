@@ -53,6 +53,7 @@ class ProductController {
           category: product.category_name,
           subcategory: product.subcategory_name,
           sub_subcategory: product.sub_subcategory_name,
+          short_description: product.short_description,
           image: mainImage,
           price: salePrice ? `₹${salePrice}` : null,
           originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
