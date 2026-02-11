@@ -12,6 +12,7 @@ interface Variant {
 
 const FlashSaleVariant: React.FC = () => {
   const { flashId } = useParams();
+  const [showModal, setShowModal] = useState(false);
   const [variants, setVariants] = useState<Variant[]>([]);
 
   useEffect(() => {
@@ -40,7 +41,9 @@ const FlashSaleVariant: React.FC = () => {
             <p>Set special flash prices for selected variants</p>
           </div>
 
-          <button className="fs-primary-btn">+ Add Variant</button>
+          <button className="fs-primary-btn" onClick={() => setShowModal(true)}>
+            + Add Variant
+          </button>
         </div>
 
         {/* Table */}
@@ -94,6 +97,22 @@ const FlashSaleVariant: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* modal */}
+        {showModal && (
+          <div className="fs-modal-overlay">
+            <div className="fs-modal">
+              <div className="fs-modal-header">
+                <h3>Select Variants for Flash Sale</h3>
+                <button onClick={() => setShowModal(false)}>✕</button>
+              </div>
+
+              <div className="fs-modal-body">
+                <p>Variant list will come here...</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
