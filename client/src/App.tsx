@@ -182,6 +182,11 @@ export default function App() {
           path={routes.manager.flashCreate}
           element={<FlashSaleCreate />}
         />
+
+        <Route
+          path="/manager/flash-variants/:flashId"
+          element={<FlashSaleVariant />}
+        />
       </Route>
 
       {/* ========== FALLBACK ========== */}

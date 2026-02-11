@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import "./css/flashsalevariant.css";
 
 interface Variant {
   variant_id: number;
@@ -25,53 +26,74 @@ const FlashSaleVariant: React.FC = () => {
 
   const updateFlashPrice = (id: number, price: number) => {
     setVariants((prev) =>
-      prev.map((v) =>
-        v.variant_id === id ? { ...v, flash_price: price } : v
-      )
+      prev.map((v) => (v.variant_id === id ? { ...v, flash_price: price } : v)),
     );
   };
 
   return (
     <div className="fs-page">
       <div className="fs-card wide">
-        <h2>Manage Flash Sale Variants</h2>
+        {/* Header */}
+        <div className="fs-header">
+          <div>
+            <h2>Flash Sale Variant Pricing</h2>
+            <p>Set special flash prices for selected variants</p>
+          </div>
 
-        <button className="fs-primary-btn">+ Add Variant</button>
+          <button className="fs-primary-btn">+ Add Variant</button>
+        </div>
 
-        <table className="fs-table" style={{ marginTop: 20 }}>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Variant</th>
-              <th>Sale Price</th>
-              <th>Flash Price</th>
-              <th></th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {variants.map((v) => (
-              <tr key={v.variant_id}>
-                <td>{v.product_name}</td>
-                <td>{v.variant_name}</td>
-                <td>₹{v.sale_price}</td>
-                <td>
-                  <input
-                    type="number"
-                    value={v.flash_price}
-                    onChange={(e) =>
-                      updateFlashPrice(v.variant_id, Number(e.target.value))
-                    }
-                    style={{ width: 100 }}
-                  />
-                </td>
-                <td>
-                  <button className="fs-action-btn">Remove</button>
-                </td>
+        {/* Table */}
+        <div className="fs-table-wrapper">
+          <table className="fs-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Variant</th>
+                <th>Sale Price</th>
+                <th>Flash Price</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+
+            <tbody>
+              {variants.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="fs-empty">
+                    No variants added to this flash sale yet.
+                  </td>
+                </tr>
+              )}
+
+              {variants.map((v) => (
+                <tr key={v.variant_id}>
+                  <td className="fs-product">{v.product_name}</td>
+
+                  <td className="fs-variant">{v.variant_name}</td>
+
+                  <td className="fs-sale-price">₹{v.sale_price}</td>
+
+                  <td>
+                    <div className="fs-price-input">
+                      ₹
+                      <input
+                        type="number"
+                        value={v.flash_price}
+                        onChange={(e) =>
+                          updateFlashPrice(v.variant_id, Number(e.target.value))
+                        }
+                      />
+                    </div>
+                  </td>
+
+                  <td>
+                    <button className="fs-remove-btn">Remove</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

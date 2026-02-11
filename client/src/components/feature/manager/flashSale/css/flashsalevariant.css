@@ -1,0 +1,109 @@
+.fs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.fs-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.fs-header p {
+  margin: 4px 0 0;
+  color: #777;
+  font-size: 14px;
+}
+
+/* Table wrapper for scroll */
+.fs-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+/* Table */
+.fs-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.fs-table thead {
+  background: #fafafa;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.fs-table th {
+  text-align: left;
+  padding: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  border-bottom: 1px solid #eee;
+}
+
+.fs-table td {
+  padding: 14px;
+  border-bottom: 1px solid #f1f1f1;
+  vertical-align: middle;
+}
+
+.fs-product {
+  font-weight: 600;
+}
+
+.fs-variant {
+  color: #555;
+}
+
+.fs-sale-price {
+  color: #888;
+  font-weight: 500;
+}
+
+/* Flash price input */
+.fs-price-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #ddd;
+  padding: 6px 10px;
+  border-radius: 6px;
+  width: fit-content;
+  background: #fafafa;
+}
+
+.fs-price-input input {
+  border: none;
+  outline: none;
+  width: 80px;
+  font-weight: 600;
+  background: transparent;
+}
+
+/* Remove button */
+.fs-remove-btn {
+  background: #ffeaea;
+  border: 1px solid #ffb3b3;
+  color: #d80000;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.fs-remove-btn:hover {
+  background: #ffd6d6;
+}
+
+/* Empty state */
+.fs-empty {
+  text-align: center;
+  padding: 30px;
+  color: #999;
+  font-size: 14px;
+}
