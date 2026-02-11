@@ -27,5 +27,7 @@ export const routes = {
     addDocument:"/manager/document/DocumentAdd",
     linkDocument:"/manager/document/DocumentCategory",
     attributes: "/manager/attributes",
+    flashlist: "/manager/flashlist",
+    flashCreate: "/manager/flash-create",
   },
 };

@@ -9,10 +9,10 @@ import {
   FiChevronsRight,
   FiUser,
   FiLogOut,
-  FiSliders 
+  FiSliders,
 } from "react-icons/fi";
 
-import { FaFileAlt } from "react-icons/fa";
+import { FaFileAlt, FaBolt } from "react-icons/fa";
 
 import { useAuth } from "../../auth/useAuth";
 import { routes } from "../../routes";
@@ -86,6 +86,15 @@ export default function ManagerNavbar() {
       to: routes.manager.attributes,
       icon: <FiSliders />,
       type: "link",
+    },
+    {
+      label: "Flash Sales",
+      icon: <FaBolt />,
+      type: "dropdown",
+      children: [
+        { label: "Flash Sale List", to: routes.manager.flashlist },
+        { label: "Flash Sale Create", to: routes.manager.flashCreate },
+      ],
     },
   ];
 
