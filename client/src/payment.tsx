@@ -14,7 +14,7 @@ const Payment: React.FC = () => {
     try {
       // Step 1: Create order from backend
       const { data } = await axios.post(
-        "http://localhost:5000/payment/create-order",
+        "https://rewardplanners.com/api/crm/payment/create-order",
         {
           orderId: orderId,
           amount: 2199,
@@ -30,13 +30,13 @@ const Payment: React.FC = () => {
         description: "Test Payment",
 
         handler: async function (response: any) {
-          await axios.post("http://localhost:5000/payment/verify-payment", response);
+          await axios.post("https://rewardplanners.com/api/crm/payment/verify-payment", response);
 
           let attempts = 0;
 
           const checkStatus = async () => {
             const statusRes = await axios.get(
-              `http://localhost:5000/payment/payment-status/${orderId}`,
+              `https://rewardplanners.com/api/crm/payment/payment-status/${orderId}`,
             );
 
             if (statusRes.data.status === "paid") {
