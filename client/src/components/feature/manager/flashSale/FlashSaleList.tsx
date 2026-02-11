@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./flashsalelist.css";
+import { api } from "../../../../api/api";
+import "./css//flashsalelist.css";
 
 interface FlashSale {
   flash_id: number;
@@ -18,7 +19,7 @@ const FlashSaleList: React.FC = () => {
 
   const fetchFlashSales = async () => {
     try {
-      const res = await fetch("/admin/flash-sales");
+      const res = await fetch("/flash/flash-sales");
       const data = await res.json();
       setSales(data);
     } catch (err) {
@@ -118,7 +119,7 @@ const FlashSaleList: React.FC = () => {
                         className="fs-action-btn primary"
                         onClick={() =>
                           navigate(
-                            `/admin/flash-sales/${sale.flash_id}/variants`
+                            `/admin/flash-sales/${sale.flash_id}/variants`,
                           )
                         }
                       >

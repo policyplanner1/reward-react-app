@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../../api/api";
-import "./flashsalecreate.css"
+import "./css/flashsalecreate.css"
 
 const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
@@ -71,7 +71,7 @@ const FlashSaleForm: React.FC = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      navigate(`/admin/flash-sales/${res.data.flash_id}/variants`);
+      navigate(`/flash-sales/${res.data.flash_id}/variants`);
     } catch (err) {
       console.error("Save failed", err);
     } finally {

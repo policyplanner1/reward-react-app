@@ -48,6 +48,7 @@ import Payment from "./payment";
 /* Sales */
 import FlashSaleCreate from "./components/feature/manager/flashSale/FlashSaleCreate";
 import FlashSaleList from "./components/feature/manager/flashSale/FlashSaleList";
+import FlashSaleVariant from "./components/feature/manager/flashSale/FlashSaleVariant";
 
 export default function App() {
   const { user, loading } = useAuth();
