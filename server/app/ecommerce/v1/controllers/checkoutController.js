@@ -1,17 +1,29 @@
 const CheckoutModel = require("../models/checkoutModel");
 const db = require("../../../../config/database");
-const {
-  enqueueWhatsApp,
-} = require("../../../../services/whatsapp/waEnqueueService");
+// const {
+//   enqueueWhatsApp,
+// } = require("../../../../services/whatsapp/waEnqueueService");
 
 class CheckoutController {
   // checkout cart Items
   async checkoutCart(req, res) {
     try {
-      const userId = 1; 
+      const userId = 1;
       const companyId = req.body?.company_id ?? null;
+      const addressId = req.body?.address_id;
 
-      const orderId = await CheckoutModel.checkoutCart(userId, companyId);
+      if (!addressId) {
+        return res.status(400).json({
+          success: false,
+          message: "Address is required",
+        });
+      }
+
+      const orderId = await CheckoutModel.checkoutCart(
+        userId,
+        companyId,
+        addressId,
+      );
 
       // WhatsApp notification
       // const orderCtx = await getOrderWhatsAppContext(orderId);
@@ -64,7 +76,27 @@ class CheckoutController {
     try {
       const userId = 1;
 
-      const { product_id, variant_id, quantity = 1, company_id } = req.body;
+      const {
+        product_id,
+        variant_id,
+        quantity = 1,
+        company_id,
+        address_id,
+      } = req.body;
+
+      if (!address_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Address is required",
+        });
+      }
+
+      if (!product_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Product is required",
+        });
+      }
 
       const orderId = await CheckoutModel.buyNow({
         userId,
@@ -72,6 +104,7 @@ class CheckoutController {
         variantId: variant_id,
         quantity,
         companyId: company_id || null,
+        addressId: address_id,
       });
 
       // WhatsApp Notification
@@ -225,7 +258,7 @@ class CheckoutController {
 // async function getOrderWhatsAppContext(orderId) {
 //   const [rows] = await db.execute(
 //     `
-//     SELECT 
+//     SELECT
 //       o.order_id,
 //       o.order_ref,
 //       o.company_id,

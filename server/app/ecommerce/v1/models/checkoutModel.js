@@ -10,7 +10,7 @@ function generateOrderRef() {
 }
 
 class CheckoutModel {
-  async checkoutCart(userId, companyId = null) {
+  async checkoutCart(userId, companyId = null, addressId) {
     const conn = await db.getConnection();
 
     try {
@@ -54,10 +54,10 @@ class CheckoutModel {
 
       const [orderRes] = await conn.execute(
         `
-        INSERT INTO eorders (user_id, company_id, total_amount,order_ref)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO eorders (user_id, company_id, total_amount,order_ref,address_id)
+        VALUES (?, ?, ?, ?, ?)
         `,
-        [userId, companyId, totalAmount, orderRef],
+        [userId, companyId, totalAmount, orderRef, addressId],
       );
 
       const orderId = orderRes.insertId;
@@ -103,7 +103,14 @@ class CheckoutModel {
     }
   }
 
-  async buyNow({ userId, productId, variantId, quantity, companyId = null }) {
+  async buyNow({
+    userId,
+    productId,
+    variantId,
+    quantity,
+    companyId = null,
+    addressId,
+  }) {
     const conn = await db.getConnection();
 
     try {
@@ -135,10 +142,10 @@ class CheckoutModel {
 
       const [orderRes] = await conn.execute(
         `
-      INSERT INTO eorders (user_id, company_id, total_amount, order_ref)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO eorders (user_id, company_id, total_amount, order_ref,address_id)
+      VALUES (?, ?, ?, ?, ?)
       `,
-        [userId, companyId, totalAmount, orderRef],
+        [userId, companyId, totalAmount, orderRef,addressId],
       );
 
       const orderId = orderRes.insertId;
@@ -309,7 +316,7 @@ class CheckoutModel {
         image: row.images ? row.images.split(",")[0] : null,
         price: salePrice,
         quantity,
-        perUnitDiscount: Number((row.mrp) - salePrice),
+        perUnitDiscount: Number(row.mrp - salePrice),
         item_total: itemTotal,
         points: rewardDiscountAmount,
         final_item_total: finalItemTotal,
