@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../../api/api";
-import "./css/flashsalecreate.css"
+import "./css/flashsalecreate.css";
 
 const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
@@ -20,8 +20,9 @@ const FlashSaleForm: React.FC = () => {
   useEffect(() => {
     const fetchFlashSale = async () => {
       if (isEdit && id) {
-        const res = await api.get(`/admin/flash-sales/${id}`);
-        const data = res.data;
+        const res = await api.get(`/flash/flash-sale/${id}`);
+        const data = res.data.data;
+        console.log(data, "data");
 
         setTitle(data.title);
         setStartAt(data.start_at?.slice(0, 16));
@@ -29,7 +30,7 @@ const FlashSaleForm: React.FC = () => {
 
         if (data.banner_image) {
           setBannerPreview(
-            `${API_BASEIMAGE_URL}/uploads/flash-banners/${data.banner_image}`
+            `${API_BASEIMAGE_URL}/uploads/flash-banners/${data.banner_image}`,
           );
         }
       }
@@ -63,15 +64,21 @@ const FlashSaleForm: React.FC = () => {
     try {
       setLoading(true);
 
-      const url = isEdit && id
-        ? `/flash/flash-sales/${id}`
-        : `/flash/flash-sale`;
+      let res;
 
-      const res = await api.post(url, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      if (isEdit && id) {
+        // UPDATE
+        res = await api.put(`/flash/flash-sale/${id}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        // CREATE
+        res = await api.post(`/flash/flash-sale`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
 
-      navigate(`/flash-sales/${res.data.flash_id}/variants`);
+      navigate(`/manager/flash-variants/${res.data.flash_id}`);
     } catch (err) {
       console.error("Save failed", err);
     } finally {
@@ -135,11 +142,7 @@ const FlashSaleForm: React.FC = () => {
         )}
 
         {/* Submit */}
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="fs-btn"
-        >
+        <button onClick={handleSubmit} disabled={loading} className="fs-btn">
           {loading ? "Saving..." : "Save & Manage Variants"}
         </button>
       </div>

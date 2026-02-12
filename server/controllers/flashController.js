@@ -82,6 +82,46 @@ class flashController {
     }
   }
 
+  // get flash sale details by id
+  async getFlashSaleById(req, res) {
+    try {
+      const { id } = req.params;
+
+      const [rows] = await db.query(
+        `
+      SELECT
+        flash_sale_id AS flash_id,
+        title,
+        banner_image,
+        start_at,
+        end_at,
+        status
+      FROM flash_sales
+      WHERE flash_sale_id = ?
+      `,
+        [id],
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Flash sale not found",
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: rows[0],
+      });
+    } catch (err) {
+      console.error("Fetch flash sale error:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
   // update Flash sale
   async updateFlashSale(req, res) {
     try {
@@ -90,23 +130,38 @@ class flashController {
 
       const banner_image = req.file ? req.file.filename : null;
 
-      await db.query(
-        `UPDATE flash_sales
-       SET title=?,
-           start_at=?,
-           end_at=?,
-           banner_image = COALESCE(?, banner_image)
-       WHERE flash_id=?`,
+      const [result] = await db.query(
+        `
+      UPDATE flash_sales
+      SET 
+        title = ?,
+        start_at = ?,
+        end_at = ?,
+        banner_image = COALESCE(?, banner_image),
+        updated_at = NOW()
+      WHERE flash_sale_id = ?
+      `,
         [title, start_at, end_at, banner_image, id],
       );
 
-      res.json({
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Flash sale not found",
+        });
+      }
+
+      return res.json({
         success: true,
         flash_id: id,
         message: "Flash sale updated",
       });
     } catch (err) {
-      res.status(500).json({ success: false, message: err.message });
+      console.error("Update flash sale error:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     }
   }
 

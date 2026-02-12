@@ -40,6 +40,13 @@ router.get(
   flashController.getActiveProducts,
 );
 
+// edit flash sale details
+router.get(
+  "/flash-sale/:id",
+  // authorizeRoles("vendor_manager", "admin"),
+  flashController.getFlashSaleById,
+);
+
 // update flash sale
 router.put(
   "/flash-sale/:id",
