@@ -4,7 +4,7 @@ const flashController = require("../controllers/flashController");
 const { uploadFlashBanner } = require("../middleware/flashUpload");
 const { authorizeRoles } = require("../middleware/auth");
 
-// create flash sale
+// create flash sale details
 router.post(
   "/flash-sale",
   // authorizeRoles("vendor_manager", "admin"),
@@ -19,7 +19,7 @@ router.get(
   flashController.getFlashSales,
 );
 
-// activate flash sale
+// activate flash sale details
 router.put(
   "/flash-sale/:id/activate",
   // authorizeRoles("vendor_manager", "admin"),
@@ -40,7 +40,7 @@ router.get(
   flashController.getFlashSaleById,
 );
 
-// update flash sale
+// update flash sale details
 router.put(
   "/flash-sale/:id",
   // authorizeRoles("vendor_manager", "admin"),
