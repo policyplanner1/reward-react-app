@@ -5,7 +5,7 @@ class flashController {
   async createFlashSale(req, res) {
     try {
       const { title, start_at, end_at } = req.body;
-      console.log(req,"Req")
+      console.log(req, "Req");
 
       // Multer file
       const banner_image = req.file ? req.file.filename : null;
@@ -32,6 +32,52 @@ class flashController {
     } catch (err) {
       console.error(err);
       res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  // get Flash sale details
+  async getFlashSales(req, res) {
+    try {
+      const [rows] = await db.query(`
+      SELECT
+        fs.flash_sale_id AS flash_id,
+        fs.title,
+        fs.banner_image,
+        fs.start_at,
+        fs.end_at,
+        fs.status AS admin_status,
+        CASE
+          WHEN fs.status != 'active' THEN fs.status
+          WHEN NOW() < fs.start_at THEN 'Upcoming'
+          WHEN NOW() BETWEEN fs.start_at AND fs.end_at THEN 'Live'
+          ELSE 'Expired'
+        END AS runtime_status,
+        COUNT(fsi.id) AS total_items
+      FROM flash_sales fs
+      LEFT JOIN flash_sale_items fsi
+        ON fs.flash_sale_id = fsi.flash_sale_id
+      GROUP BY 
+        fs.flash_sale_id,
+        fs.title,
+        fs.banner_image,
+        fs.start_at,
+        fs.end_at,
+        fs.status
+      ORDER BY fs.start_at DESC
+    `);
+
+      return res.status(200).json({
+        success: true,
+        count: rows.length,
+        data: rows,
+      });
+    } catch (err) {
+      console.error("Error fetching flash sales:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch flash sales",
+        error: err.message,
+      });
     }
   }
 

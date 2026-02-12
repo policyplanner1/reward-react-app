@@ -19,6 +19,13 @@ router.post(
   flashController.addItems,
 );
 
+// get flash sale details
+router.get(
+  "/flash-sale",
+  // authorizeRoles("vendor_manager", "admin"),
+  flashController.getFlashSales,
+);
+
 // activate flash sale
 router.put(
   "/flash-sale/:id/activate",
@@ -26,9 +33,9 @@ router.put(
   flashController.activate,
 );
 
-// get flash sale details
+// get flash sale product details
 router.get(
-  "/flash-sale",
+  "/flash-sale-products",
   // authorizeRoles("vendor_manager", "admin"),
   flashController.getActiveProducts,
 );
