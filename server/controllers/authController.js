@@ -11,11 +11,14 @@ const authController = {
        REGISTER USER (Auto-create vendor if role = vendor)
      ============================================================ */
   register: async (req, res, forcedRole = null) => {
+    const connection = await db.getConnection();
     try {
+      await connection.beginTransaction();
       const { name, email, password, phone } = req.body;
       const role = forcedRole || req.body.role;
 
       if (!name || !email || !password || !role) {
+        await connection.rollback();
         return res.status(400).json({
           success: false,
           message: "Name, Email, password and role are required",
@@ -23,6 +26,7 @@ const authController = {
       }
 
       if (password.length < 5) {
+        await connection.rollback();
         return res.status(400).json({
           success: false,
           message: "Password must be at least 5 characters long",
@@ -35,6 +39,7 @@ const authController = {
       );
 
       if (existing.length > 0) {
+        await connection.rollback();
         return res.status(409).json({
           success: false,
           message: "User already exists",
@@ -74,6 +79,8 @@ const authController = {
 
       await sendOtpEmail(email, otp);
 
+      await connection.commit();
+
       return res.status(201).json({
         success: true,
         message: "OTP sent to your email",
@@ -83,11 +90,14 @@ const authController = {
         },
       });
     } catch (err) {
+      await connection.rollback();
       console.error("Registration Error:", err);
       return res.status(500).json({
         success: false,
         message: "Internal server error",
       });
+    } finally {
+      connection.release();
     }
   },
 
@@ -382,7 +392,7 @@ const authController = {
 
         await db.execute(
           `INSERT INTO user_otps (user_id, otp_hash, expires_at)
-     VALUES (?, ?, ?)`,
+           VALUES (?, ?, ?)`,
           [user.user_id, otpHash, expiresAt],
         );
 
