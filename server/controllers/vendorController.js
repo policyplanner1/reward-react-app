@@ -336,7 +336,6 @@ class VendorController {
 
       // 2 If new image uploaded => replace it
       if (req.file) {
-
         const categoryDir = path.join(
           __dirname,
           `../uploads/category-images/${categoryID}`,
@@ -459,38 +458,40 @@ class VendorController {
         return res.status(400).json({ message: "Category required" });
       }
 
-      if (!req.file) {
-        return res.status(400).json({ message: "Cover image is mandatory" });
-      }
+      // if (!req.file) {
+      //   return res.status(400).json({ message: "Cover image is mandatory" });
+      // }
 
-      // 1️⃣ Create subcategory first (your existing model)
+      // 1 Create subcategory
       const subcategoryId = await subCategoryModel.createSubCategory({
         name: name.trim(),
         category_id,
       });
 
-      // 2️⃣ Create folder
-      const subDir = path.join(
-        __dirname,
-        `../uploads/subcategory-images/${subcategoryId}`,
-      );
+      // 2 Create folder
+      if (req.file) {
+        const subDir = path.join(
+          __dirname,
+          `../uploads/subcategory-images/${subcategoryId}`,
+        );
 
-      if (!fs.existsSync(subDir)) {
-        fs.mkdirSync(subDir, { recursive: true });
+        if (!fs.existsSync(subDir)) {
+          fs.mkdirSync(subDir, { recursive: true });
+        }
+
+        // 3 Move image from temp
+        const ext = path.extname(req.file.originalname);
+        const finalPath = path.join(subDir, `cover${ext}`);
+
+        fs.renameSync(req.file.path, finalPath);
+
+        // 4 Store relative path in DB
+        const dbPath = `subcategory-images/${subcategoryId}/cover${ext}`;
+
+        await subCategoryModel.updateSubCategoryImage(subcategoryId, dbPath);
       }
 
-      // 3️⃣ Move image from temp
-      const ext = path.extname(req.file.originalname);
-      const finalPath = path.join(subDir, `cover${ext}`);
-
-      fs.renameSync(req.file.path, finalPath);
-
-      // 4️⃣ Store relative path in DB
-      const dbPath = `subcategory-images/${subcategoryId}/cover${ext}`;
-
-      await subCategoryModel.updateSubCategoryImage(subcategoryId, dbPath);
-
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         message: "Sub category created successfully",
       });
@@ -556,7 +557,7 @@ class VendorController {
       const id = req.params.id;
       const { name, category_id, status } = req.body;
 
-      // 1️⃣ Update basic fields (your existing model)
+      // 1 Update basic fields (your existing model)
       const updated = await subCategoryModel.updateSubCategory(id, {
         name,
         category_id,
@@ -570,7 +571,7 @@ class VendorController {
         });
       }
 
-      // 2️⃣ If new image uploaded → replace it
+      // 2 If new image uploaded → replace it
       if (req.file) {
         const dir = path.join(__dirname, `../uploads/subcategory-images/${id}`);
 
