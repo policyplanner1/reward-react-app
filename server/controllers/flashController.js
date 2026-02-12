@@ -165,34 +165,6 @@ class flashController {
     }
   }
 
-  // add Product to Flash sale
-  async addItems(req, res) {
-    try {
-      const flash_sale_id = req.params.id;
-      const items = req.body.items;
-
-      const values = items.map((i) => [
-        flash_sale_id,
-        i.product_id,
-        i.variant_id || null,
-        i.offer_price,
-        i.max_qty || null,
-      ]);
-
-      await db.query(
-        `INSERT INTO flash_sale_items
-      (flash_sale_id, product_id, variant_id, offer_price, max_qty)
-      VALUES ?`,
-        [values],
-      );
-
-      res.json({ success: true, message: "Items added to flash sale" });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ success: false, message: err.message });
-    }
-  }
-
   // activate flash sale
   async activate(req, res) {
     try {
@@ -247,6 +219,158 @@ class flashController {
     } catch (err) {
       console.error(err);
       res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  // =============================Product to Flash sale==============================
+
+  // get variants already added to flash sale
+  async getFlashSaleVariants(req, res) {
+    try {
+      const { flashId } = req.params;
+
+      const [rows] = await db.query(
+        `
+      SELECT
+        pv.variant_id,
+        ep.product_name,
+        pv.sku,
+        pv.sale_price,
+        fsi.offer_price AS flash_price
+      FROM flash_sale_items fsi
+      JOIN product_variants pv
+        ON pv.variant_id = fsi.variant_id
+      JOIN eproducts ep
+        ON ep.product_id = pv.product_id
+      WHERE fsi.flash_sale_id = ?
+      ORDER BY ep.product_name
+      `,
+        [flashId],
+      );
+
+      return res.json({ success: true, data: rows });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  // available products to sale
+  async getAvailableVariants(req, res) {
+    try {
+      const { flashId } = req.params;
+
+      const [rows] = await db.query(
+        `
+      SELECT
+        ep.product_id,
+        ep.product_name,
+        pv.variant_id,
+        pv.sku,
+        pv.sale_price
+      FROM eproducts ep
+      JOIN product_variants pv
+        ON pv.product_id = ep.product_id
+      WHERE
+        ep.status = 'approved'
+        AND ep.is_visible = 1
+        AND pv.is_visible = 1
+        AND pv.variant_id NOT IN (
+          SELECT variant_id
+          FROM flash_sale_items
+          WHERE flash_sale_id = ?
+        )
+      ORDER BY ep.product_name
+      `,
+        [flashId],
+      );
+
+      return res.json({ success: true, data: rows });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  // add variants to flash sale
+  async addVariantsToFlashSale(req, res) {
+    try {
+      const { flashId } = req.params;
+      const { variant_ids } = req.body;
+
+      if (!variant_ids || !variant_ids.length) {
+        return res.status(400).json({
+          success: false,
+          message: "No variants selected",
+        });
+      }
+
+      for (const variantId of variant_ids) {
+        await db.query(
+          `
+        INSERT INTO flash_sale_items
+        (flash_sale_id, variant_id, offer_price)
+        VALUES (?, ?, 0)
+        `,
+          [flashId, variantId],
+        );
+      }
+
+      return res.json({
+        success: true,
+        message: "Variants added successfully",
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  // update flash price
+  async updateFlashPrice(req, res) {
+    try {
+      const { flashId, variantId } = req.params;
+      const { offer_price } = req.body;
+
+      await db.query(
+        `
+      UPDATE flash_sale_items
+      SET offer_price = ?
+      WHERE flash_sale_id = ? AND variant_id = ?
+      `,
+        [offer_price, flashId, variantId],
+      );
+
+      return res.json({
+        success: true,
+        message: "Flash price updated",
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  // remove product from flash sale
+  async removeVariantFromFlashSale(req, res) {
+    try {
+      const { flashId, variantId } = req.params;
+
+      await db.query(
+        `
+      DELETE FROM flash_sale_items
+      WHERE flash_sale_id = ? AND variant_id = ?
+      `,
+        [flashId, variantId],
+      );
+
+      return res.json({
+        success: true,
+        message: "Variant removed from flash sale",
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: err.message });
     }
   }
 }

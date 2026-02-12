@@ -12,13 +12,6 @@ router.post(
   flashController.createFlashSale,
 );
 
-// add items to flash sale
-router.post(
-  "/flash-sale/:id/items",
-  // authorizeRoles("vendor_manager", "admin"),
-  flashController.addItems,
-);
-
 // get flash sale details
 router.get(
   "/flash-sale",
@@ -53,6 +46,38 @@ router.put(
   // authorizeRoles("vendor_manager", "admin"),
   uploadFlashBanner.single("banner_image"),
   flashController.updateFlashSale,
+);
+
+//**********************Add product to the flash sale************* */
+
+// Get variants already added to flash sale
+router.get(
+  "/flash-sale/:flashId/variants",
+  flashController.getFlashSaleVariants,
+);
+
+// Get variants available to add (not already in flash)
+router.get(
+  "/flash-sale/:flashId/available-variants",
+  flashController.getAvailableVariants,
+);
+
+// Add variants to flash sale
+router.post(
+  "/flash-sale/:flashId/variants",
+  flashController.addVariantsToFlashSale,
+);
+
+// Update flash price
+router.put(
+  "/flash-sale/:flashId/variants/:variantId",
+  flashController.updateFlashPrice,
+);
+
+// Remove variant from flash sale
+router.delete(
+  "/flash-sale/:flashId/variants/:variantId",
+  flashController.removeVariantFromFlashSale,
 );
 
 module.exports = router;
