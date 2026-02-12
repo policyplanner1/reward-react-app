@@ -47,11 +47,12 @@ class flashController {
         fs.end_at,
         fs.status AS admin_status,
         CASE
-          WHEN fs.status != 'active' THEN fs.status
+          WHEN fs.status = 'draft' THEN 'Draft'
+          WHEN fs.status = 'archived' THEN 'Archived'
           WHEN NOW() < fs.start_at THEN 'Upcoming'
           WHEN NOW() BETWEEN fs.start_at AND fs.end_at THEN 'Live'
           ELSE 'Expired'
-        END AS runtime_status,
+        END AS display_status,
         COUNT(fsi.id) AS total_items
       FROM flash_sales fs
       LEFT JOIN flash_sale_items fsi

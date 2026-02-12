@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./css//flashsalelist.css";
+import { api } from "../../../../api/api";
+
+const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 interface FlashSale {
   flash_id: number;
@@ -8,7 +11,7 @@ interface FlashSale {
   banner_image: string;
   start_at: string;
   end_at: string;
-  status: "Upcoming" | "Live" | "Expired";
+  display_status: string;
 }
 
 const FlashSaleList: React.FC = () => {
@@ -18,11 +21,11 @@ const FlashSaleList: React.FC = () => {
 
   const fetchFlashSales = async () => {
     try {
-      const res = await fetch("/flash/flash-sales");
-      const data = await res.json();
-      setSales(data);
+      setLoading(true);
+      const res = await api.get("/flash/flash-sale");
+      setSales(res.data.data);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch flash sales", err);
     } finally {
       setLoading(false);
     }
@@ -40,6 +43,10 @@ const FlashSaleList: React.FC = () => {
         return "fs-badge upcoming";
       case "Expired":
         return "fs-badge expired";
+      case "Draft":
+        return "fs-badge draft";
+      case "Archived":
+        return "fs-badge archived";
       default:
         return "fs-badge";
     }
@@ -87,7 +94,7 @@ const FlashSaleList: React.FC = () => {
                   <tr key={sale.flash_id}>
                     <td>
                       <img
-                        src={`/uploads/flash-banners/${sale.banner_image}`}
+                        src={`${API_BASEIMAGE_URL}/uploads/flash-banners/${sale.banner_image}`}
                         alt="banner"
                         className="fs-thumb"
                       />
@@ -95,12 +102,22 @@ const FlashSaleList: React.FC = () => {
 
                     <td className="fs-title-cell">{sale.title}</td>
 
-                    <td>{new Date(sale.start_at).toLocaleString()}</td>
-                    <td>{new Date(sale.end_at).toLocaleString()}</td>
+                    <td>
+                      {new Date(sale.start_at).toLocaleString("en-IN", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </td>
+                    <td>
+                      {new Date(sale.end_at).toLocaleString("en-IN", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </td>
 
                     <td>
-                      <span className={getStatusClass(sale.status)}>
-                        {sale.status}
+                      <span className={getStatusClass(sale.display_status)}>
+                        {sale.display_status}
                       </span>
                     </td>
 

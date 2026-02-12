@@ -111,3 +111,12 @@
   padding: 40px 0;
   color: #6b7280;
 }
+
+
+.fs-badge.draft {
+  background: #6b7280;
+}
+
+.fs-badge.archived {
+  background: #374151;
+}
