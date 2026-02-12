@@ -28,6 +28,6 @@ export const routes = {
     linkDocument:"/manager/document/DocumentCategory",
     attributes: "/manager/attributes",
     flashlist: "/manager/flashlist",
-    flashCreate: "/manager/flash-create",
+    flashCreate: "/manager/flash-sale",
   },
 };

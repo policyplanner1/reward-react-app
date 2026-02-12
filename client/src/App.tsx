@@ -183,6 +183,8 @@ export default function App() {
           element={<FlashSaleCreate />}
         />
 
+        <Route path="/manager/flash-sale/:id" element={<FlashSaleCreate />} />
+
         <Route
           path="/manager/flash-variants/:flashId"
           element={<FlashSaleVariant />}

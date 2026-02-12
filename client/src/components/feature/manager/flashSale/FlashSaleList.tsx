@@ -60,7 +60,7 @@ const FlashSaleList: React.FC = () => {
           <h2>Flash Sale Campaign</h2>
           <button
             className="fs-primary-btn"
-            onClick={() => navigate("/manager/flash-create")}
+            onClick={() => navigate("/manager/flash-sale")}
           >
             + Create Flash Sale
           </button>
@@ -125,7 +125,7 @@ const FlashSaleList: React.FC = () => {
                       <button
                         className="fs-action-btn"
                         onClick={() =>
-                          navigate(`/admin/flash-sales/${sale.flash_id}`)
+                          navigate(`/manager/flash-sale/${sale.flash_id}`)
                         }
                       >
                         Edit
@@ -135,7 +135,7 @@ const FlashSaleList: React.FC = () => {
                         className="fs-action-btn primary"
                         onClick={() =>
                           navigate(
-                            `/admin/flash-sales/${sale.flash_id}/variants`,
+                            `/manager/flash-variants/${sale.flash_id}`,
                           )
                         }
                       >
