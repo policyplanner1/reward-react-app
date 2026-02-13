@@ -49,7 +49,16 @@ const FlashSaleVariant: React.FC = () => {
     setVariants(res.data.data || []);
   };
 
-  const updateFlashPrice = async (id: number, price: number) => {
+  const updateFlashPrice = async (
+    id: number,
+    price: number,
+    salePrice: number,
+  ) => {
+    if (price >= salePrice) {
+      alert("Flash price must be lower than sale price.");
+      return;
+    }
+
     try {
       await api.put(`/flash/flash-sale/${flashId}/variants/${id}`, {
         offer_price: price,
@@ -163,7 +172,11 @@ const FlashSaleVariant: React.FC = () => {
                         type="number"
                         value={v.flash_price}
                         onChange={(e) =>
-                          updateFlashPrice(v.variant_id, Number(e.target.value))
+                          updateFlashPrice(
+                            v.variant_id,
+                            Number(e.target.value),
+                            Number(v.sale_price),
+                          )
                         }
                       />
                     </div>

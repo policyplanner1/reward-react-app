@@ -332,6 +332,28 @@ class flashController {
       const { flashId, variantId } = req.params;
       const { offer_price } = req.body;
 
+      // get sale price
+      const [rows] = await db.query(
+        `SELECT sale_price FROM product_variants WHERE variant_id = ?`,
+        [variantId],
+      );
+
+      if (!rows.length) {
+        return res.status(404).json({
+          success: false,
+          message: "Variant not found",
+        });
+      }
+
+      const salePrice = rows[0].sale_price;
+
+      if (Number(offer_price) >= Number(salePrice)) {
+        return res.status(400).json({
+          success: false,
+          message: "Flash price must be lower than sale price",
+        });
+      }
+
       await db.query(
         `
       UPDATE flash_sale_items
@@ -347,7 +369,10 @@ class flashController {
       });
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ success: false, message: err.message });
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     }
   }
 
