@@ -236,22 +236,28 @@ class flashController {
         ep.product_name,
         pv.sku,
         pv.sale_price,
-        fsi.offer_price AS flash_price
+        fsi.offer_price AS flash_price,
+        fsi.max_qty
       FROM flash_sale_items fsi
       JOIN product_variants pv
         ON pv.variant_id = fsi.variant_id
       JOIN eproducts ep
         ON ep.product_id = pv.product_id
       WHERE fsi.flash_sale_id = ?
-      ORDER BY ep.product_name
       `,
         [flashId],
       );
 
-      return res.json({ success: true, data: rows });
+      return res.json({
+        success: true,
+        data: rows,
+      });
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ success: false, message: err.message });
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     }
   }
 
@@ -332,17 +338,9 @@ class flashController {
       const { flashId, variantId } = req.params;
       const { offer_price, max_qty } = req.body;
 
-      // Validate price provided
-      if (offer_price === undefined) {
-        return res.status(400).json({
-          success: false,
-          message: "Offer price is required",
-        });
-      }
-
-      // Get original sale price
+      // Fetch sale price & stock
       const [rows] = await db.query(
-        `SELECT sale_price FROM product_variants WHERE variant_id = ?`,
+        `SELECT sale_price, stock FROM product_variants WHERE variant_id = ?`,
         [variantId],
       );
 
@@ -354,37 +352,67 @@ class flashController {
       }
 
       const salePrice = Number(rows[0].sale_price);
+      const stockCount = Number(rows[0].stock);
 
-      if (Number(offer_price) >= salePrice) {
-        return res.status(400).json({
-          success: false,
-          message: "Flash price must be lower than sale price",
-        });
+      let fields = [];
+      let values = [];
+
+      /* ==========================
+       PRICE VALIDATION
+    ========================== */
+      if (offer_price !== undefined && offer_price !== null) {
+        if (Number(offer_price) > salePrice) {
+          return res.status(400).json({
+            success: false,
+            message: "Flash price must be lower than or equal to sale price",
+          });
+        }
+
+        fields.push("offer_price = ?");
+        values.push(Number(offer_price));
       }
 
-      // Validate max_qty 
-      let validatedMaxQty = null;
-
+      /* ==========================
+       MAX QTY VALIDATION
+    ========================== */
       if (max_qty !== undefined && max_qty !== null) {
-        if (Number(max_qty) <= 0) {
+        const qty = Number(max_qty);
+
+        if (qty <= 0) {
           return res.status(400).json({
             success: false,
             message: "Max quantity must be greater than 0",
           });
         }
 
-        validatedMaxQty = Number(max_qty);
+        if (qty > stockCount) {
+          return res.status(400).json({
+            success: false,
+            message: `Max quantity cannot exceed stock (${stockCount})`,
+          });
+        }
+
+        fields.push("max_qty = ?");
+        values.push(qty);
       }
+
+      if (fields.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Nothing to update",
+        });
+      }
+
+      values.push(flashId, variantId);
 
       await db.query(
         `
       UPDATE flash_sale_items
-      SET offer_price = ?, 
-          max_qty = ?
-      WHERE flash_sale_id = ? 
+      SET ${fields.join(", ")}
+      WHERE flash_sale_id = ?
         AND variant_id = ?
       `,
-        [offer_price, validatedMaxQty, flashId, variantId],
+        values,
       );
 
       return res.json({

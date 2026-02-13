@@ -56,15 +56,20 @@ const FlashSaleVariant: React.FC = () => {
     maxQty: number | null,
     salePrice: number,
   ) => {
-    // Validate price ONLY if price is being changed
+    // Validate price ONLY if price changed
     if (price !== null) {
-      if (price >= salePrice) {
-        alert("Flash price must be lower than sale price.");
+      if (price > salePrice) {
+        alert("Flash price cannot exceed sale price.");
+        return;
+      }
+
+      if (price < 0) {
+        alert("Flash price cannot be negative.");
         return;
       }
     }
 
-    // Validate max quantity ONLY if maxQty is being changed
+    // Validate max quantity ONLY if changed
     if (maxQty !== null) {
       if (maxQty <= 0) {
         alert("Max quantity must be greater than 0.");
@@ -211,7 +216,7 @@ const FlashSaleVariant: React.FC = () => {
                       onChange={(e) =>
                         updateFlashVariant(
                           v.variant_id,
-                          null, 
+                          null,
                           e.target.value ? Number(e.target.value) : null,
                           Number(v.sale_price),
                         )
