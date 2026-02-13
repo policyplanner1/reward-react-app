@@ -6,7 +6,7 @@ import { api } from "../../../../api/api";
 interface Variant {
   variant_id: number;
   product_name: string;
-  variant_name: string;
+  sku: string;
   sale_price: number;
   flash_price: number;
 }
@@ -28,7 +28,10 @@ const FlashSaleVariant: React.FC = () => {
   const fetchAvailableVariants = async () => {
     try {
       setLoadingAvailable(true);
-      const res = await api.get(`/flash/flash-sale/${flashId}/available-variants`);
+      const res = await api.get(
+        `/flash/flash-sale/${flashId}/available-variants`,
+      );
+      console.log(res.data.data);
       setAvailableVariants(res.data.data || []);
     } catch (err) {
       console.error("Failed to fetch available variants", err);
@@ -129,7 +132,7 @@ const FlashSaleVariant: React.FC = () => {
             <thead>
               <tr>
                 <th>Product</th>
-                <th>Variant</th>
+                <th>SKU</th>
                 <th>Sale Price</th>
                 <th>Flash Price</th>
                 <th></th>
@@ -149,7 +152,7 @@ const FlashSaleVariant: React.FC = () => {
                 <tr key={v.variant_id}>
                   <td className="fs-product">{v.product_name}</td>
 
-                  <td className="fs-variant">{v.variant_name}</td>
+                  <td className="fs-variant">{v.sku}</td>
 
                   <td className="fs-sale-price">₹{v.sale_price}</td>
 
@@ -215,7 +218,7 @@ const FlashSaleVariant: React.FC = () => {
                               onChange={() => toggleVariant(variant.variant_id)}
                             />
                             <span>
-                              {variant.variant_name} – ₹{variant.sale_price}
+                              {variant.sku} – ₹{variant.sale_price}
                             </span>
                           </label>
                         ))}
