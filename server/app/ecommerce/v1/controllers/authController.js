@@ -1,140 +1,266 @@
 const AuthModel = require("../models/authModel");
 const AddressModel = require("../models/addressModel");
-const db = require("../../../../config/database");
-const fs = require("fs");
-const path = require("path");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+
+const ACCESS_EXPIRES = "15m";
+const REFRESH_EXPIRES_DAYS = 7;
 
 class AuthController {
-  // User Registration
+  /* ======================================================
+     REGISTER
+  ====================================================== */
   async registerUser(req, res) {
     try {
       const { name, email, phone, password } = req.body;
 
-      if (!name || !email || !password) {
-        return res.status(400).json({
-          success: false,
-          message: "Name, email, and password are required",
-        });
-      }
+      if (!name || !email || !password)
+        return res.status(400).json({ success: false });
 
-      if (password.length < 8) {
-        return res.status(400).json({
-          success: false,
-          message: "Password must be at least 8 characters long",
-        });
-      }
+      const normalizedEmail = email.trim().toLowerCase();
 
-      /* ----------------------------EMAIL EXISTS CHECK----------------------------- */
-      const existingUser = await AuthModel.findByEmail(email);
-      if (existingUser) {
-        return res.status(409).json({
-          success: false,
-          message: "Email already registered",
-        });
-      }
+      const existing = await AuthModel.findByEmail(normalizedEmail);
+      if (existing)
+        return res
+          .status(409)
+          .json({ success: false, message: "Email already registered" });
 
-      //   password hashing
+      if (password.length < 8)
+        return res
+          .status(400)
+          .json({ success: false, message: "Password too weak" });
+
       const hashedPassword = await bcrypt.hash(password, 12);
 
-      //   user creation
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const hashedToken = await bcrypt.hash(rawToken, 10);
+
+      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
       const userId = await AuthModel.createCustomer({
         name,
-        email,
+        email: normalizedEmail,
         phone,
         password: hashedPassword,
+        verification_token: hashedToken,
+        verification_token_expiry: expiry,
       });
+
+      // Send email with rawToken
+      // https://yourdomain.com/verify-email?token=rawToken
 
       return res.status(201).json({
         success: true,
-        message: "Registration successful",
-        data: {
-          user_id: userId,
-          name,
-          email,
-          phone,
-        },
+        message: "Registration successful. Please verify email.",
       });
-    } catch (error) {
-      console.error("Register Error:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
+    } catch (err) {
+      return res.status(500).json({ success: false });
     }
   }
 
-  //   Login User
+  /* ======================================================
+     VERIFY EMAIL
+  ====================================================== */
+  async verifyEmail(req, res) {
+    try {
+      const { token } = req.body;
+
+      const users = await AuthModel.findByVerificationToken();
+
+      for (const user of users) {
+        const match = await bcrypt.compare(token, user.verification_token);
+
+        if (match && new Date() < user.verification_token_expiry) {
+          await AuthModel.markEmailVerified(user.user_id);
+          return res.json({ success: true });
+        }
+      }
+
+      return res.status(400).json({ success: false, message: "Invalid token" });
+    } catch (err) {
+      return res.status(500).json({ success: false });
+    }
+  }
+
+  /* ======================================================
+     LOGIN
+  ====================================================== */
   async loginUser(req, res) {
     try {
       const { email, password } = req.body;
 
-      if (!email || !password) {
-        return res.status(400).json({
-          success: false,
-          message: "Email and password are required",
-        });
-      }
+      const normalizedEmail = email.trim().toLowerCase();
 
-      /* ----------------------------
-         FETCH CUSTOMER
-      ----------------------------- */
-      const user = await AuthModel.findCustomerForLogin(email);
+      const user = await AuthModel.findByEmail(normalizedEmail);
 
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: "Invalid email or password",
-        });
-      }
+      if (!user) return res.status(401).json({ success: false });
 
-      // check status
-      if (Number(user.status) !== 1) {
-        return res.status(403).json({
-          success: false,
-          message: "Account is inactive",
-        });
-      }
+      if (!user.is_verified)
+        return res
+          .status(403)
+          .json({ success: false, message: "Email not verified" });
 
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        return res.status(401).json({
-          success: false,
-          message: "Invalid email or password",
-        });
-      }
+      if (Number(user.status) !== 1)
+        return res.status(403).json({ success: false });
 
-      // Token
-      const token = jwt.sign(
-        {
-          user_id: user.user_id,
-          email: user.email,
-          role: "customer",
-        },
-        process.env.CUSTOMER_JWT_SECRET,
-        { expiresIn: "7d" }
+      const match = await bcrypt.compare(password, user.password);
+      if (!match) return res.status(401).json({ success: false });
+
+      const accessToken = jwt.sign(
+        { user_id: user.user_id, token_version: user.token_version },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: ACCESS_EXPIRES },
       );
+
+      const refreshToken = jwt.sign(
+        { user_id: user.user_id },
+        process.env.REFRESH_TOKEN_SECRET,
+        { expiresIn: `${REFRESH_EXPIRES_DAYS}d` },
+      );
+
+      const expiryDate = new Date(
+        Date.now() + REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
+      );
+
+      await AuthModel.storeRefreshToken(
+        user.user_id,
+        refreshToken,
+        expiryDate,
+        req.headers["user-agent"],
+        req.ip,
+      );
+
+      await AuthModel.updateLoginMeta(user.user_id, req.ip);
 
       return res.json({
         success: true,
-        message: "Login successful",
-        token,
-        user: {
-          user_id: user.user_id,
-          name: user.name,
-          email: user.email,
-        },
+        accessToken,
+        refreshToken,
       });
-    } catch (error) {
-      console.error("Login Error:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
+    } catch (err) {
+      return res.status(500).json({ success: false });
     }
   }
 
+  /* ======================================================
+     REFRESH ACCESS TOKEN
+  ====================================================== */
+  async refreshAccessToken(req, res) {
+    try {
+      const { refreshToken } = req.body;
+
+      const payload = jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET,
+      );
+
+      const exists = await AuthModel.findRefreshToken(
+        payload.user_id,
+        refreshToken,
+      );
+      if (!exists) return res.status(403).json({ success: false });
+
+      const user = await AuthModel.findById(payload.user_id);
+
+      const newAccessToken = jwt.sign(
+        { user_id: user.user_id, token_version: user.token_version },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: ACCESS_EXPIRES },
+      );
+
+      return res.json({ success: true, accessToken: newAccessToken });
+    } catch {
+      return res.status(401).json({ success: false });
+    }
+  }
+
+  /* ======================================================
+     LOGOUT (Single Device)
+  ====================================================== */
+  async logoutUser(req, res) {
+    try {
+      const { refreshToken } = req.body;
+
+      const payload = jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET,
+      );
+
+      await AuthModel.deleteRefreshToken(payload.user_id, refreshToken);
+
+      return res.json({ success: true });
+    } catch {
+      return res.status(400).json({ success: false });
+    }
+  }
+
+  /* ======================================================
+     LOGOUT ALL DEVICES
+  ====================================================== */
+  async logoutAllDevices(req, res) {
+    try {
+      await AuthModel.deleteAllUserRefreshTokens(req.user.user_id);
+      await AuthModel.incrementTokenVersion(req.user.user_id);
+
+      return res.json({ success: true });
+    } catch {
+      return res.status(500).json({ success: false });
+    }
+  }
+
+  /* ======================================================
+     FORGOT PASSWORD
+  ====================================================== */
+  async forgotPassword(req, res) {
+    try {
+      const { email } = req.body;
+
+      const user = await AuthModel.findByEmail(email);
+      if (!user) return res.json({ success: true }); 
+
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const hashedToken = await bcrypt.hash(rawToken, 10);
+      const expiry = new Date(Date.now() + 15 * 60 * 1000);
+
+      await AuthModel.saveResetToken(user.user_id, hashedToken, expiry);
+
+      // Send rawToken in email
+
+      return res.json({ success: true });
+    } catch {
+      return res.status(500).json({ success: false });
+    }
+  }
+
+  /* ======================================================
+     RESET PASSWORD
+  ====================================================== */
+  async resetPassword(req, res) {
+    try {
+      const { token, newPassword } = req.body;
+
+      const users = await AuthModel.findByResetToken();
+
+      for (const user of users) {
+        const match = await bcrypt.compare(token, user.reset_token);
+
+        if (match && new Date() < user.reset_token_expiry) {
+          const hashed = await bcrypt.hash(newPassword, 12);
+
+          await AuthModel.updatePassword(user.user_id, hashed);
+          await AuthModel.incrementTokenVersion(user.user_id);
+          await AuthModel.deleteAllUserRefreshTokens(user.user_id);
+
+          return res.json({ success: true });
+        }
+      }
+
+      return res.status(400).json({ success: false });
+    } catch {
+      return res.status(500).json({ success: false });
+    }
+  }
   /*====================================Address============================================*/
 
   // Get all countries
@@ -254,7 +380,7 @@ class AuthController {
       const updated = await AddressModel.updateAddress(
         address_id,
         userId,
-        data
+        data,
       );
 
       if (!updated) {
@@ -405,7 +531,7 @@ class AuthController {
       const alreadyReviewed = await AuthModel.reviewExists(
         userId,
         variant_id,
-        order_id
+        order_id,
       );
 
       if (alreadyReviewed) {

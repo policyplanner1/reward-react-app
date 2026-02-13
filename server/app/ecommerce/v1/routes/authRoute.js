@@ -2,16 +2,18 @@ const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
 const auth = require("../middlewares/auth");
-const {uploadReviewMedia} = require("../../../../middleware/productUpload");
+const { uploadReviewMedia } = require("../../../../middleware/productUpload");
 
 /*============================================Profile=================================================*/
-// User registration
+
 router.post("/register", authController.registerUser);
-
-// user Login
+router.post("/verify-email", authController.verifyEmail);
 router.post("/login", authController.loginUser);
-
-// edit Profile
+router.post("/refresh", authController.refreshAccessToken);
+router.post("/logout", authController.logoutUser);
+router.post("/logout-all", auth, authController.logoutAllDevices);
+router.post("/forgot-password", authController.forgotPassword);
+router.post("/reset-password", authController.resetPassword);
 
 /*=============================================Address================================================*/
 // Fetch all the countries
@@ -48,9 +50,9 @@ router.get("/address/:address_id", authController.getAddressById);
 // Add review
 router.post(
   "/reviews",
-  /* auth, */ 
+  /* auth, */
   // uploadReviewMedia,
-  authController.submitReview
+  authController.submitReview,
 );
 
 // fetch reviews
