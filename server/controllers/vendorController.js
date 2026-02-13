@@ -245,9 +245,9 @@ class VendorController {
       const vendor = vendorRows[0];
 
       // Send Mail
-      if (status === "approved" || status === "rejected") {
-        await notifyVendorStatusChange(vendor, status);
-      }
+      // if (status === "approved" || status === "rejected") {
+      //   await notifyVendorStatusChange(vendor, status);
+      // }
 
       return res.json({
         success: true,
