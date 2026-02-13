@@ -144,7 +144,7 @@ const FlashSaleVariant: React.FC = () => {
                 <th>SKU</th>
                 <th>Sale Price</th>
                 <th>Flash Price</th>
-                <th></th>
+                <th>Action</th>
               </tr>
             </thead>
 
