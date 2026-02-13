@@ -19,10 +19,10 @@ class AuthController {
         });
       }
 
-      if (password.length < 5) {
+      if (password.length < 8) {
         return res.status(400).json({
           success: false,
-          message: "Password must be at least 5 characters long",
+          message: "Password must be at least 8 characters long",
         });
       }
 
