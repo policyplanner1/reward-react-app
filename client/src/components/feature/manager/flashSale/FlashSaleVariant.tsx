@@ -14,21 +14,109 @@ const FlashSaleVariant: React.FC = () => {
   const { flashId } = useParams();
   const [showModal, setShowModal] = useState(false);
   const [variants, setVariants] = useState<Variant[]>([]);
+  const [availableVariants, setAvailableVariants] = useState<any[]>([]);
+  const [selectedVariants, setSelectedVariants] = useState<number[]>([]);
+  const [loadingAvailable, setLoadingAvailable] = useState(false);
+
+  useEffect(() => {
+    if (showModal) {
+      fetchAvailableVariants();
+    }
+  }, [showModal]);
+
+  const fetchAvailableVariants = async () => {
+    try {
+      setLoadingAvailable(true);
+      const res = await fetch(`/flash-sale/${flashId}/available-variants`);
+      const data = await res.json();
+      setAvailableVariants(data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch available variants", err);
+    } finally {
+      setLoadingAvailable(false);
+    }
+  };
 
   useEffect(() => {
     fetchVariants();
   }, []);
 
   const fetchVariants = async () => {
-    const res = await fetch(`/flash-sales/${flashId}/variants`);
+    const res = await fetch(`/flash-sale/${flashId}/variants`);
     const data = await res.json();
-    setVariants(data);
+    setVariants(data.data || []);
   };
 
-  const updateFlashPrice = (id: number, price: number) => {
-    setVariants((prev) =>
-      prev.map((v) => (v.variant_id === id ? { ...v, flash_price: price } : v)),
+  const updateFlashPrice = async (id: number, price: number) => {
+    try {
+      await fetch(`/flash-sale/${flashId}/variants/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          offer_price: price,
+        }),
+      });
+
+      setVariants((prev) =>
+        prev.map((v) =>
+          v.variant_id === id ? { ...v, flash_price: price } : v,
+        ),
+      );
+    } catch (err) {
+      console.error("Failed to update flash price", err);
+    }
+  };
+
+  const groupedVariants = availableVariants.reduce((acc: any, item: any) => {
+    if (!acc[item.product_id]) {
+      acc[item.product_id] = {
+        product_name: item.product_name,
+        variants: [],
+      };
+    }
+
+    acc[item.product_id].variants.push(item);
+    return acc;
+  }, {});
+
+  const toggleVariant = (id: number) => {
+    setSelectedVariants((prev) =>
+      prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id],
     );
+  };
+
+  // Handle Add variants to flash sale
+  const handleAddVariants = async () => {
+    if (!selectedVariants.length) return;
+
+    try {
+      await fetch(`/flash-sale/${flashId}/variants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          variant_ids: selectedVariants,
+        }),
+      });
+
+      setShowModal(false);
+      setSelectedVariants([]);
+      fetchVariants();
+    } catch (err) {
+      console.error("Failed to add variants", err);
+    }
+  };
+
+  // Handle remove variant
+  const handleRemoveVariant = async (variantId: number) => {
+    try {
+      await fetch(`/flash-sale/${flashId}/variants/${variantId}`, {
+        method: "DELETE",
+      });
+
+      setVariants((prev) => prev.filter((v) => v.variant_id !== variantId));
+    } catch (err) {
+      console.error("Failed to remove variant", err);
+    }
   };
 
   return (
@@ -90,7 +178,12 @@ const FlashSaleVariant: React.FC = () => {
                   </td>
 
                   <td>
-                    <button className="fs-remove-btn">Remove</button>
+                    <button
+                      className="fs-remove-btn"
+                      onClick={() => handleRemoveVariant(v.variant_id)}
+                    >
+                      Remove
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -108,7 +201,57 @@ const FlashSaleVariant: React.FC = () => {
               </div>
 
               <div className="fs-modal-body">
-                <p>Variant list will come here...</p>
+                {loadingAvailable ? (
+                  <p>Loading variants...</p>
+                ) : Object.keys(groupedVariants).length === 0 ? (
+                  <p>No more variants available to add.</p>
+                ) : (
+                  Object.entries(groupedVariants).map(
+                    ([productId, product]: any) => (
+                      <div key={productId} className="fs-product-group">
+                        <h4 className="fs-product-title">
+                          {product.product_name}
+                        </h4>
+
+                        {product.variants.map((variant: any) => (
+                          <label
+                            key={variant.variant_id}
+                            className="fs-variant-row"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedVariants.includes(
+                                variant.variant_id,
+                              )}
+                              onChange={() => toggleVariant(variant.variant_id)}
+                            />
+                            <span>
+                              {variant.variant_name} – ₹{variant.sale_price}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    ),
+                  )
+                )}
+              </div>
+
+              {/* MOVE FOOTER HERE */}
+              <div className="fs-modal-footer">
+                <button
+                  className="fs-action-btn"
+                  onClick={() => setShowModal(false)}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  className="fs-primary-btn"
+                  onClick={handleAddVariants}
+                  disabled={!selectedVariants.length}
+                >
+                  Add Selected ({selectedVariants.length})
+                </button>
               </div>
             </div>
           </div>
