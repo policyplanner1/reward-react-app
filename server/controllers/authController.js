@@ -77,7 +77,7 @@ const authController = {
         );
       }
 
-      await sendOtpEmail(email, otp);
+      // await sendOtpEmail(email, otp);
 
       await connection.commit();
 
