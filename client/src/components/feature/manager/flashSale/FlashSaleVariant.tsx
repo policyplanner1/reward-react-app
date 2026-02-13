@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import "./css/flashsalevariant.css";
+import { api } from "../../../../api/api";
 
 interface Variant {
   variant_id: number;
@@ -27,9 +28,8 @@ const FlashSaleVariant: React.FC = () => {
   const fetchAvailableVariants = async () => {
     try {
       setLoadingAvailable(true);
-      const res = await fetch(`/flash-sale/${flashId}/available-variants`);
-      const data = await res.json();
-      setAvailableVariants(data.data || []);
+      const res = await api.get(`/flash/flash-sale/${flashId}/available-variants`);
+      setAvailableVariants(res.data.data || []);
     } catch (err) {
       console.error("Failed to fetch available variants", err);
     } finally {
@@ -42,19 +42,14 @@ const FlashSaleVariant: React.FC = () => {
   }, []);
 
   const fetchVariants = async () => {
-    const res = await fetch(`/flash-sale/${flashId}/variants`);
-    const data = await res.json();
-    setVariants(data.data || []);
+    const res = await api.get(`/flash/flash-sale/${flashId}/variants`);
+    setVariants(res.data.data || []);
   };
 
   const updateFlashPrice = async (id: number, price: number) => {
     try {
-      await fetch(`/flash-sale/${flashId}/variants/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          offer_price: price,
-        }),
+      await api.put(`/flash/flash-sale/${flashId}/variants/${id}`, {
+        offer_price: price,
       });
 
       setVariants((prev) =>
@@ -90,12 +85,8 @@ const FlashSaleVariant: React.FC = () => {
     if (!selectedVariants.length) return;
 
     try {
-      await fetch(`/flash-sale/${flashId}/variants`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          variant_ids: selectedVariants,
-        }),
+      await api.post(`/flash/flash-sale/${flashId}/variants`, {
+        variant_ids: selectedVariants,
       });
 
       setShowModal(false);
@@ -109,9 +100,7 @@ const FlashSaleVariant: React.FC = () => {
   // Handle remove variant
   const handleRemoveVariant = async (variantId: number) => {
     try {
-      await fetch(`/flash-sale/${flashId}/variants/${variantId}`, {
-        method: "DELETE",
-      });
+      await api.delete(`/flash/flash-sale/${flashId}/variants/${variantId}`);
 
       setVariants((prev) => prev.filter((v) => v.variant_id !== variantId));
     } catch (err) {
