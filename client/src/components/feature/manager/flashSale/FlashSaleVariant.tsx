@@ -9,6 +9,7 @@ interface Variant {
   sku: string;
   sale_price: number;
   flash_price: number;
+  max_qty: number | null;
 }
 
 const FlashSaleVariant: React.FC = () => {
@@ -49,28 +50,47 @@ const FlashSaleVariant: React.FC = () => {
     setVariants(res.data.data || []);
   };
 
-  const updateFlashPrice = async (
+  const updateFlashVariant = async (
     id: number,
-    price: number,
+    price: number | null,
+    maxQty: number | null,
     salePrice: number,
   ) => {
-    if (price >= salePrice) {
-      alert("Flash price must be lower than sale price.");
-      return;
+    // Validate price ONLY if price is being changed
+    if (price !== null) {
+      if (price >= salePrice) {
+        alert("Flash price must be lower than sale price.");
+        return;
+      }
+    }
+
+    // Validate max quantity ONLY if maxQty is being changed
+    if (maxQty !== null) {
+      if (maxQty <= 0) {
+        alert("Max quantity must be greater than 0.");
+        return;
+      }
     }
 
     try {
       await api.put(`/flash/flash-sale/${flashId}/variants/${id}`, {
         offer_price: price,
+        max_qty: maxQty,
       });
 
       setVariants((prev) =>
         prev.map((v) =>
-          v.variant_id === id ? { ...v, flash_price: price } : v,
+          v.variant_id === id
+            ? {
+                ...v,
+                flash_price: price ?? v.flash_price,
+                max_qty: maxQty ?? v.max_qty,
+              }
+            : v,
         ),
       );
     } catch (err) {
-      console.error("Failed to update flash price", err);
+      console.error("Failed to update flash variant", err);
     }
   };
 
@@ -144,6 +164,7 @@ const FlashSaleVariant: React.FC = () => {
                 <th>SKU</th>
                 <th>Sale Price</th>
                 <th>Flash Price</th>
+                <th>Maximum Quantity</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -172,14 +193,30 @@ const FlashSaleVariant: React.FC = () => {
                         type="number"
                         value={v.flash_price}
                         onChange={(e) =>
-                          updateFlashPrice(
+                          updateFlashVariant(
                             v.variant_id,
                             Number(e.target.value),
+                            null,
                             Number(v.sale_price),
                           )
                         }
                       />
                     </div>
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      placeholder="Max Qty"
+                      value={v.max_qty || ""}
+                      onChange={(e) =>
+                        updateFlashVariant(
+                          v.variant_id,
+                          null, 
+                          e.target.value ? Number(e.target.value) : null,
+                          Number(v.sale_price),
+                        )
+                      }
+                    />
                   </td>
 
                   <td>

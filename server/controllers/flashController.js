@@ -330,9 +330,17 @@ class flashController {
   async updateFlashPrice(req, res) {
     try {
       const { flashId, variantId } = req.params;
-      const { offer_price } = req.body;
+      const { offer_price, max_qty } = req.body;
 
-      // get sale price
+      // Validate price provided
+      if (offer_price === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "Offer price is required",
+        });
+      }
+
+      // Get original sale price
       const [rows] = await db.query(
         `SELECT sale_price FROM product_variants WHERE variant_id = ?`,
         [variantId],
@@ -345,27 +353,43 @@ class flashController {
         });
       }
 
-      const salePrice = rows[0].sale_price;
+      const salePrice = Number(rows[0].sale_price);
 
-      if (Number(offer_price) >= Number(salePrice)) {
+      if (Number(offer_price) >= salePrice) {
         return res.status(400).json({
           success: false,
           message: "Flash price must be lower than sale price",
         });
       }
 
+      // Validate max_qty 
+      let validatedMaxQty = null;
+
+      if (max_qty !== undefined && max_qty !== null) {
+        if (Number(max_qty) <= 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Max quantity must be greater than 0",
+          });
+        }
+
+        validatedMaxQty = Number(max_qty);
+      }
+
       await db.query(
         `
       UPDATE flash_sale_items
-      SET offer_price = ?
-      WHERE flash_sale_id = ? AND variant_id = ?
+      SET offer_price = ?, 
+          max_qty = ?
+      WHERE flash_sale_id = ? 
+        AND variant_id = ?
       `,
-        [offer_price, flashId, variantId],
+        [offer_price, validatedMaxQty, flashId, variantId],
       );
 
       return res.json({
         success: true,
-        message: "Flash price updated",
+        message: "Flash sale updated successfully",
       });
     } catch (err) {
       console.error(err);
