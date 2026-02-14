@@ -344,20 +344,14 @@ class ProductController {
       }
 
       const [data] = await db.execute(
-        `SELECT 
-          sc.subcategory_id, 
-          sc.subcategory_name
-        FROM sub_categories sc 
-        WHERE sc.category_id = ? AND sc.status = 1`,
+        `SELECT * FROM sub_categories WHERE category_id = ? AND status = 1`,
         [categoryId],
       );
 
       const processedSubCategories = data.map((subcategory) => ({
         id: subcategory.subcategory_id,
         name: subcategory.subcategory_name,
-        image: `https://via.placeholder.com/150?text=${encodeURIComponent(
-          subcategory.subcategory_name,
-        )}`,
+        image: subcategory.cover_image,
       }));
 
       res.json({
