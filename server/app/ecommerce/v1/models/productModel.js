@@ -504,7 +504,9 @@ class ProductModel {
         p.product_name,
         p.brand_name,
         p.created_at,
+        c.category_name,
         sc.subcategory_name,
+        ssc.name AS sub_subcategory_name,
         v.mrp,
         v.sale_price,
         v.reward_redemption_limit,
@@ -533,8 +535,10 @@ class ProductModel {
           LIMIT 1
         )
 
+      LEFT JOIN categories c ON c.category_id = p.category_id
       LEFT JOIN sub_categories sc 
         ON sc.subcategory_id = p.subcategory_id
+      LEFT JOIN sub_sub_categories ssc ON ssc.sub_subcategory_id = p.sub_subcategory_id 
 
       LEFT JOIN product_images pi 
         ON p.product_id = pi.product_id
@@ -566,11 +570,13 @@ class ProductModel {
           product_id: row.product_id,
           product_name: row.product_name,
           brand_name: row.brand_name,
+          category_name: row.category_name,
           created_at: row.created_at,
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,
           subcategory_name: row.subcategory_name,
+          sub_subcategory_name: row.sub_subcategory_name,
           images,
         };
       });

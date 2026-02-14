@@ -238,6 +238,10 @@ class ProductController {
         return {
           id: product.product_id,
           title: product.product_name,
+          brand: product.brand_name,
+          category: product.category_name,
+          subcategory: product.subcategory_name,
+          sub_subcategory: product.sub_subcategory_name,
           image: mainImage,
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
