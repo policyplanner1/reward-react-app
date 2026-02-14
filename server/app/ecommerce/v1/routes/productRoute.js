@@ -30,6 +30,9 @@ router.get(
   ProductController.getSubcategoriesByCategory
 );
 
+// product discovery
+router.get("/categories/discovery", ProductController.getCategoryDiscovery);
+
 /* ======================================================Suggestion============================================ */
 
 // similar Products

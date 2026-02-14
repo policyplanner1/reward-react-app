@@ -331,6 +331,75 @@ class ProductController {
     }
   }
 
+  // discovery categories
+  async getCategoryDiscovery(req, res) {
+    try {
+      // 1. Top Categories
+          const [topCategories] = await db.execute(`
+          SELECT 
+            c.category_id,
+            c.category_name,
+            c.cover_image,
+            COUNT(p.product_id) AS product_count
+
+          FROM categories c
+
+          JOIN eproducts p 
+            ON p.category_id = c.category_id
+          AND p.status = 'APPROVED'
+          AND p.is_visible = 1
+
+          WHERE c.status = 1
+            AND c.is_visible_in_ui = 1
+
+          GROUP BY c.category_id
+          ORDER BY product_count DESC
+          LIMIT 5
+        `);
+
+      // 2. New & Upcoming 
+      const [newLaunches] = await db.execute(`
+      SELECT product_id, product_name, cover_image
+      FROM eproducts
+      WHERE status = 'APPROVED' AND is_visible = 1
+      ORDER BY created_at DESC
+      LIMIT 5
+    `);
+
+      // 3. Recently Viewed (needs userId)
+      const userId = req.user?.user_id;
+
+      let recentlyViewed = [];
+      if (userId) {
+        const [rows] = await db.execute(
+          `
+        SELECT p.product_id, p.product_name
+        FROM recently_viewed rv
+        JOIN eproducts p ON p.product_id = rv.product_id
+        WHERE rv.user_id = ?
+        ORDER BY rv.viewed_at DESC
+        LIMIT 5
+      `,
+          [userId],
+        );
+
+        recentlyViewed = rows;
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          topCategories,
+          newLaunches,
+          recentlyViewed,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ success: false });
+    }
+  }
+
   // subcategories by category ID
   async getSubcategoriesByCategory(req, res) {
     try {
