@@ -168,9 +168,9 @@ const initialProductData: ProductData = {
 };
 
 // --- UI Components ---
-const allowOnlyAlphabets = (value: string) => {
-  return /^[A-Za-z ]*$/.test(value);
-};
+// const allowOnlyAlphabets = (value: string) => {
+//   return /^[A-Za-z ]*$/.test(value);
+// };
 
 export default function ProductListingDynamic() {
   const [product, setProduct] = useState<ProductData>(initialProductData);

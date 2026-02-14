@@ -177,7 +177,7 @@ const initialProductData: ProductData = {
   shippingClass: "standard",
 };
 
-const allowOnlyAlphabets = (value: string) => /^[A-Za-z ]*$/.test(value);
+// const allowOnlyAlphabets = (value: string) => /^[A-Za-z ]*$/.test(value);
 
 export default function EditProductPage() {
   const { id: productId } = useParams<{ id: string }>();
