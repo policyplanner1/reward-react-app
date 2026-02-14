@@ -217,7 +217,7 @@ class AuthController {
       const { email } = req.body;
 
       const user = await AuthModel.findByEmail(email);
-      if (!user) return res.json({ success: true }); 
+      if (!user) return res.json({ success: true });
 
       const rawToken = crypto.randomBytes(32).toString("hex");
       const hashedToken = await bcrypt.hash(rawToken, 10);
@@ -261,6 +261,60 @@ class AuthController {
       return res.status(500).json({ success: false });
     }
   }
+
+  // resend verification
+
+  async resendVerification(req, res) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ success: false });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const user = await AuthModel.findByEmail(normalizedEmail);
+
+      if (!user) {
+        return res.json({ success: true });
+      }
+
+      if (user.is_verified) {
+        return res.json({ success: true });
+      }
+
+      if (
+        user.verification_token_expiry &&
+        new Date(user.verification_token_expiry) >
+          new Date(Date.now() - 30 * 1000)
+      ) {
+        return res.json({ success: true });
+      }
+
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const hashedToken = await bcrypt.hash(rawToken, 10);
+      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await AuthModel.updateVerificationToken(
+        user.user_id,
+        hashedToken,
+        expiry,
+      );
+
+      // Send email with:
+      // https://yourdomain.com/verify-email?token=rawToken
+
+      return res.json({
+        success: true,
+        message:
+          "If your email is registered, a verification link has been sent.",
+      });
+    } catch (error) {
+      return res.status(500).json({ success: false });
+    }
+  }
+
   /*====================================Address============================================*/
 
   // Get all countries

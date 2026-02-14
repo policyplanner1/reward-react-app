@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 class authModel {
-   /* ======================================================
+  /* ======================================================
      BASIC USER QUERIES
   ====================================================== */
 
@@ -12,18 +12,17 @@ class authModel {
       `SELECT user_id, email, password, status, is_verified, token_version
        FROM customer
        WHERE email = ?`,
-      [email]
+      [email],
     );
     return rows[0];
   }
-  
 
   async findById(userId) {
     const [rows] = await db.execute(
       `SELECT user_id, name, email, status, is_verified, token_version
        FROM customer
        WHERE user_id = ?`,
-      [userId]
+      [userId],
     );
     return rows[0];
   }
@@ -50,7 +49,7 @@ class authModel {
         password,
         verification_token,
         verification_token_expiry,
-      ]
+      ],
     );
 
     return result.insertId;
@@ -64,7 +63,7 @@ class authModel {
     const [rows] = await db.execute(
       `SELECT user_id, verification_token, verification_token_expiry
        FROM customer
-       WHERE verification_token IS NOT NULL`
+       WHERE verification_token IS NOT NULL`,
     );
     return rows;
   }
@@ -76,7 +75,7 @@ class authModel {
            verification_token = NULL,
            verification_token_expiry = NULL
        WHERE user_id = ?`,
-      [userId]
+      [userId],
     );
   }
 
@@ -90,7 +89,7 @@ class authModel {
        SET reset_token = ?,
            reset_token_expiry = ?
        WHERE user_id = ?`,
-      [hashedToken, expiryDate, userId]
+      [hashedToken, expiryDate, userId],
     );
   }
 
@@ -98,7 +97,7 @@ class authModel {
     const [rows] = await db.execute(
       `SELECT user_id, reset_token, reset_token_expiry
        FROM customer
-       WHERE reset_token IS NOT NULL`
+       WHERE reset_token IS NOT NULL`,
     );
     return rows;
   }
@@ -110,7 +109,7 @@ class authModel {
            reset_token = NULL,
            reset_token_expiry = NULL
        WHERE user_id = ?`,
-      [hashedPassword, userId]
+      [hashedPassword, userId],
     );
   }
 
@@ -119,7 +118,7 @@ class authModel {
       `UPDATE customer
        SET token_version = token_version + 1
        WHERE user_id = ?`,
-      [userId]
+      [userId],
     );
   }
 
@@ -133,7 +132,7 @@ class authModel {
        SET last_login_at = NOW(),
            last_login_ip = ?
        WHERE user_id = ?`,
-      [ipAddress, userId]
+      [ipAddress, userId],
     );
   }
 
@@ -146,7 +145,7 @@ class authModel {
       `INSERT INTO customer_refresh_tokens
        (user_id, token, expires_at, device_info, ip_address)
        VALUES (?, ?, ?, ?, ?)`,
-      [userId, token, expiresAt, deviceInfo, ipAddress]
+      [userId, token, expiresAt, deviceInfo, ipAddress],
     );
   }
 
@@ -157,7 +156,7 @@ class authModel {
        WHERE user_id = ?
          AND token = ?
          AND expires_at > NOW()`,
-      [userId, token]
+      [userId, token],
     );
     return rows[0];
   }
@@ -166,7 +165,7 @@ class authModel {
     await db.execute(
       `DELETE FROM customer_refresh_tokens
        WHERE user_id = ? AND token = ?`,
-      [userId, token]
+      [userId, token],
     );
   }
 
@@ -174,14 +173,25 @@ class authModel {
     await db.execute(
       `DELETE FROM customer_refresh_tokens
        WHERE user_id = ?`,
-      [userId]
+      [userId],
     );
   }
 
   async cleanupExpiredRefreshTokens() {
     await db.execute(
       `DELETE FROM customer_refresh_tokens
-       WHERE expires_at <= NOW()`
+       WHERE expires_at <= NOW()`,
+    );
+  }
+
+  // verification token management
+  async updateVerificationToken(userId, hashedToken, expiry) {
+    await db.execute(
+      `UPDATE customer
+     SET verification_token = ?,
+         verification_token_expiry = ?
+     WHERE user_id = ?`,
+      [hashedToken, expiry, userId],
     );
   }
   /*==============================Review============================*/
@@ -194,7 +204,7 @@ class authModel {
       FROM product_reviews
       WHERE user_id = ? AND variant_id = ? AND order_id <=> ?
       `,
-      [userId, variantId, orderId]
+      [userId, variantId, orderId],
     );
 
     return rows.length > 0;
@@ -238,7 +248,7 @@ class authModel {
         good_quality,
         smooth_experience,
         review_text,
-      ]
+      ],
     );
 
     return result.insertId;
@@ -261,12 +271,12 @@ class authModel {
       (review_id, media_url, media_type, sort_order)
       VALUES ?
       `,
-      [values]
+      [values],
     );
   }
 
   // Get Review By Products
-  async  getReviewsByProduct(productId) {
+  async getReviewsByProduct(productId) {
     const [reviews] = await db.execute(
       `
       SELECT
@@ -284,7 +294,7 @@ class authModel {
         AND r.status = 'approved'
       ORDER BY r.created_at DESC
       `,
-      [productId]
+      [productId],
     );
 
     for (const review of reviews) {
@@ -295,7 +305,7 @@ class authModel {
         WHERE review_id = ?
         ORDER BY sort_order
         `,
-        [review.review_id]
+        [review.review_id],
       );
 
       review.media = media;
