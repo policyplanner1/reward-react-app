@@ -10,6 +10,7 @@ function generateOrderRef() {
 }
 
 class CheckoutModel {
+  // checkout cart Items
   async checkoutCart(userId, companyId = null, addressId) {
     const conn = await db.getConnection();
 
@@ -19,16 +20,17 @@ class CheckoutModel {
       // 1 Fetch cart items
       const [cartItems] = await conn.execute(
         `
-        SELECT 
-          ci.product_id,
-          ci.variant_id,
-          ci.quantity,
-          v.sale_price,
-          v.stock
-        FROM cart_items ci
-        JOIN product_variants v ON ci.variant_id = v.variant_id
-        WHERE ci.user_id = ?
-        `,
+      SELECT 
+        ci.product_id,
+        ci.variant_id,
+        ci.quantity,
+        v.sale_price,
+        v.stock
+      FROM cart_items ci
+      JOIN product_variants v 
+        ON ci.variant_id = v.variant_id
+      WHERE ci.user_id = ?
+      `,
         [userId],
       );
 
@@ -36,59 +38,107 @@ class CheckoutModel {
         throw new Error("CART_EMPTY");
       }
 
-      // 2 Validate stock
-      for (const item of cartItems) {
-        if (item.quantity > item.stock) {
-          throw new Error("OUT_OF_STOCK");
-        }
-      }
+      let totalAmount = 0;
 
-      // 3 Calculate total
-      const totalAmount = cartItems.reduce(
-        (sum, i) => sum + i.quantity * i.sale_price,
-        0,
-      );
-
-      // 4 Create order
+      // 2 Create order first (we calculate total dynamically)
       const orderRef = generateOrderRef();
 
       const [orderRes] = await conn.execute(
         `
-        INSERT INTO eorders (user_id, company_id, total_amount,order_ref,address_id)
-        VALUES (?, ?, ?, ?, ?)
-        `,
-        [userId, companyId, totalAmount, orderRef, addressId],
+      INSERT INTO eorders 
+        (user_id, company_id, total_amount, order_ref, address_id)
+      VALUES (?, ?, 0, ?, ?)
+      `,
+        [userId, companyId, orderRef, addressId],
       );
 
       const orderId = orderRes.insertId;
 
-      // 5 Create order items
+      // 3 Process each cart item
       for (const item of cartItems) {
+        const [flashRows] = await conn.execute(
+          `
+        SELECT 
+          fsi.id,
+          fsi.offer_price,
+          fsi.max_qty,
+          fsi.sold_qty
+        FROM flash_sale_items fsi
+        JOIN flash_sales fs
+          ON fs.flash_sale_id = fsi.flash_sale_id
+        WHERE fsi.variant_id = ?
+          AND fs.status = 'active'
+          AND NOW() BETWEEN fs.start_at AND fs.end_at
+        FOR UPDATE
+        `,
+          [item.variant_id],
+        );
+
+        let finalPrice = item.sale_price;
+
+        // Validate normal stock first
+        if (item.quantity > item.stock) {
+          throw new Error("OUT_OF_STOCK");
+        }
+
+        //  Flash logic
+        if (flashRows.length > 0) {
+          const flash = flashRows[0];
+
+          if (
+            flash.max_qty !== null &&
+            flash.sold_qty + item.quantity > flash.max_qty
+          ) {
+            throw new Error("FLASH_OUT_OF_STOCK");
+          }
+
+          finalPrice = flash.offer_price;
+
+          // Increase sold_qty safely
+          await conn.execute(
+            `
+          UPDATE flash_sale_items
+          SET sold_qty = sold_qty + ?
+          WHERE id = ?
+          `,
+            [item.quantity, flash.id],
+          );
+        }
+
+        // 4 Insert order item
         await conn.execute(
           `
-          INSERT INTO eorder_items
-            (order_id, product_id, variant_id, quantity, price)
-          VALUES (?, ?, ?, ?, ?)
-          `,
+        INSERT INTO eorder_items
+          (order_id, product_id, variant_id, quantity, price)
+        VALUES (?, ?, ?, ?, ?)
+        `,
           [
             orderId,
             item.product_id,
             item.variant_id,
             item.quantity,
-            item.sale_price,
+            finalPrice,
           ],
         );
 
-        // 6 Deduct stock
+        // 5 Deduct product stock
         await conn.execute(
           `
-          UPDATE product_variants
-          SET stock = stock - ?
-          WHERE variant_id = ?
-          `,
+        UPDATE product_variants
+        SET stock = stock - ?
+        WHERE variant_id = ?
+        `,
           [item.quantity, item.variant_id],
         );
+
+        totalAmount += item.quantity * finalPrice;
       }
+
+      // 6 Update final order total
+      await conn.execute(`UPDATE eorders SET total_amount = ? WHERE id = ?`, [
+        totalAmount,
+        orderId,
+      ]);
 
       // 7 Clear cart
       await conn.execute(`DELETE FROM cart_items WHERE user_id = ?`, [userId]);
@@ -103,6 +153,7 @@ class CheckoutModel {
     }
   }
 
+  // Checkout from buy now
   async buyNow({
     userId,
     productId,
@@ -116,14 +167,15 @@ class CheckoutModel {
     try {
       await conn.beginTransaction();
 
-      // 1 Fetch variant
+      // 1  product variant
       const [[variant]] = await conn.execute(
         `
       SELECT sale_price, stock
       FROM product_variants
-      WHERE variant_id = ? AND product_id = ?
+      WHERE variant_id = ?
+      FOR UPDATE
       `,
-        [variantId, productId],
+        [variantId],
       );
 
       if (!variant) {
@@ -134,30 +186,73 @@ class CheckoutModel {
         throw new Error("OUT_OF_STOCK");
       }
 
-      const totalAmount = quantity * variant.sale_price;
+      let finalPrice = variant.sale_price;
+
+      //  flash row if exists
+      const [flashRows] = await conn.execute(
+        `
+      SELECT 
+        fsi.id,
+        fsi.offer_price,
+        fsi.max_qty,
+        fsi.sold_qty
+      FROM flash_sale_items fsi
+      JOIN flash_sales fs
+        ON fs.flash_sale_id = fsi.flash_sale_id
+      WHERE fsi.variant_id = ?
+        AND fs.status = 'active'
+        AND NOW() BETWEEN fs.start_at AND fs.end_at
+      FOR UPDATE
+      `,
+        [variantId],
+      );
+
+      if (flashRows.length > 0) {
+        const flash = flashRows[0];
+
+        if (
+          flash.max_qty !== null &&
+          flash.sold_qty + quantity > flash.max_qty
+        ) {
+          throw new Error("FLASH_OUT_OF_STOCK");
+        }
+
+        finalPrice = flash.offer_price;
+
+        await conn.execute(
+          `
+        UPDATE flash_sale_items
+        SET sold_qty = sold_qty + ?
+        WHERE id = ?
+        `,
+          [quantity, flash.id],
+        );
+      }
+
+      const totalAmount = quantity * finalPrice;
 
       // 2 Create order
-
       const orderRef = generateOrderRef();
 
       const [orderRes] = await conn.execute(
         `
-      INSERT INTO eorders (user_id, company_id, total_amount, order_ref,address_id)
+      INSERT INTO eorders
+        (user_id, company_id, total_amount, order_ref, address_id)
       VALUES (?, ?, ?, ?, ?)
       `,
-        [userId, companyId, totalAmount, orderRef,addressId],
+        [userId, companyId, totalAmount, orderRef, addressId],
       );
 
       const orderId = orderRes.insertId;
 
-      // 3 Create order item
+      // 3 Insert order item
       await conn.execute(
         `
       INSERT INTO eorder_items
         (order_id, product_id, variant_id, quantity, price)
       VALUES (?, ?, ?, ?, ?)
       `,
-        [orderId, productId, variantId, quantity, variant.sale_price],
+        [orderId, productId, variantId, quantity, finalPrice],
       );
 
       // 4 Deduct stock

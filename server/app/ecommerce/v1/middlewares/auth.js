@@ -1,55 +1,29 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/authModel");
+const AuthModel = require("../models/authModel");
 
 const auth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        success: false,
-        message: "Authorization token missing",
-      });
-    }
+    if (!authHeader?.startsWith("Bearer "))
+      return res.status(401).json({ success: false });
 
     const token = authHeader.split(" ")[1];
 
-    // verify Token
-    const decoded = jwt.verify(token, process.env.CUSTOMER_JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-    if (!decoded || !decoded.user_id) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid token",
-      });
-    }
+    const user = await AuthModel.findById(decoded.user_id);
 
-    // check user
-    const user = await User.getUserById(decoded.user_id);
+    if (!user || user.token_version !== decoded.token_version)
+      return res.status(401).json({ success: false });
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    if (Number(user.status) !== 1) {
-      return res.status(403).json({
-        success: false,
-        message: "Account is inactive",
-      });
-    }
+    if (Number(user.status) !== 1)
+      return res.status(403).json({ success: false });
 
     req.user = user;
     next();
-  } catch (error) {
-    console.error("Authentication Error:", error);
 
-    return res.status(401).json({
-      success: false,
-      message: "Invalid or expired token",
-    });
+  } catch {
+    return res.status(401).json({ success: false });
   }
 };
 

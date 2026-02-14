@@ -168,9 +168,9 @@ const initialProductData: ProductData = {
 };
 
 // --- UI Components ---
-const allowOnlyAlphabets = (value: string) => {
-  return /^[A-Za-z ]*$/.test(value);
-};
+// const allowOnlyAlphabets = (value: string) => {
+//   return /^[A-Za-z ]*$/.test(value);
+// };
 
 export default function ProductListingDynamic() {
   const [product, setProduct] = useState<ProductData>(initialProductData);
@@ -362,11 +362,11 @@ export default function ProductListingDynamic() {
 
     /* ================= PRODUCT TEXT FIELDS ================= */
 
-    const productAlphabetFields = ["brandName", "manufacturer"];
+    // const productAlphabetFields = ["brandName", "manufacturer"];
 
-    if (productAlphabetFields.includes(name)) {
-      if (!allowOnlyAlphabets(value)) return;
-    }
+    // if (productAlphabetFields.includes(name)) {
+    //   if (!allowOnlyAlphabets(value)) return;
+    // }
 
     /* ================= CATEGORY HANDLING ================= */
     if (name === "category_id") {
