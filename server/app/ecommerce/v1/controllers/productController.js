@@ -214,16 +214,40 @@ class ProductController {
           priceMax,
         });
 
-      const processedProducts = products.map((p) => ({
-        id: p.product_id,
-        title: p.product_name,
-        image: p.images.length ? p.images[0].image_url : null,
-        price: p.sale_price ? `₹${p.sale_price}` : null,
-        originalPrice: p.mrp ? `₹${p.mrp}` : null,
-        discount: "40%",
-        rating: 4.6,
-        reviews: "18.9K",
-      }));
+      const processedProducts = products.map((product) => {
+        const mainImage =
+          product.images && product.images.length
+            ? product.images[0].image_url
+            : null;
+
+        const salePrice = product.sale_price ? Number(product.sale_price) : 0;
+
+        const discountPercent = product.reward_redemption_limit
+          ? Number(product.reward_redemption_limit)
+          : 0;
+
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+
+        const finalPrice = salePrice - discountAmount;
+
+        const mrp = product.mrp ? Number(product.mrp) : 0;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        return {
+          id: product.product_id,
+          title: product.product_name,
+          image: mainImage,
+          price: `₹${salePrice}`,
+          originalPrice: `₹${mrp}`,
+          discount: `${mrpDiscountPercent}%`,
+          pointsPrice: `₹${finalPrice}`,
+          points: discountAmount,
+          rating: 4.6,
+          reviews: "18.9K",
+        };
+      });
 
       return res.json({
         success: true,
@@ -335,7 +359,7 @@ class ProductController {
   async getCategoryDiscovery(req, res) {
     try {
       // 1. Top Categories
-          const [topCategories] = await db.execute(`
+      const [topCategories] = await db.execute(`
           SELECT 
             c.category_id,
             c.category_name,
@@ -357,7 +381,7 @@ class ProductController {
           LIMIT 5
         `);
 
-      // 2. New & Upcoming 
+      // 2. New & Upcoming
       const [newLaunches] = await db.execute(`
       SELECT product_id, product_name, cover_image
       FROM eproducts

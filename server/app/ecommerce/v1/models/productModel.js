@@ -457,6 +457,17 @@ class ProductModel {
       const conditions = [];
       const params = [];
 
+      /* ===============================
+       VISIBILITY RULES
+    =============================== */
+      conditions.push("p.status = ?");
+      params.push("APPROVED");
+
+      conditions.push("p.is_visible = ?");
+      params.push(1);
+
+      conditions.push("v.variant_id IS NOT NULL");
+
       if (subcategoryId) {
         conditions.push("p.subcategory_id = ?");
         params.push(subcategoryId);
@@ -496,6 +507,7 @@ class ProductModel {
         sc.subcategory_name,
         v.mrp,
         v.sale_price,
+        v.reward_redemption_limit,
 
         GROUP_CONCAT(
           DISTINCT CONCAT(
@@ -510,27 +522,22 @@ class ProductModel {
       FROM eproducts p
 
       /* ---- Lowest price variant ---- */
-      LEFT JOIN (
-        SELECT pv.*
-        FROM product_variants pv
-        INNER JOIN (
-          SELECT product_id, MIN(sale_price) AS min_sale_price
-          FROM product_variants
-          WHERE sale_price IS NOT NULL
-          GROUP BY product_id
-        ) mv
-          ON pv.product_id = mv.product_id
-         AND pv.sale_price = mv.min_sale_price
-        INNER JOIN (
-          SELECT product_id, MIN(variant_id) AS min_variant_id
-          FROM product_variants
-          GROUP BY product_id
-        ) tie
-          ON pv.product_id = tie.product_id
-      ) v ON p.product_id = v.product_id
+      LEFT JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+          LIMIT 1
+        )
 
-      LEFT JOIN sub_categories sc ON p.subcategory_id = sc.subcategory_id
-      LEFT JOIN product_images pi ON p.product_id = pi.product_id
+      LEFT JOIN sub_categories sc 
+        ON sc.subcategory_id = p.subcategory_id
+
+      LEFT JOIN product_images pi 
+        ON p.product_id = pi.product_id
 
       ${whereClause}
       GROUP BY p.product_id
@@ -540,43 +547,50 @@ class ProductModel {
 
       const [rows] = await db.execute(query, [...params, limit, offset]);
 
-      const products = rows.map((row) => ({
-        product_id: row.product_id,
-        product_name: row.product_name,
-        brand_name: row.brand_name,
-        created_at: row.created_at,
-        mrp: row.mrp,
-        sale_price: row.sale_price,
-        images: row.images
-          ? row.images.split(",").map((i) => {
-              const [, image_url, , sort_order] = i.split("::");
-              return { image_url, sort_order: Number(sort_order) };
-            })
-          : [],
-      }));
+      const products = rows.map((row) => {
+        let images = [];
+
+        if (row.images) {
+          images = row.images.split(",").map((item) => {
+            const [image_id, image_url, type, sort_order] = item.split("::");
+            return {
+              image_id: Number(image_id),
+              image_url,
+              type,
+              sort_order: Number(sort_order),
+            };
+          });
+        }
+
+        return {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          brand_name: row.brand_name,
+          created_at: row.created_at,
+          mrp: row.mrp,
+          sale_price: row.sale_price,
+          reward_redemption_limit: row.reward_redemption_limit,
+          subcategory_name: row.subcategory_name,
+          images,
+        };
+      });
 
       const [[{ total }]] = await db.execute(
         `
       SELECT COUNT(DISTINCT p.product_id) AS total
       FROM eproducts p
-      LEFT JOIN (
-        SELECT pv.*
-        FROM product_variants pv
-        INNER JOIN (
-          SELECT product_id, MIN(sale_price) AS min_sale_price
-          FROM product_variants
-          WHERE sale_price IS NOT NULL
-          GROUP BY product_id
-        ) mv
-          ON pv.product_id = mv.product_id
-         AND pv.sale_price = mv.min_sale_price
-        INNER JOIN (
-          SELECT product_id, MIN(variant_id) AS min_variant_id
-          FROM product_variants
-          GROUP BY product_id
-        ) tie
-          ON pv.product_id = tie.product_id
-      ) v ON p.product_id = v.product_id
+
+      LEFT JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+          LIMIT 1
+        )
+
       ${whereClause}
       `,
         params,
