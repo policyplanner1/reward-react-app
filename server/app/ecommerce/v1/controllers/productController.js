@@ -387,12 +387,50 @@ class ProductController {
 
       // 2. New & Upcoming
       const [newLaunches] = await db.execute(`
-      SELECT product_id, product_name, cover_image
-      FROM eproducts
-      WHERE status = 'APPROVED' AND is_visible = 1
-      ORDER BY created_at DESC
-      LIMIT 5
-    `);
+        SELECT 
+          p.product_id,
+          p.product_name,
+          p.brand_name,
+          v.mrp,
+          v.sale_price,
+          v.reward_redemption_limit,
+
+          GROUP_CONCAT(
+            DISTINCT CONCAT(
+              pi.image_id, '::',
+              pi.image_url, '::',
+              pi.sort_order
+            )
+            ORDER BY pi.sort_order ASC
+          ) AS images
+
+        FROM eproducts p
+
+        /* ---- Cheapest Visible Variant ---- */
+        LEFT JOIN product_variants v
+          ON v.variant_id = (
+            SELECT pv2.variant_id
+            FROM product_variants pv2
+            WHERE pv2.product_id = p.product_id
+              AND pv2.is_visible = 1
+              AND pv2.sale_price IS NOT NULL
+            ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+            LIMIT 1
+          )
+
+        LEFT JOIN product_images pi
+          ON pi.product_id = p.product_id
+
+        WHERE
+          p.status = 'approved'
+          AND p.is_visible = 1
+          AND p.is_searchable = 1
+          AND v.variant_id IS NOT NULL
+
+        GROUP BY p.product_id
+        ORDER BY p.created_at DESC
+        LIMIT 5
+      `);
 
       // 3. Recently Viewed (needs userId)
       const userId = req.user?.user_id;
