@@ -282,6 +282,15 @@ class ProductController {
         });
       }
 
+      const product = await ProductModel.getProductById(productId);
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
       if (req.user?.user_id) {
         await db.execute(
           `
@@ -291,15 +300,6 @@ class ProductController {
           `,
           [req.user.user_id, productId],
         );
-      }
-
-      const product = await ProductModel.getProductById(productId);
-
-      if (!product) {
-        return res.status(404).json({
-          success: false,
-          message: "Product not found",
-        });
       }
 
       const processedProduct = {
@@ -444,7 +444,7 @@ class ProductController {
         LIMIT 5
       `);
 
-      // 3. Recently Viewed 
+      // 3. Recently Viewed
       let recentlyViewed = [];
       const userId = req.user?.user_id;
 
