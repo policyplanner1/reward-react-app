@@ -121,7 +121,7 @@ export default function SubcategoryManagement() {
     fetchSubcategories();
   }, []);
 
-  // 1️⃣ Filter by category
+  // 1 Filter by category
   const categoryFiltered = useMemo(() => {
     if (selectedCategoryId === "") return subcategories;
     return subcategories.filter(
@@ -129,7 +129,7 @@ export default function SubcategoryManagement() {
     );
   }, [subcategories, selectedCategoryId]);
 
-  // 2️⃣ Then filter by search
+  // 2 Then filter by search
   const filteredSubcategories = useMemo(() => {
     return categoryFiltered.filter((item) =>
       item.subcategory_name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -180,15 +180,15 @@ export default function SubcategoryManagement() {
       return;
     }
 
-    if (!newCoverImage) {
-      await Swal.fire({
-        title: "Cover image required",
-        text: "Please upload a cover image for this subcategory.",
-        icon: "warning",
-        confirmButtonText: "OK",
-      });
-      return;
-    }
+    // if (!newCoverImage) {
+    //   await Swal.fire({
+    //     title: "Cover image required",
+    //     text: "Please upload a cover image for this subcategory.",
+    //     icon: "warning",
+    //     confirmButtonText: "OK",
+    //   });
+    //   return;
+    // }
 
     // setLoadingAdd(true);
 
@@ -196,7 +196,9 @@ export default function SubcategoryManagement() {
       const formData = new FormData();
       formData.append("category_id", String(selectedCategoryId));
       formData.append("name", newSubcategoryName);
-      formData.append("cover_image", newCoverImage);
+      if (newCoverImage) {
+        formData.append("cover_image", newCoverImage);
+      }
 
       await api.post("/vendor/create-subcategory", formData, {
         headers: { "Content-Type": "multipart/form-data" },

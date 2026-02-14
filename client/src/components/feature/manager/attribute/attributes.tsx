@@ -279,7 +279,7 @@ export default function CategoryAttributeManagement() {
 
   {/* Type */}
   <div className="col-span-1 pr-4">
-    <label className="block text-sm text-gray-500 mb-1">Text</label>
+    <label className="block text-sm text-gray-500 mb-1">Input Type</label>
     <select
       value={form.input_type}
       onChange={(e) =>

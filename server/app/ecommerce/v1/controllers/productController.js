@@ -53,6 +53,7 @@ class ProductController {
           category: product.category_name,
           subcategory: product.subcategory_name,
           sub_subcategory: product.sub_subcategory_name,
+          short_description: product.short_description,
           image: mainImage,
           price: salePrice ? `₹${salePrice}` : null,
           originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
@@ -311,7 +312,7 @@ class ProductController {
     try {
       const [rows] = await db.execute(
         `SELECT * FROM categories
-        WHERE status = 1
+        WHERE status = 1 AND is_visible_in_ui = 1
         ORDER BY category_name ASC`,
       );
 
@@ -449,17 +450,42 @@ class ProductController {
         offset,
       });
 
-      const result = products.map((p) => ({
-        id: p.product_id,
-        title: p.product_name,
-        image: p.images && p.images.length ? p.images[0].image_url : null,
-        price: p.sale_price ? `₹${Number(p.sale_price).toFixed(0)}` : null,
-        originalPrice: p.mrp ? `₹${Number(p.mrp).toFixed(0)}` : null,
-      }));
+      const processedProducts = products.map((product) => {
+        const mainImage =
+          product.images && product.images.length
+            ? product.images[0].image_url
+            : null;
+
+        const salePrice = product.sale_price ? Number(product.sale_price) : 0;
+
+        const discountPercent = product.reward_redemption_limit
+          ? Number(product.reward_redemption_limit)
+          : 0;
+
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+
+        const finalPrice = salePrice - discountAmount;
+
+        const mrp = product.mrp ? Number(product.mrp) : 0;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        return {
+          id: product.product_id,
+          title: product.product_name,
+          image: mainImage,
+          price: `₹${salePrice}`,
+          originalPrice: `₹${mrp}`,
+          discount: `${mrpDiscountPercent}%`,
+          pointsPrice: `₹${finalPrice}`,
+          points: discountAmount,
+        };
+      });
 
       return res.json({
         success: true,
-        products: result,
+        products: processedProducts,
         total: totalItems,
         currentPage: page,
         totalPages: Math.ceil(totalItems / limit),

@@ -177,7 +177,7 @@ const initialProductData: ProductData = {
   shippingClass: "standard",
 };
 
-const allowOnlyAlphabets = (value: string) => /^[A-Za-z ]*$/.test(value);
+// const allowOnlyAlphabets = (value: string) => /^[A-Za-z ]*$/.test(value);
 
 export default function EditProductPage() {
   const { id: productId } = useParams<{ id: string }>();
@@ -401,11 +401,11 @@ export default function EditProductPage() {
     const { name, value } = e.target;
 
     /* ===== PRODUCT TEXT (ALPHABETS ONLY) ===== */
-    const productAlphabetFields = ["brandName", "manufacturer"];
+    // const productAlphabetFields = ["brandName", "manufacturer"];
 
-    if (productAlphabetFields.includes(name)) {
-      if (!allowOnlyAlphabets(value)) return;
-    }
+    // if (productAlphabetFields.includes(name)) {
+    //   if (!allowOnlyAlphabets(value)) return;
+    // }
 
     /* ===== CATEGORY LOGIC (UNCHANGED) ===== */
     if (name === "category_id") {

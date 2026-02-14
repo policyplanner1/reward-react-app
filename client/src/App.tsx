@@ -19,7 +19,6 @@ import ManagerLayout from "./layouts/ManagerLayout";
 import VendorDashboard from "./pages/vendor/Dashboard";
 import ManagerDashboard from "./pages/vendor_manager/Dashboard";
 
-/* Manager Features */
 import ProductApprovalList from "./components/feature/manager/product/ProductApprovalList";
 import CategoryManagement from "./components/feature/manager/category/Categories";
 import SubcategoryManagement from "./components/feature/manager/category/Subcategories";
@@ -39,8 +38,17 @@ import ReviewProductPage from "./components/feature/vendor/products/ProductView"
 import VendorApprovalList from "./components/feature/manager/vendor/VendorApprovalList";
 import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprovalForm";
 import NotFoundPage from "./pages/NotFound";
+
+/* Attribute */
 import AttributeManagement from "./components/feature/manager/attribute/attributes";
+
+/* Payment */
 import Payment from "./payment";
+
+/* Sales */
+import FlashSaleCreate from "./components/feature/manager/flashSale/FlashSaleCreate";
+import FlashSaleList from "./components/feature/manager/flashSale/FlashSaleList";
+import FlashSaleVariant from "./components/feature/manager/flashSale/FlashSaleVariant";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -165,6 +173,21 @@ export default function App() {
         <Route
           path={routes.manager.attributes}
           element={<AttributeManagement />}
+        />
+
+        {/* Flash Sale */}
+        <Route path={routes.manager.flashlist} element={<FlashSaleList />} />
+
+        <Route
+          path={routes.manager.flashCreate}
+          element={<FlashSaleCreate />}
+        />
+
+        <Route path="/manager/flash-sale/:id" element={<FlashSaleCreate />} />
+
+        <Route
+          path="/manager/flash-variants/:flashId"
+          element={<FlashSaleVariant />}
         />
       </Route>
 
