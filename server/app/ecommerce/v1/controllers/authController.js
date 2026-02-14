@@ -13,10 +13,14 @@ class AuthController {
   ====================================================== */
   async registerUser(req, res) {
     try {
-      const { name, email, phone, password } = req.body;
+      const { name, email, phone, password, cpassword } = req.body;
 
-      if (!name || !email || !password)
-        return res.status(400).json({ success: false });
+      if (!name || !email || !password || !cpassword)
+        return res.status(400).json({ success: false, message: "Please fill all fields" });
+
+      if(password !== cpassword) {
+        return res.status(400).json({ success: false, message: "Passwords do not match" });
+      }
 
       const normalizedEmail = email.trim().toLowerCase();
 
