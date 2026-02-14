@@ -282,6 +282,17 @@ class ProductController {
         });
       }
 
+      if (req.user?.user_id) {
+        await db.execute(
+          `
+            INSERT INTO recently_viewed (user_id, product_id)
+            VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE viewed_at = CURRENT_TIMESTAMP
+          `,
+          [req.user.user_id, productId],
+        );
+      }
+
       const product = await ProductModel.getProductById(productId);
 
       if (!product) {
@@ -374,8 +385,9 @@ class ProductController {
 
           JOIN eproducts p 
             ON p.category_id = c.category_id
-          AND p.status = 'APPROVED'
+          AND p.status = 'approved'
           AND p.is_visible = 1
+          AND p.is_searchable = 1
 
           WHERE c.status = 1
             AND c.is_visible_in_ui = 1
@@ -432,17 +444,55 @@ class ProductController {
         LIMIT 5
       `);
 
-      // 3. Recently Viewed (needs userId)
+      // 3. Recently Viewed 
+      let recentlyViewed = [];
       const userId = req.user?.user_id;
 
-      let recentlyViewed = [];
       if (userId) {
         const [rows] = await db.execute(
           `
-        SELECT p.product_id, p.product_name
+        SELECT 
+          p.product_id,
+          p.product_name,
+          v.sale_price,
+          v.mrp,
+
+          GROUP_CONCAT(
+            DISTINCT CONCAT(
+              pi.image_id, '::',
+              pi.image_url, '::',
+              pi.sort_order
+            )
+            ORDER BY pi.sort_order ASC
+          ) AS images
+
         FROM recently_viewed rv
-        JOIN eproducts p ON p.product_id = rv.product_id
-        WHERE rv.user_id = ?
+
+        JOIN eproducts p 
+          ON p.product_id = rv.product_id
+
+        LEFT JOIN product_variants v
+          ON v.variant_id = (
+            SELECT pv2.variant_id
+            FROM product_variants pv2
+            WHERE pv2.product_id = p.product_id
+              AND pv2.is_visible = 1
+              AND pv2.sale_price IS NOT NULL
+            ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+            LIMIT 1
+          )
+
+        LEFT JOIN product_images pi 
+          ON pi.product_id = p.product_id
+
+        WHERE
+          rv.user_id = ?
+          AND p.status = 'approved'
+          AND p.is_visible = 1
+          AND p.is_searchable = 1
+          AND v.variant_id IS NOT NULL
+
+        GROUP BY p.product_id
         ORDER BY rv.viewed_at DESC
         LIMIT 5
       `,
