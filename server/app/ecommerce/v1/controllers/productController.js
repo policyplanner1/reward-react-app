@@ -448,7 +448,8 @@ class ProductController {
 
       // 3. Recently Viewed
       let recentlyViewed = [];
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId = 1;
 
       if (userId) {
         const [rows] = await db.execute(
