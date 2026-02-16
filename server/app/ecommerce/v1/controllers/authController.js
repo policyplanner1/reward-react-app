@@ -16,10 +16,14 @@ class AuthController {
       const { name, email, phone, password, cpassword } = req.body;
 
       if (!name || !email || !password || !cpassword)
-        return res.status(400).json({ success: false, message: "Please fill all fields" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Please fill all fields" });
 
-      if(password !== cpassword) {
-        return res.status(400).json({ success: false, message: "Passwords do not match" });
+      if (password !== cpassword) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Passwords do not match" });
       }
 
       const normalizedEmail = email.trim().toLowerCase();
@@ -68,22 +72,48 @@ class AuthController {
   ====================================================== */
   async verifyEmail(req, res) {
     try {
-      const { token } = req.body;
+      const { token } = req.query;
+
+      if (!token) {
+        return res.status(400).send("Invalid verification link.");
+      }
 
       const users = await AuthModel.findByVerificationToken();
 
       for (const user of users) {
-        const match = await bcrypt.compare(token, user.verification_token);
+        const isMatch = await bcrypt.compare(token, user.verification_token);
 
-        if (match && new Date() < user.verification_token_expiry) {
+        if (
+          isMatch &&
+          user.verification_token_expiry &&
+          new Date() < new Date(user.verification_token_expiry)
+        ) {
           await AuthModel.markEmailVerified(user.user_id);
-          return res.json({ success: true });
+
+          return res.send(`
+          <html>
+            <head>
+              <title>Email Verified</title>
+            </head>
+            <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
+              <h2>Email verified successfully </h2>
+              <p>You can now return to the app and login.</p>
+            </body>
+          </html>
+        `);
         }
       }
 
-      return res.status(400).json({ success: false, message: "Invalid token" });
-    } catch (err) {
-      return res.status(500).json({ success: false });
+      return res.status(400).send(`
+      <html>
+        <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
+          <h2>Invalid or expired verification link </h2>
+          <p>Please request a new verification email.</p>
+        </body>
+      </html>
+    `);
+    } catch (error) {
+      return res.status(500).send("Internal server error");
     }
   }
 
