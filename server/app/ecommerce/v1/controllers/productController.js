@@ -373,151 +373,151 @@ class ProductController {
   }
 
   // discovery categories
-  async getCategoryDiscovery(req, res) {
-    try {
-      // 1. Top Categories
-      const [topCategories] = await db.execute(`
-          SELECT 
-            c.category_id,
-            c.category_name,
-            c.cover_image,
-            COUNT(p.product_id) AS product_count
+  // async getCategoryDiscovery(req, res) {
+  //   try {
+  //     // 1. Top Categories
+  //     const [topCategories] = await db.execute(`
+  //         SELECT 
+  //           c.category_id,
+  //           c.category_name,
+  //           c.cover_image,
+  //           COUNT(p.product_id) AS product_count
 
-          FROM categories c
+  //         FROM categories c
 
-          JOIN eproducts p 
-            ON p.category_id = c.category_id
-          AND p.status = 'approved'
-          AND p.is_visible = 1
-          AND p.is_searchable = 1
+  //         JOIN eproducts p 
+  //           ON p.category_id = c.category_id
+  //         AND p.status = 'approved'
+  //         AND p.is_visible = 1
+  //         AND p.is_searchable = 1
 
-          WHERE c.status = 1
-            AND c.is_visible_in_ui = 1
+  //         WHERE c.status = 1
+  //           AND c.is_visible_in_ui = 1
 
-          GROUP BY c.category_id
-          ORDER BY product_count DESC
-          LIMIT 5
-        `);
+  //         GROUP BY c.category_id
+  //         ORDER BY product_count DESC
+  //         LIMIT 5
+  //       `);
 
-      // 2. New & Upcoming
-      const [newLaunches] = await db.execute(`
-        SELECT 
-          p.product_id,
-          p.product_name,
-          p.brand_name,
-          v.mrp,
-          v.sale_price,
-          v.reward_redemption_limit,
+  //     // 2. New & Upcoming
+  //     const [newLaunches] = await db.execute(`
+  //       SELECT 
+  //         p.product_id,
+  //         p.product_name,
+  //         p.brand_name,
+  //         v.mrp,
+  //         v.sale_price,
+  //         v.reward_redemption_limit,
 
-          GROUP_CONCAT(
-            DISTINCT CONCAT(
-              pi.image_id, '::',
-              pi.image_url, '::',
-              pi.sort_order
-            )
-            ORDER BY pi.sort_order ASC
-          ) AS images
+  //         GROUP_CONCAT(
+  //           DISTINCT CONCAT(
+  //             pi.image_id, '::',
+  //             pi.image_url, '::',
+  //             pi.sort_order
+  //           )
+  //           ORDER BY pi.sort_order ASC
+  //         ) AS images
 
-        FROM eproducts p
+  //       FROM eproducts p
 
-        /* ---- Cheapest Visible Variant ---- */
-        LEFT JOIN product_variants v
-          ON v.variant_id = (
-            SELECT pv2.variant_id
-            FROM product_variants pv2
-            WHERE pv2.product_id = p.product_id
-              AND pv2.is_visible = 1
-              AND pv2.sale_price IS NOT NULL
-            ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
-            LIMIT 1
-          )
+  //       /* ---- Cheapest Visible Variant ---- */
+  //       LEFT JOIN product_variants v
+  //         ON v.variant_id = (
+  //           SELECT pv2.variant_id
+  //           FROM product_variants pv2
+  //           WHERE pv2.product_id = p.product_id
+  //             AND pv2.is_visible = 1
+  //             AND pv2.sale_price IS NOT NULL
+  //           ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+  //           LIMIT 1
+  //         )
 
-        LEFT JOIN product_images pi
-          ON pi.product_id = p.product_id
+  //       LEFT JOIN product_images pi
+  //         ON pi.product_id = p.product_id
 
-        WHERE
-          p.status = 'approved'
-          AND p.is_visible = 1
-          AND p.is_searchable = 1
-          AND v.variant_id IS NOT NULL
+  //       WHERE
+  //         p.status = 'approved'
+  //         AND p.is_visible = 1
+  //         AND p.is_searchable = 1
+  //         AND v.variant_id IS NOT NULL
 
-        GROUP BY p.product_id
-        ORDER BY p.created_at DESC
-        LIMIT 5
-      `);
+  //       GROUP BY p.product_id
+  //       ORDER BY p.created_at DESC
+  //       LIMIT 5
+  //     `);
 
-      // 3. Recently Viewed
-      let recentlyViewed = [];
-      // const userId = req.user?.user_id;
-      const userId = 1;
+  //     // 3. Recently Viewed
+  //     let recentlyViewed = [];
+  //     // const userId = req.user?.user_id;
+  //     const userId = 1;
 
-      if (userId) {
-        const [rows] = await db.execute(
-          `
-        SELECT 
-          p.product_id,
-          p.product_name,
-          v.sale_price,
-          v.mrp,
+  //     if (userId) {
+  //       const [rows] = await db.execute(
+  //         `
+  //       SELECT 
+  //         p.product_id,
+  //         p.product_name,
+  //         v.sale_price,
+  //         v.mrp,
 
-          GROUP_CONCAT(
-            DISTINCT CONCAT(
-              pi.image_id, '::',
-              pi.image_url, '::',
-              pi.sort_order
-            )
-            ORDER BY pi.sort_order ASC
-          ) AS images
+  //         GROUP_CONCAT(
+  //           DISTINCT CONCAT(
+  //             pi.image_id, '::',
+  //             pi.image_url, '::',
+  //             pi.sort_order
+  //           )
+  //           ORDER BY pi.sort_order ASC
+  //         ) AS images
 
-        FROM recently_viewed rv
+  //       FROM recently_viewed rv
 
-        JOIN eproducts p 
-          ON p.product_id = rv.product_id
+  //       JOIN eproducts p 
+  //         ON p.product_id = rv.product_id
 
-        LEFT JOIN product_variants v
-          ON v.variant_id = (
-            SELECT pv2.variant_id
-            FROM product_variants pv2
-            WHERE pv2.product_id = p.product_id
-              AND pv2.is_visible = 1
-              AND pv2.sale_price IS NOT NULL
-            ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
-            LIMIT 1
-          )
+  //       LEFT JOIN product_variants v
+  //         ON v.variant_id = (
+  //           SELECT pv2.variant_id
+  //           FROM product_variants pv2
+  //           WHERE pv2.product_id = p.product_id
+  //             AND pv2.is_visible = 1
+  //             AND pv2.sale_price IS NOT NULL
+  //           ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+  //           LIMIT 1
+  //         )
 
-        LEFT JOIN product_images pi 
-          ON pi.product_id = p.product_id
+  //       LEFT JOIN product_images pi 
+  //         ON pi.product_id = p.product_id
 
-        WHERE
-          rv.user_id = ?
-          AND p.status = 'approved'
-          AND p.is_visible = 1
-          AND p.is_searchable = 1
-          AND v.variant_id IS NOT NULL
+  //       WHERE
+  //         rv.user_id = ?
+  //         AND p.status = 'approved'
+  //         AND p.is_visible = 1
+  //         AND p.is_searchable = 1
+  //         AND v.variant_id IS NOT NULL
 
-        GROUP BY p.product_id
-        ORDER BY rv.viewed_at DESC
-        LIMIT 5
-      `,
-          [userId],
-        );
+  //       GROUP BY p.product_id
+  //       ORDER BY rv.viewed_at DESC
+  //       LIMIT 5
+  //     `,
+  //         [userId],
+  //       );
 
-        recentlyViewed = rows;
-      }
+  //       recentlyViewed = rows;
+  //     }
 
-      return res.json({
-        success: true,
-        data: {
-          topCategories,
-          newLaunches,
-          recentlyViewed,
-        },
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ success: false });
-    }
-  }
+  //     return res.json({
+  //       success: true,
+  //       data: {
+  //         topCategories,
+  //         newLaunches,
+  //         recentlyViewed,
+  //       },
+  //     });
+  //   } catch (error) {
+  //     console.error(error);
+  //     res.status(500).json({ success: false });
+  //   }
+  // }
 
   // subcategories by category ID
   async getSubcategoriesByCategory(req, res) {
@@ -550,6 +550,63 @@ class ProductController {
       res.status(500).json({ success: false, message: err.message });
     }
   }
+
+  // category with subcategories
+  async getCategoriesWithSubcategories(req, res) {
+  try {
+    const [rows] = await db.execute(`
+      SELECT 
+        c.category_id,
+        c.category_name,
+        c.cover_image AS category_image,
+        sc.subcategory_id,
+        sc.subcategory_name,
+        sc.cover_image AS subcategory_image
+      FROM categories c
+      LEFT JOIN sub_categories sc 
+        ON sc.category_id = c.category_id 
+        AND sc.status = 1
+      WHERE c.status = 1 
+        AND c.is_visible_in_ui = 1
+      ORDER BY c.category_name ASC, sc.subcategory_name ASC
+    `);
+
+    const categoryMap = {};
+
+    rows.forEach((row) => {
+      // If category not yet added
+      if (!categoryMap[row.category_id]) {
+        categoryMap[row.category_id] = {
+          id: row.category_id,
+          name: row.category_name,
+          image: row.category_image,
+          subcategories: [],
+        };
+      }
+
+      // If subcategory exists
+      if (row.subcategory_id) {
+        categoryMap[row.category_id].subcategories.push({
+          id: row.subcategory_id,
+          name: row.subcategory_name,
+          image: row.subcategory_image,
+        });
+      }
+    });
+
+    const result = Object.values(categoryMap);
+
+    res.json({
+      success: true,
+      data: result,
+    });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+
 
   // Similar Products
   async getSimilarProducts(req, res) {

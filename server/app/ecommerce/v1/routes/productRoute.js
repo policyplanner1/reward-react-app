@@ -35,8 +35,12 @@ router.get(
   ProductController.getSubcategoriesByCategory,
 );
 
-// product discovery
-router.get("/categories/discovery", ProductController.getCategoryDiscovery);
+// category with subcategories
+router.get(
+  "/categories-with-subcategories",
+  ProductController.getCategoriesWithSubcategories,
+);
+
 
 /* ======================================================Suggestion============================================ */
 
