@@ -291,14 +291,16 @@ class ProductController {
         });
       }
 
-      if (req.user?.user_id) {
+      // if (req.user?.user_id) {
+      if (1) {
         await db.execute(
           `
             INSERT INTO recently_viewed (user_id, product_id)
             VALUES (?, ?)
             ON DUPLICATE KEY UPDATE viewed_at = CURRENT_TIMESTAMP
           `,
-          [req.user.user_id, productId],
+          // [req.user.user_id, productId],
+          [1, productId],
         );
       }
 
