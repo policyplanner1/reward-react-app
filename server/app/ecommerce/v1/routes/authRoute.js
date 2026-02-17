@@ -7,14 +7,14 @@ const { uploadReviewMedia } = require("../../../../middleware/productUpload");
 /*============================================Profile=================================================*/
 
 router.post("/register", authController.registerUser);
-router.post("/verify-email", authController.verifyEmail);
 router.post("/login", authController.loginUser);
-router.post("/refresh", authController.refreshAccessToken);
-router.post("/logout", authController.logoutUser);
-router.post("/logout-all", auth, authController.logoutAllDevices);
-router.post("/forgot-password", authController.forgotPassword);
-router.post("/reset-password", authController.resetPassword);
-router.post("/resend-verification", authController.resendVerification);
+// router.post("/verify-email", authController.verifyEmail);
+// router.post("/refresh", authController.refreshAccessToken);
+// router.post("/logout", authController.logoutUser);
+// router.post("/logout-all", auth, authController.logoutAllDevices);
+// router.post("/forgot-password", authController.forgotPassword);
+// router.post("/reset-password", authController.resetPassword);
+// router.post("/resend-verification", authController.resendVerification);
 
 /*=============================================Address================================================*/
 // Fetch all the countries
