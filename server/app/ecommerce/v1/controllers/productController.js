@@ -738,11 +738,12 @@ class ProductController {
   // Save History
   async saveSearchHistory(req, res) {
     try {
-      if (!req.user?.user_id) {
-        return res.status(401).json({ success: false });
-      }
+      // if (!req.user?.user_id) {
+      //   return res.status(401).json({ success: false });
+      // }
 
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId = 1;
 
       const keyword = (req.body.keyword || "").trim();
 
@@ -772,11 +773,12 @@ class ProductController {
   // Get Search History
   async getSearchHistory(req, res) {
     try {
-      if (!req.user?.user_id) {
-        return res.status(401).json({ success: false });
-      }
+      // if (!req.user?.user_id) {
+      //   return res.status(401).json({ success: false });
+      // }
 
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId = 1;
 
       const [rows] = await db.execute(
         `
