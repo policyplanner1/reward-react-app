@@ -649,16 +649,11 @@ class ProductController {
     try {
       const q = (req.query.q || "").trim();
       const limit = 10;
-      const products = await ProductModel.getSearchSuggestions({
+
+      const suggestions = await ProductModel.getSearchSuggestions({
         search: q,
         limit,
       });
-
-      const suggestions = products.map((p) => ({
-        id: p.product_id,
-        title: p.product_name,
-        image: p.images && p.images.length ? p.images[0].image_url : null,
-      }));
 
       res.json({
         success: true,
@@ -666,9 +661,10 @@ class ProductController {
       });
     } catch (err) {
       console.error("Search suggestion error:", err);
-      res
-        .status(500)
-        .json({ success: false, message: "Internal server error" });
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
     }
   }
 
