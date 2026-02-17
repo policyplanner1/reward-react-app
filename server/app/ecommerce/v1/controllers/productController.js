@@ -377,7 +377,7 @@ class ProductController {
   //   try {
   //     // 1. Top Categories
   //     const [topCategories] = await db.execute(`
-  //         SELECT 
+  //         SELECT
   //           c.category_id,
   //           c.category_name,
   //           c.cover_image,
@@ -385,7 +385,7 @@ class ProductController {
 
   //         FROM categories c
 
-  //         JOIN eproducts p 
+  //         JOIN eproducts p
   //           ON p.category_id = c.category_id
   //         AND p.status = 'approved'
   //         AND p.is_visible = 1
@@ -401,7 +401,7 @@ class ProductController {
 
   //     // 2. New & Upcoming
   //     const [newLaunches] = await db.execute(`
-  //       SELECT 
+  //       SELECT
   //         p.product_id,
   //         p.product_name,
   //         p.brand_name,
@@ -454,7 +454,7 @@ class ProductController {
   //     if (userId) {
   //       const [rows] = await db.execute(
   //         `
-  //       SELECT 
+  //       SELECT
   //         p.product_id,
   //         p.product_name,
   //         v.sale_price,
@@ -471,7 +471,7 @@ class ProductController {
 
   //       FROM recently_viewed rv
 
-  //       JOIN eproducts p 
+  //       JOIN eproducts p
   //         ON p.product_id = rv.product_id
 
   //       LEFT JOIN product_variants v
@@ -485,7 +485,7 @@ class ProductController {
   //           LIMIT 1
   //         )
 
-  //       LEFT JOIN product_images pi 
+  //       LEFT JOIN product_images pi
   //         ON pi.product_id = p.product_id
 
   //       WHERE
@@ -553,8 +553,8 @@ class ProductController {
 
   // category with subcategories
   async getCategoriesWithSubcategories(req, res) {
-  try {
-    const [rows] = await db.execute(`
+    try {
+      const [rows] = await db.execute(`
       SELECT 
         c.category_id,
         c.category_name,
@@ -571,42 +571,39 @@ class ProductController {
       ORDER BY c.category_name ASC, sc.subcategory_name ASC
     `);
 
-    const categoryMap = {};
+      const categoryMap = {};
 
-    rows.forEach((row) => {
-      // If category not yet added
-      if (!categoryMap[row.category_id]) {
-        categoryMap[row.category_id] = {
-          id: row.category_id,
-          name: row.category_name,
-          image: row.category_image,
-          subcategories: [],
-        };
-      }
+      rows.forEach((row) => {
+        // If category not yet added
+        if (!categoryMap[row.category_id]) {
+          categoryMap[row.category_id] = {
+            id: row.category_id,
+            name: row.category_name,
+            image: row.category_image,
+            subcategories: [],
+          };
+        }
 
-      // If subcategory exists
-      if (row.subcategory_id) {
-        categoryMap[row.category_id].subcategories.push({
-          id: row.subcategory_id,
-          name: row.subcategory_name,
-          image: row.subcategory_image,
-        });
-      }
-    });
+        // If subcategory exists
+        if (row.subcategory_id) {
+          categoryMap[row.category_id].subcategories.push({
+            id: row.subcategory_id,
+            name: row.subcategory_name,
+            image: row.subcategory_image,
+          });
+        }
+      });
 
-    const result = Object.values(categoryMap);
+      const result = Object.values(categoryMap);
 
-    res.json({
-      success: true,
-      data: result,
-    });
-
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
   }
-}
-
-
 
   // Similar Products
   async getSimilarProducts(req, res) {
@@ -741,7 +738,12 @@ class ProductController {
   // Save History
   async saveSearchHistory(req, res) {
     try {
+      if (!req.user?.user_id) {
+        return res.status(401).json({ success: false });
+      }
+
       const userId = req.user?.user_id;
+
       const keyword = (req.body.keyword || "").trim();
 
       if (!keyword) {
@@ -770,6 +772,10 @@ class ProductController {
   // Get Search History
   async getSearchHistory(req, res) {
     try {
+      if (!req.user?.user_id) {
+        return res.status(401).json({ success: false });
+      }
+
       const userId = req.user?.user_id;
 
       const [rows] = await db.execute(

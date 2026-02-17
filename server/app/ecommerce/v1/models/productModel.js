@@ -617,6 +617,10 @@ class ProductModel {
   async getSearchSuggestions({ search, limit }) {
     const params = [];
 
+    if (!search) {
+      return [];
+    }
+
     const query = `
     SELECT 
       p.product_id,
@@ -650,6 +654,7 @@ class ProductModel {
     WHERE
       p.status = 'approved'
       AND p.is_visible = 1
+      AND p.is_searchable = 1
       AND v.variant_id IS NOT NULL
       AND p.product_name LIKE ?
 

@@ -54,9 +54,13 @@ router.get("/search/suggestions", ProductController.getSearchSuggestions);
 router.get("/search/products", ProductController.loadProducts);
 
 // save search history
-router.post("/search/history", ProductController.saveSearchHistory);
+router.post("/search/history", 
+  // auth,
+  ProductController.saveSearchHistory);
 
 //fetch search history
-router.get("/search/history", ProductController.getSearchHistory);
+router.get("/search/history", 
+  // auth,
+  ProductController.getSearchHistory);
 
 module.exports = router;
