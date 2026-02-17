@@ -12,6 +12,7 @@ const subSubCategoryRoutes = require("./subSubCategoryRoutes");
 const paymentRoute=require('../common/Routes/indexRoute')
 const offerRoute=require('./offerRoute')
 const flashRoutes=require('./flashSaleRoute')
+const orderRoutes=require('./orderRoutes')
 
 // dashboard Routes
 router.use("/auth", authRoutes);
@@ -26,5 +27,6 @@ router.use("/subsubcategory", subSubCategoryRoutes);
 router.use("/payment",paymentRoute)
 router.use("/offer",offerRoute)
 router.use("/flash",flashRoutes)
+router.use("/order",orderRoutes)
 
 module.exports = router;
