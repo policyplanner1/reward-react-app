@@ -614,12 +614,77 @@ class ProductModel {
   }
 
   // Search Suggestions
-  async getSearchSuggestions({ search, limit }) {
-    const params = [];
+  // async getSearchSuggestions({ search, limit }) {
+  //   const params = [];
 
+  //   if (!search) {
+  //     return [];
+  //   }
+
+  //   const query = `
+  //   SELECT
+  //     p.product_id,
+  //     p.product_name,
+
+  //     GROUP_CONCAT(
+  //       DISTINCT CONCAT(
+  //         pi.image_id, '::',
+  //         pi.image_url, '::',
+  //         pi.sort_order
+  //       )
+  //       ORDER BY pi.sort_order ASC
+  //     ) AS images
+
+  //   FROM eproducts p
+
+  //   /* ---- ensure at least one visible variant exists ---- */
+  //   LEFT JOIN product_variants v
+  //     ON v.variant_id = (
+  //       SELECT pv2.variant_id
+  //       FROM product_variants pv2
+  //       WHERE pv2.product_id = p.product_id
+  //         AND pv2.is_visible = 1
+  //         AND pv2.sale_price IS NOT NULL
+  //       ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+  //       LIMIT 1
+  //     )
+
+  //   LEFT JOIN product_images pi ON p.product_id = pi.product_id
+
+  //   WHERE
+  //     p.status = 'approved'
+  //     AND p.is_visible = 1
+  //     AND p.is_searchable = 1
+  //     AND v.variant_id IS NOT NULL
+  //     AND p.product_name LIKE ?
+
+  //   GROUP BY p.product_id
+  //   ORDER BY p.created_at DESC
+  //   LIMIT ?
+  // `;
+
+  //   params.push(`%${search}%`, limit);
+
+  //   const [rows] = await db.execute(query, params);
+
+  //   return rows.map((row) => ({
+  //     product_id: row.product_id,
+  //     product_name: row.product_name,
+  //     images: row.images
+  //       ? row.images.split(",").map((i) => {
+  //           const [, image_url] = i.split("::");
+  //           return { image_url };
+  //         })
+  //       : [],
+  //   }));
+  // }
+
+  async getSearchSuggestions({ search, limit }) {
     if (!search) {
       return [];
     }
+
+    const keyword = `%${search}%`;
 
     const query = `
     SELECT 
@@ -637,7 +702,7 @@ class ProductModel {
 
     FROM eproducts p
 
-    /* ---- ensure at least one visible variant exists ---- */
+    /* ---- Cheapest Visible Variant ---- */
     LEFT JOIN product_variants v
       ON v.variant_id = (
         SELECT pv2.variant_id
@@ -649,21 +714,37 @@ class ProductModel {
         LIMIT 1
       )
 
-    LEFT JOIN product_images pi ON p.product_id = pi.product_id
+    LEFT JOIN categories c 
+      ON c.category_id = p.category_id
+
+    LEFT JOIN sub_categories sc 
+      ON sc.subcategory_id = p.subcategory_id
+
+    LEFT JOIN sub_sub_categories ssc 
+      ON ssc.sub_subcategory_id = p.sub_subcategory_id
+
+    LEFT JOIN product_images pi 
+      ON pi.product_id = p.product_id
 
     WHERE
       p.status = 'approved'
       AND p.is_visible = 1
       AND p.is_searchable = 1
       AND v.variant_id IS NOT NULL
-      AND p.product_name LIKE ?
+      AND (
+        p.product_name LIKE ?
+        OR p.brand_name LIKE ?
+        OR c.category_name LIKE ?
+        OR sc.subcategory_name LIKE ?
+        OR ssc.name LIKE ?
+      )
 
     GROUP BY p.product_id
     ORDER BY p.created_at DESC
     LIMIT ?
   `;
 
-    params.push(`%${search}%`, limit);
+    const params = [keyword, keyword, keyword, keyword, keyword, limit];
 
     const [rows] = await db.execute(query, params);
 
