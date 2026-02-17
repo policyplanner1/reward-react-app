@@ -622,7 +622,7 @@ class ProductModel {
     const keyword = `%${search}%`;
 
     /* ========================================
-     1️⃣ Category Suggestions
+     1 Category Suggestions
   ======================================== */
     const [categories] = await db.execute(
       `
@@ -641,7 +641,7 @@ class ProductModel {
     );
 
     /* ========================================
-     2️⃣ Subcategory Suggestions
+     2 Subcategory Suggestions
   ======================================== */
     const [subcategories] = await db.execute(
       `
@@ -659,7 +659,7 @@ class ProductModel {
     );
 
     /* ========================================
-     3️⃣ Product Suggestions (First Image Only)
+     3 Product Suggestions
   ======================================== */
     const [products] = await db.execute(
       `
@@ -670,6 +670,27 @@ class ProductModel {
       'product' AS type
 
     FROM eproducts p
+
+    /* ---- Ensure visible priced variant exists ---- */
+    LEFT JOIN product_variants v
+      ON v.variant_id = (
+        SELECT pv2.variant_id
+        FROM product_variants pv2
+        WHERE pv2.product_id = p.product_id
+          AND pv2.is_visible = 1
+          AND pv2.sale_price IS NOT NULL
+        ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+        LIMIT 1
+      )
+
+    LEFT JOIN categories c 
+      ON c.category_id = p.category_id
+
+    LEFT JOIN sub_categories sc 
+      ON sc.subcategory_id = p.subcategory_id
+
+    LEFT JOIN sub_sub_categories ssc 
+      ON ssc.sub_subcategory_id = p.sub_subcategory_id
 
     LEFT JOIN product_images pi
       ON pi.image_id = (
@@ -684,13 +705,23 @@ class ProductModel {
       p.status = 'approved'
       AND p.is_visible = 1
       AND p.is_searchable = 1
-      AND p.product_name LIKE ?
+      AND v.variant_id IS NOT NULL
+      AND (
+        p.product_name LIKE ?
+        OR p.brand_name LIKE ?
+        OR c.category_name LIKE ?
+        OR sc.subcategory_name LIKE ?
+        OR ssc.name LIKE ?
+      )
 
     LIMIT ?
     `,
-      [keyword, limit],
+      [keyword, keyword, keyword, keyword, keyword, limit],
     );
 
+    /* ========================================
+     Combine Results
+  ======================================== */
     return [...categories, ...subcategories, ...products].slice(0, limit);
   }
 
@@ -776,6 +807,7 @@ class ProductModel {
   // }
 
   // Load Products
+
   async loadProducts({ search, limit, offset }) {
     return this.getProductsByCategory({
       search,
