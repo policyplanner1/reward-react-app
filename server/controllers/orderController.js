@@ -36,6 +36,41 @@ class OrderController {
       });
     }
   }
+
+  // order Details
+  async getAdminOrderDetails(req, res) {
+    try {
+      const orderId = Number(req.params.orderId);
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid order id",
+        });
+      }
+
+      const data = await orderModel.getAdminOrderDetails(orderId);
+
+      return res.json({
+        success: true,
+        ...data,
+      });
+    } catch (error) {
+      console.error("Admin order details error:", error);
+
+      if (error.message === "ORDER_NOT_FOUND") {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch order details",
+      });
+    }
+  }
 }
 
 module.exports = new OrderController();
