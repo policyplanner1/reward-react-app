@@ -108,22 +108,22 @@ class CheckoutController {
       });
 
       // WhatsApp Notification
-      // const orderCtx = await getOrderWhatsAppContext(orderId);
+      const orderCtx = await getOrderWhatsAppContext(orderId);
 
-      // if (orderCtx?.phone) {
-      //   enqueueWhatsApp({
-      //     eventName: "order_place_confirm",
-      //     ctx: {
-      //       phone: orderCtx.phone,
-      //       company_id: orderCtx.company_id ?? company_id ?? null,
-      //       customer_name: orderCtx.customer_name || "User",
-      //       order_id: orderCtx.order_ref || orderCtx.order_id,
-      //       total_amount: orderCtx.total_amount,
-      //     },
-      //   }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
-      // } else {
-      //   console.warn("WA not enqueued: missing customer phone for order:", orderId);
-      // }
+      if (orderCtx?.phone) {
+        enqueueWhatsApp({
+          eventName: "order_place_confirm",
+          ctx: {
+            phone: orderCtx.phone,
+            company_id: orderCtx.company_id ?? company_id ?? null,
+            customer_name: orderCtx.customer_name || "User",
+            order_id: orderCtx.order_ref || orderCtx.order_id,
+            total_amount: orderCtx.total_amount,
+          },
+        }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
+      } else {
+        console.warn("WA not enqueued: missing customer phone for order:", orderId);
+      }
 
       return res.json({
         success: true,
