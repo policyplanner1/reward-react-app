@@ -13,11 +13,11 @@ class authModel {
     return rows[0];
   }
 
-  async createCustomer({ name, email, phone, password,status = 1}) {
+  async createCustomer({ name, email, phone, password, status = 1 }) {
     const [result] = await db.execute(
       `INSERT INTO customer (name, email, phone, password,status)
        VALUES (?, ?, ?, ?, ?)`,
-      [name, email, phone, password,status],
+      [name, email, phone, password, status],
     );
     return result.insertId;
   }
@@ -331,6 +331,72 @@ class authModel {
     }
 
     return reviews;
+  }
+
+  // Customer Info
+  async getUserInfo(userId) {
+    const [[user]] = await db.execute(
+      `
+    SELECT 
+      cu.user_id,
+      cu.name,
+      cu.email,
+      cu.phone,
+
+      ca.address_id,
+      ca.address_type,
+      ca.address1,
+      ca.address2,
+      ca.city,
+      ca.zipcode,
+      ca.landmark,
+
+      s.state_name,
+      c.country_name
+
+    FROM customer cu
+
+    LEFT JOIN customer_addresses ca
+      ON cu.user_id = ca.user_id
+      AND ca.is_default = 1
+      AND ca.status = 1
+
+    LEFT JOIN states s
+      ON ca.state_id = s.state_id
+
+    LEFT JOIN countries c
+      ON ca.country_id = c.country_id
+
+    WHERE cu.user_id = ?
+      AND cu.status = 1
+
+    LIMIT 1
+    `,
+      [userId],
+    );
+
+    if (!user) return null;
+
+    return {
+      userId: user.user_id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+
+      defaultAddress: user.address_id
+        ? {
+            addressId: user.address_id,
+            type: user.address_type,
+            line1: user.address1,
+            line2: user.address2,
+            city: user.city,
+            state: user.state_name,
+            country: user.country_name,
+            zipcode: user.zipcode,
+            landmark: user.landmark,
+          }
+        : null,
+    };
   }
 }
 

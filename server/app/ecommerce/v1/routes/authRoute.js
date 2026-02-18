@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
 const auth = require("../middlewares/auth");
+const optionalAuth = require("../middlewares/optionalAuth");
 const { uploadReviewMedia } = require("../../../../middleware/productUpload");
 
 /*============================================Profile=================================================*/
@@ -45,6 +46,9 @@ router.get("/addresses", authController.getMyAddresses);
 // Get address By ID
 // router.get("/address/:address_id", auth, authController.getAddressById);
 router.get("/address/:address_id", authController.getAddressById);
+
+/*===================================================User Information===========================================*/
+router.get("/user-info", optionalAuth, authController.getUserInfo);
 
 /*===================================================Review===========================================*/
 

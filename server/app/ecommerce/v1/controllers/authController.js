@@ -34,7 +34,7 @@ class AuthController {
       await AuthModel.createCustomer({
         name,
         email: normalizedEmail,
-        phone:phone,
+        phone: phone,
         password: hashedPassword,
       });
 
@@ -83,7 +83,7 @@ class AuthController {
         },
       });
     } catch (err) {
-      return res.status(500).json({ success: false,message:err.message });
+      return res.status(500).json({ success: false, message: err.message });
     }
   }
 
@@ -767,6 +767,41 @@ class AuthController {
       return res.status(500).json({
         success: false,
         message: "Failed to fetch reviews",
+      });
+    }
+  }
+
+  // Get user Info
+  async getUserInfo(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      const userInfo = await AuthModel.getUserInfo(userId);
+
+      if (!userInfo) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: userInfo,
+      });
+    } catch (error) {
+      console.error("Get User Info Error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch user info",
       });
     }
   }
