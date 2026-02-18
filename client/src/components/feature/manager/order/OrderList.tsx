@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "../../../../api/api";
 
 interface Order {
   order_id: number;
@@ -23,8 +24,6 @@ interface OrderListResponse {
   currentPage: number;
 }
 
-const API_BASE = "http://localhost:5000"; // move to env later
-
 const OrderList: React.FC = () => {
   const navigate = useNavigate();
 
@@ -36,59 +35,41 @@ const OrderList: React.FC = () => {
 
   const limit = 10;
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    const loadOrders = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+      const res = await api.get<OrderListResponse>("/order/order-list", {
+        params: {
+          page,
+          limit,
+        },
+      });
 
-        const response = await fetch(
-          `${API_BASE}/order-list?page=${page}&limit=${limit}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              // Authorization: `Bearer ${localStorage.getItem("accessToken")}`, // if needed
-            },
-            signal: controller.signal,
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data: OrderListResponse = await response.json();
-
-        if (!data.success) {
-          throw new Error("Failed to load orders");
-        }
-
-        setOrders(data.orders);
-        setTotalPages(data.totalPages);
-      } catch (err: any) {
-        if (err.name !== "AbortError") {
-          console.error("Failed to fetch orders:", err);
-          setError("Unable to load orders.");
-        }
-      } finally {
-        setLoading(false);
+      if (!res.data.success) {
+        throw new Error("Failed to load orders");
       }
-    };
 
-    loadOrders();
+      setOrders(res.data.orders);
+      setTotalPages(res.data.totalPages);
+    } catch (err) {
+      console.error("Failed to fetch orders", err);
+      setError("Unable to load orders.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return () => controller.abort();
+  useEffect(() => {
+    fetchOrders();
   }, [page]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-IN", {
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
     }).format(amount);
-  };
 
   const getStatusStyle = (status: string) => {
     switch (status.toLowerCase()) {
@@ -168,13 +149,9 @@ const OrderList: React.FC = () => {
                     <td>{order.item_count}</td>
                     <td>
                       <button
-                        style={{
-                          padding: "6px 12px",
-                          cursor: "pointer",
-                        }}
                         onClick={() =>
                           navigate(
-                            `/admin/order-details/${order.order_id}`
+                            `/order/order-details/${order.order_id}`
                           )
                         }
                       >
@@ -188,14 +165,7 @@ const OrderList: React.FC = () => {
           </table>
 
           {/* Pagination */}
-          <div
-            style={{
-              marginTop: "20px",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
+          <div style={{ marginTop: "20px" }}>
             <button
               disabled={page === 1}
               onClick={() => setPage((prev) => prev - 1)}
@@ -203,7 +173,7 @@ const OrderList: React.FC = () => {
               Prev
             </button>
 
-            <span>
+            <span style={{ margin: "0 10px" }}>
               Page {page} of {totalPages}
             </span>
 
