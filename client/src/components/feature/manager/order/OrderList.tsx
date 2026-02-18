@@ -15,6 +15,8 @@ interface Order {
   product_name: string | null;
   brand_name: string | null;
   image: string | null;
+  shipping_status?: string;
+  awb_number?: string;
 }
 
 interface OrderListResponse {
@@ -65,6 +67,25 @@ const OrderList: React.FC = () => {
   useEffect(() => {
     fetchOrders();
   }, [page]);
+
+  const handleCreateShipment = async (orderId: number) => {
+    try {
+      setLoading(true);
+
+      const res = await api.post(`/order/create-shipment/${orderId}`);
+
+      if (!res.data.success) {
+        throw new Error("Shipment creation failed");
+      }
+
+      fetchOrders(); 
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create shipment");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-IN", {
@@ -151,6 +172,21 @@ const OrderList: React.FC = () => {
                         >
                           View
                         </button>
+
+                        {order.status === "paid" && !order.awb_number && (
+                          <button
+                            className="ship-btn"
+                            onClick={() => handleCreateShipment(order.order_id)}
+                          >
+                            Create Shipment
+                          </button>
+                        )}
+
+                        {order.awb_number && (
+                          <span className="awb-text">
+                            AWB: {order.awb_number}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))
