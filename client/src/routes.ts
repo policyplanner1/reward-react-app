@@ -30,5 +30,6 @@ export const routes = {
     flashlist: "/manager/flashlist",
     flashCreate: "/manager/flash-sale",
     orders: "/manager/orders",
+    orderView: "/manager/order-view/:orderId",
   },
 };
