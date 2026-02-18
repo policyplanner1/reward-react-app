@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
+import "./css/orderList.css";
 
 interface Order {
   order_id: number;
@@ -89,83 +90,77 @@ const OrderList: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Order List</h2>
+    <div className="order-page">
+      <div className="order-header">
+        <h2>Orders</h2>
+      </div>
 
-      {loading && <p>Loading orders...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {loading && <p className="loading">Loading orders...</p>}
+      {error && <p className="error">{error}</p>}
 
       {!loading && !error && (
         <>
-          <table
-            border={1}
-            cellPadding={10}
-            cellSpacing={0}
-            style={{ width: "100%", marginTop: "20px" }}
-          >
-            <thead>
-              <tr>
-                <th>Order Ref</th>
-                <th>Product</th>
-                <th>Brand</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Items</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {orders.length === 0 ? (
+          <div className="table-wrapper">
+            <table className="order-table">
+              <thead>
                 <tr>
-                  <td colSpan={8} align="center">
-                    No orders found
-                  </td>
+                  <th>Order Ref</th>
+                  <th>Product</th>
+                  <th>Brand</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>Items</th>
+                  <th>Action</th>
                 </tr>
-              ) : (
-                orders.map((order) => (
-                  <tr key={order.order_id}>
-                    <td>{order.order_ref}</td>
-                    <td>{order.product_name ?? "-"}</td>
-                    <td>{order.brand_name ?? "-"}</td>
-                    <td>{formatCurrency(order.total_amount)}</td>
-                    <td>
-                      <span
-                        style={{
-                          padding: "4px 8px",
-                          borderRadius: "4px",
-                          fontSize: "12px",
-                          fontWeight: 500,
-                          ...getStatusStyle(order.status),
-                        }}
-                      >
-                        {order.status}
-                      </span>
-                    </td>
-                    <td>
-                      {new Date(order.created_at).toLocaleDateString("en-IN")}
-                    </td>
-                    <td>{order.item_count}</td>
-                    <td>
-                      <button
-                        onClick={() =>
-                          navigate(
-                            `/order/order-details/${order.order_id}`
-                          )
-                        }
-                      >
-                        View
-                      </button>
+              </thead>
+
+              <tbody>
+                {orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="no-data">
+                      No orders found
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  orders.map((order) => (
+                    <tr key={order.order_id}>
+                      <td className="order-ref">{order.order_ref}</td>
+                      <td>{order.product_name ?? "-"}</td>
+                      <td>{order.brand_name ?? "-"}</td>
+                      <td className="amount">
+                        {formatCurrency(order.total_amount)}
+                      </td>
+                      <td>
+                        <span
+                          className={`status-badge status-${order.status.toLowerCase()}`}
+                        >
+                          {order.status}
+                        </span>
+                      </td>
+                      <td>
+                        {new Date(order.created_at).toLocaleDateString("en-IN")}
+                      </td>
+                      <td>{order.item_count}</td>
+                      <td>
+                        <button
+                          className="view-btn"
+                          onClick={() =>
+                            navigate(`/order/order-details/${order.order_id}`)
+                          }
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
           {/* Pagination */}
-          <div style={{ marginTop: "20px" }}>
+          <div className="pagination">
             <button
               disabled={page === 1}
               onClick={() => setPage((prev) => prev - 1)}
@@ -173,7 +168,7 @@ const OrderList: React.FC = () => {
               Prev
             </button>
 
-            <span style={{ margin: "0 10px" }}>
+            <span>
               Page {page} of {totalPages}
             </span>
 
