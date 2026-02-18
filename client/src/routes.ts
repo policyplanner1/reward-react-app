@@ -29,5 +29,6 @@ export const routes = {
     attributes: "/manager/attributes",
     flashlist: "/manager/flashlist",
     flashCreate: "/manager/flash-sale",
+    orders: "/manager/orders",
   },
 };

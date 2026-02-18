@@ -96,6 +96,12 @@ export default function ManagerNavbar() {
         { label: "Flash Sale Create", to: routes.manager.flashCreate },
       ],
     },
+    {
+      label: "Orders",
+      to: routes.manager.orders,
+      icon: <FiPackage />,
+      type: "link",
+    },
   ];
 
   return (
