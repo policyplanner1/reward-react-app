@@ -146,7 +146,7 @@ const OrderList: React.FC = () => {
                         <button
                           className="view-btn"
                           onClick={() =>
-                            navigate(`/order/order-details/${order.order_id}`)
+                            navigate(`/manager/order-view/${order.order_id}`)
                           }
                         >
                           View
