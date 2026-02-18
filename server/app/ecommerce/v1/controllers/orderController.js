@@ -47,7 +47,7 @@ class OrderController {
   //   Get order details
   async getOrderDetails(req, res) {
     try {
-      // const userId = req.user?.user_id;
+      // const userId = req.user?.user_id; 
       const userId = 1;
       const orderId = Number(req.params.orderId);
 
@@ -65,8 +65,7 @@ class OrderController {
 
       return res.json({
         success: true,
-        order: data.order,
-        items: data.items,
+        ...data,
       });
     } catch (error) {
       console.error("Order details error:", error);
@@ -156,7 +155,7 @@ class OrderController {
       );
 
       //2.5 create Cancellation Timeline
-       await db.execute(
+      await db.execute(
         `
        INSERT INTO order_cancellation_timeline (order_id, event)
         VALUES (?, 'cancellation_requested')
@@ -191,7 +190,7 @@ class OrderController {
   async cancellationDetails(req, res) {
     try {
       // const userId = req.user.user_id;
-      const userId=1;
+      const userId = 1;
       const orderId = Number(req.params.orderId);
 
       const data = await OrderModel.getCancellationDetails({
