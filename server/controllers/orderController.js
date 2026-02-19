@@ -93,6 +93,19 @@ class OrderController {
         });
       }
 
+      // Check if shipment already exists
+      const [[existingShipment]] = await db.execute(
+        `SELECT awb_number FROM shipments WHERE order_id = ?`,
+        [orderId],
+      );
+
+      if (existingShipment) {
+        return res.json({
+          success: false,
+          message: "Shipment already created for this order",
+        });
+      }
+
       // 2 Convert Items → Xpressbees Format (MANDATORY)
       const orderItems = items.map((item) => ({
         name: item.product_name,
@@ -102,7 +115,7 @@ class OrderController {
       }));
 
       // 3 Decide Payment Mode
-      const paymentType = "prepaid"; 
+      const paymentType = "prepaid";
       const collectableAmount = paymentType === "cod" ? summary.order_total : 0;
 
       // 4 Prepare Booking Payload
@@ -178,7 +191,10 @@ class OrderController {
 
       return res.json({
         success: true,
-        awb: data.awb_number,
+        shipment: {
+          awb_number: data.awb_number,
+          shipping_status: data.status,
+        },
       });
     } catch (err) {
       console.error("XPRESS ERROR:", err.response?.data);
