@@ -5,57 +5,19 @@ const path = require("path");
 const CartModel = require("../models/cartModel");
 
 class wishlistController {
-  // add to Wishlist
-  // async addToWishlist(req, res) {
-  //   try {
-  //     //   const userId = req.user.user_id;
-  //     const userId = 1;
-  //     if (!userId) {
-  //       return res
-  //         .status(400)
-  //         .json({ success: false, message: "User ID is required" });
-  //     }
-
-  //     const { product_id, variant_id } = req.body;
-
-  //     if (!product_id || !variant_id) {
-  //       return res.status(400).json({
-  //         success: false,
-  //         message: "Product ID and Variant ID are required",
-  //       });
-  //     }
-
-  //     // check stock quantity
-  //     const stockInfo = await CartModel.checkVariantStock(variant_id);
-
-  //     if (!stockInfo.inStock) {
-  //       return res.status(400).json({
-  //         success: false,
-  //         message: "Product is out of stock",
-  //       });
-  //     }
-
-  //     await WishlistModel.add(userId, product_id, variant_id);
-
-  //     return res.json({
-  //       success: true,
-  //       message: "Variant added to wishlist",
-  //     });
-  //   } catch (error) {
-  //     console.error("Add Wishlist Error:", error);
-  //     return res.status(500).json({
-  //       success: false,
-  //       message: "Failed to add to wishlist",
-  //     });
-  //   }
-  // }
-
   // Toggle List
-
   async addToWishlist(req, res) {
     try {
-      //   const userId = req.user.user_id;
-      const userId = 1;
+      const userId = req.user.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       const { product_id, variant_id } = req.body;
 
       if (!product_id || !variant_id) {
@@ -104,13 +66,14 @@ class wishlistController {
   // Remove from wishlist
   async removeFromWishlist(req, res) {
     try {
-      //   const userId = req.user.user_id;
-      const userId = 1;
+      const userId = req.user.user_id;
+      // const userId = 1;
 
       if (!userId) {
-        return res
-          .status(400)
-          .json({ success: false, message: "User ID is required" });
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
       }
 
       const { product_id, variant_id } = req.params;
@@ -118,7 +81,7 @@ class wishlistController {
       const removed = await WishlistModel.remove(
         userId,
         product_id,
-        variant_id
+        variant_id,
       );
 
       if (!removed) {
@@ -141,16 +104,17 @@ class wishlistController {
     }
   }
 
-  //   check user wishlist
+  // check user wishlist
   async getMyWishlist(req, res) {
     try {
-      //   const userId = req.user.user_id;
-      const userId = 1;
+      const userId = req.user.user_id;
+      // const userId = 1;
 
       if (!userId) {
-        return res
-          .status(400)
-          .json({ success: false, message: "User ID is required" });
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
       }
 
       const wishlist = await WishlistModel.getByUser(userId);
@@ -171,13 +135,14 @@ class wishlistController {
   // check if item exist in wishlist
   async checkWishlist(req, res) {
     try {
-      //   const userId = req.user.user_id;
-      const userId = 1;
+      const userId = req.user.user_id;
+      // const userId = 1;
 
       if (!userId) {
-        return res
-          .status(400)
-          .json({ success: false, message: "User ID is required" });
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
       }
 
       const { product_id, variant_id } = req.params;
@@ -200,8 +165,16 @@ class wishlistController {
   // Move item from wishlist to cart
   async moveToCart(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1;
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       const { product_id, variant_id } = req.body;
 
       if (!product_id || !variant_id) {
@@ -252,8 +225,15 @@ class wishlistController {
   // wishlist Badge
   async getWishlistBadge(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1; 
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
 
       const count = await WishlistModel.getWishlistCount(userId);
 
