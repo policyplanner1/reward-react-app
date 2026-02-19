@@ -7,8 +7,16 @@ class OrderController {
   // Get order history
   async getOrderHistory(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1;
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
 
@@ -47,8 +55,15 @@ class OrderController {
   //   Get order details
   async getOrderDetails(req, res) {
     try {
-      // const userId = req.user?.user_id; 
-      const userId = 1;
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
       const orderId = Number(req.params.orderId);
 
       if (!orderId) {

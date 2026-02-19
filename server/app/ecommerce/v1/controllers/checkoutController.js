@@ -8,7 +8,16 @@ class CheckoutController {
   // checkout cart Items
   async checkoutCart(req, res) {
     try {
-      const userId = 1;
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       const companyId = req.body?.company_id ?? null;
       const addressId = req.body?.address_id;
 
@@ -74,7 +83,15 @@ class CheckoutController {
   // checkout buy now Items
   async buyNow(req, res) {
     try {
-      const userId = 1;
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
 
       const {
         product_id,
@@ -150,7 +167,15 @@ class CheckoutController {
   // Get checkout cart Details
   async getCheckoutCart(req, res) {
     try {
-      const userId = 1; // Temporary hardcoded user ID for testing
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
 
       const checkoutData = await CheckoutModel.getCheckoutCart(userId);
 
@@ -189,6 +214,16 @@ class CheckoutController {
   // get checkout buy now Details
   async getBuyNowCheckout(req, res) {
     try {
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       const { product_id, variant_id, qty = 1 } = req.query;
 
       const checkoutData = await CheckoutModel.getBuyNowCheckout({
@@ -225,7 +260,16 @@ class CheckoutController {
   // Order Success
   async getOrderReceipt(req, res) {
     try {
-      const userId = 1;
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       const orderId = Number(req.params.orderId);
 
       const receipt = await CheckoutModel.getOrderReceipt({
