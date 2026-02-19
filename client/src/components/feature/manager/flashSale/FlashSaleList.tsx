@@ -35,30 +35,13 @@ const FlashSaleList: React.FC = () => {
     fetchFlashSales();
   }, []);
 
-  const getStatusClass = (status: string) => {
-    switch (status) {
-      case "Live":
-        return "fs-badge live";
-      case "Upcoming":
-        return "fs-badge upcoming";
-      case "Expired":
-        return "fs-badge expired";
-      case "Draft":
-        return "fs-badge draft";
-      case "Archived":
-        return "fs-badge archived";
-      default:
-        return "fs-badge";
-    }
-  };
-
   return (
     <div className="fs-page">
       <div className="fs-card wide">
         {/* Header */}
         <div className="fs-header">
   <div className="flex items-start gap-4">
-    {/* ✅ Left Icon */}
+    {/*  Left Icon */}
     <div
       className="w-12 h-12 rounded-full flex items-center justify-center
                 bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
@@ -70,7 +53,7 @@ const FlashSaleList: React.FC = () => {
       </svg>
     </div>
 
-    {/* ✅ Title + Paragraph */}
+    {/*  Title + Paragraph */}
     <div>
       <h2>Flash Sale Campaign</h2>
       <p className="text-sm text-gray-500 mt-1">
@@ -79,7 +62,7 @@ const FlashSaleList: React.FC = () => {
     </div>
   </div>
 
-  {/* ✅ Button Right */}
+  {/*  Button Right */}
   <button
     className="bg-[#852BAF] text-white rounded-md px-4 py-2
            hover:bg-gradient-to-r hover:from-[#FC3F78] hover:to-[#852BAF]
