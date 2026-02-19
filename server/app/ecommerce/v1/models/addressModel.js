@@ -12,7 +12,7 @@ class AddressModel {
          country_code
        FROM countries
        WHERE status = 1
-       ORDER BY country_name`
+       ORDER BY country_name`,
     );
 
     return rows;
@@ -26,7 +26,7 @@ class AddressModel {
          state_name
        FROM states
        WHERE status = 1
-       ORDER BY state_name`
+       ORDER BY state_name`,
     );
 
     return rows;
@@ -41,7 +41,7 @@ class AddressModel {
        FROM states
        WHERE country_id = ? AND status = 1
        ORDER BY state_name`,
-      [countryId]
+      [countryId],
     );
 
     return rows;
@@ -49,6 +49,9 @@ class AddressModel {
 
   // add address
   async addAddress(data) {
+    // helper to prevent mysql undefined error
+    const safe = (val) => (val === undefined ? null : val);
+
     const {
       user_id,
       address_type,
@@ -57,46 +60,44 @@ class AddressModel {
       address2,
       city,
       zipcode,
-      state_id,
-      landmark = null,
-      contact_name,
-      contact_phone,
-      latitude = null,
-      longitude = null,
-    } = data;
-
-    const [result] = await db.execute(
-      `INSERT INTO customer_addresses (
-      user_id,
-      address_type,
-      is_default,
-      address1,
-      address2,
-      city,
-      zipcode,
-      country_id,
-      state_id,
       landmark,
       contact_name,
       contact_phone,
       latitude,
+      longitude,
+    } = data;
+
+    const [result] = await db.execute(
+      `INSERT INTO customer_addresses (
+      user_id, 
+      address_type, 
+      is_default, 
+      address1, 
+      address2, 
+      city, 
+      zipcode, 
+      country_id, 
+      state_id, 
+      landmark, 
+      contact_name, 
+      contact_phone, 
+      latitude, 
       longitude
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 75, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 75, 14, ?, ?, ?, ?, ?)`,
       [
-        user_id,
-        address_type,
-        is_default,
-        address1,
-        address2,
-        city,
-        zipcode,
-        state_id,
-        landmark,
-        contact_name,
-        contact_phone,
-        latitude,
-        longitude,
-      ]
+        safe(user_id),
+        safe(address_type),
+        safe(is_default ?? 0),
+        safe(address1),
+        safe(address2),
+        safe(city),
+        safe(zipcode),
+        safe(landmark),
+        safe(contact_name),
+        safe(contact_phone),
+        safe(latitude),
+        safe(longitude),
+      ],
     );
 
     return result.insertId;
@@ -108,44 +109,58 @@ class AddressModel {
       `UPDATE customer_addresses
        SET is_default = 0
        WHERE user_id = ?`,
-      [userId]
+      [userId],
     );
   }
 
   //   Update address
   async updateAddress(addressId, userId, data) {
-    const [result] = await db.execute(
-      `UPDATE customer_addresses SET
-        address_type = ?,
-        is_default = ?,
-        address1 = ?,
-        address2 = ?,
-        city = ?,
-        zipcode = ?,
-        state_id = ?,
-        landmark = ?,
-        contact_name = ?,
-        contact_phone = ?,
-        latitude = ?,
-        longitude = ?
-       WHERE address_id = ? AND user_id = ?`,
-      [
-        data.address_type,
-        data.is_default,
-        data.address1,
-        data.address2,
-        data.city,
-        data.zipcode,
-        data.state_id,
-        data.landmark,
-        data.contact_name,
-        data.contact_phone,
-        data.latitude,
-        data.longitude,
-        addressId,
-        userId,
-      ]
-    );
+    const {
+      address_type,
+      is_default,
+      address1,
+      address2,
+      city,
+      zipcode,
+      landmark = null,
+      contact_name,
+      contact_phone,
+      latitude = null,
+      longitude = null,
+    } = data;
+
+    const query = `
+    UPDATE customer_addresses SET
+      address_type = ?,
+      is_default = ?,
+      address1 = ?,
+      address2 = ?,
+      city = ?,
+      zipcode = ?,
+      landmark = ?,
+      contact_name = ?,
+      contact_phone = ?,
+      latitude = ?,
+      longitude = ?
+    WHERE address_id = ? AND user_id = ?`;
+
+    const values = [
+      address_type,
+      is_default,
+      address1,
+      address2,
+      city,
+      zipcode,
+      landmark,
+      contact_name,
+      contact_phone,
+      latitude,
+      longitude,
+      addressId,
+      userId,
+    ];
+
+    const [result] = await db.execute(query, values);
 
     return result.affectedRows;
   }
@@ -155,7 +170,7 @@ class AddressModel {
     const [result] = await db.execute(
       `DELETE FROM customer_addresses
        WHERE address_id = ? AND user_id = ?`,
-      [addressId, userId]
+      [addressId, userId],
     );
 
     return result.affectedRows;
@@ -168,7 +183,7 @@ class AddressModel {
        FROM customer_addresses
        WHERE user_id = ? AND status = 1
        ORDER BY is_default DESC, created_at DESC`,
-      [userId]
+      [userId],
     );
 
     return rows;
@@ -177,10 +192,12 @@ class AddressModel {
   //   Fetch address by ID
   async getAddressById(addressId, userId) {
     const [rows] = await db.execute(
-      `SELECT *
-       FROM customer_addresses
-       WHERE address_id = ? AND user_id = ?`,
-      [addressId, userId]
+      `SELECT ca.*, s.state_name as state
+     FROM customer_addresses ca
+     LEFT JOIN states s ON ca.state_id = s.state_id
+     WHERE ca.address_id = ? 
+       AND ca.user_id = ?`,
+      [addressId, userId],
     );
 
     return rows[0];

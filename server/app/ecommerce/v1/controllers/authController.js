@@ -497,7 +497,7 @@ class AuthController {
   async addAddress(req, res) {
     try {
       const userId = req.user?.user_id;
-      // const userId = 1;
+
       if (!userId) {
         return res.status(401).json({
           success: false,
@@ -505,22 +505,31 @@ class AuthController {
         });
       }
 
-      const data = req.body;
+      const { address1, city, zipcode, is_default, ...rest } = req.body;
 
-      if (!data.address1 || !data.city || !data.zipcode || !data.state_id) {
+      // Required fields validation
+      if (!address1 || !city || !zipcode) {
         return res.status(400).json({
           success: false,
           message: "Required address fields missing",
         });
       }
 
-      if (Number(data.is_default) === 1) {
+      // Normalize is_default
+      const normalizedIsDefault = Number(is_default) === 1 ? 1 : 0;
+
+      // If setting new default → clear old default
+      if (normalizedIsDefault === 1) {
         await AddressModel.clearDefault(userId);
       }
 
       const addressId = await AddressModel.addAddress({
-        ...data,
         user_id: userId,
+        address1,
+        city,
+        zipcode,
+        is_default: normalizedIsDefault,
+        ...rest,
       });
 
       return res.status(201).json({
@@ -532,7 +541,7 @@ class AuthController {
       console.error("Add Address Error:", error);
       return res.status(500).json({
         success: false,
-        message: "Failed to add address",
+        message: "Internal server error",
       });
     }
   }
