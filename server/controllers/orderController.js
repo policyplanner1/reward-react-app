@@ -80,7 +80,23 @@ class OrderController {
 
       // 1 Fetch order
       const [rows] = await db.execute(
-        "SELECT * FROM eorders WHERE order_id = ?",
+        `
+          SELECT 
+            o.*,
+            ca.contact_name,
+            ca.address1,
+            ca.address2,
+            ca.city,
+            ca.zipcode,
+            ca.contact_phone,
+            s.state_name as state
+          FROM eorders o
+          LEFT JOIN customer_addresses ca 
+            ON o.address_id = ca.address_id
+          LEFT JOIN states s 
+            ON ca.state_id = s.state_id
+          WHERE o.order_id = ?
+          `,
         [orderId],
       );
 
@@ -111,7 +127,7 @@ class OrderController {
 
         consignee: {
           name: order.contact_name,
-          address: order.address,
+          address: `${order.address1} ${order.address2 || ""}`,
           city: order.city,
           state: order.state,
           pincode: order.zipcode,
