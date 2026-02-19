@@ -550,7 +550,6 @@ class AuthController {
   async updateAddress(req, res) {
     try {
       const userId = req.user?.user_id;
-      // const userId = 1;
 
       if (!userId) {
         return res.status(401).json({
@@ -562,14 +561,23 @@ class AuthController {
       const { address_id } = req.params;
       const data = req.body;
 
-      if (Number(data.is_default) === 1) {
+      // Normalize undefined → null
+      const normalizedData = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => [
+          key,
+          value === undefined ? null : value,
+        ]),
+      );
+
+      // If setting as default, clear previous default
+      if (Number(normalizedData.is_default) === 1) {
         await AddressModel.clearDefault(userId);
       }
 
       const updated = await AddressModel.updateAddress(
         address_id,
         userId,
-        data,
+        normalizedData,
       );
 
       if (!updated) {
@@ -671,8 +679,10 @@ class AuthController {
       }
 
       const { address_id } = req.params;
+      console.log(address_id, "address_id");
 
       const address = await AddressModel.getAddressById(address_id, userId);
+      console.log(address, "address");
 
       if (!address) {
         return res.status(404).json({

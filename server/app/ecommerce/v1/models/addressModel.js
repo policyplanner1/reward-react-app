@@ -116,15 +116,15 @@ class AddressModel {
   //   Update address
   async updateAddress(addressId, userId, data) {
     const {
-      address_type,
-      is_default,
-      address1,
-      address2,
-      city,
-      zipcode,
+      address_type = null,
+      is_default = null,
+      address1 = null,
+      address2 = null,
+      city = null,
+      zipcode = null,
       landmark = null,
-      contact_name,
-      contact_phone,
+      contact_name = null,
+      contact_phone = null,
       latitude = null,
       longitude = null,
     } = data;
@@ -142,20 +142,21 @@ class AddressModel {
       contact_phone = ?,
       latitude = ?,
       longitude = ?
-    WHERE address_id = ? AND user_id = ?`;
+    WHERE address_id = ? AND user_id = ?
+  `;
 
     const values = [
-      address_type,
-      is_default,
-      address1,
-      address2,
-      city,
-      zipcode,
-      landmark,
-      contact_name,
-      contact_phone,
-      latitude,
-      longitude,
+      address_type ?? null,
+      is_default ?? null,
+      address1 ?? null,
+      address2 ?? null,
+      city ?? null,
+      zipcode ?? null,
+      landmark ?? null,
+      contact_name ?? null,
+      contact_phone ?? null,
+      latitude ?? null,
+      longitude ?? null,
       addressId,
       userId,
     ];
