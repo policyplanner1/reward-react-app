@@ -78,33 +78,13 @@ class OrderController {
     try {
       const orderId = Number(req.params.orderId);
 
-      // 1 Fetch order
-      const [rows] = await db.execute(
-        `
-          SELECT 
-            o.*,
-            ca.contact_name,
-            ca.address1,
-            ca.address2,
-            ca.city,
-            ca.zipcode,
-            ca.contact_phone,
-            s.state_name as state
-          FROM eorders o
-          LEFT JOIN customer_addresses ca 
-            ON o.address_id = ca.address_id
-          LEFT JOIN states s 
-            ON ca.state_id = s.state_id
-          WHERE o.order_id = ?
-          `,
-        [orderId],
-      );
+      const orderDetails = await orderModel.getAdminOrderDetails(orderId);
 
-      if (!rows.length) {
+      if (!orderDetails) {
         return res.json({ success: false, message: "Order not found" });
       }
 
-      const order = rows[0];
+      const { order, address, items, summary } = orderDetails;
 
       if (order.status !== "paid") {
         return res.json({
@@ -113,25 +93,44 @@ class OrderController {
         });
       }
 
-      // 2 Prepare payload
+      // 2 Convert Items → Xpressbees Format (MANDATORY)
+      const orderItems = items.map((item) => ({
+        name: item.product_name,
+        qty: item.quantity.toString(),
+        price: item.price.toString(),
+        sku: item.product_id.toString(),
+      }));
+
+      // 3 Decide Payment Mode
+      const paymentType = "prepaid"; 
+      const collectableAmount = paymentType === "cod" ? summary.order_total : 0;
+
+      // 4 Prepare Booking Payload
       const payload = {
         order_number: order.order_ref,
         unique_order_number: "yes",
-        payment_type: "prepaid",
-        order_amount: order.total_amount,
-        package_weight: 300,
+
+        shipping_charges: 0,
+        discount: 0,
+        cod_charges: 0,
+
+        payment_type: paymentType,
+        order_amount: summary.order_total,
+
+        package_weight: 50,
         package_length: 10,
         package_breadth: 10,
         package_height: 10,
+
         request_auto_pickup: "yes",
 
         consignee: {
-          name: order.contact_name,
-          address: `${order.address1} ${order.address2 || ""}`,
-          city: order.city,
-          state: order.state,
-          pincode: order.zipcode,
-          phone: order.contact_phone,
+          name: address.name,
+          address: `${address.line1} ${address.line2 || ""}`,
+          city: address.city,
+          state: address.state,
+          pincode: address.zipcode,
+          phone: address.phone,
         },
 
         pickup: {
@@ -145,10 +144,11 @@ class OrderController {
         },
 
         courier_id: "1",
-        collectable_amount: 0,
+        collectable_amount: collectableAmount,
+        order_items: orderItems,
       };
 
-      // 3 Call API
+      // 5 call Xpressbees API
       const shipmentResponse = await xpressService.bookShipment(payload);
 
       if (!shipmentResponse.status) {
@@ -160,7 +160,7 @@ class OrderController {
 
       const data = shipmentResponse.data;
 
-      // 4 Save shipment
+      // 6 Save Shipment
       await db.execute(
         `INSERT INTO shipments 
        (order_id, shipment_id, awb_number, courier_name, shipping_status, label_url, manifest_url)
@@ -181,8 +181,11 @@ class OrderController {
         awb: data.awb_number,
       });
     } catch (err) {
-      console.error(err);
-      return res.json({ success: false });
+      console.error("XPRESS ERROR:", err.response?.data);
+      return res.json({
+        success: false,
+        message: "Shipment creation failed",
+      });
     }
   }
 }
