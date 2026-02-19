@@ -515,11 +515,20 @@ class AuthController {
         });
       }
 
-      // Normalize is_default
-      const normalizedIsDefault = Number(is_default) === 1 ? 1 : 0;
+      //  Check if user already has any address
+      const hasAddress = await AddressModel.hasAnyAddress(userId);
 
-      // If setting new default → clear old default
-      if (normalizedIsDefault === 1) {
+      let finalIsDefault = 0;
+
+      //  If first address make it default
+      if (!hasAddress) {
+        finalIsDefault = 1;
+      }
+      // If not first and user explicitly sets default
+      else if (Number(is_default) === 1) {
+        finalIsDefault = 1;
+
+        // Clear existing default first
         await AddressModel.clearDefault(userId);
       }
 
@@ -528,7 +537,7 @@ class AuthController {
         address1,
         city,
         zipcode,
-        is_default: normalizedIsDefault,
+        is_default: finalIsDefault,
         ...rest,
       });
 
@@ -561,15 +570,42 @@ class AuthController {
       const { address_id } = req.params;
       const data = req.body;
 
-      // Normalize undefined → null
-      const normalizedData = Object.fromEntries(
-        Object.entries(data).map(([key, value]) => [
-          key,
-          value === undefined ? null : value,
-        ]),
-      );
+      // 1 Check specific address ownership
+      const address = await AddressModel.getAddressById(address_id, userId);
 
-      // If setting as default, clear previous default
+      if (!address) {
+        return res.status(404).json({
+          success: false,
+          message: "Address not found",
+        });
+      }
+
+      // Normalize undefined → keep original value
+      const normalizedData = {};
+
+      for (const key in data) {
+        if (data[key] !== undefined) {
+          normalizedData[key] = data[key];
+        }
+      }
+
+      // -------------------------------
+      // DEFAULT ADDRESS LOGIC
+      // -------------------------------
+
+      // If user tries to REMOVE default from THIS address
+      if (Number(normalizedData.is_default) === 0 && address.is_default === 1) {
+        const defaultCount = await AddressModel.countDefault(userId);
+
+        if (defaultCount === 1) {
+          return res.status(400).json({
+            success: false,
+            message: "At least one address must be default",
+          });
+        }
+      }
+
+      // If user sets THIS address as default
       if (Number(normalizedData.is_default) === 1) {
         await AddressModel.clearDefault(userId);
       }

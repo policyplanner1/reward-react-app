@@ -103,6 +103,30 @@ class AddressModel {
     return result.insertId;
   }
 
+  // Count default addresses
+  async countDefault(userId) {
+    const [rows] = await db.execute(
+      `SELECT COUNT(*) as count 
+     FROM customer_addresses 
+     WHERE user_id = ? AND is_default = 1`,
+      [userId],
+    );
+    return rows[0].count;
+  }
+
+  // count user address
+  async hasAnyAddress(userId) {
+    const [rows] = await db.execute(
+      `SELECT 1 
+     FROM customer_addresses 
+     WHERE user_id = ? 
+     LIMIT 1`,
+      [userId],
+    );
+
+    return rows.length > 0;
+  }
+
   //   clear Default Address
   async clearDefault(userId) {
     await db.execute(
