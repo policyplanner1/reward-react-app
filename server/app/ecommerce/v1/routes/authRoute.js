@@ -28,27 +28,27 @@ router.post("/login", authController.loginUser);
 router.get("/states", authController.getStates);
 
 // add address
-// router.post("/address", auth, authController.addAddress);
-router.post("/address", authController.addAddress);
+router.post("/address", auth, authController.addAddress);
+// router.post("/address", authController.addAddress);
 
 // update address
-// router.put("/address/:address_id", auth, authController.updateAddress);
-router.put("/address/:address_id", authController.updateAddress);
+router.put("/address/:address_id", auth, authController.updateAddress);
+// router.put("/address/:address_id", authController.updateAddress);
 
 // delete address
-// router.delete("/address/:address_id", auth, authController.deleteAddress);
-router.delete("/address/:address_id", authController.deleteAddress);
+router.delete("/address/:address_id", auth, authController.deleteAddress);
+// router.delete("/address/:address_id", authController.deleteAddress);
 
 // fetch addresses
-// router.get("/addresses", auth, authController.getAddresses);
-router.get("/addresses", authController.getMyAddresses);
+router.get("/addresses", auth, authController.getMyAddresses);
+// router.get("/addresses", authController.getMyAddresses);
 
 // Get address By ID
-// router.get("/address/:address_id", auth, authController.getAddressById);
-router.get("/address/:address_id", authController.getAddressById);
+router.get("/address/:address_id", auth, authController.getAddressById);
+// router.get("/address/:address_id", authController.getAddressById);
 
 /*===================================================User Information===========================================*/
-router.get("/user-info", optionalAuth, authController.getUserInfo);
+router.get("/user-info", auth, authController.getUserInfo);
 
 /*===================================================Review===========================================*/
 

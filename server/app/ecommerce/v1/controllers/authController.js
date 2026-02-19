@@ -496,8 +496,14 @@ class AuthController {
   // Add address
   async addAddress(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1; // Temporary hardcoded user ID for testing
+      const userId = req.user?.user_id;
+      // const userId = 1;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
 
       const data = req.body;
 
@@ -534,8 +540,15 @@ class AuthController {
   // Update address
   async updateAddress(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1; // Temporary hardcoded user ID for testing
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
 
       const { address_id } = req.params;
       const data = req.body;
@@ -573,8 +586,15 @@ class AuthController {
   // Delete address
   async deleteAddress(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1; // Temporary hardcoded user ID for testing
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
 
       const { address_id } = req.params;
 
@@ -603,8 +623,15 @@ class AuthController {
   // Fetch all addresses of the user
   async getMyAddresses(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1; // Temporary hardcoded user ID for testing
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
 
       const addresses = await AddressModel.getAddressesByUser(userId);
 
@@ -624,8 +651,15 @@ class AuthController {
   // Fetch address by ID
   async getAddressById(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1; // Temporary hardcoded user ID for testing
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
 
       const { address_id } = req.params;
 
@@ -779,7 +813,7 @@ class AuthController {
       if (!userId) {
         return res.status(401).json({
           success: false,
-          message: "Unauthorized",
+          message: "Unauthorized user",
         });
       }
 
