@@ -71,6 +71,9 @@ class OrderController {
       });
     }
   }
+
+  // create shipment
+  async createShipment(req, res) {}
 }
 
 module.exports = new OrderController();

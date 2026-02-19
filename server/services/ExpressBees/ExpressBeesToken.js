@@ -25,3 +25,23 @@ async function getXpressToken() {
 
   return token;
 }
+
+async function createShipment(orderPayload) {
+  const token = await getToken();
+
+  const response = await axios.post(
+    process.env.XPRESS_ORDER_BOOKING_URL,
+    orderPayload,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  return response.data;
+}
+
+module.exports = {
+  createShipment,
+};

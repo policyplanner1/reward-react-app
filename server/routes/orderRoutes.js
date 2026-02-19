@@ -6,16 +6,23 @@ const orderController = require("../controllers/orderController");
 // Get all orders
 router.get(
   "/order-list",
-  // authenticateToken,
-  // authorizeRoles("vendor_manager", "admin"),
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
   orderController.getOrderList,
 );
 
 router.get(
   "/order-details/:orderId",
-  // authenticateToken,
-  // authorizeRoles("vendor_manager", "admin"),
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
   orderController.getAdminOrderDetails,
+);
+
+router.post(
+  "/create-shipment/:orderId",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  orderController.createShipment,
 );
 
 module.exports = router;
