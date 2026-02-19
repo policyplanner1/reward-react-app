@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const ProductController = require("../controllers/productController");
 const auth = require("../middlewares/auth");
+const optionalAuth = require("../middlewares/optionalAuth");
 /* ======================================================Product Listing============================================ */
 
 // Product Listing
@@ -11,12 +12,16 @@ router.get("/all-products", ProductController.getAllProducts);
 router.get("/by-category/:categoryId", ProductController.getProductsByCategory);
 
 // Get a Product by ID
-router.get("/product-details/:productId", ProductController.getProductById);
+router.get(
+  "/product-details/:productId",
+  optionalAuth,
+  ProductController.getProductById,
+);
 
 // products by subcategory ID
 router.get(
   "/by-subcategory/:subcategoryId",
-  ProductController.getProductsBySubcategory
+  ProductController.getProductsBySubcategory,
 );
 
 /* ======================================================Categories============================================ */
@@ -27,16 +32,20 @@ router.get("/categories", ProductController.getCategories);
 // subcategories list by category ID
 router.get(
   "/subcategories/:categoryId",
-  ProductController.getSubcategoriesByCategory
+  ProductController.getSubcategoriesByCategory,
 );
+
+// category with subcategories
+router.get(
+  "/categories-with-subcategories",
+  ProductController.getCategoriesWithSubcategories,
+);
+
 
 /* ======================================================Suggestion============================================ */
 
 // similar Products
-router.get(
-  "/similar/:productId",
-  ProductController.getSimilarProducts
-);
+router.get("/similar/:productId", ProductController.getSimilarProducts);
 
 // autosuggest products
 router.get("/search/suggestions", ProductController.getSearchSuggestions);
@@ -45,9 +54,13 @@ router.get("/search/suggestions", ProductController.getSearchSuggestions);
 router.get("/search/products", ProductController.loadProducts);
 
 // save search history
-router.post("/search/history", ProductController.saveSearchHistory);
+router.post("/search/history", 
+  // auth,
+  ProductController.saveSearchHistory);
 
 //fetch search history
-router.get("/search/history", ProductController.getSearchHistory);
+router.get("/search/history", 
+  // auth,
+  ProductController.getSearchHistory);
 
 module.exports = router;

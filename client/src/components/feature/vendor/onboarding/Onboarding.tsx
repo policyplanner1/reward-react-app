@@ -459,7 +459,7 @@ export default function Onboarding() {
   const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
 
   const validators = {
-    fullName: (value: string) => /^[A-Za-z ]+$/.test(value),
+    // fullName: (value: string) => /^[A-Za-z ]+$/.test(value),
     panNumber: (value: string) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value),
     pincode: (value: string) => /^[0-9]{6}$/.test(value),
     phone: (value: string) => /^[0-9]{10}$/.test(value),
@@ -479,12 +479,20 @@ export default function Onboarding() {
     },
   ): string => {
     switch (name) {
+      // case "companyName":
+      //   return value.trim() ? "" : "Company Name is required";
+
+      // case "fullName":
+      //   if (!value.trim()) return "Full Name is required";
+      //   if (!validators.fullName(value)) return "Only alphabets allowed";
+      //   return "";
+
       case "companyName":
-        return value.trim() ? "" : "Company Name is required";
+        if (!value.trim()) return "Company Name is required";
+        return "";
 
       case "fullName":
         if (!value.trim()) return "Full Name is required";
-        if (!validators.fullName(value)) return "Only alphabets allowed";
         return "";
 
       case "vendorType":
@@ -653,8 +661,8 @@ export default function Onboarding() {
 
     // Alphabet-only fields
     const alphabetOnlyFields = [
-      "fullName",
-      "companyName",
+      // "fullName",
+      // "companyName",
       "city",
       "state",
       "billingCity",
@@ -721,9 +729,9 @@ export default function Onboarding() {
 
     let error = "";
 
-    if (name === "fullName" && value && !allowOnlyAlphabets(value)) {
-      error = "Only alphabets allowed";
-    }
+    // if (name === "fullName" && value && !allowOnlyAlphabets(value)) {
+    //   error = "Only alphabets allowed";
+    // }
 
     if (name === "panNumber" && value && !panRegex.test(value.toUpperCase())) {
       error = "PAN must be in format ABCDE1234F";

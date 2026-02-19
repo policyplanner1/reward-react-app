@@ -107,18 +107,42 @@ class orderModel {
 
   //   Get order details
   async getOrderDetails({ userId, orderId }) {
-    // 1 Fetch order
+    // 1 Order + Address
     const [[order]] = await db.execute(
       `
-      SELECT
-        order_id,
-        order_ref,
-        total_amount,
-        status,
-        created_at
-      FROM eorders
-      WHERE order_id = ? AND user_id = ?
-      `,
+    SELECT
+      o.order_id,
+      o.order_ref,
+      o.total_amount,
+      o.status,
+      o.created_at,
+
+      ca.address_type,
+      ca.address1,
+      ca.address2,
+      ca.city,
+      ca.zipcode,
+      ca.landmark,
+      ca.contact_name,
+      ca.contact_phone,
+
+      s.state_name,
+      c.country_name
+
+    FROM eorders o
+
+    LEFT JOIN customer_addresses ca
+      ON o.address_id = ca.address_id
+
+    LEFT JOIN states s
+      ON ca.state_id = s.state_id
+
+    LEFT JOIN countries c
+      ON ca.country_id = c.country_id
+
+    WHERE o.order_id = ? 
+      AND o.user_id = ?
+    `,
       [orderId, userId],
     );
 
@@ -126,45 +150,95 @@ class orderModel {
       throw new Error("ORDER_NOT_FOUND");
     }
 
-    // 2 Fetch order items
+    // 2 Order Items
     const [items] = await db.execute(
       `
-      SELECT
-        oi.order_item_id,
-        oi.product_id,
-        oi.variant_id,
-        oi.quantity,
-        oi.price,
+    SELECT
+      oi.order_item_id,
+      oi.product_id,
+      oi.variant_id,
+      oi.quantity,
+      oi.price,
 
-        p.product_name,
+      p.product_name,
+      p.brand_name,
 
-        GROUP_CONCAT(
-          DISTINCT pi.image_url
-          ORDER BY pi.sort_order ASC
-        ) AS images
-      FROM eorder_items oi
-      JOIN eproducts p ON oi.product_id = p.product_id
-      LEFT JOIN product_images pi ON p.product_id = pi.product_id
-      WHERE oi.order_id = ?
-      GROUP BY oi.order_item_id
-      `,
+      v.variant_attributes,
+
+      (
+        SELECT pi.image_url
+        FROM product_images pi
+        WHERE pi.product_id = p.product_id
+        ORDER BY pi.sort_order ASC
+        LIMIT 1
+      ) AS image
+
+    FROM eorder_items oi
+    JOIN eproducts p 
+      ON oi.product_id = p.product_id
+    JOIN product_variants v
+      ON oi.variant_id = v.variant_id
+
+    WHERE oi.order_id = ?
+    `,
       [orderId],
     );
 
-    const processedItems = items.map((i) => ({
-      order_item_id: i.order_item_id,
-      product_id: i.product_id,
-      variant_id: i.variant_id,
-      title: i.product_name,
-      image: i.images ? i.images.split(",")[0] : null,
-      quantity: i.quantity,
-      price: i.price,
-      item_total: i.quantity * i.price,
-    }));
+    const processedItems = items.map((i) => {
+      let attributes = {};
+
+      if (i.variant_attributes) {
+        try {
+          attributes = JSON.parse(i.variant_attributes);
+        } catch {
+          attributes = {};
+        }
+      }
+
+      return {
+        order_item_id: i.order_item_id,
+        product_id: i.product_id,
+        variant_id: i.variant_id,
+        product_name: i.product_name,
+        brand_name: i.brand_name,
+        image: i.image,
+        attributes,
+        quantity: i.quantity,
+        price: i.price,
+        item_total: i.quantity * i.price,
+      };
+    });
+
+    const itemTotal = processedItems.reduce((sum, i) => sum + i.item_total, 0);
 
     return {
-      order,
+      order: {
+        order_id: order.order_id,
+        order_ref: order.order_ref,
+        status: order.status,
+        total_amount: order.total_amount,
+        created_at: order.created_at,
+      },
+
+      address: {
+        type: order.address_type,
+        name: order.contact_name,
+        phone: order.contact_phone,
+        line1: order.address1,
+        line2: order.address2,
+        city: order.city,
+        state: order.state_name,
+        country: order.country_name,
+        zipcode: order.zipcode,
+        landmark: order.landmark,
+      },
+
       items: processedItems,
+
+      summary: {
+        item_total: itemTotal,
+        order_total: order.total_amount,
+      },
     };
   }
 

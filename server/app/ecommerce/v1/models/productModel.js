@@ -457,6 +457,17 @@ class ProductModel {
       const conditions = [];
       const params = [];
 
+      /* ===============================
+       VISIBILITY RULES
+    =============================== */
+      conditions.push("p.status = ?");
+      params.push("APPROVED");
+
+      conditions.push("p.is_visible = ?");
+      params.push(1);
+
+      conditions.push("v.variant_id IS NOT NULL");
+
       if (subcategoryId) {
         conditions.push("p.subcategory_id = ?");
         params.push(subcategoryId);
@@ -493,9 +504,12 @@ class ProductModel {
         p.product_name,
         p.brand_name,
         p.created_at,
+        c.category_name,
         sc.subcategory_name,
+        ssc.name AS sub_subcategory_name,
         v.mrp,
         v.sale_price,
+        v.reward_redemption_limit,
 
         GROUP_CONCAT(
           DISTINCT CONCAT(
@@ -510,27 +524,24 @@ class ProductModel {
       FROM eproducts p
 
       /* ---- Lowest price variant ---- */
-      LEFT JOIN (
-        SELECT pv.*
-        FROM product_variants pv
-        INNER JOIN (
-          SELECT product_id, MIN(sale_price) AS min_sale_price
-          FROM product_variants
-          WHERE sale_price IS NOT NULL
-          GROUP BY product_id
-        ) mv
-          ON pv.product_id = mv.product_id
-         AND pv.sale_price = mv.min_sale_price
-        INNER JOIN (
-          SELECT product_id, MIN(variant_id) AS min_variant_id
-          FROM product_variants
-          GROUP BY product_id
-        ) tie
-          ON pv.product_id = tie.product_id
-      ) v ON p.product_id = v.product_id
+      LEFT JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+          LIMIT 1
+        )
 
-      LEFT JOIN sub_categories sc ON p.subcategory_id = sc.subcategory_id
-      LEFT JOIN product_images pi ON p.product_id = pi.product_id
+      LEFT JOIN categories c ON c.category_id = p.category_id
+      LEFT JOIN sub_categories sc 
+        ON sc.subcategory_id = p.subcategory_id
+      LEFT JOIN sub_sub_categories ssc ON ssc.sub_subcategory_id = p.sub_subcategory_id 
+
+      LEFT JOIN product_images pi 
+        ON p.product_id = pi.product_id
 
       ${whereClause}
       GROUP BY p.product_id
@@ -540,43 +551,52 @@ class ProductModel {
 
       const [rows] = await db.execute(query, [...params, limit, offset]);
 
-      const products = rows.map((row) => ({
-        product_id: row.product_id,
-        product_name: row.product_name,
-        brand_name: row.brand_name,
-        created_at: row.created_at,
-        mrp: row.mrp,
-        sale_price: row.sale_price,
-        images: row.images
-          ? row.images.split(",").map((i) => {
-              const [, image_url, , sort_order] = i.split("::");
-              return { image_url, sort_order: Number(sort_order) };
-            })
-          : [],
-      }));
+      const products = rows.map((row) => {
+        let images = [];
+
+        if (row.images) {
+          images = row.images.split(",").map((item) => {
+            const [image_id, image_url, type, sort_order] = item.split("::");
+            return {
+              image_id: Number(image_id),
+              image_url,
+              type,
+              sort_order: Number(sort_order),
+            };
+          });
+        }
+
+        return {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          brand_name: row.brand_name,
+          category_name: row.category_name,
+          created_at: row.created_at,
+          mrp: row.mrp,
+          sale_price: row.sale_price,
+          reward_redemption_limit: row.reward_redemption_limit,
+          subcategory_name: row.subcategory_name,
+          sub_subcategory_name: row.sub_subcategory_name,
+          images,
+        };
+      });
 
       const [[{ total }]] = await db.execute(
         `
       SELECT COUNT(DISTINCT p.product_id) AS total
       FROM eproducts p
-      LEFT JOIN (
-        SELECT pv.*
-        FROM product_variants pv
-        INNER JOIN (
-          SELECT product_id, MIN(sale_price) AS min_sale_price
-          FROM product_variants
-          WHERE sale_price IS NOT NULL
-          GROUP BY product_id
-        ) mv
-          ON pv.product_id = mv.product_id
-         AND pv.sale_price = mv.min_sale_price
-        INNER JOIN (
-          SELECT product_id, MIN(variant_id) AS min_variant_id
-          FROM product_variants
-          GROUP BY product_id
-        ) tie
-          ON pv.product_id = tie.product_id
-      ) v ON p.product_id = v.product_id
+
+      LEFT JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+          LIMIT 1
+        )
+
       ${whereClause}
       `,
         params,
@@ -595,25 +615,63 @@ class ProductModel {
 
   // Search Suggestions
   async getSearchSuggestions({ search, limit }) {
-    const params = [];
+    if (!search || search.length < 2) {
+      return [];
+    }
 
-    const query = `
+    const keyword = `%${search}%`;
+
+    /* ========================================
+     1 Category Suggestions
+  ======================================== */
+    const [categories] = await db.execute(
+      `
     SELECT 
-      p.product_id,
-      p.product_name,
+      category_id AS id,
+      category_name AS title,
+      cover_image AS image,
+      'category' AS type
+    FROM categories
+    WHERE status = 1
+      AND is_visible_in_ui = 1
+      AND category_name LIKE ?
+    LIMIT ?
+    `,
+      [keyword, limit],
+    );
 
-      GROUP_CONCAT(
-        DISTINCT CONCAT(
-          pi.image_id, '::',
-          pi.image_url, '::',
-          pi.sort_order
-        )
-        ORDER BY pi.sort_order ASC
-      ) AS images
+    /* ========================================
+     2 Subcategory Suggestions
+  ======================================== */
+    const [subcategories] = await db.execute(
+      `
+    SELECT 
+      subcategory_id AS id,
+      subcategory_name AS title,
+      cover_image AS image,
+      'subcategory' AS type
+    FROM sub_categories
+    WHERE status = 1
+      AND subcategory_name LIKE ?
+    LIMIT ?
+    `,
+      [keyword, limit],
+    );
+
+    /* ========================================
+     3 Product Suggestions
+  ======================================== */
+    const [products] = await db.execute(
+      `
+    SELECT 
+      p.product_id AS id,
+      p.product_name AS title,
+      pi.image_url AS image,
+      'product' AS type
 
     FROM eproducts p
 
-    /* ---- ensure at least one visible variant exists ---- */
+    /* ---- Ensure visible priced variant exists ---- */
     LEFT JOIN product_variants v
       ON v.variant_id = (
         SELECT pv2.variant_id
@@ -625,36 +683,131 @@ class ProductModel {
         LIMIT 1
       )
 
-    LEFT JOIN product_images pi ON p.product_id = pi.product_id
+    LEFT JOIN categories c 
+      ON c.category_id = p.category_id
+
+    LEFT JOIN sub_categories sc 
+      ON sc.subcategory_id = p.subcategory_id
+
+    LEFT JOIN sub_sub_categories ssc 
+      ON ssc.sub_subcategory_id = p.sub_subcategory_id
+
+    LEFT JOIN product_images pi
+      ON pi.image_id = (
+        SELECT pi2.image_id
+        FROM product_images pi2
+        WHERE pi2.product_id = p.product_id
+        ORDER BY pi2.sort_order ASC
+        LIMIT 1
+      )
 
     WHERE
       p.status = 'approved'
       AND p.is_visible = 1
+      AND p.is_searchable = 1
       AND v.variant_id IS NOT NULL
-      AND p.product_name LIKE ?
+      AND (
+        p.product_name LIKE ?
+        OR p.brand_name LIKE ?
+        OR c.category_name LIKE ?
+        OR sc.subcategory_name LIKE ?
+        OR ssc.name LIKE ?
+      )
 
-    GROUP BY p.product_id
-    ORDER BY p.created_at DESC
     LIMIT ?
-  `;
+    `,
+      [keyword, keyword, keyword, keyword, keyword, limit],
+    );
 
-    params.push(`%${search}%`, limit);
-
-    const [rows] = await db.execute(query, params);
-
-    return rows.map((row) => ({
-      product_id: row.product_id,
-      product_name: row.product_name,
-      images: row.images
-        ? row.images.split(",").map((i) => {
-            const [, image_url] = i.split("::");
-            return { image_url };
-          })
-        : [],
-    }));
+    /* ========================================
+     Combine Results
+  ======================================== */
+    return [...categories, ...subcategories, ...products].slice(0, limit);
   }
 
+  // async getSearchSuggestions({ search, limit }) {
+  //   if (!search) {
+  //     return [];
+  //   }
+
+  //   const keyword = `%${search}%`;
+
+  //   const query = `
+  //   SELECT
+  //     p.product_id,
+  //     p.product_name,
+
+  //     GROUP_CONCAT(
+  //       DISTINCT CONCAT(
+  //         pi.image_id, '::',
+  //         pi.image_url, '::',
+  //         pi.sort_order
+  //       )
+  //       ORDER BY pi.sort_order ASC
+  //     ) AS images
+
+  //   FROM eproducts p
+
+  //   /* ---- Cheapest Visible Variant ---- */
+  //   LEFT JOIN product_variants v
+  //     ON v.variant_id = (
+  //       SELECT pv2.variant_id
+  //       FROM product_variants pv2
+  //       WHERE pv2.product_id = p.product_id
+  //         AND pv2.is_visible = 1
+  //         AND pv2.sale_price IS NOT NULL
+  //       ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+  //       LIMIT 1
+  //     )
+
+  //   LEFT JOIN categories c
+  //     ON c.category_id = p.category_id
+
+  //   LEFT JOIN sub_categories sc
+  //     ON sc.subcategory_id = p.subcategory_id
+
+  //   LEFT JOIN sub_sub_categories ssc
+  //     ON ssc.sub_subcategory_id = p.sub_subcategory_id
+
+  //   LEFT JOIN product_images pi
+  //     ON pi.product_id = p.product_id
+
+  //   WHERE
+  //     p.status = 'approved'
+  //     AND p.is_visible = 1
+  //     AND p.is_searchable = 1
+  //     AND v.variant_id IS NOT NULL
+  //     AND (
+  //       p.product_name LIKE ?
+  //       OR p.brand_name LIKE ?
+  //       OR c.category_name LIKE ?
+  //       OR sc.subcategory_name LIKE ?
+  //       OR ssc.name LIKE ?
+  //     )
+
+  //   GROUP BY p.product_id
+  //   ORDER BY p.created_at DESC
+  //   LIMIT ?
+  // `;
+
+  //   const params = [keyword, keyword, keyword, keyword, keyword, limit];
+
+  //   const [rows] = await db.execute(query, params);
+
+  //   return rows.map((row) => ({
+  //     product_id: row.product_id,
+  //     product_name: row.product_name,
+  //     images: row.images
+  //       ? row.images.split(",").map((i) => {
+  //           const [, image_url] = i.split("::");
+  //           return { image_url };
+  //         })
+  //       : [],
+  //   }));
+  // }
+
   // Load Products
+
   async loadProducts({ search, limit, offset }) {
     return this.getProductsByCategory({
       search,

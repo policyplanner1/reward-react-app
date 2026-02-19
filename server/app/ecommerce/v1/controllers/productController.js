@@ -214,16 +214,44 @@ class ProductController {
           priceMax,
         });
 
-      const processedProducts = products.map((p) => ({
-        id: p.product_id,
-        title: p.product_name,
-        image: p.images.length ? p.images[0].image_url : null,
-        price: p.sale_price ? `₹${p.sale_price}` : null,
-        originalPrice: p.mrp ? `₹${p.mrp}` : null,
-        discount: "40%",
-        rating: 4.6,
-        reviews: "18.9K",
-      }));
+      const processedProducts = products.map((product) => {
+        const mainImage =
+          product.images && product.images.length
+            ? product.images[0].image_url
+            : null;
+
+        const salePrice = product.sale_price ? Number(product.sale_price) : 0;
+
+        const discountPercent = product.reward_redemption_limit
+          ? Number(product.reward_redemption_limit)
+          : 0;
+
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+
+        const finalPrice = salePrice - discountAmount;
+
+        const mrp = product.mrp ? Number(product.mrp) : 0;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        return {
+          id: product.product_id,
+          title: product.product_name,
+          brand: product.brand_name,
+          category: product.category_name,
+          subcategory: product.subcategory_name,
+          sub_subcategory: product.sub_subcategory_name,
+          image: mainImage,
+          price: `₹${salePrice}`,
+          originalPrice: `₹${mrp}`,
+          discount: `${mrpDiscountPercent}%`,
+          pointsPrice: `₹${finalPrice}`,
+          points: discountAmount,
+          rating: 4.6,
+          reviews: "18.9K",
+        };
+      });
 
       return res.json({
         success: true,
@@ -261,6 +289,19 @@ class ProductController {
           success: false,
           message: "Product not found",
         });
+      }
+
+      // if (req.user?.user_id) {
+      if (1) {
+        await db.execute(
+          `
+            INSERT INTO recently_viewed (user_id, product_id)
+            VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE viewed_at = CURRENT_TIMESTAMP
+          `,
+          // [req.user.user_id, productId],
+          [1, productId],
+        );
       }
 
       const processedProduct = {
@@ -331,6 +372,153 @@ class ProductController {
     }
   }
 
+  // discovery categories
+  // async getCategoryDiscovery(req, res) {
+  //   try {
+  //     // 1. Top Categories
+  //     const [topCategories] = await db.execute(`
+  //         SELECT
+  //           c.category_id,
+  //           c.category_name,
+  //           c.cover_image,
+  //           COUNT(p.product_id) AS product_count
+
+  //         FROM categories c
+
+  //         JOIN eproducts p
+  //           ON p.category_id = c.category_id
+  //         AND p.status = 'approved'
+  //         AND p.is_visible = 1
+  //         AND p.is_searchable = 1
+
+  //         WHERE c.status = 1
+  //           AND c.is_visible_in_ui = 1
+
+  //         GROUP BY c.category_id
+  //         ORDER BY product_count DESC
+  //         LIMIT 5
+  //       `);
+
+  //     // 2. New & Upcoming
+  //     const [newLaunches] = await db.execute(`
+  //       SELECT
+  //         p.product_id,
+  //         p.product_name,
+  //         p.brand_name,
+  //         v.mrp,
+  //         v.sale_price,
+  //         v.reward_redemption_limit,
+
+  //         GROUP_CONCAT(
+  //           DISTINCT CONCAT(
+  //             pi.image_id, '::',
+  //             pi.image_url, '::',
+  //             pi.sort_order
+  //           )
+  //           ORDER BY pi.sort_order ASC
+  //         ) AS images
+
+  //       FROM eproducts p
+
+  //       /* ---- Cheapest Visible Variant ---- */
+  //       LEFT JOIN product_variants v
+  //         ON v.variant_id = (
+  //           SELECT pv2.variant_id
+  //           FROM product_variants pv2
+  //           WHERE pv2.product_id = p.product_id
+  //             AND pv2.is_visible = 1
+  //             AND pv2.sale_price IS NOT NULL
+  //           ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+  //           LIMIT 1
+  //         )
+
+  //       LEFT JOIN product_images pi
+  //         ON pi.product_id = p.product_id
+
+  //       WHERE
+  //         p.status = 'approved'
+  //         AND p.is_visible = 1
+  //         AND p.is_searchable = 1
+  //         AND v.variant_id IS NOT NULL
+
+  //       GROUP BY p.product_id
+  //       ORDER BY p.created_at DESC
+  //       LIMIT 5
+  //     `);
+
+  //     // 3. Recently Viewed
+  //     let recentlyViewed = [];
+  //     // const userId = req.user?.user_id;
+  //     const userId = 1;
+
+  //     if (userId) {
+  //       const [rows] = await db.execute(
+  //         `
+  //       SELECT
+  //         p.product_id,
+  //         p.product_name,
+  //         v.sale_price,
+  //         v.mrp,
+
+  //         GROUP_CONCAT(
+  //           DISTINCT CONCAT(
+  //             pi.image_id, '::',
+  //             pi.image_url, '::',
+  //             pi.sort_order
+  //           )
+  //           ORDER BY pi.sort_order ASC
+  //         ) AS images
+
+  //       FROM recently_viewed rv
+
+  //       JOIN eproducts p
+  //         ON p.product_id = rv.product_id
+
+  //       LEFT JOIN product_variants v
+  //         ON v.variant_id = (
+  //           SELECT pv2.variant_id
+  //           FROM product_variants pv2
+  //           WHERE pv2.product_id = p.product_id
+  //             AND pv2.is_visible = 1
+  //             AND pv2.sale_price IS NOT NULL
+  //           ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+  //           LIMIT 1
+  //         )
+
+  //       LEFT JOIN product_images pi
+  //         ON pi.product_id = p.product_id
+
+  //       WHERE
+  //         rv.user_id = ?
+  //         AND p.status = 'approved'
+  //         AND p.is_visible = 1
+  //         AND p.is_searchable = 1
+  //         AND v.variant_id IS NOT NULL
+
+  //       GROUP BY p.product_id
+  //       ORDER BY rv.viewed_at DESC
+  //       LIMIT 5
+  //     `,
+  //         [userId],
+  //       );
+
+  //       recentlyViewed = rows;
+  //     }
+
+  //     return res.json({
+  //       success: true,
+  //       data: {
+  //         topCategories,
+  //         newLaunches,
+  //         recentlyViewed,
+  //       },
+  //     });
+  //   } catch (error) {
+  //     console.error(error);
+  //     res.status(500).json({ success: false });
+  //   }
+  // }
+
   // subcategories by category ID
   async getSubcategoriesByCategory(req, res) {
     try {
@@ -344,25 +532,73 @@ class ProductController {
       }
 
       const [data] = await db.execute(
-        `SELECT 
-          sc.subcategory_id, 
-          sc.subcategory_name
-        FROM sub_categories sc 
-        WHERE sc.category_id = ? AND sc.status = 1`,
+        `SELECT * FROM sub_categories WHERE category_id = ? AND status = 1`,
         [categoryId],
       );
 
       const processedSubCategories = data.map((subcategory) => ({
         id: subcategory.subcategory_id,
         name: subcategory.subcategory_name,
-        image: `https://via.placeholder.com/150?text=${encodeURIComponent(
-          subcategory.subcategory_name,
-        )}`,
+        image: subcategory.cover_image,
       }));
 
       res.json({
         success: true,
         data: processedSubCategories,
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  // category with subcategories
+  async getCategoriesWithSubcategories(req, res) {
+    try {
+      const [rows] = await db.execute(`
+      SELECT 
+        c.category_id,
+        c.category_name,
+        c.cover_image AS category_image,
+        sc.subcategory_id,
+        sc.subcategory_name,
+        sc.cover_image AS subcategory_image
+      FROM categories c
+      LEFT JOIN sub_categories sc 
+        ON sc.category_id = c.category_id 
+        AND sc.status = 1
+      WHERE c.status = 1 
+        AND c.is_visible_in_ui = 1
+      ORDER BY c.category_name ASC, sc.subcategory_name ASC
+    `);
+
+      const categoryMap = {};
+
+      rows.forEach((row) => {
+        // If category not yet added
+        if (!categoryMap[row.category_id]) {
+          categoryMap[row.category_id] = {
+            id: row.category_id,
+            name: row.category_name,
+            image: row.category_image,
+            subcategories: [],
+          };
+        }
+
+        // If subcategory exists
+        if (row.subcategory_id) {
+          categoryMap[row.category_id].subcategories.push({
+            id: row.subcategory_id,
+            name: row.subcategory_name,
+            image: row.subcategory_image,
+          });
+        }
+      });
+
+      const result = Object.values(categoryMap);
+
+      res.json({
+        success: true,
+        data: result,
       });
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });
@@ -413,16 +649,11 @@ class ProductController {
     try {
       const q = (req.query.q || "").trim();
       const limit = 10;
-      const products = await ProductModel.getSearchSuggestions({
+
+      const suggestions = await ProductModel.getSearchSuggestions({
         search: q,
         limit,
       });
-
-      const suggestions = products.map((p) => ({
-        id: p.product_id,
-        title: p.product_name,
-        image: p.images && p.images.length ? p.images[0].image_url : null,
-      }));
 
       res.json({
         success: true,
@@ -430,9 +661,10 @@ class ProductController {
       });
     } catch (err) {
       console.error("Search suggestion error:", err);
-      res
-        .status(500)
-        .json({ success: false, message: "Internal server error" });
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
     }
   }
 
@@ -502,7 +734,13 @@ class ProductController {
   // Save History
   async saveSearchHistory(req, res) {
     try {
-      const userId = req.user?.user_id;
+      // if (!req.user?.user_id) {
+      //   return res.status(401).json({ success: false });
+      // }
+
+      // const userId = req.user?.user_id;
+      const userId = 1;
+
       const keyword = (req.body.keyword || "").trim();
 
       if (!keyword) {
@@ -531,7 +769,12 @@ class ProductController {
   // Get Search History
   async getSearchHistory(req, res) {
     try {
-      const userId = req.user?.user_id;
+      // if (!req.user?.user_id) {
+      //   return res.status(401).json({ success: false });
+      // }
+
+      // const userId = req.user?.user_id;
+      const userId = 1;
 
       const [rows] = await db.execute(
         `

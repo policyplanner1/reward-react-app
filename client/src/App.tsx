@@ -38,6 +38,8 @@ import ReviewProductPage from "./components/feature/vendor/products/ProductView"
 import VendorApprovalList from "./components/feature/manager/vendor/VendorApprovalList";
 import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprovalForm";
 import NotFoundPage from "./pages/NotFound";
+import OrderList from "./components/feature/manager/order/OrderList";
+import OrderView from "./components/feature/manager/order/OrderView";
 
 /* Attribute */
 import AttributeManagement from "./components/feature/manager/attribute/attributes";
@@ -188,6 +190,14 @@ export default function App() {
         <Route
           path="/manager/flash-variants/:flashId"
           element={<FlashSaleVariant />}
+        />
+
+        {/* Orders */}
+        <Route path={routes.manager.orders} element={<OrderList />} />
+
+        <Route
+          path="/manager/order-view/:orderId"
+          element={<OrderView />}
         />
       </Route>
 
