@@ -16,7 +16,11 @@ async function getXpressToken() {
     },
   );
 
-  const token = response.data.data.token;
+  if (!response.data.status) {
+    throw new Error(response.data.message);
+  }
+
+  const token = response.data.data;
 
   cachedToken = token;
   tokenExpiry = Date.now() + 55 * 60 * 1000;
