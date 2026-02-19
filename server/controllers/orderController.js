@@ -110,12 +110,12 @@ class OrderController {
         request_auto_pickup: "yes",
 
         consignee: {
-          name: order.customer_name,
+          name: order.contact_name,
           address: order.address,
           city: order.city,
           state: order.state,
-          pincode: order.pincode,
-          phone: order.phone,
+          pincode: order.zipcode,
+          phone: order.contact_phone,
         },
 
         pickup: {
