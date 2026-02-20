@@ -115,9 +115,20 @@ class OrderController {
 
   // Cancellation Request
   async requestOrderCancellation(req, res) {
+    const conn = await db.getConnection();
     try {
-      // const userId = req.user.user_id;
-      const userId = 1;
+      await conn.beginTransaction();
+
+      const userId = req.user.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       const orderId = Number(req.params.orderId);
       const { reason_id, comment } = req.body;
 
@@ -129,7 +140,7 @@ class OrderController {
       }
 
       // 1 Check order ownership & status
-      const [[order]] = await db.execute(
+      const [[order]] = await conn.execute(
         `
         SELECT order_id, order_ref,status, cancellation_status
         FROM eorders
@@ -160,7 +171,7 @@ class OrderController {
       }
 
       // 2 Create cancellation request
-      await db.execute(
+      await conn.execute(
         `
         INSERT INTO order_cancellation_requests
           (order_id, user_id, reason_id, comment)
@@ -170,7 +181,7 @@ class OrderController {
       );
 
       //2.5 create Cancellation Timeline
-      await db.execute(
+      await conn.execute(
         `
        INSERT INTO order_cancellation_timeline (order_id, event)
         VALUES (?, 'cancellation_requested')
@@ -179,7 +190,7 @@ class OrderController {
       );
 
       // 3 Update order status
-      await db.execute(
+      await conn.execute(
         `
         UPDATE eorders
         SET cancellation_status = 'requested'
@@ -188,16 +199,21 @@ class OrderController {
         [orderId],
       );
 
+      await conn.commit();
+
       return res.json({
         success: true,
         message: "Cancellation request submitted successfully",
       });
     } catch (error) {
+      await conn.rollback();
       console.error("Cancellation request error:", error);
       return res.status(500).json({
         success: false,
         message: "Unable to submit cancellation request",
       });
+    }finally{
+      await conn.release()
     }
   }
 
