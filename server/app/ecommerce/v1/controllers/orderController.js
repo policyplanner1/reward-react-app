@@ -131,7 +131,7 @@ class OrderController {
       // 1 Check order ownership & status
       const [[order]] = await db.execute(
         `
-        SELECT order_id, status, cancellation_status
+        SELECT order_id, order_ref,status, cancellation_status
         FROM eorders
         WHERE order_id = ? AND user_id = ?
         `,
