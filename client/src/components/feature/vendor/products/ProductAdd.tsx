@@ -231,6 +231,7 @@ export default function ProductListingDynamic() {
       maxWidthOrHeight: 1920,
       useWebWorker: true,
       initialQuality: 0.85,
+      fileType: "image/webp", // 🔥 convert to WebP
     };
 
     try {
@@ -242,7 +243,7 @@ export default function ProductListingDynamic() {
       };
 
       setProduct((prev) => {
-        // revoke old previews
+        // revoke old preview URLs
         prev.productImages.forEach((img) => {
           URL.revokeObjectURL(img.url);
         });
@@ -252,8 +253,11 @@ export default function ProductListingDynamic() {
           productImages: [preview],
         };
       });
+
+      setImageError("");
     } catch (err) {
       console.error("Image compression failed:", err);
+      setImageError("Failed to process image.");
     }
 
     e.target.value = "";
