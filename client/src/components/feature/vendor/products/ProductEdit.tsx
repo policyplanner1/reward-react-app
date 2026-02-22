@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import QuillEditor from "../../../QuillEditor";
 import { FaArrowLeft } from "react-icons/fa";
+import imageCompression from "browser-image-compression";
 
 type IconComp = ComponentType<any>;
 
@@ -228,33 +229,50 @@ export default function EditProductPage() {
     }
   };
 
-  const handleMainImages = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
+  const handleMainImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
 
-    const newFiles = Array.from(e.target.files);
+    const file = e.target.files[0];
 
-    setProduct((prev) => {
-      const existingCount = prev.existingImages?.length || 0;
-      const newCount = prev.productImages.length;
+    if (!file.type.startsWith("image/")) {
+      setImageError("Only image files are allowed.");
+      return;
+    }
 
-      if (existingCount + newCount + newFiles.length > 1) {
-        setImageError("Only one cover image is allowed.");
-        return prev;
-      }
+    const existingCount = product.existingImages?.length || 0;
+    const newCount = product.productImages.length;
 
-      const previews = newFiles.map((file) => ({
-        file,
-        url: URL.createObjectURL(file),
+    if (existingCount + newCount >= 1) {
+      setImageError("Only one cover image is allowed.");
+      return;
+    }
+
+    try {
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+        fileType: "image/webp",
+        initialQuality: 0.85,
+      });
+
+      const preview = {
+        file: compressedFile,
+        url: URL.createObjectURL(compressedFile),
+      };
+
+      setProduct((prev) => ({
+        ...prev,
+        productImages: [preview],
       }));
 
-      return {
-        ...prev,
-        productImages: [...prev.productImages, ...previews],
-      };
-    });
+      setImageError("");
+    } catch (err) {
+      console.error("Image compression failed:", err);
+      setImageError("Image processing failed.");
+    }
 
     e.target.value = "";
-    setImageError("");
   };
 
   const handleProductVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -610,27 +628,103 @@ export default function EditProductPage() {
     setDocFiles((prev) => ({ ...prev, [documentId]: file }));
   };
 
+  const stripHtml = (html: string) => {
+    return html.replace(/<[^>]*>/g, "").trim();
+  };
+
   // --- Form Submission ---
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
-    setSuccess(null);
 
     try {
-      // Validate required fields
+      /* ================= CATEGORY VALIDATION ================= */
       if (!product.categoryId && !custom_category.trim()) {
         throw new Error("Please select or enter a category");
       }
 
+      /* ================= BASIC REQUIRED FIELDS ================= */
       if (!product.productName || !product.brandName || !product.manufacturer) {
         throw new Error("Please fill in all required product information");
       }
 
-      const formData = new FormData();
-      if (!product.categoryId && !custom_category.trim()) {
-        throw new Error("Please select or enter a category");
+      /* ================= DESCRIPTION VALIDATION ================= */
+      if (!stripHtml(product.description)) {
+        throw new Error("Detailed description is required");
       }
+
+      if (!stripHtml(product.brandDescription)) {
+        throw new Error("Brand description is required");
+      }
+
+      if (!product.shortDescription.trim()) {
+        throw new Error("Short description is required");
+      }
+
+      /* ================= ATTRIBUTE VALIDATION ================= */
+      const missingAttrs = categoryAttributes.filter((attr) => {
+        if (attr.is_required !== 1) return false;
+
+        const val = productAttributes[attr.attribute_key];
+
+        return (
+          !val ||
+          !Array.isArray(val) ||
+          val.length === 0 ||
+          val.every((v) => !v || v.trim() === "")
+        );
+      });
+
+      if (missingAttrs.length > 0) {
+        throw new Error(
+          `Please fill required attributes: ${missingAttrs
+            .map((a) => a.attribute_label)
+            .join(", ")}`,
+        );
+      }
+
+      /* ================= DELIVERY VALIDATION ================= */
+      const minDays = Number(product.deliveryMinDays);
+      const maxDays = Number(product.deliveryMaxDays);
+
+      if (minDays <= 0 || maxDays <= 0) {
+        throw new Error("Delivery days must be greater than 0");
+      }
+
+      if (minDays > maxDays) {
+        throw new Error(
+          "Minimum delivery days cannot exceed maximum delivery days",
+        );
+      }
+
+      /* ================= RETURN WINDOW VALIDATION ================= */
+      if (product.isReturnable === 1) {
+        const days = Number(product.returnWindowDays);
+        if (!days || days < 1 || days > 30) {
+          throw new Error("Return window must be between 1 and 30 days");
+        }
+      }
+
+      /* ================= COVER IMAGE VALIDATION ================= */
+      const totalImages =
+        (product.existingImages?.length || 0) + product.productImages.length;
+
+      if (totalImages === 0) {
+        throw new Error("Cover image is required");
+      }
+
+      /* ================= REQUIRED DOCUMENT VALIDATION ================= */
+      for (const doc of requiredDocs) {
+        if (doc.status === 1 && !docFiles[doc.document_id]) {
+          throw new Error(
+            `Please upload required document: ${doc.document_name}`,
+          );
+        }
+      }
+
+      /* ================= BUILD FORM DATA ================= */
+      const formData = new FormData();
 
       if (product.categoryId) {
         formData.append("category_id", product.categoryId.toString());
@@ -646,12 +740,15 @@ export default function EditProductPage() {
           product.subSubCategoryId.toString(),
         );
       }
+
       if (isCustomCategory) {
         formData.append("custom_category", custom_category.trim());
       }
+
       if (isCustomSubcategory) {
         formData.append("custom_subcategory", custom_subcategory.trim());
       }
+
       if (isCustomSubSubcategory) {
         formData.append("custom_sub_subcategory", custom_subsubcategory.trim());
       }
@@ -663,18 +760,14 @@ export default function EditProductPage() {
       formData.append("shortDescription", product.shortDescription);
       formData.append("brandDescription", product.brandDescription);
 
-      if (product.gstSlab) {
-        formData.append("gstSlab", product.gstSlab);
-      }
-
-      if (product.hsnSacCode) {
-        formData.append("hsnSacCode", product.hsnSacCode);
-      }
+      if (product.gstSlab) formData.append("gstSlab", product.gstSlab);
+      if (product.hsnSacCode) formData.append("hsnSacCode", product.hsnSacCode);
 
       formData.append(
         "is_discount_eligible",
         String(product.isDiscountEligible),
       );
+
       formData.append("is_returnable", String(product.isReturnable));
 
       if (product.isReturnable === 1) {
@@ -685,7 +778,6 @@ export default function EditProductPage() {
       formData.append("delivery_sla_max_days", product.deliveryMaxDays);
       formData.append("shipping_class", product.shippingClass);
 
-      // Add main product images
       product.productImages.forEach(({ file }) => {
         formData.append("images", file);
       });
@@ -695,7 +787,6 @@ export default function EditProductPage() {
         JSON.stringify(product.removedImages || []),
       );
 
-      // video
       if (product.productVideo) {
         formData.append("video", product.productVideo.file);
       }
@@ -705,37 +796,24 @@ export default function EditProductPage() {
         JSON.stringify(product.removedVideo || false),
       );
 
-      // Documents
       Object.entries(docFiles).forEach(([docId, file]) => {
-        if (file) {
-          formData.append(docId, file);
-        }
+        if (file) formData.append(docId, file);
       });
 
-      // attributes
       formData.append("attributes", JSON.stringify(productAttributes));
 
-      // Submit to backend
+      /* ================= SUBMIT ================= */
       const response = await api.put(
         `/product/update-product/${productId}`,
         formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        },
       );
 
-      const data = response.data;
-
-      if (!data.success) {
-        throw new Error(data.message || "Failed to update product");
+      if (!response.data.success) {
+        throw new Error(response.data.message || "Failed to update product");
       }
 
-      setSuccess(`Product updated successfully! Product ID: ${data.productId}`);
       navigate("/vendor/products/list");
     } catch (err: any) {
-      console.error("Submit error:", err);
       setError(err.message);
     } finally {
       setIsSubmitting(false);
