@@ -320,7 +320,68 @@ class ProductController {
           .json({ success: false, message: "Product ID is required" });
       }
 
+      const [[product]] = await connection.execute(
+        `SELECT product_id FROM eproducts WHERE product_id = ?`,
+        [productId],
+      );
+
+      if (!product) {
+        await connection.rollback();
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
       await ProductModel.deleteProduct(connection, productId, vendorId);
+
+      await connection.commit();
+      return res.json({
+        success: true,
+        message: "Product deleted successfully",
+      });
+    } catch (err) {
+      if (connection) await connection.rollback();
+      console.error("PRODUCT DELETE ERROR:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    } finally {
+      if (connection) connection.release();
+    }
+  }
+
+  // Remove product admin side
+  async removeProduct(req, res) {
+    let connection;
+
+    try {
+      connection = await db.getConnection();
+      await connection.beginTransaction();
+
+      const productId = req.params.id;
+
+      if (!productId) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Product ID is required" });
+      }
+
+      const [[product]] = await connection.execute(
+        `SELECT product_id FROM eproducts WHERE product_id = ?`,
+        [productId],
+      );
+
+      if (!product) {
+        await connection.rollback();
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      await ProductModel.removeProduct(connection, productId);
 
       await connection.commit();
       return res.json({

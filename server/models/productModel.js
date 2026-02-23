@@ -834,6 +834,50 @@ class ProductModel {
     }
   }
 
+  // remove product
+  async removeProduct(connection, productId) {
+    try {
+      // Delete product variant images
+      await connection.execute(
+        `
+        DELETE pvi FROM product_variant_images pvi
+        INNER JOIN product_variants pv
+          ON pvi.variant_id = pv.variant_id
+        WHERE pv.product_id = ?
+        `,
+        [productId],
+      );
+
+      // Delete product variants
+      await connection.execute(
+        `DELETE FROM product_variants WHERE product_id = ?`,
+        [productId],
+      );
+
+      // Delete product images
+      await connection.execute(
+        `DELETE FROM product_images WHERE product_id = ?`,
+        [productId],
+      );
+
+      // Delete product documents
+      await connection.execute(
+        `DELETE FROM product_documents WHERE product_id = ?`,
+        [productId],
+      );
+
+      // Delete main product
+      await connection.execute(`DELETE FROM eproducts WHERE product_id = ?`, [
+        productId,
+      ]);
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      throw error;
+    }
+  }
+
   // Get all products
   async getAllProductDetails({
     search,

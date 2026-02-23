@@ -310,7 +310,7 @@ export default function ProductManagerList() {
     if (!result.isConfirmed) return;
 
     try {
-      const res = await api.delete(`/manager/product/${product.product_id}`);
+      const res = await api.delete(`/product/remove-product/${product.product_id}`);
 
       if (!res.data.success) {
         throw new Error(res.data.message || "Delete failed");

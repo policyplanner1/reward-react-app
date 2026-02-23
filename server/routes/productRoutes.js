@@ -38,6 +38,14 @@ router.delete(
   ProductController.deleteProduct,
 );
 
+// delete product admin side
+router.delete(
+  "/remove-product/:id",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  ProductController.removeProduct,
+);
+
 // Get all products
 router.get(
   "/all-products",
