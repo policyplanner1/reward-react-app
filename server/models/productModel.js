@@ -789,91 +789,123 @@ class ProductModel {
   }
 
   // delete product
+  // async deleteProduct(connection, productId, vendorId) {
+  //   try {
+  //     // Delete product variant images
+  //     const [variants] = await connection.execute(
+  //       `SELECT variant_id FROM product_variants WHERE product_id = ?`,
+  //       [productId],
+  //     );
+  //     for (const variant of variants) {
+  //       await connection.execute(
+  //         `DELETE FROM product_variant_images WHERE variant_id = ?`,
+  //         [variant.variant_id],
+  //       );
+  //     }
+
+  //     // Delete product variants
+  //     await connection.execute(
+  //       `DELETE FROM product_variants WHERE product_id = ?`,
+  //       [productId],
+  //     );
+
+  //     // Delete product images
+  //     await connection.execute(
+  //       `DELETE FROM product_images WHERE product_id = ?`,
+  //       [productId],
+  //     );
+
+  //     // Delete product documents
+  //     await connection.execute(
+  //       `DELETE FROM product_documents WHERE product_id = ?`,
+  //       [productId],
+  //     );
+
+  //     // Delete main product
+  //     await connection.execute(
+  //       `DELETE FROM eproducts WHERE product_id = ? AND vendor_id = ?`,
+  //       [productId, vendorId],
+  //     );
+
+  //     return true;
+  //   } catch (error) {
+  //     console.error("Error deleting product:", error);
+  //     throw error;
+  //   }
+  // }
+
   async deleteProduct(connection, productId, vendorId) {
     try {
-      // Delete product variant images
-      const [variants] = await connection.execute(
-        `SELECT variant_id FROM product_variants WHERE product_id = ?`,
-        [productId],
-      );
-      for (const variant of variants) {
-        await connection.execute(
-          `DELETE FROM product_variant_images WHERE variant_id = ?`,
-          [variant.variant_id],
-        );
-      }
-
-      // Delete product variants
       await connection.execute(
-        `DELETE FROM product_variants WHERE product_id = ?`,
-        [productId],
-      );
-
-      // Delete product images
-      await connection.execute(
-        `DELETE FROM product_images WHERE product_id = ?`,
-        [productId],
-      );
-
-      // Delete product documents
-      await connection.execute(
-        `DELETE FROM product_documents WHERE product_id = ?`,
-        [productId],
-      );
-
-      // Delete main product
-      await connection.execute(
-        `DELETE FROM eproducts WHERE product_id = ? AND vendor_id = ?`,
+        `UPDATE eproducts 
+       SET is_deleted = 1 
+       WHERE product_id = ? AND vendor_id = ?`,
         [productId, vendorId],
       );
 
       return true;
     } catch (error) {
-      console.error("Error deleting product:", error);
+      console.error("Error soft deleting product:", error);
       throw error;
     }
   }
 
   // remove product
+  // async removeProduct(connection, productId) {
+  //   try {
+  //     // Delete product variant images
+  //     await connection.execute(
+  //       `
+  //       DELETE pvi FROM product_variant_images pvi
+  //       INNER JOIN product_variants pv
+  //         ON pvi.variant_id = pv.variant_id
+  //       WHERE pv.product_id = ?
+  //       `,
+  //       [productId],
+  //     );
+
+  //     // Delete product variants
+  //     await connection.execute(
+  //       `DELETE FROM product_variants WHERE product_id = ?`,
+  //       [productId],
+  //     );
+
+  //     // Delete product images
+  //     await connection.execute(
+  //       `DELETE FROM product_images WHERE product_id = ?`,
+  //       [productId],
+  //     );
+
+  //     // Delete product documents
+  //     await connection.execute(
+  //       `DELETE FROM product_documents WHERE product_id = ?`,
+  //       [productId],
+  //     );
+
+  //     // Delete main product
+  //     await connection.execute(`DELETE FROM eproducts WHERE product_id = ?`, [
+  //       productId,
+  //     ]);
+
+  //     return true;
+  //   } catch (error) {
+  //     console.error("Error deleting product:", error);
+  //     throw error;
+  //   }
+  // }
+
   async removeProduct(connection, productId) {
     try {
-      // Delete product variant images
       await connection.execute(
-        `
-        DELETE pvi FROM product_variant_images pvi
-        INNER JOIN product_variants pv
-          ON pvi.variant_id = pv.variant_id
-        WHERE pv.product_id = ?
-        `,
+        `UPDATE eproducts 
+       SET is_deleted = 1 
+       WHERE product_id = ?`,
         [productId],
       );
-
-      // Delete product variants
-      await connection.execute(
-        `DELETE FROM product_variants WHERE product_id = ?`,
-        [productId],
-      );
-
-      // Delete product images
-      await connection.execute(
-        `DELETE FROM product_images WHERE product_id = ?`,
-        [productId],
-      );
-
-      // Delete product documents
-      await connection.execute(
-        `DELETE FROM product_documents WHERE product_id = ?`,
-        [productId],
-      );
-
-      // Delete main product
-      await connection.execute(`DELETE FROM eproducts WHERE product_id = ?`, [
-        productId,
-      ]);
 
       return true;
     } catch (error) {
-      console.error("Error deleting product:", error);
+      console.error("Error soft deleting product:", error);
       throw error;
     }
   }
