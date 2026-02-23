@@ -48,6 +48,36 @@ class VariantController {
       const variantId = Number(req.params.variantId);
       const data = req.body;
 
+      // --- Basic ID validation ---
+      if (!variantId) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid variant ID",
+        });
+      }
+
+      // --- Mandatory logistics validation ---
+      const weight = Number(data.weight);
+      const length = Number(data.length);
+      const breadth = Number(data.breadth);
+      const height = Number(data.height);
+
+      if (
+        !weight ||
+        weight <= 0 ||
+        !length ||
+        length <= 0 ||
+        !breadth ||
+        breadth <= 0 ||
+        !height ||
+        height <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Weight and all dimensions must be greater than 0.",
+        });
+      }
+
       await VariantModel.updateVariant(variantId, data);
 
       return res.json({
