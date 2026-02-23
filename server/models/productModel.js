@@ -842,6 +842,7 @@ class ProductModel {
     sortOrder,
     limit,
     offset,
+    role,
   }) {
     try {
       const conditions = [];
@@ -855,6 +856,10 @@ class ProductModel {
       if (search) {
         conditions.push("p.product_name LIKE ?");
         params.push(`%${search}%`);
+      }
+
+      if (role === "vendor_manager" || role === "admin") {
+        conditions.push("p.status != 'pending'");
       }
 
       const whereClause = conditions.length
@@ -934,12 +939,28 @@ class ProductModel {
         };
       });
 
+      const [statsRows] = await db.execute(
+        `
+        SELECT 
+          COUNT(*) AS total,
+          SUM(CASE WHEN p.status = 'sent_for_approval' THEN 1 ELSE 0 END) AS pending,
+          SUM(CASE WHEN p.status = 'approved' THEN 1 ELSE 0 END) AS approved,
+          SUM(CASE WHEN p.status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
+          SUM(CASE WHEN p.status = 'resubmission' THEN 1 ELSE 0 END) AS resubmission
+        FROM eproducts p
+        ${whereClause}
+        `,
+        params,
+      );
+
+      const stats = statsRows[0];
+
       const [[{ total }]] = await db.execute(
         `SELECT COUNT(DISTINCT p.product_id) AS total FROM eproducts p ${whereClause}`,
         params,
       );
 
-      return { products, totalItems: total };
+      return { products, totalItems: total, stats };
     } catch (error) {
       console.error("Error fetching all products:", error);
       throw error;

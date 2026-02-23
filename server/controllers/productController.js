@@ -355,60 +355,22 @@ class ProductController {
       const sortOrder =
         req.query.sortOrder?.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
-      const { products, totalItems } = await ProductModel.getAllProductDetails({
-        search,
-        status,
-        sortBy,
-        sortOrder,
-        limit,
-        offset,
-      });
+      const { products, totalItems, stats } =
+        await ProductModel.getAllProductDetails({
+          search,
+          status,
+          sortBy,
+          sortOrder,
+          limit,
+          offset,
+          role,
+        });
 
-      const processedProducts = products.map((product) => ({
-        ...product,
-        main_image:
-          product.images && product.images.length
-            ? product.images[0].image_url
-            : null,
+      const normalizedProducts = products.map((p) => ({
+        ...p,
+        main_image: p.images?.length ? p.images[0].image_url : null,
+        status: p.status === "sent_for_approval" ? "pending" : p.status,
       }));
-
-      const normalizedProducts =
-        role === "vendor_manager"
-          ? processedProducts
-              .filter((p) => p.status !== "pending")
-              .map((p) => ({
-                ...p,
-                status: p.status === "sent_for_approval" ? "pending" : p.status,
-              }))
-          : processedProducts;
-
-      const statsSource =
-        role === "vendor_manager"
-          ? processedProducts
-              .filter((p) => p.status !== "pending")
-              .map((p) => ({
-                ...p,
-                status: p.status === "sent_for_approval" ? "pending" : p.status,
-              }))
-          : processedProducts;
-
-      const stats = statsSource.reduce(
-        (acc, product) => {
-          acc.total += 1;
-          if (product.status === "pending") acc.pending += 1;
-          if (product.status === "approved") acc.approved += 1;
-          if (product.status === "rejected") acc.rejected += 1;
-          if (product.status === "resubmission") acc.resubmission += 1;
-          return acc;
-        },
-        {
-          pending: 0,
-          approved: 0,
-          rejected: 0,
-          resubmission: 0,
-          total: 0,
-        },
-      );
 
       return res.json({
         success: true,
