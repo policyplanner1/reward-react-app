@@ -812,6 +812,7 @@ export default function EditProductPage() {
         throw new Error(response.data.message || "Failed to update product");
       }
 
+      setSuccess(`Product updated successfully! Product ID: ${productId}`);
       navigate("/vendor/products/list");
     } catch (err: any) {
       setError(err.message);
