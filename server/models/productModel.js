@@ -2,6 +2,7 @@ const db = require("../config/database");
 const { moveFile } = require("../utils/moveFile");
 const fs = require("fs");
 const path = require("path");
+const { compressVideo } = require("../utils/videoCompression");
 
 // generate SKU
 function generateSKU(productId) {
@@ -50,8 +51,12 @@ async function processUploadedFiles(
       file.finalPath = `products/${vendorId}/${productId}/images/${filename}`;
     }
 
-    // ================= PRODUCT VIDEO =================
+    // ================= PRODUCT VIDEO (COMPRESSED) =================
     else if (file.fieldname === "video") {
+      if (!file.mimetype.startsWith("video/")) {
+        throw new Error("Invalid video file type");
+      }
+
       const videoFolder = path.join(
         UPLOAD_BASE,
         vendorId.toString(),
@@ -59,8 +64,38 @@ async function processUploadedFiles(
         "video",
       );
 
-      newPath = path.join(videoFolder, filename);
-      file.finalPath = `products/${vendorId}/${productId}/video/${filename}`;
+      const originalPath = path.join(videoFolder, filename);
+
+      // ensure folder exists
+      if (!fs.existsSync(videoFolder)) {
+        fs.mkdirSync(videoFolder, { recursive: true });
+      }
+
+      // move temp → video folder first
+      await moveFile(file.path, originalPath);
+
+      const compressedFilename = `compressed-${Date.now()}.mp4`;
+      const compressedPath = path.join(videoFolder, compressedFilename);
+
+      try {
+        await compressVideo(originalPath, compressedPath);
+
+        // delete original after compression
+        if (fs.existsSync(originalPath)) {
+          fs.unlinkSync(originalPath);
+        }
+      } catch (err) {
+        if (fs.existsSync(originalPath)) {
+          fs.unlinkSync(originalPath);
+        }
+        throw new Error("Video compression failed");
+      }
+
+      file.finalPath = `products/${vendorId}/${productId}/video/${compressedFilename}`;
+      file.path = compressedPath;
+
+      movedFiles.push(file);
+      continue;
     }
 
     // ================= DOCUMENTS =================
@@ -80,15 +115,13 @@ async function processUploadedFiles(
       continue;
     }
 
-    // 🔴 CRITICAL: ensure folder exists (prevents production crashes)
+    // ensure folder exists
     const targetDir = path.dirname(newPath);
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    // Move file from temp → final
     await moveFile(file.path, newPath);
-
     movedFiles.push(file);
   }
 
