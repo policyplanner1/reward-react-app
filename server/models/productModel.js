@@ -1013,7 +1013,7 @@ class ProductModel {
 
       const [rows] = await db.execute(query, params);
 
-      // 🔹 Parse images safely in Node.js
+      //  Parse images safely in Node.js
       const products = rows.map((row) => {
         let images = [];
 
@@ -1035,13 +1035,35 @@ class ProductModel {
         };
       });
 
+      //  Global Stats
+      const [statsRows] = await db.execute(
+        `
+      SELECT 
+        COUNT(*) AS total,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
+        SUM(CASE WHEN status = 'sent_for_approval' THEN 1 ELSE 0 END) AS sent_for_approval,
+        SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved,
+        SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
+        SUM(CASE WHEN status = 'resubmission' THEN 1 ELSE 0 END) AS resubmission
+      FROM eproducts
+      WHERE vendor_id = ?
+      `,
+        [vendorId],
+      );
+
+      const stats = statsRows[0];
+
       // Total count (no LIMIT/OFFSET)
       const [[{ total }]] = await db.execute(
         `SELECT COUNT(*) AS total FROM eproducts p ${where}`,
         params.slice(0, -2),
       );
 
-      return { products, totalItems: total };
+      return {
+        products,
+        totalItems: total,
+        stats,
+      };
     } catch (error) {
       console.error("Error fetching products by vendor:", error);
       throw error;
