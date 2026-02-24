@@ -185,7 +185,20 @@ class VendorModel {
     if (!vendor) return null;
 
     const [addresses] = await db.execute(
-      "SELECT * FROM vendor_addresses WHERE vendor_id = ?",
+      `SELECT 
+        va.address_id,
+        va.vendor_id,
+        va.type,
+        va.line1,
+        va.line2,
+        va.line3,
+        va.city,
+        va.state_id,
+        s.state_name as state,
+        va.pincode
+     FROM vendor_addresses va
+     LEFT JOIN states s ON va.state_id = s.state_id
+     WHERE va.vendor_id = ?`,
       [vendorId],
     );
 
