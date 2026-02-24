@@ -1049,7 +1049,7 @@ class ProductModel {
     { search, status, sortBy, sortOrder, limit, offset },
   ) {
     try {
-      let where = `WHERE p.vendor_id = ?`;
+      let where = `WHERE p.vendor_id = ? AND p.is_deleted = 0`;
       const params = [vendorId];
 
       if (status) {
@@ -1143,7 +1143,7 @@ class ProductModel {
         SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
         SUM(CASE WHEN status = 'resubmission' THEN 1 ELSE 0 END) AS resubmission
       FROM eproducts
-      WHERE vendor_id = ?
+       WHERE vendor_id = ? AND is_deleted = 0
       `,
         [vendorId],
       );
