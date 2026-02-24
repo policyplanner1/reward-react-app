@@ -921,7 +921,7 @@ class ProductModel {
     role,
   }) {
     try {
-      const conditions = [];
+      const conditions = ["p.is_deleted = 0"];
       const params = [];
 
       if (status) {
