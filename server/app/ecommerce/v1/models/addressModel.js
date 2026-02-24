@@ -208,16 +208,18 @@ class AddressModel {
 
   //   Fetch address by user
   async getAddressesByUser(userId) {
-    const [rows] = await db.execute(
-      `SELECT *
-       FROM customer_addresses
-       WHERE user_id = ? AND status = 1
-       ORDER BY is_default DESC, created_at DESC`,
-      [userId],
-    );
+  const [rows] = await db.execute(
+    `SELECT ca.*, s.state_name AS state
+     FROM customer_addresses ca
+     LEFT JOIN states s ON ca.state_id = s.state_id
+     WHERE ca.user_id = ? 
+       AND ca.status = 1
+     ORDER BY ca.is_default DESC, ca.created_at DESC`,
+    [userId],
+  );
 
-    return rows;
-  }
+  return rows;
+}
 
   //   Fetch address by ID
   async getAddressById(addressId, userId) {
