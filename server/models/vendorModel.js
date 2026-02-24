@@ -57,13 +57,26 @@ class VendorModel {
       line2: d[`${type}AddressLine2`] || d.addressLine2 || "",
       line3: d[`${type}AddressLine3`] || d.addressLine3 || "",
       city: d[`${type}City`] || d.city || "",
-      state: d[`${type}State`] || d.state || "",
+      state_id: d[`${type}State`]
+        ? Number(d[`${type}State`])
+        : d.state
+          ? Number(d.state)
+          : null,
       pincode: d[`${type}Pincode`] || d.pincode || "",
     };
 
+    const [[stateExists]] = await connection.execute(
+      `SELECT state_id FROM states WHERE state_id = ?`,
+      [address.state_id],
+    );
+
+    if (!stateExists) {
+      throw new Error("Invalid state selected");
+    }
+
     await connection.execute(
       `INSERT INTO vendor_addresses 
-        (vendor_id, type, line1, line2, line3, city, state, pincode)
+        (vendor_id, type, line1, line2, line3, city, state_id, pincode)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         vendorId,
@@ -72,7 +85,7 @@ class VendorModel {
         address.line2,
         address.line3,
         address.city,
-        address.state,
+        address.state_id,
         address.pincode,
       ],
     );
