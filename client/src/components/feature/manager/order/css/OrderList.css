@@ -181,3 +181,93 @@
   padding: 5px 8px;
   border-radius: 6px;
 }
+
+
+
+/* responsive */
+@media (max-width: 1024px) {
+  .order-page {
+    padding: 20px;
+  }
+
+  .order-table th,
+  .order-table td {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+
+  .order-page {
+    padding: 15px;
+  }
+
+  /* Hide table header */
+  .order-table thead {
+    display: none;
+  }
+
+  /* Convert table to card layout */
+  .order-table,
+  .order-table tbody,
+  .order-table tr,
+  .order-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .order-table tbody tr {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  }
+
+  .order-table td {
+    border: none;
+    padding: 8px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .order-table td::before {
+    font-weight: 600;
+    color: #6b7280;
+  }
+
+  /* Mobile Labels */
+  .order-table td:nth-child(1)::before { content: "Order Ref"; }
+  .order-table td:nth-child(2)::before { content: "Product"; }
+  .order-table td:nth-child(3)::before { content: "Brand"; }
+  .order-table td:nth-child(4)::before { content: "Total"; }
+  .order-table td:nth-child(5)::before { content: "Status"; }
+  .order-table td:nth-child(6)::before { content: "Date"; }
+  .order-table td:nth-child(7)::before { content: "Items"; }
+  .order-table td:nth-child(8)::before { content: "Action"; }
+
+  /* Stack action buttons */
+  .view-btn,
+  .ship-btn {
+    width: 100%;
+    margin: 6px 0 0 0;
+  }
+
+  .awb-text {
+    margin-left: 0;
+    margin-top: 6px;
+    display: inline-block;
+  }
+
+  /* Pagination stacked */
+  .pagination {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .pagination button {
+    width: 100%;
+  }
+}

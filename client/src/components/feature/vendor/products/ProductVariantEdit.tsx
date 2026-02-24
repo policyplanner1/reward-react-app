@@ -35,12 +35,18 @@ function FormInput({
   onChange,
   type = "text",
   placeholder,
+  step,
+  min,
+  required,
 }: {
   label: string;
   value: string | number;
   onChange: (e: any) => void;
   type?: string;
   placeholder?: string;
+  step?: string;
+  min?: string;
+  required?: boolean;
 }) {
   return (
     <div className="flex flex-col space-y-1.5">
@@ -52,9 +58,12 @@ function FormInput({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
+        step={step}
+        min={min}
+        required={required}
         className="px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl
-        focus:ring-4 focus:ring-[#852BAF]/20 focus:border-[#852BAF]
-        focus:bg-white transition-all outline-none text-sm"
+  focus:ring-4 focus:ring-[#852BAF]/20 focus:border-[#852BAF]
+  focus:bg-white transition-all outline-none text-sm"
       />
     </div>
   );
@@ -69,6 +78,7 @@ export default function ProductVariantEdit() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [variant, setVariant] = useState<any>(null);
+  const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     mrp: "",
@@ -76,6 +86,10 @@ export default function ProductVariantEdit() {
     stock: "",
     manufacturing_date: "",
     expiry_date: "",
+    weight: "",
+    length: "",
+    breadth: "",
+    height: "",
   });
 
   /* ================= FETCH DATA ================= */
@@ -94,6 +108,10 @@ export default function ProductVariantEdit() {
             stock: v.stock ?? "",
             manufacturing_date: v.manufacturing_date ?? "",
             expiry_date: v.expiry_date ?? "",
+            weight: v.weight ?? "",
+            length: v.length ?? "",
+            breadth: v.breadth ?? "",
+            height: v.height ?? "",
           });
         }
       } finally {
@@ -106,6 +124,20 @@ export default function ProductVariantEdit() {
 
   /* ================= SAVE ================= */
   const handleSave = async () => {
+    if (
+      !form.weight ||
+      !form.length ||
+      !form.breadth ||
+      !form.height ||
+      Number(form.weight) <= 0 ||
+      Number(form.length) <= 0 ||
+      Number(form.breadth) <= 0 ||
+      Number(form.height) <= 0
+    ) {
+      setError("Weight and dimensions are mandatory.");
+      return;
+    }
+
     try {
       setSaving(true);
       await api.put(`/variant/${variantId}`, form);
@@ -133,7 +165,10 @@ export default function ProductVariantEdit() {
       <div className="flex items-center justify-between mb-10">
         <div>
           <h1 className="text-4xl font-black text-gray-900 tracking-tight">
-            Edit Product <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#852BAF] to-[#FC3F78]">Variant</span>
+            Edit Product{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#852BAF] to-[#FC3F78]">
+              Variant
+            </span>
           </h1>
           <p className="text-gray-500 mt-2 font-medium">
             Update pricing, stock and lifecycle details
@@ -178,7 +213,7 @@ export default function ProductVariantEdit() {
                     >
                       {key.toUpperCase()}: {value}
                     </span>
-                  )
+                  ),
                 )}
             </div>
           </div>
@@ -219,6 +254,93 @@ export default function ProductVariantEdit() {
           />
         </div>
 
+        {/* Logistics Fields */}
+        <div className="mt-7">
+          <h4 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wide">
+            Logistics & Packaging
+          </h4>
+
+          {error && (
+            <p className="text-xs text-red-600 mb-3 font-medium">{error}</p>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <FormInput
+              label="Weight (KG)"
+              type="number"
+              value={form.weight}
+              onChange={(e) => {
+                setError("");
+                setForm({ ...form, weight: e.target.value });
+              }}
+              placeholder="0.5"
+              step="0.001"
+              min="0.001"
+              required
+            />
+
+            <FormInput
+              label="Length (CM)"
+              type="number"
+              value={form.length}
+              onChange={(e) => {
+                setError("");
+                setForm({ ...form, length: e.target.value });
+              }}
+              placeholder="10"
+              step="0.01"
+              min="0.01"
+              required
+            />
+
+            <FormInput
+              label="Breadth (CM)"
+              type="number"
+              value={form.breadth}
+              onChange={(e) => {
+                setError("");
+                setForm({ ...form, breadth: e.target.value });
+              }}
+              placeholder="10"
+              step="0.01"
+              min="0.01"
+              required
+            />
+
+            <FormInput
+              label="Height (CM)"
+              type="number"
+              value={form.height}
+              onChange={(e) => {
+                setError("");
+                setForm({ ...form, height: e.target.value });
+              }}
+              placeholder="10"
+              step="0.01"
+              min="0.01"
+              required
+            />
+          </div>
+
+          {/*  volumetric weight preview  */}
+          {Number(form.weight) > 0 &&
+            Number(form.length) > 0 &&
+            Number(form.breadth) > 0 &&
+            Number(form.height) > 0 && (
+              <p className="text-xs mt-2 font-medium text-gray-700">
+                Billable Weight:{" "}
+                {Math.max(
+                  Number(form.weight),
+                  (Number(form.length) *
+                    Number(form.breadth) *
+                    Number(form.height)) /
+                    5000,
+                ).toFixed(2)}{" "}
+                kg
+              </p>
+            )}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
           <FormInput
             label="Manufacturing Date"
@@ -233,9 +355,7 @@ export default function ProductVariantEdit() {
             label="Expiry Date"
             type="date"
             value={form.expiry_date}
-            onChange={(e) =>
-              setForm({ ...form, expiry_date: e.target.value })
-            }
+            onChange={(e) => setForm({ ...form, expiry_date: e.target.value })}
           />
         </div>
       </section>

@@ -3,6 +3,7 @@ const db = require("../config/database");
 const fs = require("fs");
 const path = require("path");
 const { moveFile } = require("../utils/moveFile");
+const { compressVideo } = require("../utils/videoCompression");
 
 class ProductController {
   // create Product
@@ -50,7 +51,7 @@ class ProductController {
         });
       }
 
-      // 1️⃣ Create product entry
+      // 1 Create product entry
       const productId = await ProductModel.createProduct(
         connection,
         vendorId,
@@ -71,7 +72,7 @@ class ProductController {
         );
       }
 
-      // 2️⃣ Prepare folder structure
+      // 2 Prepare folder structure
       const baseFolder = path.join(
         __dirname,
         "../uploads/products",
@@ -88,7 +89,7 @@ class ProductController {
         },
       );
 
-      // 3️⃣ Move files from temp → final folders
+      // 3 Move files from temp → final folders
       const movedFiles = [];
 
       if (req.files && req.files.length) {
@@ -116,8 +117,49 @@ class ProductController {
               fs.mkdirSync(videoFolder, { recursive: true });
             }
 
-            newPath = path.join(videoFolder, filename);
-            file.finalPath = `products/${vendorId}/${productId}/video/${filename}`;
+            // 1 Validate
+            if (!file.mimetype.startsWith("video/")) {
+              throw new Error("Invalid video file type");
+            }
+
+            if (file.size > 50 * 1024 * 1024) {
+              throw new Error("Video exceeds size limit");
+            }
+
+            // 2 Move original file from temp → product video folder
+            const originalPath = path.join(
+              videoFolder,
+              path.basename(file.path),
+            );
+            await moveFile(file.path, originalPath);
+
+            // 3 Define compressed file path
+            const compressedFilename = `compressed-${Date.now()}-${Math.random()
+              .toString(36)
+              .substring(2, 8)}.mp4`;
+            const compressedPath = path.join(videoFolder, compressedFilename);
+
+            // 4 compress
+            try {
+              await compressVideo(originalPath, compressedPath);
+              await fs.promises.unlink(originalPath);
+            } catch (err) {
+              if (fs.existsSync(originalPath)) {
+                await fs.promises.unlink(originalPath);
+              }
+              if (fs.existsSync(compressedPath)) {
+                await fs.promises.unlink(compressedPath);
+              }
+              throw new Error("Video compression failed");
+            }
+
+            // 5 Update file metadata for DB storage
+            file.finalPath = `products/${vendorId}/${productId}/video/${compressedFilename}`;
+            file.path = compressedPath;
+
+            movedFiles.push(file);
+
+            continue;
           } else {
             continue;
           }
@@ -127,7 +169,7 @@ class ProductController {
         }
       }
 
-      // 4️⃣ Insert main product images
+      // 4 Insert main product images
       const mainImages = movedFiles.filter((f) => f.fieldname === "images");
       if (mainImages.length) {
         await ProductModel.insertProductImages(
@@ -147,7 +189,7 @@ class ProductController {
         );
       }
 
-      // 5️⃣ Insert product documents
+      // 5 Insert product documents
       const docFiles = movedFiles.filter((f) => !isNaN(parseInt(f.fieldname)));
       if (docFiles.length) {
         await ProductModel.insertProductDocuments(
@@ -158,7 +200,7 @@ class ProductController {
         );
       }
 
-      // 6️⃣ Handle variants
+      // 6 Handle variants
       await ProductModel.generateProductVariants(
         connection,
         productId,
@@ -278,7 +320,68 @@ class ProductController {
           .json({ success: false, message: "Product ID is required" });
       }
 
+      const [[product]] = await connection.execute(
+        `SELECT product_id FROM eproducts WHERE product_id = ?`,
+        [productId],
+      );
+
+      if (!product) {
+        await connection.rollback();
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
       await ProductModel.deleteProduct(connection, productId, vendorId);
+
+      await connection.commit();
+      return res.json({
+        success: true,
+        message: "Product deleted successfully",
+      });
+    } catch (err) {
+      if (connection) await connection.rollback();
+      console.error("PRODUCT DELETE ERROR:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    } finally {
+      if (connection) connection.release();
+    }
+  }
+
+  // Remove product admin side
+  async removeProduct(req, res) {
+    let connection;
+
+    try {
+      connection = await db.getConnection();
+      await connection.beginTransaction();
+
+      const productId = req.params.id;
+
+      if (!productId) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Product ID is required" });
+      }
+
+      const [[product]] = await connection.execute(
+        `SELECT product_id FROM eproducts WHERE product_id = ?`,
+        [productId],
+      );
+
+      if (!product) {
+        await connection.rollback();
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      await ProductModel.removeProduct(connection, productId);
 
       await connection.commit();
       return res.json({
@@ -313,60 +416,22 @@ class ProductController {
       const sortOrder =
         req.query.sortOrder?.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
-      const { products, totalItems } = await ProductModel.getAllProductDetails({
-        search,
-        status,
-        sortBy,
-        sortOrder,
-        limit,
-        offset,
-      });
+      const { products, totalItems, stats } =
+        await ProductModel.getAllProductDetails({
+          search,
+          status,
+          sortBy,
+          sortOrder,
+          limit,
+          offset,
+          role,
+        });
 
-      const processedProducts = products.map((product) => ({
-        ...product,
-        main_image:
-          product.images && product.images.length
-            ? product.images[0].image_url
-            : null,
+      const normalizedProducts = products.map((p) => ({
+        ...p,
+        main_image: p.images?.length ? p.images[0].image_url : null,
+        status: p.status === "sent_for_approval" ? "pending" : p.status,
       }));
-
-      const normalizedProducts =
-        role === "vendor_manager"
-          ? processedProducts
-              .filter((p) => p.status !== "pending")
-              .map((p) => ({
-                ...p,
-                status: p.status === "sent_for_approval" ? "pending" : p.status,
-              }))
-          : processedProducts;
-
-      const statsSource =
-        role === "vendor_manager"
-          ? processedProducts
-              .filter((p) => p.status !== "pending")
-              .map((p) => ({
-                ...p,
-                status: p.status === "sent_for_approval" ? "pending" : p.status,
-              }))
-          : processedProducts;
-
-      const stats = statsSource.reduce(
-        (acc, product) => {
-          acc.total += 1;
-          if (product.status === "pending") acc.pending += 1;
-          if (product.status === "approved") acc.approved += 1;
-          if (product.status === "rejected") acc.rejected += 1;
-          if (product.status === "resubmission") acc.resubmission += 1;
-          return acc;
-        },
-        {
-          pending: 0,
-          approved: 0,
-          rejected: 0,
-          resubmission: 0,
-          total: 0,
-        },
-      );
 
       return res.json({
         success: true,
@@ -433,17 +498,15 @@ class ProductController {
       const sortOrder =
         req.query.sortOrder?.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
-      const { products, totalItems } = await ProductModel.getProductsByVendor(
-        vendorId,
-        {
+      const { products, totalItems, stats } =
+        await ProductModel.getProductsByVendor(vendorId, {
           search,
           status,
           sortBy,
           sortOrder,
           limit,
           offset,
-        },
-      );
+        });
 
       const processedProducts = products.map((product) => ({
         ...product,
@@ -452,28 +515,6 @@ class ProductController {
             ? product.images[0].image_url
             : null,
       }));
-
-      // Stats calculation
-      const stats = processedProducts.reduce(
-        (acc, product) => {
-          acc.total += 1;
-          if (product.status === "pending") acc.pending += 1;
-          if (product.status === "sent_for_approval")
-            acc.sent_for_approval += 1;
-          if (product.status === "approved") acc.approved += 1;
-          if (product.status === "rejected") acc.rejected += 1;
-          if (product.status === "resubmission") acc.resubmission += 1;
-          return acc;
-        },
-        {
-          pending: 0,
-          sent_for_approval: 0,
-          approved: 0,
-          rejected: 0,
-          resubmission: 0,
-          total: 0,
-        },
-      );
 
       return res.json({
         success: true,

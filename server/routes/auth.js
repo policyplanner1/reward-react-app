@@ -9,19 +9,19 @@ const router = express.Router();
    ============================================================ */
 
 router.post("/vendor/register", (req, res) =>
-  authController.register(req, res, "vendor")
+  authController.register(req, res, "vendor"),
 );
 
 router.post("/manager/register", (req, res) =>
-  authController.register(req, res, "vendor_manager")
+  authController.register(req, res, "vendor_manager"),
 );
 
 router.post("/admin/register", (req, res) =>
-  authController.register(req, res, "admin")
+  authController.register(req, res, "admin"),
 );
 
 router.post("/warehouse_manager/register", (req, res) =>
-  authController.register(req, res, "warehouse_manager")
+  authController.register(req, res, "warehouse_manager"),
 );
 
 /* ============================================================
@@ -44,19 +44,19 @@ router.post("/reset-password", authController.resetPassword);
    ============================================================ */
 
 router.post("/vendor/login", (req, res) =>
-  authController.login(req, res, "vendor")
+  authController.login(req, res, "vendor"),
 );
 
 router.post("/manager/login", (req, res) =>
-  authController.login(req, res, "vendor_manager")
+  authController.login(req, res, "vendor_manager"),
 );
 
 router.post("/warehouse_manager/login", (req, res) =>
-  authController.login(req, res, "warehouse_manager")
+  authController.login(req, res, "warehouse_manager"),
 );
 
 router.post("/admin/login", (req, res) =>
-  authController.login(req, res, "admin")
+  authController.login(req, res, "admin"),
 );
 
 /* ============================================================
@@ -71,5 +71,11 @@ router.post("/password/reset", authController.passwordReset);
 router.get("/me", authenticateToken, authController.getProfile);
 
 router.post("/logout", authenticateToken, authController.logout);
+
+/* ============================================================
+   STATES
+   ============================================================ */
+
+   router.get('/all-states',authController.getAllStates)
 
 module.exports = router;

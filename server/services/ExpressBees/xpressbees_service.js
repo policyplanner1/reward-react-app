@@ -4,7 +4,6 @@ let cachedToken = null;
 let tokenExpiry = null;
 
 async function getXpressToken() {
-  // If token exists and not expired → reuse
   if (cachedToken && Date.now() < tokenExpiry) {
     return cachedToken;
   }
@@ -14,34 +13,38 @@ async function getXpressToken() {
     {
       email: process.env.XPRESS_EMAIL,
       password: process.env.XPRESS_PASSWORD,
-    }
+    },
   );
 
-  const token = response.data.data.token;
+  if (!response.data.status) {
+    throw new Error(response.data.message);
+  }
 
-  // Assume token valid 1 hour (confirm with them)
+  const token = response.data.data;
+
   cachedToken = token;
   tokenExpiry = Date.now() + 55 * 60 * 1000;
 
   return token;
 }
 
-async function createShipment(orderPayload) {
-  const token = await getToken();
+async function bookShipment(payload) {
+  const token = await getXpressToken();
 
   const response = await axios.post(
-    process.env.XPRESS_ORDER_BOOKING_URL,
-    orderPayload,
+    "https://shipment.xpressbees.com/api/shipments2",
+    payload,
     {
       headers: {
         Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-    }
+    },
   );
 
   return response.data;
 }
 
 module.exports = {
-  createShipment,
+  bookShipment,
 };

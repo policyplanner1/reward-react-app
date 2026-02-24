@@ -497,7 +497,7 @@ class AuthController {
   async addAddress(req, res) {
     try {
       const userId = req.user?.user_id;
-      // const userId = 1;
+
       if (!userId) {
         return res.status(401).json({
           success: false,
@@ -505,22 +505,40 @@ class AuthController {
         });
       }
 
-      const data = req.body;
+      const { address1, city, zipcode, is_default, ...rest } = req.body;
 
-      if (!data.address1 || !data.city || !data.zipcode || !data.state_id) {
+      // Required fields validation
+      if (!address1 || !city || !zipcode) {
         return res.status(400).json({
           success: false,
           message: "Required address fields missing",
         });
       }
 
-      if (Number(data.is_default) === 1) {
+      //  Check if user already has any address
+      const hasAddress = await AddressModel.hasAnyAddress(userId);
+
+      let finalIsDefault = 0;
+
+      //  If first address make it default
+      if (!hasAddress) {
+        finalIsDefault = 1;
+      }
+      // If not first and user explicitly sets default
+      else if (Number(is_default) === 1) {
+        finalIsDefault = 1;
+
+        // Clear existing default first
         await AddressModel.clearDefault(userId);
       }
 
       const addressId = await AddressModel.addAddress({
-        ...data,
         user_id: userId,
+        address1,
+        city,
+        zipcode,
+        is_default: finalIsDefault,
+        ...rest,
       });
 
       return res.status(201).json({
@@ -532,7 +550,7 @@ class AuthController {
       console.error("Add Address Error:", error);
       return res.status(500).json({
         success: false,
-        message: "Failed to add address",
+        message: "Internal server error",
       });
     }
   }
@@ -541,7 +559,6 @@ class AuthController {
   async updateAddress(req, res) {
     try {
       const userId = req.user?.user_id;
-      // const userId = 1;
 
       if (!userId) {
         return res.status(401).json({
@@ -553,14 +570,50 @@ class AuthController {
       const { address_id } = req.params;
       const data = req.body;
 
-      if (Number(data.is_default) === 1) {
+      // 1 Check specific address ownership
+      const address = await AddressModel.getAddressById(address_id, userId);
+
+      if (!address) {
+        return res.status(404).json({
+          success: false,
+          message: "Address not found",
+        });
+      }
+
+      // Normalize undefined → keep original value
+      const normalizedData = {};
+
+      for (const key in data) {
+        if (data[key] !== undefined) {
+          normalizedData[key] = data[key];
+        }
+      }
+
+      // -------------------------------
+      // DEFAULT ADDRESS LOGIC
+      // -------------------------------
+
+      // If user tries to REMOVE default from THIS address
+      if (Number(normalizedData.is_default) === 0 && address.is_default === 1) {
+        const defaultCount = await AddressModel.countDefault(userId);
+
+        if (defaultCount === 1) {
+          return res.status(400).json({
+            success: false,
+            message: "At least one address must be default",
+          });
+        }
+      }
+
+      // If user sets THIS address as default
+      if (Number(normalizedData.is_default) === 1) {
         await AddressModel.clearDefault(userId);
       }
 
       const updated = await AddressModel.updateAddress(
         address_id,
         userId,
-        data,
+        normalizedData,
       );
 
       if (!updated) {
@@ -662,8 +715,10 @@ class AuthController {
       }
 
       const { address_id } = req.params;
+      console.log(address_id, "address_id");
 
       const address = await AddressModel.getAddressById(address_id, userId);
+      console.log(address, "address");
 
       if (!address) {
         return res.status(404).json({

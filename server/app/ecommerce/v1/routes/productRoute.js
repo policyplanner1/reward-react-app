@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const ProductController = require("../controllers/productController");
-const auth = require("../middlewares/auth");
 const optionalAuth = require("../middlewares/optionalAuth");
 /* ======================================================Product Listing============================================ */
 
@@ -41,7 +40,6 @@ router.get(
   ProductController.getCategoriesWithSubcategories,
 );
 
-
 /* ======================================================Suggestion============================================ */
 
 // similar Products
@@ -54,13 +52,13 @@ router.get("/search/suggestions", ProductController.getSearchSuggestions);
 router.get("/search/products", ProductController.loadProducts);
 
 // save search history
-router.post("/search/history", 
-  // auth,
-  ProductController.saveSearchHistory);
+router.post(
+  "/search/history",
+  optionalAuth,
+  ProductController.saveSearchHistory,
+);
 
 //fetch search history
-router.get("/search/history", 
-  // auth,
-  ProductController.getSearchHistory);
+router.get("/search/history", optionalAuth, ProductController.getSearchHistory);
 
 module.exports = router;

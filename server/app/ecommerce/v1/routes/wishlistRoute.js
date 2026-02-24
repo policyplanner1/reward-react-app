@@ -8,42 +8,42 @@ const auth = require("../middlewares/auth");
 // add to wishlist
 router.post(
   "/add-wishlist",
-  //  auth,
+   auth,
   wishlistController.addToWishlist
 );
 
 // remove from wishlist
 router.delete(
   "/remove/:product_id/:variant_id",
-  //   auth,
+    auth,
   wishlistController.removeFromWishlist
 );
 
 // Get user wishlist details
 router.get(
   "/get-wishlist",
-  // auth,
+  auth,
   wishlistController.getMyWishlist
 );
 
 // check item in wishlist
 router.get(
   "/check/:product_id/:variant_id",
-  //   auth,
+    auth,
   wishlistController.checkWishlist
 );
 
 // move item from wishlist to cart
 router.post(
   "/move-to-cart",
-  // auth,
+  auth,
   wishlistController.moveToCart
 );
 
 // Get count of wishlist
 router.get(
   "/badge",
-  // auth,
+  auth,
   wishlistController.getWishlistBadge
 );
 
