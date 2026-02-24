@@ -60,6 +60,7 @@ class AddressModel {
       address2,
       city,
       zipcode,
+      state_id,
       landmark,
       contact_name,
       contact_phone,
@@ -83,7 +84,7 @@ class AddressModel {
       contact_phone, 
       latitude, 
       longitude
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 75, 14, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 75, ?, ?, ?, ?, ?, ?)`,
       [
         safe(user_id),
         safe(address_type),
@@ -92,6 +93,7 @@ class AddressModel {
         safe(address2),
         safe(city),
         safe(zipcode),
+        safe(state_id),
         safe(landmark),
         safe(contact_name),
         safe(contact_phone),
