@@ -559,6 +559,39 @@ const authController = {
       });
     }
   },
+
+  /* ============================================================
+      STATES
+     ============================================================ */
+  getAllStates: async (req, res) => {
+      try {
+      const [rows] = await db.execute(
+        `SELECT 
+            state_id,
+            state_name,
+            status,
+            created_at
+         FROM states
+         WHERE status = 1 AND country_id=75
+         ORDER BY state_name ASC`
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "States fetched successfully",
+        data: rows
+      });
+
+    } catch (error) {
+      console.error("Error fetching states:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch states",
+        error: error.message
+      });
+    }
+  },
 };
 
 module.exports = authController;
