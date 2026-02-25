@@ -138,7 +138,7 @@ class AuthController {
       });
 
       // Send email with rawToken
-      const token = `${process.env.BACKEND_URL}/api/crm/auth/verify-email?token=${rawToken}`;
+      const token = `${process.env.BACKEND_URL}/api/crm/v1/auth/verify-email?token=${rawToken}`;
       await sendVerificationMail({
         name,
         email: normalizedEmail,
@@ -160,14 +160,14 @@ class AuthController {
   async verifyEmail(req, res) {
     try {
       const { token } = req.query;
-      console.log(token,"token")
+      console.log(token, "token");
 
       if (!token) {
         return res.status(400).send("Invalid verification link.");
       }
 
       const users = await AuthModel.findByVerificationToken();
-      console.log(users,"users")
+      console.log(users, "users");
 
       for (const user of users) {
         const isMatch = await bcrypt.compare(token, user.verification_token);
@@ -428,7 +428,12 @@ class AuthController {
       );
 
       // Send email with:
-      // https://yourdomain.com/verify-email?token=rawToken
+      const token = `${process.env.BACKEND_URL}/api/crm/v1/auth/verify-email?token=${rawToken}`;
+      await sendVerificationMail({
+        name:user.name,
+        email: normalizedEmail,
+        token,
+      });
 
       return res.json({
         success: true,

@@ -28,7 +28,7 @@ class authModel {
 
   async findByEmail(email) {
     const [rows] = await db.execute(
-      `SELECT user_id, email, password, status, is_verified, token_version
+      `SELECT user_id, name, email, password, status, is_verified, token_version
        FROM customer
        WHERE email = ?`,
       [email],
