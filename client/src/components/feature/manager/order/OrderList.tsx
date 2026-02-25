@@ -73,7 +73,7 @@ const OrderList: React.FC = () => {
     try {
       setCreatingShipmentId(orderId);
 
-      const res = await api.post(`/order/create-shipment/${orderId}`);
+      const res = await api.post(`/logistics/create-shipment/${orderId}`);
 
       if (!res.data.success) {
         throw new Error("Shipment creation failed");

@@ -18,11 +18,4 @@ router.get(
   orderController.getAdminOrderDetails,
 );
 
-router.post(
-  "/create-shipment/:orderId",
-  authenticateToken,
-  authorizeRoles("vendor_manager", "admin"),
-  orderController.createShipment,
-);
-
 module.exports = router;
