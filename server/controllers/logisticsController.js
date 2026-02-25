@@ -188,19 +188,25 @@ class LogisticsController {
       }
 
       // 3 Convert units
-      const weight = (variant.weight * 1000).toString(); // KG → grams
+      const weight = Math.round(variant.weight * 1000); // KG → grams
+
+      const length = Math.round(Number(variant.length));
+      const breadth = Math.round(Number(variant.breadth));
+      const height = Math.round(Number(variant.height));
 
       // 4 Call serviceability
       const serviceResponse = await xpressService.checkServiceability({
         origin: vendorAddress.pincode,
         destination: pincode,
         payment_type: paymentType,
-        order_amount: variant.sale_price,
-        weight,
-        length: variant.length.toString(),
-        breadth: variant.breadth.toString(),
-        height: variant.height.toString(),
+        order_amount: variant.sale_price.toString(),
+        weight: weight.toString(),
+        length: length.toString(),
+        breadth: breadth.toString(),
+        height: height.toString(),
       });
+
+      console.log(serviceResponse, "serviceResponse");
 
       if (!serviceResponse.status || !serviceResponse.data.length) {
         return res.json({

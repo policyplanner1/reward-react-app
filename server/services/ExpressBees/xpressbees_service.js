@@ -45,6 +45,24 @@ async function bookShipment(payload) {
   return response.data;
 }
 
+async function checkServiceability(payload) {
+  const token = await getXpressToken();
+
+  const response = await axios.post(
+    "https://shipment.xpressbees.com/api/courier/serviceability",
+    payload,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    },
+  );
+
+  return response.data;
+}
+
 module.exports = {
   bookShipment,
+  checkServiceability,
 };
