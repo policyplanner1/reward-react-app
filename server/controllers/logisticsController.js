@@ -2,6 +2,14 @@ const orderModel = require("../models/orderModel");
 const db = require("../config/database");
 const xpressService = require("../services/ExpressBees/xpressbees_service");
 
+// Helper function
+const classifyService = (name) => {
+  const lower = name.toLowerCase();
+  if (lower.includes("air")) return "express";
+  if (lower.includes("surface")) return "standard";
+  return "economy";
+};
+
 class LogisticsController {
   // create shipment
   async createShipment(req, res) {
@@ -156,7 +164,9 @@ class LogisticsController {
         v.breadth,
         v.height,
         v.sale_price,
-        p.vendor_id
+        p.vendor_id,
+        p.delivery_sla_min_days,
+        p.delivery_sla_max_days
       FROM product_variants v
       JOIN eproducts p ON v.product_id = p.product_id
       WHERE v.variant_id = ?
@@ -189,7 +199,6 @@ class LogisticsController {
 
       // 3 Convert units
       const weight = Math.round(variant.weight * 1000); // KG → grams
-
       const length = Math.round(Number(variant.length));
       const breadth = Math.round(Number(variant.breadth));
       const height = Math.round(Number(variant.height));
@@ -215,17 +224,33 @@ class LogisticsController {
         });
       }
 
-      const bestOption = serviceResponse.data[0];
+      // 5 sort the options
+      const sortedOptions = serviceResponse.data.sort(
+        (a, b) => a.total_charges - b.total_charges,
+      );
+
+      // 6 Prepare clean options
+      const deliveryOptions = sortedOptions.map((option) => ({
+        courier_id: option.id,
+        courier_name: option.name,
+        delivery_type: classifyService(option.name),
+        shipping_charges: option.total_charges,
+        chargeable_weight: option.chargeable_weight,
+        estimated_delivery:
+          variant.delivery_sla_min_days +
+          "-" +
+          variant.delivery_sla_max_days +
+          " days",
+      }));
 
       return res.json({
         success: true,
         serviceable: true,
-        estimated_delivery_days: bestOption.estimated_delivery_days,
-        shipping_charges: bestOption.total_charges,
-        courier_name: bestOption.courier_name,
+        default_option: deliveryOptions[0],
+        options: deliveryOptions,
       });
     } catch (err) {
-      console.error("Serviceability Error:", err.response?.data);
+      console.error("Serviceability Error:", err.response?.data || err.message);
       return res.json({
         success: false,
         message: "Serviceability check failed",
