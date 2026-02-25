@@ -9,7 +9,7 @@ const { uploadReviewMedia } = require("../../../../middleware/productUpload");
 
 router.post("/register", authController.registerUser);
 router.post("/login", authController.loginUser);
-router.post("/verify-email", authController.verifyEmail);
+router.get("/verify-email", authController.verifyEmail);
 router.post("/refresh", authController.refreshAccessToken);
 router.post("/logout", auth, authController.logoutUser);
 router.post("/logout-all", auth, authController.logoutAllDevices);
