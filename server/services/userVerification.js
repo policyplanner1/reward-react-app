@@ -6,7 +6,7 @@ async function sendVerificationMail(user) {
     name: user.name,
     email: user.email,
     verificationLink: user.token,
-    companyName: "Maa Pranam Pro Planner",
+    companyName: "Reward Planners",
   });
 
   await sendMail({

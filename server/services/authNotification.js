@@ -4,7 +4,7 @@ const { renderTemplate } = require("../utils/templateRenderer");
 async function sendRegistrationSuccessMail(user) {
   const html = renderTemplate("registration-success", {
     email: user.email,
-    companyName: "Maa Pranam Pro Planner",
+    companyName: "Reward Planners",
   });
 
   await sendMail({

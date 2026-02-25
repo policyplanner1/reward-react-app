@@ -6,7 +6,7 @@ const { renderTemplate } = require("../utils/templateRenderer");
   let subject;
   let variables = {
     vendorName: vendor.full_name,
-    companyName: "Maa Pranam Pro Planner",
+    companyName: "Reward Planners",
   };
 
   if (status === "approved") {
