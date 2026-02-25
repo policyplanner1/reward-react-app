@@ -10,12 +10,12 @@ const { uploadReviewMedia } = require("../../../../middleware/productUpload");
 router.post("/register", authController.registerUser);
 router.post("/login", authController.loginUser);
 router.post("/verify-email", authController.verifyEmail);
-router.post("/refresh", auth, authController.refreshAccessToken);
+router.post("/refresh", authController.refreshAccessToken);
 router.post("/logout", auth, authController.logoutUser);
 router.post("/logout-all", auth, authController.logoutAllDevices);
-router.post("/forgot-password", auth, authController.forgotPassword);
-router.post("/reset-password", auth, authController.resetPassword);
-router.post("/resend-verification", auth, authController.resendVerification);
+router.post("/forgot-password", authController.forgotPassword);
+router.post("/reset-password", authController.resetPassword);
+router.post("/resend-verification", authController.resendVerification);
 
 /*=============================================Address================================================*/
 // Fetch all the countries
@@ -43,7 +43,7 @@ router.get("/addresses", auth, authController.getMyAddresses);
 router.get("/address/:address_id", auth, authController.getAddressById);
 
 /*===================================================User Information===========================================*/
-router.get("/user-info", auth, authController.getUserInfo);
+router.get("/user-info", optionalAuth, authController.getUserInfo);
 
 /*===================================================Review===========================================*/
 
