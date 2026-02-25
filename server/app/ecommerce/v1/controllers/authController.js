@@ -3,6 +3,9 @@ const AddressModel = require("../models/addressModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const {
+  sendVerificationMail,
+} = require("../../../../services/userVerification");
 
 const ACCESS_EXPIRES = "15m";
 const REFRESH_EXPIRES_DAYS = 7;
@@ -135,7 +138,12 @@ class AuthController {
       });
 
       // Send email with rawToken
-      // https://yourdomain.com/verify-email?token=rawToken
+      const token = `${process.env.BACKEND_URL}/api/crm/auth/verify-email?token=${rawToken}`;
+      await sendVerificationMail({
+        name,
+        email: normalizedEmail,
+        token,
+      });
 
       return res.status(201).json({
         success: true,
@@ -152,12 +160,14 @@ class AuthController {
   async verifyEmail(req, res) {
     try {
       const { token } = req.query;
+      console.log(token,"token")
 
       if (!token) {
         return res.status(400).send("Invalid verification link.");
       }
 
       const users = await AuthModel.findByVerificationToken();
+      console.log(users,"users")
 
       for (const user of users) {
         const isMatch = await bcrypt.compare(token, user.verification_token);
