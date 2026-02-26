@@ -1,6 +1,7 @@
 const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
+const AddressModel = require("../models/addressModel");
 
 function generateOrderRef() {
   const date = new Date();
@@ -24,10 +25,17 @@ class CheckoutModel {
           ci.variant_id,
           ci.quantity,
           v.sale_price,
-          v.stock
+          v.stock,
+          v.weight,
+          v.length,
+          v.breadth,
+          v.height,
+          p.vendor_id
         FROM cart_items ci
         JOIN product_variants v ON ci.variant_id = v.variant_id
-        WHERE ci.user_id = ?
+        JOIN eproducts p ON v.product_id = p.product_id
+        WHERE ci.user_id = ?  
+        FOR UPDATE
         `,
         [userId],
       );
@@ -43,13 +51,127 @@ class CheckoutModel {
         }
       }
 
-      // 3 Calculate total
-      const totalAmount = cartItems.reduce(
-        (sum, i) => sum + i.quantity * i.sale_price,
+      // 3 Get customer address
+      const customerAddress = await AddressModel.getAddressById(
+        addressId,
+        userId,
+      );
+
+      if (!customerAddress) {
+        throw new Error("INVALID_ADDRESS");
+      }
+
+      console.log(customerAddress, "address");
+
+      // 4 Group Items by Vendor
+      const vendorGroups = {};
+
+      for (const item of cartItems) {
+        const vendorId = Number(item.vendor_id);
+
+        if (!vendorGroups[vendorId]) {
+          vendorGroups[vendorId] = {
+            items: [],
+            totalWeightKg: 0,
+            totalAmount: 0,
+            length: 0,
+            breadth: 0,
+            height: 0,
+          };
+        }
+
+        vendorGroups[vendorId].items.push(item);
+
+        // Weight in KG (assuming DB stores KG)
+        vendorGroups[vendorId].totalWeightKg +=
+          item.quantity * Number(item.weight);
+
+        vendorGroups[vendorId].totalAmount +=
+          item.quantity * Number(item.sale_price);
+
+        // Dimension logic (basic box stacking logic)
+        vendorGroups[vendorId].length = Math.max(
+          vendorGroups[vendorId].length,
+          Number(item.length),
+        );
+
+        vendorGroups[vendorId].breadth = Math.max(
+          vendorGroups[vendorId].breadth,
+          Number(item.breadth),
+        );
+
+        // stacking height
+        vendorGroups[vendorId].height += Number(item.height) * item.quantity;
+      }
+
+      console.log(vendorGroups, "vendorGroups");
+
+      // 5 calculate the service pricing
+      const shippingResults = [];
+
+      for (const vendorId in vendorGroups) {
+        const vendor = vendorGroups[vendorId];
+
+        const [[vendorAddress]] = await conn.execute(
+          `SELECT pincode FROM vendor_addresses 
+            WHERE vendor_id = ? AND type = 'shipping' LIMIT 1`,
+          [vendorId],
+        );
+
+        if (!vendorAddress) {
+          throw new Error("VENDOR_ADDRESS_MISSING");
+        }
+
+        const serviceResponse = await xpressService.checkServiceability({
+          origin: vendorAddress.pincode,
+          destination: customerAddress.zipcode,
+          payment_type: "prepaid",
+          order_amount: vendor.totalAmount.toString(),
+          weight: Math.round(vendor.totalWeightKg * 1000).toString(),
+          length: vendor.length.toString(),
+          breadth: vendor.breadth.toString(),
+          height: vendor.height.toString(),
+        });
+
+        if (!serviceResponse.status || !serviceResponse.data.length) {
+          throw new Error("NOT_SERVICEABLE");
+        }
+
+        const cheapest = serviceResponse.data.sort(
+          (a, b) => a.total_charges - b.total_charges,
+        )[0];
+
+        shippingResults.push({
+          vendor_id: Number(vendorId),
+          courier_id: cheapest.id,
+          courier_name: cheapest.name,
+          shipping_charges: Number(cheapest.total_charges),
+          weight_grams: Math.round(vendor.totalWeightKg * 1000),
+          length: vendor.length,
+          breadth: vendor.breadth,
+          height: vendor.height,
+        });
+      }
+
+      console.log(shippingResults, "shippingResults");
+
+      // 6 Calculate Totals
+      const productTotal = cartItems.reduce(
+        (sum, i) => sum + i.quantity * Number(i.sale_price),
         0,
       );
 
-      // 4 Create order
+      const shippingTotal = shippingResults.reduce(
+        (sum, s) => sum + s.shipping_charges,
+        0,
+      );
+
+      console.log(productTotal, "productTotal");
+      console.log(shippingTotal, "shippingTotal");
+
+      const finalTotal = productTotal + shippingTotal;
+
+      // 7 Create order
       const orderRef = generateOrderRef();
 
       const [orderRes] = await conn.execute(
@@ -57,19 +179,22 @@ class CheckoutModel {
         INSERT INTO eorders (user_id, company_id, total_amount,order_ref,address_id)
         VALUES (?, ?, ?, ?, ?)
         `,
-        [userId, companyId, totalAmount, orderRef, addressId],
+        [userId, companyId, finalTotal, orderRef, addressId],
       );
 
       const orderId = orderRes.insertId;
 
-      // 5 Create order items
+      console.log(orderId, "orderId");
+
+
+      // 8 Order items + stock deduction
       for (const item of cartItems) {
         await conn.execute(
           `
-          INSERT INTO eorder_items
-            (order_id, product_id, variant_id, quantity, price)
-          VALUES (?, ?, ?, ?, ?)
-          `,
+        INSERT INTO eorder_items
+        (order_id, product_id, variant_id, quantity, price)
+        VALUES (?, ?, ?, ?, ?)
+        `,
           [
             orderId,
             item.product_id,
@@ -79,14 +204,36 @@ class CheckoutModel {
           ],
         );
 
-        // 6 Deduct stock
         await conn.execute(
           `
-          UPDATE product_variants
-          SET stock = stock - ?
-          WHERE variant_id = ?
-          `,
+        UPDATE product_variants
+        SET stock = stock - ?
+        WHERE variant_id = ?
+        `,
           [item.quantity, item.variant_id],
+        );
+      }
+
+      // 9 Shipment creation
+      for (const shipment of shippingResults) {
+        await conn.execute(
+          `
+        INSERT INTO order_shipments
+        (order_id, vendor_id, courier_id, courier_name,
+         shipping_charges, weight, length, breadth, height, shipping_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+        `,
+          [
+            orderId,
+            shipment.vendor_id,
+            shipment.courier_id,
+            shipment.courier_name,
+            shipment.shipping_charges,
+            shipment.weight_grams,
+            shipment.length,
+            shipment.breadth,
+            shipment.height,
+          ],
         );
       }
 
@@ -145,7 +292,7 @@ class CheckoutModel {
       INSERT INTO eorders (user_id, company_id, total_amount, order_ref,address_id)
       VALUES (?, ?, ?, ?, ?)
       `,
-        [userId, companyId, totalAmount, orderRef,addressId],
+        [userId, companyId, totalAmount, orderRef, addressId],
       );
 
       const orderId = orderRes.insertId;
