@@ -11,28 +11,54 @@ const razorpay = new Razorpay({
 class PaymentController {
   // create payment
   async createOrder(req, res) {
-    const { orderId, amount } = req.body;
+    const { orderId } = req.body;
 
-    if (!orderId || !amount) {
-      return res.status(400).json({ message: "orderId and amount required" });
+    if (!orderId) {
+      return res.status(400).json({ message: "orderId required" });
     }
 
     // check if already paid
+    const [orders] = await db.query(
+      `SELECT total_amount, status 
+     FROM eorders 
+     WHERE order_id = ? 
+     LIMIT 1`,
+      [orderId],
+    );
+
+    if (!orders.length) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const order = orders[0];
+
+    if (order.status === "paid") {
+      return res.status(400).json({ message: "Order already paid" });
+    }
+
+    const amount = Number(order.total_amount);
+
+    // Check if already created razorpay order
     const [existing] = await db.query(
-      `SELECT * FROM order_payments 
-        WHERE order_id = ? AND status = 'success' 
-        LIMIT 1`,
+      `SELECT razorpay_order_id 
+      FROM order_payments 
+      WHERE order_id = ? 
+      AND status IN ('created','pending')
+      LIMIT 1`,
       [orderId],
     );
 
     if (existing.length > 0) {
-      return res.status(400).json({
-        message: "Order already paid",
+      return res.status(200).json({
+        key: process.env.RAZOR_API_KEY,
+        orderId: existing[0].razorpay_order_id,
+        amount: amount * 100,
+        currency: "INR",
       });
     }
 
     const razorpayOrder = await razorpay.orders.create({
-      amount: amount * 100, // paise
+      amount: amount * 100,
       currency: "INR",
       receipt: orderId.toString(),
       payment_capture: 1,
@@ -70,15 +96,27 @@ class PaymentController {
       }
 
       // check status
-      const [payment] = await db.query(
+      const [payments] = await db.query(
         `SELECT status, order_id 
-       FROM order_payments 
-       WHERE razorpay_order_id = ?`,
+          FROM order_payments 
+          WHERE razorpay_order_id = ?
+          LIMIT 1`,
         [razorpay_order_id],
       );
 
-      if (!payment) {
+      if (!payments.length) {
         return res.status(404).json({ status: "payment not found" });
+      }
+
+      const payment = payments[0];
+
+      const [order] = await db.query(
+        `SELECT status FROM eorders WHERE order_id = ?`,
+        [payment.order_id],
+      );
+
+      if (order[0]?.status !== "paid") {
+        return res.json({ status: "pending" });
       }
 
       // If webhook already updated
