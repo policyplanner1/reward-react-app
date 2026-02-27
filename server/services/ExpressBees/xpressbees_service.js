@@ -93,8 +93,40 @@ async function checkServiceability(payload) {
   }
 }
 
+// ==========================
+// TRACK SHIPMENT
+// ==========================
+async function trackShipment(payload) {
+  try {
+    const token = await getXpressToken();
+
+    const response = await axios.post(
+      "https://shipment.xpressbees.com/api/shipments/track",
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "XpressBees Tracking Error:",
+      error.response?.data || error.message,
+    );
+
+    return {
+      status: false,
+      message: "Tracking failed",
+    };
+  }
+}
 
 module.exports = {
   bookShipment,
   checkServiceability,
+  trackShipment,
 };
