@@ -55,3 +55,18 @@ Auto notification system for NDR/RTO
 
 
 <!--  -->
+Now it becomes business-layer improvements.
+
+Choose one:
+
+Admin NDR Dashboard + Reattempt API
+Warehouse RTO confirmation + stock restore automation
+Notification engine for delivery/NDR/RTO
+Auto-expire unpaid orders
+Pickup generation automation
+Tracking timeline storage (scan history table)
+
+If your goal is production readiness:
+
+👉 Next most important is Admin NDR + Reattempt flow
+Because delivery failures will start happening immediately in live traffic.
