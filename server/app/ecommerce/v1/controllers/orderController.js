@@ -245,9 +245,8 @@ class OrderController {
   // Track Order status
   async getTracking(req, res) {
     try {
-      const userId = req.user?.user_id;
-
-      const { orderId } = req.params;
+        const userId = req.user?.user_id;
+      //  const userId = 1;
 
       if (!userId) {
         return res.status(401).json({
@@ -255,6 +254,8 @@ class OrderController {
           message: "Unauthorized user",
         });
       }
+
+      const { orderId } = req.params;
 
       // Verify order belongs to this user
       const [orders] = await db.query(

@@ -6,6 +6,8 @@ const db = require("../../../config/database");
 // STATUS MAPPING
 // =====================
 function mapXpressStatus(status) {
+  if (!status || typeof status !== "string") return null;
+
   const s = status.toLowerCase();
 
   if (s.includes("picked")) return "picked_up";
@@ -60,7 +62,13 @@ async function updateShipmentTracking(shipment) {
   try {
     const response = await xpressService.trackShipment(shipment.awb_number);
 
-    if (!response.status || !response.data) return;
+    if (!response || !response.status) {
+      return;
+    }
+
+    if (!response.data || !response.data.current_status) {
+      return;
+    }
 
     const newStatus = mapXpressStatus(response.data.current_status);
 
