@@ -60,8 +60,6 @@ class CheckoutModel {
         throw new Error("INVALID_ADDRESS");
       }
 
-      console.log(customerAddress, "address");
-
       // 4 Group Items by Vendor
       const vendorGroups = {};
 
@@ -90,8 +88,6 @@ class CheckoutModel {
         group.breadth = Math.max(group.breadth, Number(item.breadth));
         group.height += Number(item.height) * item.quantity;
       }
-
-      console.log(vendorGroups, "vendorGroups");
 
       // 5 calculate the service pricing
       const shippingResults = [];
@@ -146,8 +142,6 @@ class CheckoutModel {
         });
       }
 
-      console.log(shippingResults, "shippingResults");
-
       // 6 Calculate Totals
       const productTotal = cartItems.reduce(
         (sum, i) => sum + i.quantity * Number(i.sale_price),
@@ -158,9 +152,6 @@ class CheckoutModel {
         (sum, s) => sum + s.shipping_charges,
         0,
       );
-
-      console.log(productTotal, "productTotal");
-      console.log(shippingTotal, "shippingTotal");
 
       const finalTotal = productTotal + shippingTotal;
 
@@ -176,8 +167,6 @@ class CheckoutModel {
       );
 
       const orderId = orderRes.insertId;
-
-      console.log(orderId, "orderId");
 
       // 8 Order items + stock deduction
       for (const item of cartItems) {
@@ -217,7 +206,7 @@ class CheckoutModel {
         INSERT INTO order_shipments
         (order_id, vendor_id, courier_id, courier_name,
          shipping_charges, chargeable_weight,
-         package_weight, length, breadth, height,
+         weight, length, breadth, height,
          shipping_status)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
         `,
