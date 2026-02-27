@@ -2,6 +2,7 @@ const OrderModel = require("../models/orderModel");
 const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
+const {cancelShipment}=require('../../../../services/ExpressBees/xpressbees_service')
 
 // Helper functions
 const statusLabelMap = {
@@ -259,7 +260,7 @@ class OrderController {
   async getTracking(req, res) {
     try {
       // const userId = req.user?.user_id;
-      const userId=1;
+      const userId = 1;
 
       // if (!userId) {
       //   return res.status(401).json({
@@ -310,6 +311,52 @@ class OrderController {
     } catch (err) {
       console.error("Tracking API error:", err);
       res.status(500).json({ message: "Tracking fetch failed" });
+    }
+  }
+
+  // Shipment cancellation
+  async cancelShipmentHandler(req, res) {
+    try {
+      // const userId = req.user?.user_id;
+      const userId = 1;
+
+      // if (!userId) {
+      //   return res.status(401).json({
+      //     success: false,
+      //     message: "Unauthorized user",
+      //   });
+      // }
+
+      const { shipmentId } = req.params;
+
+      // Authorization check
+      const [rows] = await db.query(
+        `SELECT os.order_id, o.user_id
+       FROM order_shipments os
+       JOIN eorders o ON os.order_id = o.order_id
+       WHERE os.id = ?
+         AND o.user_id = ?
+       LIMIT 1`,
+        [shipmentId, userId],
+      );
+
+      if (!rows.length) {
+        return res.status(404).json({ message: "Shipment not found" });
+      }
+
+      const { order_id } = rows[0];
+
+      // Cancel
+      await cancelShipment(shipmentId);
+
+      return res.json({
+        success: true,
+        message: "Shipment cancelled successfully",
+        order_id,
+      });
+    } catch (err) {
+      console.error("Cancel shipment error:", err);
+      return res.status(400).json({ success: false, message: err.message });
     }
   }
 }

@@ -1,4 +1,5 @@
 const axios = require("axios");
+const db = require("../../config/database");
 
 let cachedToken = null;
 let tokenExpiry = null;
@@ -124,8 +125,78 @@ async function trackShipment(awbNumber) {
   }
 }
 
+// ==========================
+// CANCEL SHIPMENT
+// ==========================
+async function cancelShipmentExpressBees(awb) {
+  try {
+    const token = await getXpressToken();
+
+    const response = await axios.post(
+      "https://shipment.xpressbees.com/api/shipments2/cancel",
+      { awb },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "XpressBees Cancel Error:",
+      error.response?.data || error.message,
+    );
+
+    return {
+      status: false,
+      error: error.response?.data || error.message,
+    };
+  }
+}
+
+async function cancelShipment(shipmentId) {
+  // 1 Fetch shipment
+  const [rows] = await db.query(
+    `SELECT * FROM order_shipments WHERE id = ? LIMIT 1`,
+    [shipmentId],
+  );
+
+  if (!rows.length) {
+    throw new Error("Shipment not found");
+  }
+
+  const shipment = rows[0];
+
+  // 2 Check cancellable statuses
+  if (!["pending", "booked", "picked_up"].includes(shipment.shipping_status)) {
+    throw new Error("Cancellation not allowed at current shipment stage");
+  }
+
+  // 3 Call courier cancel
+  const cancelResponse = await cancelShipmentExpressBees(shipment.awb_number);
+
+  if (!cancelResponse.status) {
+    throw new Error("Courier cancel failed");
+  }
+
+  // 4 Update DB
+  await db.query(
+    `UPDATE order_shipments
+     SET shipping_status = 'cancelled'
+     WHERE id = ?`,
+    [shipmentId],
+  );
+
+  return shipment.order_id;
+}
+
 module.exports = {
   bookShipment,
   checkServiceability,
   trackShipment,
+  cancelShipmentExpressBees,
+  cancelShipment,
 };
