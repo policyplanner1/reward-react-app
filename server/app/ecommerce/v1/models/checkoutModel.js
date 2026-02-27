@@ -4,7 +4,6 @@ const path = require("path");
 const AddressModel = require("../models/addressModel");
 const xpressService = require("../../../../services/ExpressBees/xpressbees_service");
 
-
 function generateOrderRef() {
   const date = new Date();
   const ymd = date.toISOString().slice(0, 10).replace(/-/g, "");
@@ -42,9 +41,7 @@ class CheckoutModel {
         [userId],
       );
 
-      if (cartItems.length === 0) {
-        throw new Error("CART_EMPTY");
-      }
+      if (!cartItems.length) throw new Error("CART_EMPTY");
 
       // 2 Validate stock
       for (const item of cartItems) {
@@ -82,28 +79,16 @@ class CheckoutModel {
           };
         }
 
-        vendorGroups[vendorId].items.push(item);
+        const group = vendorGroups[vendorId];
 
-        // Weight in KG (assuming DB stores KG)
-        vendorGroups[vendorId].totalWeightKg +=
-          item.quantity * Number(item.weight);
+        group.items.push(item);
 
-        vendorGroups[vendorId].totalAmount +=
-          item.quantity * Number(item.sale_price);
+        group.totalWeightKg += item.quantity * Number(item.weight);
+        group.totalAmount += item.quantity * Number(item.sale_price);
 
-        // Dimension logic (basic box stacking logic)
-        vendorGroups[vendorId].length = Math.max(
-          vendorGroups[vendorId].length,
-          Number(item.length),
-        );
-
-        vendorGroups[vendorId].breadth = Math.max(
-          vendorGroups[vendorId].breadth,
-          Number(item.breadth),
-        );
-
-        // stacking height
-        vendorGroups[vendorId].height += Number(item.height) * item.quantity;
+        group.length = Math.max(group.length, Number(item.length));
+        group.breadth = Math.max(group.breadth, Number(item.breadth));
+        group.height += Number(item.height) * item.quantity;
       }
 
       console.log(vendorGroups, "vendorGroups");
@@ -124,34 +109,40 @@ class CheckoutModel {
           throw new Error("VENDOR_ADDRESS_MISSING");
         }
 
+        const weightGrams = Math.round(vendor.totalWeightKg * 1000);
+        const length = Math.round(vendor.length);
+        const breadth = Math.round(vendor.breadth);
+        const height = Math.round(vendor.height);
+
         const serviceResponse = await xpressService.checkServiceability({
           origin: vendorAddress.pincode,
           destination: customerAddress.zipcode,
           payment_type: "prepaid",
           order_amount: vendor.totalAmount.toString(),
-          weight: Math.round(vendor.totalWeightKg * 1000).toString(),
-          length: vendor.length.toString(),
-          breadth: vendor.breadth.toString(),
-          height: vendor.height.toString(),
+          weight: weightGrams.toString(),
+          length: length.toString(),
+          breadth: breadth.toString(),
+          height: height.toString(),
         });
 
         if (!serviceResponse.status || !serviceResponse.data.length) {
           throw new Error("NOT_SERVICEABLE");
         }
 
-        const cheapest = serviceResponse.data.sort(
-          (a, b) => a.total_charges - b.total_charges,
-        )[0];
+        const cheapest = serviceResponse.data
+          .filter((o) => o.total_charges > 0)
+          .sort((a, b) => a.total_charges - b.total_charges)[0];
 
         shippingResults.push({
           vendor_id: Number(vendorId),
           courier_id: cheapest.id,
           courier_name: cheapest.name,
           shipping_charges: Number(cheapest.total_charges),
-          weight_grams: Math.round(vendor.totalWeightKg * 1000),
-          length: vendor.length,
-          breadth: vendor.breadth,
-          height: vendor.height,
+          chargeable_weight: cheapest.chargeable_weight,
+          package_weight: weightGrams,
+          length,
+          breadth,
+          height,
         });
       }
 
@@ -188,7 +179,6 @@ class CheckoutModel {
 
       console.log(orderId, "orderId");
 
-
       // 8 Order items + stock deduction
       for (const item of cartItems) {
         await conn.execute(
@@ -206,14 +196,18 @@ class CheckoutModel {
           ],
         );
 
-        await conn.execute(
+        const [updateRes] = await conn.execute(
           `
         UPDATE product_variants
         SET stock = stock - ?
-        WHERE variant_id = ?
+        WHERE variant_id = ? AND stock >= ?
         `,
-          [item.quantity, item.variant_id],
+          [item.quantity, item.variant_id, item.quantity],
         );
+
+        if (updateRes.affectedRows === 0) {
+          throw new Error("STOCK_RACE_CONDITION");
+        }
       }
 
       // 9 Shipment creation
@@ -222,8 +216,10 @@ class CheckoutModel {
           `
         INSERT INTO order_shipments
         (order_id, vendor_id, courier_id, courier_name,
-         shipping_charges, weight, length, breadth, height, shipping_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+         shipping_charges, chargeable_weight,
+         package_weight, length, breadth, height,
+         shipping_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
         `,
           [
             orderId,
@@ -231,7 +227,8 @@ class CheckoutModel {
             shipment.courier_id,
             shipment.courier_name,
             shipment.shipping_charges,
-            shipment.weight_grams,
+            shipment.chargeable_weight,
+            shipment.package_weight,
             shipment.length,
             shipment.breadth,
             shipment.height,
@@ -239,7 +236,7 @@ class CheckoutModel {
         );
       }
 
-      // 7 Clear cart
+      // 10 Clear cart
       await conn.execute(`DELETE FROM cart_items WHERE user_id = ?`, [userId]);
 
       await conn.commit();
