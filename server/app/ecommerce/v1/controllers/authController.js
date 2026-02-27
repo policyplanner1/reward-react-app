@@ -186,7 +186,17 @@ class AuthController {
             </head>
             <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
               <h2>Email verified successfully </h2>
-              <p>You can now return to the app and login.</p>
+             
+              <a href="rewardplanners://login"
+                style="padding:12px 20px;background:black;color:white;text-decoration:none;border-radius:5px;">
+                Open App
+              </a>
+
+              <script>
+                setTimeout(function() {
+                  window.location.href = "rewardplanners://login";
+                }, 2000);
+              </script>
             </body>
           </html>
         `);
@@ -430,7 +440,7 @@ class AuthController {
       // Send email with:
       const token = `${process.env.BACKEND_URL}/api/crm/v1/auth/verify-email?token=${rawToken}`;
       await sendVerificationMail({
-        name:user.name,
+        name: user.name,
         email: normalizedEmail,
         token,
       });
