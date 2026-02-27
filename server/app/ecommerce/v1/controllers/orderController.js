@@ -212,8 +212,8 @@ class OrderController {
         success: false,
         message: "Unable to submit cancellation request",
       });
-    }finally{
-      await conn.release()
+    } finally {
+      await conn.release();
     }
   }
 
@@ -239,6 +239,58 @@ class OrderController {
         success: false,
         message: "Unable to fetch cancellation details",
       });
+    }
+  }
+
+  // Track Order status
+  async getTracking(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      const { orderId } = req.params;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      // Verify order belongs to this user
+      const [orders] = await db.query(
+        `SELECT order_id
+         FROM eorders
+         WHERE order_id = ?
+           AND user_id = ?
+         LIMIT 1`,
+        [orderId, userId],
+      );
+
+      if (!orders.length) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Fetch shipments
+      const [shipments] = await db.query(
+        `SELECT
+           vendor_id,
+           courier_name,
+           awb_number,
+           shipping_status,
+           label_url,
+           manifest_url
+         FROM order_shipments
+         WHERE order_id = ?`,
+        [orderId],
+      );
+
+      return res.json({
+        order_id: orderId,
+        shipments,
+      });
+    } catch (err) {
+      console.error("Tracking API error:", err);
+      res.status(500).json({ message: "Tracking fetch failed" });
     }
   }
 }

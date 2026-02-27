@@ -257,6 +257,38 @@ class LogisticsController {
       });
     }
   }
+
+  async cancelShipment(shipmentId) {
+    const [rows] = await db.query(
+      `SELECT * FROM order_shipments WHERE id = ?`,
+      [shipmentId],
+    );
+
+    if (!rows.length) throw new Error("Shipment not found");
+
+    const shipment = rows[0];
+
+    if (
+      !["pending", "booked", "picked_up"].includes(shipment.shipping_status)
+    ) {
+      throw new Error("Cannot cancel at this stage");
+    }
+
+    const response = await xpressService.cancelShipment({
+      awb_number: shipment.awb_number,
+    });
+
+    if (!response.status) {
+      throw new Error("Courier cancel failed");
+    }
+
+    await db.query(
+      `UPDATE order_shipments
+     SET shipping_status = 'cancelled'
+     WHERE id = ?`,
+      [shipmentId],
+    );
+  }
 }
 
 module.exports = new LogisticsController();
