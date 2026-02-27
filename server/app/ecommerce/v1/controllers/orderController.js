@@ -3,6 +3,19 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 
+// Helper functions
+const statusLabelMap = {
+  booked: "Shipment Booked",
+  picked_up: "Picked Up",
+  in_transit: "In Transit",
+  out_for_delivery: "Out for Delivery",
+  delivered: "Delivered",
+  rto: "Returned to Origin",
+  ndr: "Delivery Attempt Failed",
+  cancelled: "Cancelled",
+  pending: "Preparing Shipment",
+};
+
 class OrderController {
   // Get order history
   async getOrderHistory(req, res) {
@@ -245,25 +258,24 @@ class OrderController {
   // Track Order status
   async getTracking(req, res) {
     try {
-        const userId = req.user?.user_id;
-      //  const userId = 1;
+      // const userId = req.user?.user_id;
+      const userId=1;
 
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized user",
-        });
-      }
+      // if (!userId) {
+      //   return res.status(401).json({
+      //     success: false,
+      //     message: "Unauthorized user",
+      //   });
+      // }
 
       const { orderId } = req.params;
 
-      // Verify order belongs to this user
       const [orders] = await db.query(
         `SELECT order_id
-         FROM eorders
-         WHERE order_id = ?
-           AND user_id = ?
-         LIMIT 1`,
+       FROM eorders
+       WHERE order_id = ?
+         AND user_id = ?
+       LIMIT 1`,
         [orderId, userId],
       );
 
@@ -271,23 +283,29 @@ class OrderController {
         return res.status(404).json({ message: "Order not found" });
       }
 
-      // Fetch shipments
       const [shipments] = await db.query(
         `SELECT
-           vendor_id,
-           courier_name,
-           awb_number,
-           shipping_status,
-           label_url,
-           manifest_url
-         FROM order_shipments
-         WHERE order_id = ?`,
+         vendor_id,
+         courier_name,
+         awb_number,
+         shipping_status,
+         label_url,
+         manifest_url
+       FROM order_shipments
+       WHERE order_id = ?`,
         [orderId],
       );
 
+      //  Add label to each shipment
+      const formattedShipments = shipments.map((shipment) => ({
+        ...shipment,
+        status_label:
+          statusLabelMap[shipment.shipping_status] || shipment.shipping_status,
+      }));
+
       return res.json({
         order_id: orderId,
-        shipments,
+        shipments: formattedShipments,
       });
     } catch (err) {
       console.error("Tracking API error:", err);
