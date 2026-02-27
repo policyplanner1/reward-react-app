@@ -836,15 +836,17 @@ class ProductModel {
     sub_subcategoryId,
     limit = 10,
   }) {
-    const query = `
+    try {
+      const query = `
     SELECT
       p.product_id,
       p.product_name,
       p.brand_name,
-
+      p.created_at,
       v.variant_id,
       v.sale_price,
       v.mrp,
+      v.reward_redemption_limit,
 
       GROUP_CONCAT(
         DISTINCT CONCAT(
@@ -872,37 +874,17 @@ class ProductModel {
       ON ssc.sub_subcategory_id = p.sub_subcategory_id
      AND ssc.status = 1
 
-    /* ---- Lowest price ACTIVE variant (1 per product) ---- */
- INNER JOIN (
-  SELECT pv.*
-  FROM product_variants pv
-
-  /* ---- lowest sale price per product ---- */
-  INNER JOIN (
-    SELECT 
-      product_id,
-      MIN(sale_price) AS min_price
-    FROM product_variants
-    WHERE sale_price IS NOT NULL
-    GROUP BY product_id
-  ) mp
-    ON pv.product_id = mp.product_id
-   AND pv.sale_price = mp.min_price
-
-  /* ---- tie-breaker: lowest variant_id ---- */
-  INNER JOIN (
-    SELECT 
-      product_id,
-      MIN(variant_id) AS min_variant_id
-    FROM product_variants
-    WHERE sale_price IS NOT NULL
-    GROUP BY product_id
-  ) tie
-    ON pv.product_id = tie.product_id
-   AND pv.variant_id = tie.min_variant_id
-
-  ) v ON v.product_id = p.product_id
-
+  /* ---- Lowest visible variant per product ---- */
+    INNER JOIN product_variants v
+      ON v.variant_id = (
+        SELECT pv2.variant_id
+        FROM product_variants pv2
+        WHERE pv2.product_id = p.product_id
+          AND pv2.is_visible = 1
+          AND pv2.sale_price IS NOT NULL
+        ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+        LIMIT 1
+      )
 
     /* ---- Active images only ---- */
     LEFT JOIN product_images pi
@@ -910,6 +892,7 @@ class ProductModel {
 
     WHERE p.status = "approved"
       AND p.is_deleted = 0
+      AND p.is_visible = 1
       AND p.product_id != ?
       AND (
         p.category_id = ?
@@ -922,34 +905,65 @@ class ProductModel {
     LIMIT ?
   `;
 
-    const [rows] = await db.execute(query, [
-      productId,
-      categoryId,
-      subcategoryId,
-      sub_subcategoryId,
-      limit,
-    ]);
+      const [rows] = await db.execute(query, [
+        productId,
+        categoryId,
+        subcategoryId,
+        sub_subcategoryId,
+        limit,
+      ]);
 
-    return rows.map((row) => {
-      let images = [];
+      const products = rows.map((row) => {
+        const salePrice = row.sale_price ? Number(row.sale_price) : 0;
+        const mrp = row.mrp ? Number(row.mrp) : 0;
+        const discountPercent = row.reward_redemption_limit
+          ? Number(row.reward_redemption_limit)
+          : 0;
 
-      if (row.images) {
-        images = row.images.split(",").map((i) => {
-          const [, image_url] = i.split("::");
-          return { image_url };
-        });
-      }
+        /* ---- Reward discount amount ---- */
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
 
-      return {
-        product_id: row.product_id,
-        product_name: row.product_name,
-        brand_name: row.brand_name,
-        variant_id: row.variant_id,
-        sale_price: row.sale_price,
-        mrp: row.mrp,
-        image: images.length ? images[0].image_url : null,
-      };
-    });
+        /* ---- Final reward price ---- */
+        const finalPrice = salePrice - discountAmount;
+
+        /* ---- Total discount vs MRP ---- */
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        /* ---- Parse images ---- */
+        let images = [];
+
+        if (row.images) {
+          images = row.images.split(",").map((item) => {
+            const [, image_url] = item.split("::");
+            return { image_url };
+          });
+        }
+
+        return {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          brand_name: row.brand_name,
+          variant_id: row.variant_id,
+
+          image: images.length ? images[0].image_url : null,
+
+          /* ---- Pricing ---- */
+          price: `₹${salePrice}`,
+          originalPrice: `₹${mrp}`,
+          discount: `${mrpDiscountPercent}%`,
+          pointsPrice: `₹${finalPrice}`,
+          points: discountAmount,
+          rating: 4.6,
+          reviews: "18.9K",
+        };
+      });
+
+      return products;
+    } catch (error) {
+      console.error("Error fetching similar products:", error);
+      throw error;
+    }
   }
 }
 

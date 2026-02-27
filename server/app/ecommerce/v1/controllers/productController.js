@@ -607,13 +607,18 @@ class ProductController {
   async getSimilarProducts(req, res) {
     try {
       const productId = Number(req.params.productId);
-      const { category_id, subcategory_id, sub_subcategory_id } = req.query;
+      const categoryId = Number(req.query.category_id);
+      const subcategoryId = Number(req.query.subcategory_id);
+      const subSubcategoryId = Number(req.query.sub_subcategory_id);
 
+      const limit = req.query.limit ? Number(req.query.limit) : 10;
+
+      // validation
       if (
         !productId ||
-        !category_id ||
-        !subcategory_id ||
-        !sub_subcategory_id
+        !categoryId ||
+        !subcategoryId ||
+        !subSubcategoryId
       ) {
         return res.status(400).json({
           success: false,
@@ -623,14 +628,15 @@ class ProductController {
 
       const products = await ProductModel.getSimilarProducts({
         productId,
-        categoryId: Number(category_id),
-        subcategoryId: Number(subcategory_id),
-        sub_subcategoryId: Number(sub_subcategory_id),
-        limit: 10,
+        categoryId,
+        subcategoryId,
+        sub_subcategoryId: subSubcategoryId,
+        limit,
       });
 
-      return res.json({
+      return res.status(200).json({
         success: true,
+        total: products.length,
         products,
       });
     } catch (error) {
@@ -740,7 +746,7 @@ class ProductController {
       const keyword = (req.body.keyword || "").trim();
 
       if (!keyword) {
-        return res.json({ success: true }); 
+        return res.json({ success: true });
       }
 
       // Save history
@@ -765,7 +771,7 @@ class ProductController {
   async getSearchHistory(req, res) {
     try {
       if (!req.user?.user_id) {
-        return res.status(401).json({ success: false }); 
+        return res.status(401).json({ success: false });
       }
 
       const userId = req.user?.user_id;
