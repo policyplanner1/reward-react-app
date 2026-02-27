@@ -178,26 +178,33 @@ class AuthController {
           await AuthModel.markEmailVerified(user.user_id);
 
           return res.send(`
-          <html>
-            <head>
-              <title>Email Verified</title>
-            </head>
-            <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
-              <h2>Email verified successfully </h2>
-             
-              <a href="rewardplanners://login"
-                style="padding:12px 20px;background:black;color:white;text-decoration:none;border-radius:5px;">
-                Open App
-              </a>
+            <html>
+              <head>
+                <title>Email Verified</title>
+              </head>
+              <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
+                <h2>Email verified successfully ✅</h2>
+                <p>You can now login in the app.</p>
 
-              <script>
-                setTimeout(function() {
-                  window.location.href = "rewardplanners://login";
-                }, 2000);
-              </script>
-            </body>
-          </html>
-        `);
+                <a href="rewardplanners://login"
+                  style="padding:12px 20px;background:black;color:white;text-decoration:none;border-radius:5px;">
+                  Open App
+                </a>
+
+                <script>
+                  // Try opening app via custom scheme
+                  setTimeout(function() {
+                    window.location.href = "rewardplanners://login";
+                  }, 500);
+
+                  // Fallback for Android Chrome
+                  setTimeout(function() {
+                    window.location.href = "intent://login#Intent;scheme=rewardplanners;package=com.rewardsplanners;end";
+                  }, 1500);
+                </script>
+              </body>
+            </html>
+          `);
         }
       }
 
