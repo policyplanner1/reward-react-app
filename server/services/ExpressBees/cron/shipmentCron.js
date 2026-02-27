@@ -14,8 +14,26 @@ function mapXpressStatus(status) {
   if (s.includes("in transit")) return "in_transit";
   if (s.includes("out for delivery")) return "out_for_delivery";
   if (s.includes("delivered")) return "delivered";
-  if (s.includes("rto")) return "rto";
-  if (s.includes("ndr")) return "ndr";
+
+  //  NDR cases
+  if (
+    s.includes("ndr") ||
+    s.includes("failed") ||
+    s.includes("not available") ||
+    s.includes("address issue") ||
+    s.includes("delivery attempted")
+  ) {
+    return "ndr";
+  }
+
+  // RTO cases
+  if (
+    s.includes("rto") ||
+    s.includes("returned") ||
+    s.includes("return to origin")
+  ) {
+    return "rto";
+  }
 
   return null;
 }
@@ -52,6 +70,17 @@ async function syncOrderStatus(orderId) {
        WHERE order_id = ?`,
       [orderId],
     );
+    return;
+  }
+
+  if (statuses.includes("ndr")) {
+    await db.query(
+      `UPDATE eorders
+       SET status = 'delivery_failed'
+       WHERE order_id = ?`,
+      [orderId],
+    );
+    return;
   }
 }
 
@@ -82,6 +111,25 @@ async function updateShipmentTracking(shipment) {
        WHERE id = ?`,
       [newStatus, shipment.id],
     );
+
+    if (newStatus === "ndr") {
+      const [existing] = await db.query(
+        `SELECT id FROM shipment_ndr_logs
+     WHERE shipment_id = ?
+       AND resolved = 0
+     LIMIT 1`,
+        [shipment.id],
+      );
+
+      if (!existing.length) {
+        await db.query(
+          `INSERT INTO shipment_ndr_logs
+       (shipment_id, reason)
+       VALUES (?, ?)`,
+          [shipment.id, response.data.current_status],
+        );
+      }
+    }
 
     await syncOrderStatus(shipment.order_id);
   } catch (err) {

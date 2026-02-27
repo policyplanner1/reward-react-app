@@ -28,3 +28,30 @@ if (remaining[0].cnt === 0) {
   // You can reuse your existing refundPayment method
   await PaymentController.refundPayment({ body: { orderId } }, { /* fake res */ });
 }
+
+
+
+
+
+
+
+
+
+
+<!--  -->
+🔥 What You Should NOT Do
+
+Do NOT:
+Auto refund on RTO immediately
+Auto restore stock on RTO immediately
+Wait until parcel physically returns.
+
+===========================================
+Admin NDR dashboard + reattempt API
+RTO warehouse confirmation flow
+Auto notification system for NDR/RTO
+
+
+
+
+<!--  -->
