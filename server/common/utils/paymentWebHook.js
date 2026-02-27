@@ -161,14 +161,15 @@ async function processShipmentsAfterPayment(orderId) {
 
         const data = xpResponse.data;
 
-        await conn.query(
+        const [updateResult] = await conn.query(
           `UPDATE order_shipments
            SET shipment_id = ?,
                awb_number = ?,
                label_url = ?,
                manifest_url = ?,
                shipping_status = 'booked'
-           WHERE id = ? AND shipping_status = 'pending'`,
+           WHERE id = ?
+             AND shipping_status = 'pending'`,
           [
             data.shipment_id,
             data.awb_number,
@@ -184,12 +185,12 @@ async function processShipmentsAfterPayment(orderId) {
       } catch (err) {
         console.error(`Shipment booking failed for ${shipment.id}`, err);
 
-        await conn.query(
-          `UPDATE order_shipments
-           SET shipping_status = 'pending'
-           WHERE id = ?`,
-          [shipment.id],
-        );
+        // await conn.query(
+        //   `UPDATE order_shipments
+        //    SET shipping_status = 'pending'
+        //    WHERE id = ?`,
+        //   [shipment.id],
+        // );
       }
     }
   } finally {
