@@ -58,9 +58,7 @@ async function syncOrderStatus(orderId) {
 // =====================
 async function updateShipmentTracking(shipment) {
   try {
-    const response = await xpressService.trackShipment({
-      awb_number: shipment.awb_number,
-    });
+    const response = await xpressService.trackShipment(shipment.awb_number);
 
     if (!response.status || !response.data) return;
 
@@ -88,7 +86,7 @@ async function updateShipmentTracking(shipment) {
 // =====================
 cron.schedule("*/10 * * * *", async () => {
   try {
-    console.log("cron running")
+    console.log("cron running");
     const [shipments] = await db.query(
       `SELECT id, order_id, awb_number, shipping_status
        FROM order_shipments

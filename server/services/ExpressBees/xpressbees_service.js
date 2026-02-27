@@ -96,13 +96,12 @@ async function checkServiceability(payload) {
 // ==========================
 // TRACK SHIPMENT
 // ==========================
-async function trackShipment(payload) {
+async function trackShipment(awbNumber) {
   try {
     const token = await getXpressToken();
 
-    const response = await axios.post(
-      "https://shipment.xpressbees.com/api/shipments/track",
-      payload,
+    const response = await axios.get(
+      `https://shipment.xpressbees.com/api/shipments2/track/${awbNumber}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
