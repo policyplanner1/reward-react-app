@@ -160,14 +160,12 @@ class AuthController {
   async verifyEmail(req, res) {
     try {
       const { token } = req.query;
-      console.log(token, "token");
 
       if (!token) {
         return res.status(400).send("Invalid verification link.");
       }
 
       const users = await AuthModel.findByVerificationToken();
-      console.log(users, "users");
 
       for (const user of users) {
         const isMatch = await bcrypt.compare(token, user.verification_token);
