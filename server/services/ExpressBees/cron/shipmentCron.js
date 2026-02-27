@@ -88,6 +88,7 @@ async function updateShipmentTracking(shipment) {
 // =====================
 cron.schedule("*/10 * * * *", async () => {
   try {
+    console.log("cron running")
     const [shipments] = await db.query(
       `SELECT id, order_id, awb_number, shipping_status
        FROM order_shipments
