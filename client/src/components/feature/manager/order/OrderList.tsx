@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
 import "./css/orderList.css";
+import { FiBox } from "react-icons/fi";
 import Swal from "sweetalert2";
 
 interface Order {
@@ -79,6 +80,7 @@ const OrderList: React.FC = () => {
         throw new Error("Shipment creation failed");
       }
 
+      fetchOrders();
       //  Optimistic UI Update
       setOrders((prev) =>
         prev.map((o) =>
@@ -120,11 +122,21 @@ const OrderList: React.FC = () => {
 
   return (
     <div className="order-page">
-      <div className="order-header">
-        <h2>Orders</h2>
-      </div>
+      <div className=" flex items-center gap-4 mb-8">
+  <div className="w-12 h-12 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-full flex items-center justify-center shrink-0">
+    <FiBox className="text-white text-xl" />
+  </div>
 
-      {loading && <p className="loading">Loading orders...</p>}
+  <div>
+    <h2 className="text-2xl font-semibold">Orders</h2>
+    <p className="text-gray-500">
+      Manage and monitor all customer orders
+    </p>
+  </div>
+</div>
+
+
+      {loading && <div className="loader"></div>}
       {error && <p className="error">{error}</p>}
 
       {!loading && !error && (
@@ -154,12 +166,23 @@ const OrderList: React.FC = () => {
                 ) : (
                   orders.map((order) => (
                     <tr key={order.order_id}>
-                      <td className="order-ref">{order.order_ref}</td>
+                      <td className="order-ref">
+                        {order.order_ref}
+                        {order.awb_number && (
+                          <div className="awb-text">
+                            AWB: {order.awb_number}
+                          </div>
+                        )}
+                      </td>
+
                       <td>{order.product_name ?? "-"}</td>
+
                       <td>{order.brand_name ?? "-"}</td>
+
                       <td className="amount">
                         {formatCurrency(order.total_amount)}
                       </td>
+
                       <td>
                         <span
                           className={`status-badge status-${order.status.toLowerCase()}`}
@@ -167,9 +190,11 @@ const OrderList: React.FC = () => {
                           {order.status}
                         </span>
                       </td>
+
                       <td>
                         {new Date(order.created_at).toLocaleDateString("en-IN")}
                       </td>
+
                       <td>{order.item_count}</td>
                       <td>
                         {/* View Button */}
@@ -206,13 +231,12 @@ const OrderList: React.FC = () => {
             </table>
           </div>
 
-          {/* Pagination */}
           <div className="pagination">
             <button
               disabled={page === 1}
               onClick={() => setPage((prev) => prev - 1)}
             >
-              Prev
+              ← Prev
             </button>
 
             <span>
@@ -223,7 +247,7 @@ const OrderList: React.FC = () => {
               disabled={page === totalPages}
               onClick={() => setPage((prev) => prev + 1)}
             >
-              Next
+              Next →
             </button>
           </div>
         </>
