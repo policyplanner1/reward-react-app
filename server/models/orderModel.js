@@ -72,6 +72,7 @@ class OrderModel {
 
         s.shipping_status,
         s.awb_number,
+        s.courier_name,
 
         (
           SELECT p.product_name
@@ -104,7 +105,7 @@ class OrderModel {
       LEFT JOIN eorder_items oi 
         ON o.order_id = oi.order_id
 
-      LEFT JOIN shipments s
+      LEFT JOIN order_shipments s
         ON s.order_id = o.order_id
 
       ${whereClause}
