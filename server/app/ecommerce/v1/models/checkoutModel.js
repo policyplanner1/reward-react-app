@@ -12,6 +12,7 @@ function generateOrderRef() {
 }
 
 class CheckoutModel {
+  // Buy cart items
   async checkoutCart(userId, companyId = null, addressId) {
     const conn = await db.getConnection();
 
@@ -238,6 +239,7 @@ class CheckoutModel {
     }
   }
 
+  // Buy now items
   async buyNow({
     userId,
     productId,
@@ -254,9 +256,17 @@ class CheckoutModel {
       // 1 Fetch variant
       const [[variant]] = await conn.execute(
         `
-      SELECT sale_price, stock
-      FROM product_variants
-      WHERE variant_id = ? AND product_id = ?
+      SELECT 
+        v.sale_price,
+        v.stock,
+        v.weight,
+        v.length,
+        v.breadth,
+        v.height,
+        p.vendor_id
+      FROM product_variants v
+      JOIN eproducts p ON v.product_id = p.product_id
+      WHERE v.variant_id = ? AND v.product_id = ?
       `,
         [variantId, productId],
       );
@@ -269,9 +279,64 @@ class CheckoutModel {
         throw new Error("OUT_OF_STOCK");
       }
 
-      const totalAmount = quantity * variant.sale_price;
+      // 2 Get Customer address
+      const customerAddress = await AddressModel.getAddressById(
+        addressId,
+        userId,
+      );
 
-      // 2 Create order
+      if (!customerAddress) {
+        throw new Error("INVALID_ADDRESS");
+      }
+
+      // 3 Get vendor shipping address
+      const [[vendorAddress]] = await conn.execute(
+        `
+      SELECT pincode
+      FROM vendor_addresses
+      WHERE vendor_id = ?
+        AND type = 'shipping'
+      LIMIT 1
+      `,
+        [variant.vendor_id],
+      );
+
+      if (!vendorAddress) {
+        throw new Error("VENDOR_ADDRESS_MISSING");
+      }
+
+      const productTotal = quantity * Number(variant.sale_price);
+
+      const weightGrams = Math.round(quantity * Number(variant.weight) * 1000);
+      const length = Math.round(variant.length);
+      const breadth = Math.round(variant.breadth);
+      const height = Math.round(quantity * Number(variant.height));
+
+      // 4 Serviceability
+      const serviceResponse = await xpressService.checkServiceability({
+        origin: vendorAddress.pincode,
+        destination: customerAddress.zipcode,
+        payment_type: "prepaid",
+        order_amount: productTotal.toString(),
+        weight: weightGrams.toString(),
+        length: length.toString(),
+        breadth: breadth.toString(),
+        height: height.toString(),
+      });
+
+      if (!serviceResponse.status || !serviceResponse.data.length) {
+        throw new Error("NOT_SERVICEABLE");
+      }
+
+      const cheapest = serviceResponse.data
+        .filter((o) => o.total_charges > 0)
+        .sort((a, b) => a.total_charges - b.total_charges)[0];
+
+      const shippingCharge = Number(cheapest.total_charges);
+
+      const finalTotal = productTotal + shippingCharge;
+
+      // 5 Create order
 
       const orderRef = generateOrderRef();
 
@@ -280,12 +345,12 @@ class CheckoutModel {
       INSERT INTO eorders (user_id, company_id, total_amount, order_ref,address_id)
       VALUES (?, ?, ?, ?, ?)
       `,
-        [userId, companyId, totalAmount, orderRef, addressId],
+        [userId, companyId, finalTotal, orderRef, addressId],
       );
 
       const orderId = orderRes.insertId;
 
-      // 3 Create order item
+      // 6 Create order item
       await conn.execute(
         `
       INSERT INTO eorder_items
@@ -295,15 +360,44 @@ class CheckoutModel {
         [orderId, productId, variantId, quantity, variant.sale_price],
       );
 
-      // 4 Deduct stock
+      // 7 Create shipment row
       await conn.execute(
+        `
+      INSERT INTO order_shipments
+      (order_id, vendor_id, courier_id, courier_name,
+       shipping_charges, chargeable_weight,
+       weight, length, breadth, height,
+       shipping_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
+      `,
+        [
+          orderId,
+          variant.vendor_id,
+          cheapest.id,
+          cheapest.name,
+          shippingCharge,
+          cheapest.chargeable_weight,
+          weightGrams,
+          length,
+          breadth,
+          height,
+        ],
+      );
+
+      // 8 Deduct stock
+      const [updateRes] = await conn.execute(
         `
       UPDATE product_variants
       SET stock = stock - ?
       WHERE variant_id = ?
+        AND stock >= ?
       `,
-        [quantity, variantId],
+        [quantity, variantId, quantity],
       );
+
+      if (updateRes.affectedRows === 0) {
+        throw new Error("STOCK_RACE_CONDITION");
+      }
 
       await conn.commit();
       return orderId;
