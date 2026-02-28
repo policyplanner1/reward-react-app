@@ -592,16 +592,22 @@ class CheckoutModel {
   }
 
   // Get buy now checkout Details
-  async getBuyNowCheckout({ productId, variantId, quantity }) {
+  async getBuyNowCheckout({ productId, variantId, quantity,userId }) {
     const [[row]] = await db.execute(
       `
     SELECT 
       p.product_id,
       p.product_name,
+      p.vendor_id,
       v.variant_id,
       v.mrp,
       v.sale_price,
       v.stock,
+      v.reward_redemption_limit,
+      v.weight,
+      v.length,
+      v.breadth,
+      v.height,
       v.reward_redemption_limit,
       GROUP_CONCAT(pi.image_url ORDER BY pi.sort_order ASC) AS images
     FROM product_variants v
@@ -630,6 +636,69 @@ class CheckoutModel {
 
     const finalItemTotal = itemTotal - rewardDiscountAmount;
 
+    // =====================
+    // SHIPPING CALCULATION
+    // =====================
+
+    // Get address
+    const [addressRows] = await db.execute(
+      `SELECT zipcode FROM customer_addresses
+     WHERE user_id = ?
+       AND is_default = 1
+     LIMIT 1`,
+      [userId],
+    );
+
+    if (!addressRows.length) {
+      throw new Error("INVALID_ADDRESS");
+    }
+
+    const destinationPincode = addressRows[0].zipcode;
+
+    // Vendor shipping address
+    const [[vendorAddress]] = await db.execute(
+      `
+    SELECT pincode
+    FROM vendor_addresses
+    WHERE vendor_id = ?
+      AND type = 'shipping'
+    LIMIT 1
+    `,
+      [row.vendor_id],
+    );
+
+    if (!vendorAddress) {
+      throw new Error("VENDOR_ADDRESS_MISSING");
+    }
+
+    const weightGrams = Math.round(quantity * Number(row.weight) * 1000);
+    const length = Math.round(row.length);
+    const breadth = Math.round(row.breadth);
+    const height = Math.round(quantity * Number(row.height));
+
+    const serviceResponse = await xpressService.checkServiceability({
+      origin: vendorAddress.pincode,
+      destination: destinationPincode,
+      payment_type: "prepaid",
+      order_amount: itemTotal.toString(),
+      weight: weightGrams.toString(),
+      length: length.toString(),
+      breadth: breadth.toString(),
+      height: height.toString(),
+    });
+
+    if (!serviceResponse.status || !serviceResponse.data.length) {
+      throw new Error("NOT_SERVICEABLE");
+    }
+
+    const cheapest = serviceResponse.data
+      .filter((o) => o.total_charges > 0)
+      .sort((a, b) => a.total_charges - b.total_charges)[0];
+
+    const shippingCharge = Number(cheapest.total_charges);
+
+    const finalPayable = finalItemTotal + shippingCharge;
+
     return {
       item: {
         product_id: row.product_id,
@@ -646,7 +715,15 @@ class CheckoutModel {
       },
       totalAmount: itemTotal,
       totalDiscount: rewardDiscountAmount,
-      payableAmount: finalItemTotal,
+      shippingTotal: shippingCharge,
+      payableAmount: finalPayable,
+      shippingBreakdown: [
+        {
+          vendor_id: row.vendor_id,
+          courier_name: cheapest.name,
+          shipping_charges: shippingCharge,
+        },
+      ],
     };
   }
 
