@@ -161,13 +161,6 @@ const OrderList: React.FC = () => {
                         >
                           View
                         </button>
-
-                        {/* Shipment Logic */}
-                        {order.awb_number ? (
-                          <span className="awb-text">
-                            AWB: {order.awb_number}
-                          </span>
-                        ) : ''}
                       </td>
                     </tr>
                   ))
