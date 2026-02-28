@@ -186,7 +186,6 @@ const FlashSaleList: React.FC = () => {
               >
                 Variants
               </button>
-              
             </td>
           </tr>
         ))

@@ -3,430 +3,462 @@ const AddressModel = require("../models/addressModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const {
+  sendVerificationMail,
+} = require("../../../../services/userVerification");
 
 const ACCESS_EXPIRES = "15m";
 const REFRESH_EXPIRES_DAYS = 7;
 
 class AuthController {
   // Basic Registration and Login
-  async registerUser(req, res) {
-    try {
-      const { name, email, phone, password, cpassword } = req.body;
-
-      if (!name || !email || !phone || !password || !cpassword)
-        return res.status(400).json({ message: "All fields required" });
-
-      if (password !== cpassword) {
-        return res.status(400).json({ message: "Passwords do not match" });
-      }
-
-      const normalizedEmail = email.trim().toLowerCase();
-
-      const existing = await AuthModel.findByEmail(normalizedEmail);
-      if (existing)
-        return res.status(409).json({ message: "Email already registered" });
-
-      if (password.length < 6)
-        return res.status(400).json({ message: "Password too short" });
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      await AuthModel.createCustomer({
-        name,
-        email: normalizedEmail,
-        phone: phone,
-        password: hashedPassword,
-      });
-
-      return res.status(201).json({
-        success: true,
-        message: "Registration successful",
-      });
-    } catch (err) {
-      return res.status(500).json({ success: false });
-    }
-  }
-
-  async loginUser(req, res) {
-    try {
-      const { email, password } = req.body;
-
-      if (!email || !password)
-        return res.status(400).json({ message: "Email and password required" });
-
-      const normalizedEmail = email.trim().toLowerCase();
-
-      const user = await AuthModel.findByEmail(normalizedEmail);
-      if (!user)
-        return res.status(401).json({ message: "Invalid credentials" });
-
-      if (Number(user.status) !== 1)
-        return res.status(403).json({ message: "Account inactive" });
-
-      const match = await bcrypt.compare(password, user.password);
-      if (!match)
-        return res.status(401).json({ message: "Invalid credentials" });
-
-      const accessToken = jwt.sign(
-        { user_id: user.user_id },
-        process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: "1d" },
-      );
-
-      return res.json({
-        success: true,
-        accessToken,
-        user: {
-          id: user.user_id,
-          name: user.name,
-          email: user.email,
-        },
-      });
-    } catch (err) {
-      return res.status(500).json({ success: false, message: err.message });
-    }
-  }
-
-  /* ======================================================
-     REGISTER
-  ====================================================== */
   // async registerUser(req, res) {
   //   try {
   //     const { name, email, phone, password, cpassword } = req.body;
 
-  //     if (!name || !email || !password || !cpassword)
-  //       return res
-  //         .status(400)
-  //         .json({ success: false, message: "Please fill all fields" });
+  //     if (!name || !email || !phone || !password || !cpassword)
+  //       return res.status(400).json({ message: "All fields required" });
 
   //     if (password !== cpassword) {
-  //       return res
-  //         .status(400)
-  //         .json({ success: false, message: "Passwords do not match" });
+  //       return res.status(400).json({ message: "Passwords do not match" });
   //     }
 
   //     const normalizedEmail = email.trim().toLowerCase();
 
   //     const existing = await AuthModel.findByEmail(normalizedEmail);
   //     if (existing)
-  //       return res
-  //         .status(409)
-  //         .json({ success: false, message: "Email already registered" });
+  //       return res.status(409).json({ message: "Email already registered" });
 
-  //     if (password.length < 8)
-  //       return res
-  //         .status(400)
-  //         .json({ success: false, message: "Password too weak" });
+  //     if (password.length < 6)
+  //       return res.status(400).json({ message: "Password too short" });
 
-  //     const hashedPassword = await bcrypt.hash(password, 12);
+  //     const hashedPassword = await bcrypt.hash(password, 10);
 
-  //     const rawToken = crypto.randomBytes(32).toString("hex");
-  //     const hashedToken = await bcrypt.hash(rawToken, 10);
-
-  //     const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-  //     const userId = await AuthModel.createCustomer({
+  //     await AuthModel.createCustomer({
   //       name,
   //       email: normalizedEmail,
-  //       phone,
+  //       phone: phone,
   //       password: hashedPassword,
-  //       verification_token: hashedToken,
-  //       verification_token_expiry: expiry,
   //     });
-
-  //     // Send email with rawToken
-  //     // https://yourdomain.com/verify-email?token=rawToken
 
   //     return res.status(201).json({
   //       success: true,
-  //       message: "Registration successful. Please verify email.",
+  //       message: "Registration successful",
   //     });
   //   } catch (err) {
   //     return res.status(500).json({ success: false });
   //   }
   // }
 
-  /* ======================================================
-     VERIFY EMAIL
-  ====================================================== */
-  // async verifyEmail(req, res) {
-  //   try {
-  //     const { token } = req.query;
-
-  //     if (!token) {
-  //       return res.status(400).send("Invalid verification link.");
-  //     }
-
-  //     const users = await AuthModel.findByVerificationToken();
-
-  //     for (const user of users) {
-  //       const isMatch = await bcrypt.compare(token, user.verification_token);
-
-  //       if (
-  //         isMatch &&
-  //         user.verification_token_expiry &&
-  //         new Date() < new Date(user.verification_token_expiry)
-  //       ) {
-  //         await AuthModel.markEmailVerified(user.user_id);
-
-  //         return res.send(`
-  //         <html>
-  //           <head>
-  //             <title>Email Verified</title>
-  //           </head>
-  //           <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
-  //             <h2>Email verified successfully </h2>
-  //             <p>You can now return to the app and login.</p>
-  //           </body>
-  //         </html>
-  //       `);
-  //       }
-  //     }
-
-  //     return res.status(400).send(`
-  //     <html>
-  //       <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
-  //         <h2>Invalid or expired verification link </h2>
-  //         <p>Please request a new verification email.</p>
-  //       </body>
-  //     </html>
-  //   `);
-  //   } catch (error) {
-  //     return res.status(500).send("Internal server error");
-  //   }
-  // }
-
-  /* ======================================================
-     LOGIN
-  ====================================================== */
   // async loginUser(req, res) {
   //   try {
   //     const { email, password } = req.body;
 
+  //     if (!email || !password)
+  //       return res.status(400).json({ message: "Email and password required" });
+
   //     const normalizedEmail = email.trim().toLowerCase();
 
   //     const user = await AuthModel.findByEmail(normalizedEmail);
-
-  //     if (!user) return res.status(401).json({ success: false });
-
-  //     if (!user.is_verified)
-  //       return res
-  //         .status(403)
-  //         .json({ success: false, message: "Email not verified" });
+  //     if (!user)
+  //       return res.status(401).json({ message: "Invalid credentials" });
 
   //     if (Number(user.status) !== 1)
-  //       return res.status(403).json({ success: false });
+  //       return res.status(403).json({ message: "Account inactive" });
 
   //     const match = await bcrypt.compare(password, user.password);
-  //     if (!match) return res.status(401).json({ success: false });
+  //     if (!match)
+  //       return res.status(401).json({ message: "Invalid credentials" });
 
   //     const accessToken = jwt.sign(
-  //       { user_id: user.user_id, token_version: user.token_version },
-  //       process.env.ACCESS_TOKEN_SECRET,
-  //       { expiresIn: ACCESS_EXPIRES },
-  //     );
-
-  //     const refreshToken = jwt.sign(
   //       { user_id: user.user_id },
-  //       process.env.REFRESH_TOKEN_SECRET,
-  //       { expiresIn: `${REFRESH_EXPIRES_DAYS}d` },
+  //       process.env.ACCESS_TOKEN_SECRET,
+  //       { expiresIn: "1d" },
   //     );
-
-  //     const expiryDate = new Date(
-  //       Date.now() + REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
-  //     );
-
-  //     await AuthModel.storeRefreshToken(
-  //       user.user_id,
-  //       refreshToken,
-  //       expiryDate,
-  //       req.headers["user-agent"],
-  //       req.ip,
-  //     );
-
-  //     await AuthModel.updateLoginMeta(user.user_id, req.ip);
 
   //     return res.json({
   //       success: true,
   //       accessToken,
-  //       refreshToken,
+  //       user: {
+  //         id: user.user_id,
+  //         name: user.name,
+  //         email: user.email,
+  //       },
   //     });
   //   } catch (err) {
-  //     return res.status(500).json({ success: false });
+  //     return res.status(500).json({ success: false, message: err.message });
   //   }
   // }
+
+  /* ======================================================
+     REGISTER
+  ====================================================== */
+  async registerUser(req, res) {
+    try {
+      const { name, email, phone, password, cpassword } = req.body;
+
+      if (!name || !email || !password || !cpassword)
+        return res
+          .status(400)
+          .json({ success: false, message: "Please fill all fields" });
+
+      if (password !== cpassword) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Passwords do not match" });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const existing = await AuthModel.findByEmail(normalizedEmail);
+      if (existing)
+        return res
+          .status(409)
+          .json({ success: false, message: "Email already registered" });
+
+      if (password.length < 8)
+        return res
+          .status(400)
+          .json({ success: false, message: "Password too weak" });
+
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const hashedToken = await bcrypt.hash(rawToken, 10);
+
+      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const userId = await AuthModel.createCustomer({
+        name,
+        email: normalizedEmail,
+        phone,
+        password: hashedPassword,
+        verification_token: hashedToken,
+        verification_token_expiry: expiry,
+      });
+
+      // Send email with rawToken
+      const token = `${process.env.BACKEND_URL}/api/crm/v1/auth/verify-email?token=${rawToken}`;
+      await sendVerificationMail({
+        name,
+        email: normalizedEmail,
+        token,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Registration successful. Please verify email.",
+      });
+    } catch (err) {
+      return res.status(500).json({ success: false });
+    }
+  }
+
+  /* ======================================================
+     VERIFY EMAIL
+  ====================================================== */
+  async verifyEmail(req, res) {
+    try {
+      const { token } = req.query;
+
+      if (!token) {
+        return res.status(400).send("Invalid verification link.");
+      }
+
+      const users = await AuthModel.findByVerificationToken();
+
+      for (const user of users) {
+        const isMatch = await bcrypt.compare(token, user.verification_token);
+
+        if (
+          isMatch &&
+          user.verification_token_expiry &&
+          new Date() < new Date(user.verification_token_expiry)
+        ) {
+          await AuthModel.markEmailVerified(user.user_id);
+
+          return res.send(`
+            <html>
+              <head>
+                <title>Email Verified</title>
+              </head>
+              <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
+                <h2>Email verified successfully ✅</h2>
+                <p>You can now login in the app.</p>
+
+                <a href="rewardplanners://login"
+                  style="padding:12px 20px;background:black;color:white;text-decoration:none;border-radius:5px;">
+                  Open App
+                </a>
+
+                <script>
+                  // Try opening app via custom scheme
+                  setTimeout(function() {
+                    window.location.href = "rewardplanners://login";
+                  }, 500);
+
+                  // Fallback for Android Chrome
+                  setTimeout(function() {
+                    window.location.href = "intent://login#Intent;scheme=rewardplanners;package=com.rewardsplanners;end";
+                  }, 1500);
+                </script>
+              </body>
+            </html>
+          `);
+        }
+      }
+
+      return res.status(400).send(`
+      <html>
+        <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
+          <h2>Invalid or expired verification link </h2>
+          <p>Please request a new verification email.</p>
+        </body>
+      </html>
+    `);
+    } catch (error) {
+      return res.status(500).send("Internal server error");
+    }
+  }
+
+  /* ======================================================
+     LOGIN
+  ====================================================== */
+  async loginUser(req, res) {
+    try {
+      const { email, password } = req.body;
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const user = await AuthModel.findByEmail(normalizedEmail);
+
+      if (!user) return res.status(401).json({ success: false });
+
+      if (!user.is_verified)
+        return res
+          .status(403)
+          .json({ success: false, message: "Email not verified" });
+
+      if (Number(user.status) !== 1)
+        return res.status(403).json({ success: false });
+
+      const match = await bcrypt.compare(password, user.password);
+      if (!match) return res.status(401).json({ success: false });
+
+      const accessToken = jwt.sign(
+        { user_id: user.user_id, token_version: user.token_version },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: ACCESS_EXPIRES },
+      );
+
+      const refreshToken = jwt.sign(
+        { user_id: user.user_id },
+        process.env.REFRESH_TOKEN_SECRET,
+        { expiresIn: `${REFRESH_EXPIRES_DAYS}d` },
+      );
+
+      const expiryDate = new Date(
+        Date.now() + REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
+      );
+
+      await AuthModel.storeRefreshToken(
+        user.user_id,
+        refreshToken,
+        expiryDate,
+        req.headers["user-agent"],
+        req.ip,
+      );
+
+      await AuthModel.updateLoginMeta(user.user_id, req.ip);
+
+      return res.json({
+        success: true,
+        accessToken,
+        refreshToken,
+      });
+    } catch (err) {
+      return res.status(500).json({ success: false });
+    }
+  }
 
   /* ======================================================
      REFRESH ACCESS TOKEN
   ====================================================== */
-  // async refreshAccessToken(req, res) {
-  //   try {
-  //     const { refreshToken } = req.body;
+  async refreshAccessToken(req, res) {
+    try {
+      const { refreshToken } = req.body;
 
-  //     const payload = jwt.verify(
-  //       refreshToken,
-  //       process.env.REFRESH_TOKEN_SECRET,
-  //     );
+      const payload = jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET,
+      );
 
-  //     const exists = await AuthModel.findRefreshToken(
-  //       payload.user_id,
-  //       refreshToken,
-  //     );
-  //     if (!exists) return res.status(403).json({ success: false });
+      const exists = await AuthModel.findRefreshToken(
+        payload.user_id,
+        refreshToken,
+      );
+      if (!exists) return res.status(403).json({ success: false });
 
-  //     const user = await AuthModel.findById(payload.user_id);
+      const user = await AuthModel.findById(payload.user_id);
 
-  //     const newAccessToken = jwt.sign(
-  //       { user_id: user.user_id, token_version: user.token_version },
-  //       process.env.ACCESS_TOKEN_SECRET,
-  //       { expiresIn: ACCESS_EXPIRES },
-  //     );
+      const newAccessToken = jwt.sign(
+        { user_id: user.user_id, token_version: user.token_version },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: ACCESS_EXPIRES },
+      );
 
-  //     return res.json({ success: true, accessToken: newAccessToken });
-  //   } catch {
-  //     return res.status(401).json({ success: false });
-  //   }
-  // }
+      return res.json({ success: true, accessToken: newAccessToken });
+    } catch {
+      return res.status(401).json({ success: false });
+    }
+  }
 
   /* ======================================================
      LOGOUT (Single Device)
   ====================================================== */
-  // async logoutUser(req, res) {
-  //   try {
-  //     const { refreshToken } = req.body;
+  async logoutUser(req, res) {
+    try {
+      const { refreshToken } = req.body;
 
-  //     const payload = jwt.verify(
-  //       refreshToken,
-  //       process.env.REFRESH_TOKEN_SECRET,
-  //     );
+      const payload = jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET,
+      );
 
-  //     await AuthModel.deleteRefreshToken(payload.user_id, refreshToken);
+      await AuthModel.deleteRefreshToken(payload.user_id, refreshToken);
 
-  //     return res.json({ success: true });
-  //   } catch {
-  //     return res.status(400).json({ success: false });
-  //   }
-  // }
+      return res.json({ success: true });
+    } catch {
+      return res.status(400).json({ success: false });
+    }
+  }
 
   /* ======================================================
      LOGOUT ALL DEVICES
   ====================================================== */
-  // async logoutAllDevices(req, res) {
-  //   try {
-  //     await AuthModel.deleteAllUserRefreshTokens(req.user.user_id);
-  //     await AuthModel.incrementTokenVersion(req.user.user_id);
+  async logoutAllDevices(req, res) {
+    try {
+      await AuthModel.deleteAllUserRefreshTokens(req.user.user_id);
+      await AuthModel.incrementTokenVersion(req.user.user_id);
 
-  //     return res.json({ success: true });
-  //   } catch {
-  //     return res.status(500).json({ success: false });
-  //   }
-  // }
+      return res.json({ success: true });
+    } catch {
+      return res.status(500).json({ success: false });
+    }
+  }
 
   /* ======================================================
      FORGOT PASSWORD
   ====================================================== */
-  // async forgotPassword(req, res) {
-  //   try {
-  //     const { email } = req.body;
+  async forgotPassword(req, res) {
+    try {
+      const { email } = req.body;
 
-  //     const user = await AuthModel.findByEmail(email);
-  //     if (!user) return res.json({ success: true });
+      const user = await AuthModel.findByEmail(email);
+      if (!user) return res.json({ success: true });
 
-  //     const rawToken = crypto.randomBytes(32).toString("hex");
-  //     const hashedToken = await bcrypt.hash(rawToken, 10);
-  //     const expiry = new Date(Date.now() + 15 * 60 * 1000);
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const hashedToken = await bcrypt.hash(rawToken, 10);
+      const expiry = new Date(Date.now() + 15 * 60 * 1000);
 
-  //     await AuthModel.saveResetToken(user.user_id, hashedToken, expiry);
+      await AuthModel.saveResetToken(user.user_id, hashedToken, expiry);
 
-  //     // Send rawToken in email
+      // Send rawToken in email
 
-  //     return res.json({ success: true });
-  //   } catch {
-  //     return res.status(500).json({ success: false });
-  //   }
-  // }
+      return res.json({ success: true });
+    } catch {
+      return res.status(500).json({ success: false });
+    }
+  }
 
   /* ======================================================
      RESET PASSWORD
   ====================================================== */
-  // async resetPassword(req, res) {
-  //   try {
-  //     const { token, newPassword } = req.body;
+  async resetPassword(req, res) {
+    try {
+      const { token, newPassword } = req.body;
 
-  //     const users = await AuthModel.findByResetToken();
+      const users = await AuthModel.findByResetToken();
 
-  //     for (const user of users) {
-  //       const match = await bcrypt.compare(token, user.reset_token);
+      for (const user of users) {
+        const match = await bcrypt.compare(token, user.reset_token);
 
-  //       if (match && new Date() < user.reset_token_expiry) {
-  //         const hashed = await bcrypt.hash(newPassword, 12);
+        if (match && new Date() < user.reset_token_expiry) {
+          const hashed = await bcrypt.hash(newPassword, 12);
 
-  //         await AuthModel.updatePassword(user.user_id, hashed);
-  //         await AuthModel.incrementTokenVersion(user.user_id);
-  //         await AuthModel.deleteAllUserRefreshTokens(user.user_id);
+          await AuthModel.updatePassword(user.user_id, hashed);
+          await AuthModel.incrementTokenVersion(user.user_id);
+          await AuthModel.deleteAllUserRefreshTokens(user.user_id);
 
-  //         return res.json({ success: true });
-  //       }
-  //     }
+          return res.json({ success: true });
+        }
+      }
 
-  //     return res.status(400).json({ success: false });
-  //   } catch {
-  //     return res.status(500).json({ success: false });
-  //   }
-  // }
+      return res.status(400).json({ success: false });
+    } catch {
+      return res.status(500).json({ success: false });
+    }
+  }
 
-  // resend verification
+  /* ======================================================
+     RESEND VERIFICATION
+  ====================================================== */
 
-  // async resendVerification(req, res) {
-  //   try {
-  //     const { email } = req.body;
+  async resendVerification(req, res) {
+    try {
+      const { email } = req.body;
 
-  //     if (!email) {
-  //       return res.status(400).json({ success: false });
-  //     }
+      if (!email) {
+        return res.status(400).json({ success: false });
+      }
 
-  //     const normalizedEmail = email.trim().toLowerCase();
+      const normalizedEmail = email.trim().toLowerCase();
 
-  //     const user = await AuthModel.findByEmail(normalizedEmail);
+      const user = await AuthModel.findByEmail(normalizedEmail);
 
-  //     if (!user) {
-  //       return res.json({ success: true });
-  //     }
+      if (!user) {
+        return res.json({ success: true });
+      }
 
-  //     if (user.is_verified) {
-  //       return res.json({ success: true });
-  //     }
+      if (user.is_verified) {
+        return res.json({ success: true });
+      }
 
-  //     if (
-  //       user.verification_token_expiry &&
-  //       new Date(user.verification_token_expiry) >
-  //         new Date(Date.now() - 30 * 1000)
-  //     ) {
-  //       return res.json({ success: true });
-  //     }
+      if (
+        user.verification_token_expiry &&
+        new Date(user.verification_token_expiry) >
+          new Date(Date.now() - 30 * 1000)
+      ) {
+        return res.json({ success: true });
+      }
 
-  //     const rawToken = crypto.randomBytes(32).toString("hex");
-  //     const hashedToken = await bcrypt.hash(rawToken, 10);
-  //     const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const hashedToken = await bcrypt.hash(rawToken, 10);
+      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-  //     await AuthModel.updateVerificationToken(
-  //       user.user_id,
-  //       hashedToken,
-  //       expiry,
-  //     );
+      await AuthModel.updateVerificationToken(
+        user.user_id,
+        hashedToken,
+        expiry,
+      );
 
-  //     // Send email with:
-  //     // https://yourdomain.com/verify-email?token=rawToken
+      // Send email with:
+      const token = `${process.env.BACKEND_URL}/api/crm/v1/auth/verify-email?token=${rawToken}`;
+      await sendVerificationMail({
+        name: user.name,
+        email: normalizedEmail,
+        token,
+      });
 
-  //     return res.json({
-  //       success: true,
-  //       message:
-  //         "If your email is registered, a verification link has been sent.",
-  //     });
-  //   } catch (error) {
-  //     return res.status(500).json({ success: false });
-  //   }
-  // }
+      return res.json({
+        success: true,
+        message:
+          "If your email is registered, a verification link has been sent.",
+      });
+    } catch (error) {
+      return res.status(500).json({ success: false });
+    }
+  }
 
   /*====================================Address============================================*/
 

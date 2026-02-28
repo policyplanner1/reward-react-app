@@ -1,0 +1,82 @@
+// After shipment cancellation
+const [remaining] = await db.query(
+  `SELECT COUNT(*) AS cnt
+   FROM order_shipments
+   WHERE order_id = ?
+     AND shipping_status NOT IN ('cancelled','rto')`,
+  [orderId]
+);
+
+if (remaining[0].cnt === 0) {
+  // All shipments are cancelled → cancel order
+  await db.query(
+    `UPDATE eorders SET status = 'cancelled'
+     WHERE order_id = ?`,
+    [orderId]
+  );
+
+  // Restore stock
+  await db.query(
+    `UPDATE product_variants pv
+     JOIN eorder_items oi ON pv.variant_id = oi.variant_id
+     SET pv.stock = pv.stock + oi.quantity
+     WHERE oi.order_id = ?`,
+    [orderId]
+  );
+
+  // Refund payment if already paid
+  // You can reuse your existing refundPayment method
+  await PaymentController.refundPayment({ body: { orderId } }, { /* fake res */ });
+}
+
+
+
+
+
+
+
+
+
+
+<!--  -->
+🔥 What You Should NOT Do
+
+Do NOT:
+Auto refund on RTO immediately
+Auto restore stock on RTO immediately
+Wait until parcel physically returns.
+
+===========================================
+Admin NDR dashboard + reattempt API
+RTO warehouse confirmation flow
+Auto notification system for NDR/RTO
+
+
+
+
+<!--  -->
+Now it becomes business-layer improvements.
+
+Choose one:
+
+Admin NDR Dashboard + Reattempt API
+Warehouse RTO confirmation + stock restore automation
+Notification engine for delivery/NDR/RTO
+Auto-expire unpaid orders
+Pickup generation automation
+Tracking timeline storage (scan history table)
+
+If your goal is production readiness:
+
+👉 Next most important is Admin NDR + Reattempt flow
+Because delivery failures will start happening immediately in live traffic.
+
+
+
+
+
+<!--  -->
+Next serious layer would be:
+
+RTO warehouse confirmation + refund automation
+Or Delivery event notification engine

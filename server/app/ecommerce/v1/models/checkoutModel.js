@@ -1,6 +1,8 @@
 const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
+const AddressModel = require("../models/addressModel");
+const xpressService = require("../../../../services/ExpressBees/xpressbees_service");
 
 function generateOrderRef() {
   const date = new Date();
@@ -10,6 +12,7 @@ function generateOrderRef() {
 }
 
 class CheckoutModel {
+  // Buy cart items
   async checkoutCart(userId, companyId = null, addressId) {
     const conn = await db.getConnection();
 
@@ -24,17 +27,22 @@ class CheckoutModel {
           ci.variant_id,
           ci.quantity,
           v.sale_price,
-          v.stock
+          v.stock,
+          v.weight,
+          v.length,
+          v.breadth,
+          v.height,
+          p.vendor_id
         FROM cart_items ci
         JOIN product_variants v ON ci.variant_id = v.variant_id
-        WHERE ci.user_id = ?
+        JOIN eproducts p ON v.product_id = p.product_id
+        WHERE ci.user_id = ?  
+        FOR UPDATE
         `,
         [userId],
       );
 
-      if (cartItems.length === 0) {
-        throw new Error("CART_EMPTY");
-      }
+      if (!cartItems.length) throw new Error("CART_EMPTY");
 
       // 2 Validate stock
       for (const item of cartItems) {
@@ -43,13 +51,112 @@ class CheckoutModel {
         }
       }
 
-      // 3 Calculate total
-      const totalAmount = cartItems.reduce(
-        (sum, i) => sum + i.quantity * i.sale_price,
+      // 3 Get customer address
+      const customerAddress = await AddressModel.getAddressById(
+        addressId,
+        userId,
+      );
+
+      if (!customerAddress) {
+        throw new Error("INVALID_ADDRESS");
+      }
+
+      // 4 Group Items by Vendor
+      const vendorGroups = {};
+
+      for (const item of cartItems) {
+        const vendorId = Number(item.vendor_id);
+
+        if (!vendorGroups[vendorId]) {
+          vendorGroups[vendorId] = {
+            items: [],
+            totalWeightKg: 0,
+            totalAmount: 0,
+            length: 0,
+            breadth: 0,
+            height: 0,
+          };
+        }
+
+        const group = vendorGroups[vendorId];
+
+        group.items.push(item);
+
+        group.totalWeightKg += item.quantity * Number(item.weight);
+        group.totalAmount += item.quantity * Number(item.sale_price);
+
+        group.length = Math.max(group.length, Number(item.length));
+        group.breadth = Math.max(group.breadth, Number(item.breadth));
+        group.height += Number(item.height) * item.quantity;
+      }
+
+      // 5 calculate the service pricing
+      const shippingResults = [];
+
+      for (const vendorId in vendorGroups) {
+        const vendor = vendorGroups[vendorId];
+
+        const [[vendorAddress]] = await conn.execute(
+          `SELECT pincode FROM vendor_addresses 
+            WHERE vendor_id = ? AND type = 'shipping' LIMIT 1`,
+          [vendorId],
+        );
+
+        if (!vendorAddress) {
+          throw new Error("VENDOR_ADDRESS_MISSING");
+        }
+
+        const weightGrams = Math.round(vendor.totalWeightKg * 1000);
+        const length = Math.round(vendor.length);
+        const breadth = Math.round(vendor.breadth);
+        const height = Math.round(vendor.height);
+
+        const serviceResponse = await xpressService.checkServiceability({
+          origin: vendorAddress.pincode,
+          destination: customerAddress.zipcode,
+          payment_type: "prepaid",
+          order_amount: vendor.totalAmount.toString(),
+          weight: weightGrams.toString(),
+          length: length.toString(),
+          breadth: breadth.toString(),
+          height: height.toString(),
+        });
+
+        if (!serviceResponse.status || !serviceResponse.data.length) {
+          throw new Error("NOT_SERVICEABLE");
+        }
+
+        const cheapest = serviceResponse.data
+          .filter((o) => o.total_charges > 0)
+          .sort((a, b) => a.total_charges - b.total_charges)[0];
+
+        shippingResults.push({
+          vendor_id: Number(vendorId),
+          courier_id: cheapest.id,
+          courier_name: cheapest.name,
+          shipping_charges: Number(cheapest.total_charges),
+          chargeable_weight: cheapest.chargeable_weight,
+          package_weight: weightGrams,
+          length,
+          breadth,
+          height,
+        });
+      }
+
+      // 6 Calculate Totals
+      const productTotal = cartItems.reduce(
+        (sum, i) => sum + i.quantity * Number(i.sale_price),
         0,
       );
 
-      // 4 Create order
+      const shippingTotal = shippingResults.reduce(
+        (sum, s) => sum + s.shipping_charges,
+        0,
+      );
+
+      const finalTotal = productTotal + shippingTotal;
+
+      // 7 Create order
       const orderRef = generateOrderRef();
 
       const [orderRes] = await conn.execute(
@@ -57,19 +164,19 @@ class CheckoutModel {
         INSERT INTO eorders (user_id, company_id, total_amount,order_ref,address_id)
         VALUES (?, ?, ?, ?, ?)
         `,
-        [userId, companyId, totalAmount, orderRef, addressId],
+        [userId, companyId, finalTotal, orderRef, addressId],
       );
 
       const orderId = orderRes.insertId;
 
-      // 5 Create order items
+      // 8 Order items + stock deduction
       for (const item of cartItems) {
         await conn.execute(
           `
-          INSERT INTO eorder_items
-            (order_id, product_id, variant_id, quantity, price)
-          VALUES (?, ?, ?, ?, ?)
-          `,
+        INSERT INTO eorder_items
+        (order_id, product_id, variant_id, quantity, price)
+        VALUES (?, ?, ?, ?, ?)
+        `,
           [
             orderId,
             item.product_id,
@@ -79,18 +186,47 @@ class CheckoutModel {
           ],
         );
 
-        // 6 Deduct stock
+        const [updateRes] = await conn.execute(
+          `
+        UPDATE product_variants
+        SET stock = stock - ?
+        WHERE variant_id = ? AND stock >= ?
+        `,
+          [item.quantity, item.variant_id, item.quantity],
+        );
+
+        if (updateRes.affectedRows === 0) {
+          throw new Error("STOCK_RACE_CONDITION");
+        }
+      }
+
+      // 9 Shipment creation
+      for (const shipment of shippingResults) {
         await conn.execute(
           `
-          UPDATE product_variants
-          SET stock = stock - ?
-          WHERE variant_id = ?
-          `,
-          [item.quantity, item.variant_id],
+        INSERT INTO order_shipments
+        (order_id, vendor_id, courier_id, courier_name,
+         shipping_charges, chargeable_weight,
+         weight, length, breadth, height,
+         shipping_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
+        `,
+          [
+            orderId,
+            shipment.vendor_id,
+            shipment.courier_id,
+            shipment.courier_name,
+            shipment.shipping_charges,
+            shipment.chargeable_weight,
+            shipment.package_weight,
+            shipment.length,
+            shipment.breadth,
+            shipment.height,
+          ],
         );
       }
 
-      // 7 Clear cart
+      // 10 Clear cart
       await conn.execute(`DELETE FROM cart_items WHERE user_id = ?`, [userId]);
 
       await conn.commit();
@@ -103,6 +239,7 @@ class CheckoutModel {
     }
   }
 
+  // Buy now items
   async buyNow({
     userId,
     productId,
@@ -119,9 +256,17 @@ class CheckoutModel {
       // 1 Fetch variant
       const [[variant]] = await conn.execute(
         `
-      SELECT sale_price, stock
-      FROM product_variants
-      WHERE variant_id = ? AND product_id = ?
+      SELECT 
+        v.sale_price,
+        v.stock,
+        v.weight,
+        v.length,
+        v.breadth,
+        v.height,
+        p.vendor_id
+      FROM product_variants v
+      JOIN eproducts p ON v.product_id = p.product_id
+      WHERE v.variant_id = ? AND v.product_id = ?
       `,
         [variantId, productId],
       );
@@ -134,9 +279,64 @@ class CheckoutModel {
         throw new Error("OUT_OF_STOCK");
       }
 
-      const totalAmount = quantity * variant.sale_price;
+      // 2 Get Customer address
+      const customerAddress = await AddressModel.getAddressById(
+        addressId,
+        userId,
+      );
 
-      // 2 Create order
+      if (!customerAddress) {
+        throw new Error("INVALID_ADDRESS");
+      }
+
+      // 3 Get vendor shipping address
+      const [[vendorAddress]] = await conn.execute(
+        `
+      SELECT pincode
+      FROM vendor_addresses
+      WHERE vendor_id = ?
+        AND type = 'shipping'
+      LIMIT 1
+      `,
+        [variant.vendor_id],
+      );
+
+      if (!vendorAddress) {
+        throw new Error("VENDOR_ADDRESS_MISSING");
+      }
+
+      const productTotal = quantity * Number(variant.sale_price);
+
+      const weightGrams = Math.round(quantity * Number(variant.weight) * 1000);
+      const length = Math.round(variant.length);
+      const breadth = Math.round(variant.breadth);
+      const height = Math.round(quantity * Number(variant.height));
+
+      // 4 Serviceability
+      const serviceResponse = await xpressService.checkServiceability({
+        origin: vendorAddress.pincode,
+        destination: customerAddress.zipcode,
+        payment_type: "prepaid",
+        order_amount: productTotal.toString(),
+        weight: weightGrams.toString(),
+        length: length.toString(),
+        breadth: breadth.toString(),
+        height: height.toString(),
+      });
+
+      if (!serviceResponse.status || !serviceResponse.data.length) {
+        throw new Error("NOT_SERVICEABLE");
+      }
+
+      const cheapest = serviceResponse.data
+        .filter((o) => o.total_charges > 0)
+        .sort((a, b) => a.total_charges - b.total_charges)[0];
+
+      const shippingCharge = Number(cheapest.total_charges);
+
+      const finalTotal = productTotal + shippingCharge;
+
+      // 5 Create order
 
       const orderRef = generateOrderRef();
 
@@ -145,12 +345,12 @@ class CheckoutModel {
       INSERT INTO eorders (user_id, company_id, total_amount, order_ref,address_id)
       VALUES (?, ?, ?, ?, ?)
       `,
-        [userId, companyId, totalAmount, orderRef,addressId],
+        [userId, companyId, finalTotal, orderRef, addressId],
       );
 
       const orderId = orderRes.insertId;
 
-      // 3 Create order item
+      // 6 Create order item
       await conn.execute(
         `
       INSERT INTO eorder_items
@@ -160,15 +360,44 @@ class CheckoutModel {
         [orderId, productId, variantId, quantity, variant.sale_price],
       );
 
-      // 4 Deduct stock
+      // 7 Create shipment row
       await conn.execute(
+        `
+      INSERT INTO order_shipments
+      (order_id, vendor_id, courier_id, courier_name,
+       shipping_charges, chargeable_weight,
+       weight, length, breadth, height,
+       shipping_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
+      `,
+        [
+          orderId,
+          variant.vendor_id,
+          cheapest.id,
+          cheapest.name,
+          shippingCharge,
+          cheapest.chargeable_weight,
+          weightGrams,
+          length,
+          breadth,
+          height,
+        ],
+      );
+
+      // 8 Deduct stock
+      const [updateRes] = await conn.execute(
         `
       UPDATE product_variants
       SET stock = stock - ?
       WHERE variant_id = ?
+        AND stock >= ?
       `,
-        [quantity, variantId],
+        [quantity, variantId, quantity],
       );
+
+      if (updateRes.affectedRows === 0) {
+        throw new Error("STOCK_RACE_CONDITION");
+      }
 
       await conn.commit();
       return orderId;
@@ -190,12 +419,17 @@ class CheckoutModel {
 
         p.product_id,
         p.product_name,
+        p.vendor_id,
 
         v.variant_id,
         v.mrp,
         v.sale_price,
         v.stock,
         v.reward_redemption_limit,
+        v.weight,
+        v.length,
+        v.breadth,
+        v.height,
 
         (ci.quantity * v.sale_price) AS item_total,
 
@@ -261,25 +495,119 @@ class CheckoutModel {
       };
     });
 
+    const [addressRows] = await db.execute(
+      `SELECT zipcode FROM customer_addresses
+        WHERE user_id = ?
+        AND is_default = 1
+        LIMIT 1`,
+      [userId],
+    );
+
+    if (!addressRows.length) {
+      throw new Error("INVALID_ADDRESS");
+    }
+
+    const destinationPincode = addressRows[0].zipcode;
+
+    // Group by vendor
+    const vendorGroups = {};
+
+    for (const row of rows) {
+      const vendorId = row.vendor_id;
+
+      if (!vendorGroups[vendorId]) {
+        vendorGroups[vendorId] = {
+          totalWeightKg: 0,
+          totalAmount: 0,
+          length: 0,
+          breadth: 0,
+          height: 0,
+        };
+      }
+
+      const group = vendorGroups[vendorId];
+
+      group.totalWeightKg += row.quantity * Number(row.weight);
+      group.totalAmount += row.quantity * Number(row.sale_price);
+
+      group.length = Math.max(group.length, Number(row.length));
+      group.breadth = Math.max(group.breadth, Number(row.breadth));
+      group.height += Number(row.height) * row.quantity;
+    }
+
+    let shippingTotal = 0;
+    const shippingBreakdown = [];
+
+    for (const vendorId in vendorGroups) {
+      const vendor = vendorGroups[vendorId];
+
+      const [[vendorAddress]] = await db.execute(
+        `SELECT pincode FROM vendor_addresses
+     WHERE vendor_id = ?
+       AND type = 'shipping'
+     LIMIT 1`,
+        [vendorId],
+      );
+
+      if (!vendorAddress) continue;
+
+      const weightGrams = Math.round(vendor.totalWeightKg * 1000);
+
+      const serviceResponse = await xpressService.checkServiceability({
+        origin: vendorAddress.pincode,
+        destination: destinationPincode,
+        payment_type: "prepaid",
+        order_amount: vendor.totalAmount.toString(),
+        weight: weightGrams.toString(),
+        length: Math.round(vendor.length).toString(),
+        breadth: Math.round(vendor.breadth).toString(),
+        height: Math.round(vendor.height).toString(),
+      });
+
+      if (!serviceResponse.status || !serviceResponse.data.length) continue;
+
+      const cheapest = serviceResponse.data
+        .filter((o) => o.total_charges > 0)
+        .sort((a, b) => a.total_charges - b.total_charges)[0];
+
+      const shippingCharge = Number(cheapest.total_charges);
+
+      shippingTotal += shippingCharge;
+
+      shippingBreakdown.push({
+        vendor_id: Number(vendorId),
+        courier_name: cheapest.name,
+        shipping_charges: shippingCharge,
+      });
+    }
+
     return {
       items,
-      totalAmount,
+      productTotal: totalAmount,
       totalDiscount,
-      payableAmount,
+      shippingTotal,
+      payableAmount: payableAmount + shippingTotal,
+      shippingBreakdown,
     };
   }
 
   // Get buy now checkout Details
-  async getBuyNowCheckout({ productId, variantId, quantity }) {
+  async getBuyNowCheckout({ productId, variantId, quantity,userId }) {
     const [[row]] = await db.execute(
       `
     SELECT 
       p.product_id,
       p.product_name,
+      p.vendor_id,
       v.variant_id,
       v.mrp,
       v.sale_price,
       v.stock,
+      v.reward_redemption_limit,
+      v.weight,
+      v.length,
+      v.breadth,
+      v.height,
       v.reward_redemption_limit,
       GROUP_CONCAT(pi.image_url ORDER BY pi.sort_order ASC) AS images
     FROM product_variants v
@@ -308,6 +636,69 @@ class CheckoutModel {
 
     const finalItemTotal = itemTotal - rewardDiscountAmount;
 
+    // =====================
+    // SHIPPING CALCULATION
+    // =====================
+
+    // Get address
+    const [addressRows] = await db.execute(
+      `SELECT zipcode FROM customer_addresses
+     WHERE user_id = ?
+       AND is_default = 1
+     LIMIT 1`,
+      [userId],
+    );
+
+    if (!addressRows.length) {
+      throw new Error("INVALID_ADDRESS");
+    }
+
+    const destinationPincode = addressRows[0].zipcode;
+
+    // Vendor shipping address
+    const [[vendorAddress]] = await db.execute(
+      `
+    SELECT pincode
+    FROM vendor_addresses
+    WHERE vendor_id = ?
+      AND type = 'shipping'
+    LIMIT 1
+    `,
+      [row.vendor_id],
+    );
+
+    if (!vendorAddress) {
+      throw new Error("VENDOR_ADDRESS_MISSING");
+    }
+
+    const weightGrams = Math.round(quantity * Number(row.weight) * 1000);
+    const length = Math.round(row.length);
+    const breadth = Math.round(row.breadth);
+    const height = Math.round(quantity * Number(row.height));
+
+    const serviceResponse = await xpressService.checkServiceability({
+      origin: vendorAddress.pincode,
+      destination: destinationPincode,
+      payment_type: "prepaid",
+      order_amount: itemTotal.toString(),
+      weight: weightGrams.toString(),
+      length: length.toString(),
+      breadth: breadth.toString(),
+      height: height.toString(),
+    });
+
+    if (!serviceResponse.status || !serviceResponse.data.length) {
+      throw new Error("NOT_SERVICEABLE");
+    }
+
+    const cheapest = serviceResponse.data
+      .filter((o) => o.total_charges > 0)
+      .sort((a, b) => a.total_charges - b.total_charges)[0];
+
+    const shippingCharge = Number(cheapest.total_charges);
+
+    const finalPayable = finalItemTotal + shippingCharge;
+
     return {
       item: {
         product_id: row.product_id,
@@ -324,7 +715,15 @@ class CheckoutModel {
       },
       totalAmount: itemTotal,
       totalDiscount: rewardDiscountAmount,
-      payableAmount: finalItemTotal,
+      shippingTotal: shippingCharge,
+      payableAmount: finalPayable,
+      shippingBreakdown: [
+        {
+          vendor_id: row.vendor_id,
+          courier_name: cheapest.name,
+          shipping_charges: shippingCharge,
+        },
+      ],
     };
   }
 

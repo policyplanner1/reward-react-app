@@ -183,9 +183,11 @@ class CheckoutController {
         success: true,
         mode: "cart",
         items: checkoutData.items,
-        totalAmount: checkoutData.totalAmount,
+        totalAmount: checkoutData.productTotal,
         totalDiscount: checkoutData.totalDiscount,
+        shippingTotal: checkoutData.shippingTotal,
         payableAmount: checkoutData.payableAmount,
+        shippingBreakdown: checkoutData.shippingBreakdown,
       });
     } catch (error) {
       console.error("Checkout cart fetch error:", error);
@@ -230,6 +232,7 @@ class CheckoutController {
         productId: Number(product_id),
         variantId: Number(variant_id),
         quantity: Number(qty),
+        userId
       });
 
       return res.json({
@@ -239,6 +242,8 @@ class CheckoutController {
         totalAmount: checkoutData.totalAmount,
         totalDiscount: checkoutData.totalDiscount,
         payableAmount: checkoutData.payableAmount,
+        shippingTotal: checkoutData.shippingTotal,
+        shippingBreakdown: checkoutData.shippingBreakdown,
       });
     } catch (error) {
       console.error("Buy now checkout fetch error:", error);

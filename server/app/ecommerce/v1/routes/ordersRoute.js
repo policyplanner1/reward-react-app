@@ -15,7 +15,7 @@ router.get("/order-details/:orderId", auth, OrderController.getOrderDetails);
 router.get("/cancellation-reasons", OrderController.getCancellationReasons);
 
 // Submit cancel Request
-router.post("/cancel/:orderId",auth, OrderController.requestOrderCancellation);
+router.post("/cancel/:orderId", auth, OrderController.requestOrderCancellation);
 // router.post("/cancel/:orderId", OrderController.requestOrderCancellation);
 
 // Get cancellation Details
@@ -24,5 +24,11 @@ router.get(
   "/cancellation-details/:orderId",
   OrderController.cancellationDetails,
 );
+
+// Order Tracking
+router.get("/track-status/:orderId", auth, OrderController.getTracking);
+
+// Shipment cancellation
+router.post("/shipment-cancel/:shipmentId", auth, OrderController.cancelShipmentHandler);
 
 module.exports = router;

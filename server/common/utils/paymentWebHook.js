@@ -1,69 +1,204 @@
 const crypto = require("crypto");
 const db = require("../../config/database");
 const { enqueueWhatsApp } = require("../../services/whatsapp/waEnqueueService");
+const xpressService = require("../../services/ExpressBees/xpressbees_service");
 
-// async function handleWebhook(req, res) {
-//   try {
-//     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-//     const signature = req.headers["x-razorpay-signature"];
+// booking payload
+async function buildXpressBookingPayload(orderId, vendorId) {
+  // 1 Order + Customer Address
+  const [[order]] = await db.query(
+    `
+    SELECT 
+      o.order_id,
+      o.order_ref,
+      o.total_amount,
+      ca.contact_name,
+      ca.address1,
+      ca.address2,
+      ca.city,
+      ca.zipcode,
+      s.state_name,
+      ca.contact_phone
+    FROM eorders o
+    JOIN customer_addresses ca ON o.address_id = ca.address_id
+    JOIN states s ON ca.state_id = s.state_id
+    WHERE o.order_id = ?
+    `,
+    [orderId],
+  );
 
-//     // 1
-//     const expected = crypto
-//       .createHmac("sha256", secret)
-//       .update(req.body)
-//       .digest("hex");
+  // 2 Shipment Row
+  const [[shipment]] = await db.query(
+    `
+    SELECT * FROM order_shipments
+    WHERE order_id = ? AND vendor_id = ?
+    `,
+    [orderId, vendorId],
+  );
 
-//     if (expected !== signature) {
-//       return res.status(400).send("Invalid signature");
-//     }
+  // 3 Vendor Pickup Address
+  const [[vendorAddress]] = await db.query(
+    `
+    SELECT 
+      v.company_name,
+      vc.primary_contact,
+      va.line1,
+      va.line2,
+      va.line3,
+      va.city,
+      va.pincode,
+      s.state_name
+    FROM vendor_addresses va
+    JOIN states s ON va.state_id = s.state_id
+    JOIN vendor_contacts vc ON va.vendor_id = vc.vendor_id
+    JOIN vendors v ON va.vendor_id = v.vendor_id
+    WHERE va.vendor_id = ?
+      AND va.type = 'shipping'
+    LIMIT 1
+    `,
+    [vendorId],
+  );
 
-//     // 2
-//     const body = JSON.parse(req.body.toString());
+  // 4 Vendor Items Only
+  const [items] = await db.query(
+    `
+    SELECT 
+      oi.quantity,
+      oi.price,
+      p.product_name,
+      v.sku
+    FROM eorder_items oi
+    JOIN eproducts p ON oi.product_id = p.product_id
+    JOIN product_variants v ON oi.variant_id = v.variant_id
+    WHERE oi.order_id = ?
+      AND p.vendor_id = ?
+    `,
+    [orderId, vendorId],
+  );
 
-//     const event = body.event;
+  const orderItems = items.map((i) => ({
+    name: i.product_name,
+    qty: i.quantity.toString(),
+    price: i.price.toString(),
+    sku: i.sku,
+  }));
 
-//     if (event === "payment.captured") {
-//       const payment = body.payload.payment.entity;
+  // Calculate vendor subtotal
+  const vendorSubtotal = items.reduce(
+    (sum, i) => sum + Number(i.price) * Number(i.quantity),
+    0,
+  );
 
-//       await db.query(
-//         `UPDATE order_payments
-//          SET razorpay_payment_id = ?,
-//              status = 'success',
-//              payment_method = ?,
-//              raw_webhook = ?
-//          WHERE razorpay_order_id = ?`,
-//         [payment.id, payment.method, JSON.stringify(body), payment.order_id],
-//       );
+  return {
+    order_number: order.order_ref,
+    unique_order_number: "yes",
+    shipping_charges: shipment.shipping_charges,
+    discount: 0,
+    cod_charges: 0,
+    payment_type: "prepaid",
+    order_amount: vendorSubtotal + Number(shipment.shipping_charges),
 
-//       await db.query(
-//         `UPDATE eorders
-//          SET status = 'paid'
-//          WHERE order_id = (
-//            SELECT order_id FROM order_payments WHERE razorpay_order_id = ?
-//          )`,
-//         [payment.order_id],
-//       );
-//     }
+    package_weight: shipment.weight,
+    package_length: shipment.length,
+    package_breadth: shipment.breadth,
+    package_height: shipment.height,
+    request_auto_pickup: "yes",
 
-//     if (event === "payment.failed") {
-//       const payment = body.payload.payment.entity;
+    consignee: {
+      name: order.contact_name,
+      address: `${order.address1} ${order.address2 || ""}`,
+      city: order.city,
+      state: order.state_name,
+      pincode: order.zipcode,
+      phone: order.contact_phone,
+    },
 
-//       await db.query(
-//         `UPDATE order_payments
-//          SET status = 'failed',
-//              raw_webhook = ?
-//          WHERE razorpay_order_id = ?`,
-//         [JSON.stringify(body), payment.order_id],
-//       );
-//     }
+    pickup: {
+      warehouse_name: "Vendor Warehouse",
+      name: vendorAddress.company_name,
+      address: `${vendorAddress.line1} ${vendorAddress.line2 || ""} ${vendorAddress.line3 || ""}`,
+      city: vendorAddress.city,
+      state: vendorAddress.state_name,
+      pincode: vendorAddress.pincode,
+      phone: vendorAddress.primary_contact,
+    },
 
-//     res.sendStatus(200);
-//   } catch (err) {
-//     console.error(err);
-//     res.sendStatus(500);
-//   }
-// }
+    courier_id: shipment.courier_id,
+    collectable_amount: 0,
+    order_items: orderItems,
+  };
+}
 
+// shipment updated
+async function processShipmentsAfterPayment(orderId) {
+  const conn = await db.getConnection();
+
+  try {
+    // Fetch only shipments ready for booking
+    const [shipments] = await conn.query(
+      `SELECT * FROM order_shipments
+       WHERE order_id = ?
+       AND shipping_status = 'pending'`,
+      [orderId],
+    );
+
+    for (const shipment of shipments) {
+      try {
+        if (shipment.shipment_id || shipment.awb_number) {
+          continue;
+        }
+
+        const payload = await buildXpressBookingPayload(
+          orderId,
+          shipment.vendor_id,
+        );
+
+        const xpResponse = await xpressService.bookShipment(payload);
+
+        if (!xpResponse.status) {
+          throw new Error("Booking failed");
+        }
+
+        const data = xpResponse.data;
+
+        const [updateResult] = await conn.query(
+          `UPDATE order_shipments
+           SET shipment_id = ?,
+               awb_number = ?,
+               label_url = ?,
+               manifest_url = ?,
+               shipping_status = 'booked'
+           WHERE id = ?
+             AND shipping_status = 'pending'`,
+          [
+            data.shipment_id,
+            data.awb_number,
+            data.label,
+            data.manifest,
+            shipment.id,
+          ],
+        );
+
+        if (updateResult.affectedRows === 0) {
+          continue;
+        }
+      } catch (err) {
+        console.error(`Shipment booking failed for ${shipment.id}`, err);
+
+        // await conn.query(
+        //   `UPDATE order_shipments
+        //    SET shipping_status = 'pending'
+        //    WHERE id = ?`,
+        //   [shipment.id],
+        // );
+      }
+    }
+  } finally {
+    conn.release();
+  }
+}
+
+// send whatsapp
 async function sendOrderPlacedWhatsApp(orderId) {
   const [rows] = await db.query(
     `SELECT 
@@ -98,7 +233,10 @@ async function sendOrderPlacedWhatsApp(orderId) {
   });
 }
 
+// webhook
 async function handleWebhook(req, res) {
+  const conn = await db.getConnection();
+
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers["x-razorpay-signature"];
@@ -119,26 +257,32 @@ async function handleWebhook(req, res) {
     if (event === "payment.captured") {
       const payment = body.payload.payment.entity;
 
+      await conn.beginTransaction();
+
       // 2 Get payment row
-      const [rows] = await db.query(
-        `SELECT order_id, status 
-         FROM order_payments 
-         WHERE razorpay_order_id = ? 
-         LIMIT 1`,
+      const [rows] = await conn.query(
+        `SELECT order_id, status
+          FROM order_payments
+          WHERE razorpay_order_id = ?
+          FOR UPDATE`,
         [payment.order_id],
       );
 
-      if (!rows.length) return res.sendStatus(200);
+      if (!rows.length) {
+        await conn.commit();
+        return res.sendStatus(200);
+      }
 
       const { order_id, status } = rows[0];
 
       // 3 Idempotency check
       if (status === "success") {
+        await conn.commit();
         return res.sendStatus(200);
       }
 
       // 4 Update payment row
-      await db.query(
+      await conn.query(
         `UPDATE order_payments 
          SET razorpay_payment_id = ?, 
              status = 'success',
@@ -149,21 +293,39 @@ async function handleWebhook(req, res) {
       );
 
       // 5 Update order status
-      await db.query(
+      await conn.query(
         `UPDATE eorders 
          SET status = 'paid' 
          WHERE order_id = ?`,
         [order_id],
       );
 
-      // 6 Send WhatsApp (only once)
-      await sendOrderPlacedWhatsApp(order_id);
+      // 6 Shipment update
+      await conn.query(
+        `UPDATE order_shipments
+         SET shipping_status = 'pending'
+         WHERE order_id = ?
+           AND shipping_status = 'awaiting_payment'`,
+        [order_id],
+      );
+
+      await conn.commit();
+
+      // 6 Process shipments async
+      processShipmentsAfterPayment(order_id).catch((err) =>
+        console.error("Shipment processing failed:", err),
+      );
+
+      // 7 Send WhatsApp
+      sendOrderPlacedWhatsApp(order_id).catch((err) =>
+        console.error("WA failed:", err),
+      );
     }
 
     if (event === "payment.failed") {
       const payment = body.payload.payment.entity;
 
-      await db.query(
+      await conn.query(
         `UPDATE order_payments 
          SET status = 'failed',
              raw_webhook = ?
@@ -174,8 +336,11 @@ async function handleWebhook(req, res) {
 
     return res.sendStatus(200);
   } catch (err) {
+    await conn.rollback();
     console.error("Webhook error:", err);
     return res.sendStatus(500);
+  } finally {
+    conn.release();
   }
 }
 
