@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
 import "./css/orderList.css";
+import { FiBox } from "react-icons/fi";
 
 interface Order {
   order_id: number;
@@ -44,10 +45,7 @@ const OrderList: React.FC = () => {
       setError(null);
 
       const res = await api.get<OrderListResponse>("/order/order-list", {
-        params: {
-          page,
-          limit,
-        },
+        params: { page, limit },
       });
 
       if (!res.data.success) {
@@ -78,7 +76,7 @@ const OrderList: React.FC = () => {
         throw new Error("Shipment creation failed");
       }
 
-      fetchOrders(); 
+      fetchOrders();
     } catch (err) {
       console.error(err);
       alert("Failed to create shipment");
@@ -93,30 +91,23 @@ const OrderList: React.FC = () => {
       currency: "INR",
     }).format(amount);
 
-  const getStatusStyle = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "pending":
-        return { backgroundColor: "#facc15", color: "#000" };
-      case "paid":
-        return { backgroundColor: "#60a5fa", color: "#fff" };
-      case "shipped":
-        return { backgroundColor: "#818cf8", color: "#fff" };
-      case "delivered":
-        return { backgroundColor: "#34d399", color: "#fff" };
-      case "cancelled":
-        return { backgroundColor: "#f87171", color: "#fff" };
-      default:
-        return { backgroundColor: "#e5e7eb", color: "#000" };
-    }
-  };
-
   return (
     <div className="order-page">
-      <div className="order-header">
-        <h2>Orders</h2>
-      </div>
+      <div className=" flex items-center gap-4 mb-8">
+  <div className="w-12 h-12 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-full flex items-center justify-center shrink-0">
+    <FiBox className="text-white text-xl" />
+  </div>
 
-      {loading && <p className="loading">Loading orders...</p>}
+  <div>
+    <h2 className="text-2xl font-semibold">Orders</h2>
+    <p className="text-gray-500">
+      Manage and monitor all customer orders
+    </p>
+  </div>
+</div>
+
+
+      {loading && <div className="loader"></div>}
       {error && <p className="error">{error}</p>}
 
       {!loading && !error && (
@@ -146,12 +137,23 @@ const OrderList: React.FC = () => {
                 ) : (
                   orders.map((order) => (
                     <tr key={order.order_id}>
-                      <td className="order-ref">{order.order_ref}</td>
+                      <td className="order-ref">
+                        {order.order_ref}
+                        {order.awb_number && (
+                          <div className="awb-text">
+                            AWB: {order.awb_number}
+                          </div>
+                        )}
+                      </td>
+
                       <td>{order.product_name ?? "-"}</td>
+
                       <td>{order.brand_name ?? "-"}</td>
+
                       <td className="amount">
                         {formatCurrency(order.total_amount)}
                       </td>
+
                       <td>
                         <span
                           className={`status-badge status-${order.status.toLowerCase()}`}
@@ -159,34 +161,35 @@ const OrderList: React.FC = () => {
                           {order.status}
                         </span>
                       </td>
+
                       <td>
                         {new Date(order.created_at).toLocaleDateString("en-IN")}
                       </td>
+
                       <td>{order.item_count}</td>
+
                       <td>
-                        <button
-                          className="view-btn"
-                          onClick={() =>
-                            navigate(`/manager/order-view/${order.order_id}`)
-                          }
-                        >
-                          View
-                        </button>
-
-                        {order.status === "paid" && !order.awb_number && (
+                        <div className="action-buttons">
                           <button
-                            className="ship-btn"
-                            onClick={() => handleCreateShipment(order.order_id)}
+                            className="view-btn"
+                            onClick={() =>
+                              navigate(`/manager/order-view/${order.order_id}`)
+                            }
                           >
-                            Create Shipment
+                            View
                           </button>
-                        )}
 
-                        {order.awb_number && (
-                          <span className="awb-text">
-                            AWB: {order.awb_number}
-                          </span>
-                        )}
+                          {order.status === "paid" && !order.awb_number && (
+                            <button
+                              className="ship-btn"
+                              onClick={() =>
+                                handleCreateShipment(order.order_id)
+                              }
+                            >
+                              Create Shipment
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -195,13 +198,12 @@ const OrderList: React.FC = () => {
             </table>
           </div>
 
-          {/* Pagination */}
           <div className="pagination">
             <button
               disabled={page === 1}
               onClick={() => setPage((prev) => prev - 1)}
             >
-              Prev
+              ← Prev
             </button>
 
             <span>
@@ -212,7 +214,7 @@ const OrderList: React.FC = () => {
               disabled={page === totalPages}
               onClick={() => setPage((prev) => prev + 1)}
             >
-              Next
+              Next →
             </button>
           </div>
         </>
