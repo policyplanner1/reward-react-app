@@ -17,6 +17,7 @@ import {
   FaRedo,
   FaCheck,
   FaTimes,
+  FaTrash,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { FiBox } from "react-icons/fi";
@@ -294,6 +295,46 @@ export default function ProductManagerList() {
     sortOrder,
   ]);
 
+  const handleDelete = async (product: ProductItem) => {
+    const result = await Swal.fire({
+      title: "Delete Product?",
+      text: `Are you sure you want to delete "${product.product_name}"?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Delete",
+      confirmButtonColor: "#DC2626",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await api.delete(`/product/remove-product/${product.product_id}`);
+
+      if (!res.data.success) {
+        throw new Error(res.data.message || "Delete failed");
+      }
+
+      // Option 1: Refetch (simple + safe)
+      await fetchProducts();
+
+      await Swal.fire({
+        title: "Deleted!",
+        text: "Product deleted successfully.",
+        icon: "success",
+        timer: 1200,
+        showConfirmButton: false,
+      });
+    } catch (error: any) {
+      await Swal.fire({
+        title: "Error",
+        text: error?.message || "Failed to delete product.",
+        icon: "error",
+      });
+    }
+  };
+
   const handleProductAction = async (
     action: ActionType,
     product: ProductItem,
@@ -440,18 +481,18 @@ export default function ProductManagerList() {
   return (
     <div className="min-h-screen p-4 md:p-6 bg-gray-50">
       <div className="p-4 bg-white border border-gray-200 shadow-lg rounded-2xl md:p-6">
-         <div className="mt-1 mb-8 flex items-start gap-3">
-  <div className="w-12 h-12 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-full flex items-center justify-center shrink-0">
-    <FiBox className="text-white text-xl" />
-  </div>
+        <div className="mt-1 mb-8 flex items-start gap-3">
+          <div className="w-12 h-12 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-full flex items-center justify-center shrink-0">
+            <FiBox className="text-white text-xl" />
+          </div>
 
-  <div>
-    <h2 className="text-3xl font-bold text-gray-900">Products</h2>
-    <p className="mt-1 text-sm text-gray-500">
-      Manage your products, pricing, and stock — all in one place.
-    </p>
-  </div>
-</div>
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900">Products</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Manage your products, pricing, and stock — all in one place.
+            </p>
+          </div>
+        </div>
         {/* STATS CARDS */}
         <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard
@@ -584,19 +625,13 @@ export default function ProductManagerList() {
 
                   <td className="px-4 py-4 align-top">
                     <div className="flex justify-end">
-                      <div
-                        className={`grid gap-2 justify-items-center ${
-                          product.status === "pending"
-                            ? "grid-cols-4 w-[176px]"
-                            : "grid-cols-2 w-[88px]"
-                        }`}
-                      >
+                      <div className="flex gap-2 max-w-[160px] overflow-x-auto scrollbar-thin">
                         <Link
                           to={routes.manager.productView.replace(
                             ":id",
                             product.product_id.toString(),
                           )}
-                          className="w-9 h-9 inline-flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
+                          className="flex-shrink-0 w-9 h-9 inline-flex items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
                           title="View"
                         >
                           <FaEye />
@@ -608,7 +643,7 @@ export default function ProductManagerList() {
                               onClick={() =>
                                 handleProductAction("approve", product)
                               }
-                              className="w-9 h-9 inline-flex items-center justify-center bg-green-100 text-green-700 rounded cursor-pointer"
+                              className="flex-shrink-0 w-9 h-9 inline-flex items-center justify-center bg-green-100 text-green-700 rounded hover:bg-green-200 cursor-pointer"
                               title="Approve"
                             >
                               <FaCheck />
@@ -618,7 +653,7 @@ export default function ProductManagerList() {
                               onClick={() =>
                                 handleProductAction("reject", product)
                               }
-                              className="w-9 h-9 inline-flex items-center justify-center bg-red-100 text-red-700 rounded cursor-pointer"
+                              className="flex-shrink-0 w-9 h-9 inline-flex items-center justify-center bg-red-100 text-red-700 rounded hover:bg-red-200 cursor-pointer"
                               title="Reject"
                             >
                               <FaTimes />
@@ -630,10 +665,18 @@ export default function ProductManagerList() {
                           onClick={() =>
                             handleProductAction("request_resubmission", product)
                           }
-                          className="w-9 h-9 inline-flex items-center justify-center bg-blue-100 text-blue-700 rounded cursor-pointer"
+                          className="flex-shrink-0 w-9 h-9 inline-flex items-center justify-center bg-blue-100 text-blue-700 rounded hover:bg-blue-200 cursor-pointer"
                           title="Resubmission"
                         >
                           <FaRedo />
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(product)}
+                          className="flex-shrink-0 w-9 h-9 inline-flex items-center justify-center bg-red-100 text-red-700 rounded hover:bg-red-200 cursor-pointer"
+                          title="Delete"
+                        >
+                          <FaTrash />
                         </button>
                       </div>
                     </div>

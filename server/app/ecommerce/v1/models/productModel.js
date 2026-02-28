@@ -20,6 +20,7 @@ class ProductModel {
       conditions.push("p.status = 'approved'");
       conditions.push("p.is_visible = 1");
       conditions.push("p.is_searchable = 1");
+      conditions.push("p.is_deleted = 0");
 
       const whereClause = conditions.length
         ? `WHERE ${conditions.join(" AND ")}`
@@ -281,6 +282,9 @@ class ProductModel {
       conditions.push("p.is_visible = ?");
       params.push(1);
 
+      conditions.push("p.is_deleted = ?");
+      params.push(0);
+
       // conditions.push("v.variant_id IS NOT NULL");
 
       if (categoryId) {
@@ -465,6 +469,9 @@ class ProductModel {
 
       conditions.push("p.is_visible = ?");
       params.push(1);
+
+      conditions.push("p.is_deleted = ?");
+      params.push(0);
 
       conditions.push("v.variant_id IS NOT NULL");
 
@@ -705,6 +712,7 @@ class ProductModel {
       p.status = 'approved'
       AND p.is_visible = 1
       AND p.is_searchable = 1
+      AND p.is_deleted = 0
       AND v.variant_id IS NOT NULL
       AND (
         p.product_name LIKE ?
@@ -901,6 +909,7 @@ class ProductModel {
       ON pi.product_id = p.product_id
 
     WHERE p.status = "approved"
+      AND p.is_deleted = 0
       AND p.product_id != ?
       AND (
         p.category_id = ?

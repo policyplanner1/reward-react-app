@@ -12,6 +12,7 @@ import {
   FiSave,
   FiLayers,
 } from "react-icons/fi";
+import imageCompression from "browser-image-compression";
 
 import { api } from "../../../../api/api";
 const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
@@ -44,8 +45,9 @@ export default function SubcategoryManagement() {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [newCoverImage, setNewCoverImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [addCoverImage, setAddCoverImage] = useState<File | null>(null);
+  const [editCoverImage, setEditCoverImage] = useState<File | null>(null);
 
   // const [loadingAdd, setLoadingAdd] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
@@ -58,6 +60,18 @@ export default function SubcategoryManagement() {
     if (status === "inactive") return "inactive";
     if (status === 1 || status === "1") return "active";
     return "inactive";
+  };
+
+  const compressImage = async (file: File): Promise<File> => {
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1600,
+      useWebWorker: true,
+      fileType: "image/webp",
+      initialQuality: 0.85,
+    };
+
+    return await imageCompression(file, options);
   };
 
   const resolveImageUrl = (path?: string) => {
@@ -180,24 +194,13 @@ export default function SubcategoryManagement() {
       return;
     }
 
-    // if (!newCoverImage) {
-    //   await Swal.fire({
-    //     title: "Cover image required",
-    //     text: "Please upload a cover image for this subcategory.",
-    //     icon: "warning",
-    //     confirmButtonText: "OK",
-    //   });
-    //   return;
-    // }
-
-    // setLoadingAdd(true);
-
     try {
       const formData = new FormData();
       formData.append("category_id", String(selectedCategoryId));
       formData.append("name", newSubcategoryName);
-      if (newCoverImage) {
-        formData.append("cover_image", newCoverImage);
+
+      if (addCoverImage) {
+        formData.append("cover_image", addCoverImage);
       }
 
       await api.post("/vendor/create-subcategory", formData, {
@@ -206,7 +209,7 @@ export default function SubcategoryManagement() {
 
       // Reset
       setNewSubcategoryName("");
-      setNewCoverImage(null);
+      setAddCoverImage(null);
       setAddModalOpen(false);
       setCurrentPage(1);
       fetchSubcategories();
@@ -232,6 +235,14 @@ export default function SubcategoryManagement() {
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (previewImage && previewImage.startsWith("blob:")) {
+        URL.revokeObjectURL(previewImage);
+      }
+    };
+  }, [previewImage]);
+
   const handleView = async (id: number) => {
     try {
       const res = await api.get(`/vendor/subcategory/${id}`);
@@ -249,8 +260,11 @@ export default function SubcategoryManagement() {
       setEditName(formatted.subcategory_name);
       setIsEditing(false);
       setDrawerOpen(true);
+      // Server image preview
       setPreviewImage(resolveImageUrl(s.cover_image));
-      setNewCoverImage(null);
+
+      // Reset edit image state
+      setEditCoverImage(null);
     } catch (err) {
       console.log("View error:", err);
     }
@@ -264,8 +278,8 @@ export default function SubcategoryManagement() {
       formData.append("name", editName);
       formData.append("status", selected.status === "active" ? "1" : "0");
 
-      if (newCoverImage) {
-        formData.append("cover_image", newCoverImage);
+      if (editCoverImage) {
+        formData.append("cover_image", editCoverImage);
       }
 
       await api.put(
@@ -686,11 +700,38 @@ export default function SubcategoryManagement() {
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
-                          if (file) {
-                            setNewCoverImage(file);
-                            setPreviewImage(URL.createObjectURL(file));
+                          if (!file) return;
+
+                          if (!file.type.startsWith("image/")) {
+                            await Swal.fire({
+                              icon: "error",
+                              title: "Invalid file",
+                              text: "Only image files allowed.",
+                            });
+                            return;
+                          }
+
+                          // if (file.size > 2 * 1024 * 1024) {
+                          //   await Swal.fire({
+                          //     icon: "error",
+                          //     title: "File too large",
+                          //     text: "Image must be under 2MB.",
+                          //   });
+                          //   return;
+                          // }
+
+                          try {
+                            const compressed = await compressImage(file);
+                            setEditCoverImage(compressed);
+                            setPreviewImage(URL.createObjectURL(compressed));
+                          } catch {
+                            await Swal.fire({
+                              icon: "error",
+                              title: "Compression failed",
+                              text: "Unable to process image.",
+                            });
                           }
                         }}
                       />
@@ -786,10 +827,10 @@ export default function SubcategoryManagement() {
                 </label>
 
                 <label className="relative flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 cursor-pointer hover:border-[#852BAF] hover:bg-white transition-all group overflow-hidden">
-                  {newCoverImage ? (
+                  {addCoverImage ? (
                     <>
                       <img
-                        src={URL.createObjectURL(newCoverImage)}
+                        src={URL.createObjectURL(addCoverImage)}
                         alt="Preview"
                         className="h-full w-full object-cover rounded-2xl"
                       />
@@ -814,11 +855,39 @@ export default function SubcategoryManagement() {
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) =>
-                      setNewCoverImage(
-                        e.target.files ? e.target.files[0] : null,
-                      )
-                    }
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      if (!file.type.startsWith("image/")) {
+                        await Swal.fire({
+                          icon: "error",
+                          title: "Invalid file",
+                          text: "Only image files allowed.",
+                        });
+                        return;
+                      }
+
+                      // if (file.size > 2 * 1024 * 1024) {
+                      //   await Swal.fire({
+                      //     icon: "error",
+                      //     title: "File too large",
+                      //     text: "Image must be under 2MB.",
+                      //   });
+                      //   return;
+                      // }
+
+                      try {
+                        const compressed = await compressImage(file);
+                        setAddCoverImage(compressed);
+                      } catch {
+                        await Swal.fire({
+                          icon: "error",
+                          title: "Compression failed",
+                          text: "Unable to process image.",
+                        });
+                      }
+                    }}
                   />
                 </label>
               </div>

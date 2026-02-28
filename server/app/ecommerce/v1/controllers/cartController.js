@@ -7,13 +7,14 @@ class CartController {
   // Get cart items
   async getCart(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1; // Temporary hardcoded user ID for testing
+      const userId = req.user?.user_id;
+      // const userId = 1;
 
       if (!userId) {
-        return res
-          .status(400)
-          .json({ success: false, message: "User ID is required" });
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
       }
 
       const cart = await CartModel.getUserCart(userId);
@@ -35,8 +36,15 @@ class CartController {
   // add to cart
   async addToCart(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1; // Temporary hardcoded user ID for testing
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
 
       const { product_id, variant_id, quantity = 1 } = req.body;
 
@@ -129,8 +137,15 @@ class CartController {
   // update cart item
   async updateCartItem(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1; // Temporary hardcoded user ID for testing
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
 
       const cartItemId = Number(req.params.cart_item_id);
       const { quantity } = req.body;
@@ -188,8 +203,15 @@ class CartController {
   // delete cart item
   async deleteCartItem(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1; // Temporary hardcoded user ID for testing
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
 
       const cartItemId = Number(req.params.cart_item_id);
 
@@ -226,8 +248,15 @@ class CartController {
   // remove all cart items
   async clearCart(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1; // Temporary hardcoded user ID for testing
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
 
       await CartModel.clearCart(userId);
 

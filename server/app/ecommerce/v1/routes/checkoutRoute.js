@@ -4,23 +4,23 @@ const CheckoutController = require("../controllers/checkoutController");
 const auth = require("../middlewares/auth");
 
 // get cart checkout Details
-// router.get("/get-cart", auth, CheckoutController.getCheckoutCart);
-router.get("/get-cart", CheckoutController.getCheckoutCart);
+router.get("/get-cart", auth, CheckoutController.getCheckoutCart);
+// router.get("/get-cart", CheckoutController.getCheckoutCart);
 
 // Get buy now checkout Details
-// router.get("/get-buy-now", auth, CheckoutController.getBuyNowCheckout);
-router.get("/get-buy-now", CheckoutController.getBuyNowCheckout);
+router.get("/get-buy-now", auth, CheckoutController.getBuyNowCheckout);
+// router.get("/get-buy-now", CheckoutController.getBuyNowCheckout);
 
 // Place Order from Cart
-// router.post("/cart", auth, CheckoutController.checkoutCart);
-router.post("/cart", CheckoutController.checkoutCart);
+router.post("/cart", auth, CheckoutController.checkoutCart);
+// router.post("/cart", CheckoutController.checkoutCart);
 
 // place Order from Buy Now
-// router.post("/buy-now", auth, CheckoutController.buyNow);
-router.post("/buy-now", CheckoutController.buyNow);
+router.post("/buy-now", auth, CheckoutController.buyNow);
+// router.post("/buy-now", CheckoutController.buyNow);
 
 // order Receipt
-// router.get("/order-receipt/:orderId", auth, CheckoutController.getOrderReceipt);
-router.get("/order-receipt/:orderId", CheckoutController.getOrderReceipt);
+router.get("/order-receipt/:orderId", auth, CheckoutController.getOrderReceipt);
+// router.get("/order-receipt/:orderId", CheckoutController.getOrderReceipt);
 
 module.exports = router;

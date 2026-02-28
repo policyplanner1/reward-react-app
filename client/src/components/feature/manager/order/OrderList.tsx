@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
 import "./css/orderList.css";
 import { FiBox } from "react-icons/fi";
+import Swal from "sweetalert2";
 
 interface Order {
   order_id: number;
@@ -36,6 +37,9 @@ const OrderList: React.FC = () => {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [creatingShipmentId, setCreatingShipmentId] = useState<number | null>(
+    null,
+  );
 
   const limit = 10;
 
@@ -68,7 +72,7 @@ const OrderList: React.FC = () => {
 
   const handleCreateShipment = async (orderId: number) => {
     try {
-      setLoading(true);
+      setCreatingShipmentId(orderId);
 
       const res = await api.post(`/order/create-shipment/${orderId}`);
 
@@ -77,11 +81,36 @@ const OrderList: React.FC = () => {
       }
 
       fetchOrders();
+      //  Optimistic UI Update
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.order_id === orderId
+            ? {
+                ...o,
+                awb_number: res.data.shipment.awb_number,
+                shipping_status: res.data.shipment.shipping_status,
+              }
+            : o,
+        ),
+      );
+
+      Swal.fire({
+        icon: "success",
+        title: "Shipment Created",
+        text: `AWB Number: ${res.data.shipment.awb_number}`,
+        confirmButtonColor: "#2563eb",
+        confirmButtonText: "OK",
+      });
     } catch (err) {
       console.error(err);
-      alert("Failed to create shipment");
+      Swal.fire({
+        icon: "error",
+        title: "Failed",
+        text: "Failed to create shipment",
+        confirmButtonColor: "#ef4444",
+      });
     } finally {
-      setLoading(false);
+      setCreatingShipmentId(null);
     }
   };
 
@@ -167,29 +196,33 @@ const OrderList: React.FC = () => {
                       </td>
 
                       <td>{order.item_count}</td>
-
                       <td>
-                        <div className="action-buttons">
-                          <button
-                            className="view-btn"
-                            onClick={() =>
-                              navigate(`/manager/order-view/${order.order_id}`)
-                            }
-                          >
-                            View
-                          </button>
+                        {/* View Button */}
+                        <button
+                          className="view-btn"
+                          onClick={() =>
+                            navigate(`/manager/order-view/${order.order_id}`)
+                          }
+                        >
+                          View
+                        </button>
 
-                          {order.status === "paid" && !order.awb_number && (
-                            <button
-                              className="ship-btn"
-                              onClick={() =>
-                                handleCreateShipment(order.order_id)
-                              }
-                            >
-                              Create Shipment
-                            </button>
-                          )}
-                        </div>
+                        {/* Shipment Logic */}
+                        {order.awb_number ? (
+                          <span className="awb-text">
+                            AWB: {order.awb_number}
+                          </span>
+                        ) : order.status === "paid" ? (
+                          <button
+                            className="ship-btn"
+                            disabled={creatingShipmentId === order.order_id}
+                            onClick={() => handleCreateShipment(order.order_id)}
+                          >
+                            {creatingShipmentId === order.order_id
+                              ? "Creating..."
+                              : "Create Shipment"}
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                   ))

@@ -291,16 +291,14 @@ class ProductController {
         });
       }
 
-      // if (req.user?.user_id) {
-      if (1) {
+      if (req.user?.user_id) {
         await db.execute(
           `
             INSERT INTO recently_viewed (user_id, product_id)
             VALUES (?, ?)
             ON DUPLICATE KEY UPDATE viewed_at = CURRENT_TIMESTAMP
           `,
-          // [req.user.user_id, productId],
-          [1, productId],
+          [req.user.user_id, productId],
         );
       }
 
@@ -734,25 +732,22 @@ class ProductController {
   // Save History
   async saveSearchHistory(req, res) {
     try {
-      // if (!req.user?.user_id) {
-      //   return res.status(401).json({ success: false });
-      // }
+      if (!req.user?.user_id) {
+        return res.status(401).json({ success: false });
+      }
 
-      // const userId = req.user?.user_id;
-      const userId = 1;
-
+      const userId = req.user?.user_id;
       const keyword = (req.body.keyword || "").trim();
 
       if (!keyword) {
-        return res.json({ success: true });
+        return res.json({ success: true }); 
       }
 
+      // Save history
       await db.execute(
-        `
-      INSERT INTO search_history (user_id, keyword)
-      VALUES (?, ?)
-      ON DUPLICATE KEY UPDATE created_at = CURRENT_TIMESTAMP
-      `,
+        `INSERT INTO search_history (user_id, keyword) 
+       VALUES (?, ?) 
+       ON DUPLICATE KEY UPDATE created_at = CURRENT_TIMESTAMP`,
         [userId, keyword],
       );
 
@@ -769,21 +764,17 @@ class ProductController {
   // Get Search History
   async getSearchHistory(req, res) {
     try {
-      // if (!req.user?.user_id) {
-      //   return res.status(401).json({ success: false });
-      // }
+      if (!req.user?.user_id) {
+        return res.status(401).json({ success: false }); 
+      }
 
-      // const userId = req.user?.user_id;
-      const userId = 1;
-
+      const userId = req.user?.user_id;
       const [rows] = await db.execute(
-        `
-      SELECT keyword
-      FROM search_history
-      WHERE user_id = ?
-      ORDER BY created_at DESC
-      LIMIT 10
-      `,
+        `SELECT keyword 
+       FROM search_history 
+       WHERE user_id = ? 
+       ORDER BY created_at DESC 
+       LIMIT 10`,
         [userId],
       );
 

@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
 import { FaArrowLeft, FaImages, FaTrash } from "react-icons/fa";
 import Swal from "sweetalert2";
+import imageCompression from "browser-image-compression";
+
 import {
   DndContext,
   closestCenter,
@@ -176,7 +178,6 @@ export default function ProductVariantImages() {
         icon: "warning",
         title: "Image limit reached",
         text: `You can upload a maximum of ${MAX_IMAGES} images for a variant.`,
-        confirmButtonText: "OK",
       });
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
@@ -187,19 +188,69 @@ export default function ProductVariantImages() {
         icon: "warning",
         title: "Too many images",
         text: `You can upload only ${remainingSlots} more image(s).`,
-        confirmButtonText: "OK",
       });
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    setPreviews(
-      selectedFiles.map((file) => ({
-        file,
-        preview: URL.createObjectURL(file),
-      })),
-    );
+    try {
+      const compressedPreviews: PreviewImage[] = [];
+
+      for (const file of selectedFiles) {
+        // 1 Type validation
+        if (!file.type.startsWith("image/")) {
+          await Swal.fire({
+            icon: "error",
+            title: "Invalid file",
+            text: "Only image files are allowed.",
+          });
+          continue;
+        }
+
+        // 2 Optional size validation (10MB example)
+        if (file.size > 10 * 1024 * 1024) {
+          await Swal.fire({
+            icon: "error",
+            title: "File too large",
+            text: "Each image must be under 10MB.",
+          });
+          continue;
+        }
+
+        // 3 Compress + Convert to WebP
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+          fileType: "image/webp",
+          initialQuality: 0.85,
+        };
+
+        const compressedFile = await imageCompression(file, options);
+
+        compressedPreviews.push({
+          file: compressedFile,
+          preview: URL.createObjectURL(compressedFile),
+        });
+      }
+
+      setPreviews(compressedPreviews);
+    } catch (err) {
+      await Swal.fire({
+        icon: "error",
+        title: "Compression failed",
+        text: "Unable to process selected images.",
+      });
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
+
+  useEffect(() => {
+    return () => {
+      previews.forEach((p) => URL.revokeObjectURL(p.preview));
+    };
+  }, [previews]);
 
   const handleUpload = async () => {
     if (!previews.length) return;

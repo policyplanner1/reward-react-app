@@ -2,6 +2,7 @@ const db = require("../config/database");
 const { moveFile } = require("../utils/moveFile");
 const fs = require("fs");
 const path = require("path");
+const { compressVideo } = require("../utils/videoCompression");
 
 // generate SKU
 function generateSKU(productId) {
@@ -50,8 +51,12 @@ async function processUploadedFiles(
       file.finalPath = `products/${vendorId}/${productId}/images/${filename}`;
     }
 
-    // ================= PRODUCT VIDEO =================
+    // ================= PRODUCT VIDEO (COMPRESSED) =================
     else if (file.fieldname === "video") {
+      if (!file.mimetype.startsWith("video/")) {
+        throw new Error("Invalid video file type");
+      }
+
       const videoFolder = path.join(
         UPLOAD_BASE,
         vendorId.toString(),
@@ -59,8 +64,38 @@ async function processUploadedFiles(
         "video",
       );
 
-      newPath = path.join(videoFolder, filename);
-      file.finalPath = `products/${vendorId}/${productId}/video/${filename}`;
+      const originalPath = path.join(videoFolder, filename);
+
+      // ensure folder exists
+      if (!fs.existsSync(videoFolder)) {
+        fs.mkdirSync(videoFolder, { recursive: true });
+      }
+
+      // move temp → video folder first
+      await moveFile(file.path, originalPath);
+
+      const compressedFilename = `compressed-${Date.now()}.mp4`;
+      const compressedPath = path.join(videoFolder, compressedFilename);
+
+      try {
+        await compressVideo(originalPath, compressedPath);
+
+        // delete original after compression
+        if (fs.existsSync(originalPath)) {
+          fs.unlinkSync(originalPath);
+        }
+      } catch (err) {
+        if (fs.existsSync(originalPath)) {
+          fs.unlinkSync(originalPath);
+        }
+        throw new Error("Video compression failed");
+      }
+
+      file.finalPath = `products/${vendorId}/${productId}/video/${compressedFilename}`;
+      file.path = compressedPath;
+
+      movedFiles.push(file);
+      continue;
     }
 
     // ================= DOCUMENTS =================
@@ -80,15 +115,13 @@ async function processUploadedFiles(
       continue;
     }
 
-    // 🔴 CRITICAL: ensure folder exists (prevents production crashes)
+    // ensure folder exists
     const targetDir = path.dirname(newPath);
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    // Move file from temp → final
     await moveFile(file.path, newPath);
-
     movedFiles.push(file);
   }
 
@@ -756,47 +789,123 @@ class ProductModel {
   }
 
   // delete product
+  // async deleteProduct(connection, productId, vendorId) {
+  //   try {
+  //     // Delete product variant images
+  //     const [variants] = await connection.execute(
+  //       `SELECT variant_id FROM product_variants WHERE product_id = ?`,
+  //       [productId],
+  //     );
+  //     for (const variant of variants) {
+  //       await connection.execute(
+  //         `DELETE FROM product_variant_images WHERE variant_id = ?`,
+  //         [variant.variant_id],
+  //       );
+  //     }
+
+  //     // Delete product variants
+  //     await connection.execute(
+  //       `DELETE FROM product_variants WHERE product_id = ?`,
+  //       [productId],
+  //     );
+
+  //     // Delete product images
+  //     await connection.execute(
+  //       `DELETE FROM product_images WHERE product_id = ?`,
+  //       [productId],
+  //     );
+
+  //     // Delete product documents
+  //     await connection.execute(
+  //       `DELETE FROM product_documents WHERE product_id = ?`,
+  //       [productId],
+  //     );
+
+  //     // Delete main product
+  //     await connection.execute(
+  //       `DELETE FROM eproducts WHERE product_id = ? AND vendor_id = ?`,
+  //       [productId, vendorId],
+  //     );
+
+  //     return true;
+  //   } catch (error) {
+  //     console.error("Error deleting product:", error);
+  //     throw error;
+  //   }
+  // }
+
   async deleteProduct(connection, productId, vendorId) {
     try {
-      // Delete product variant images
-      const [variants] = await connection.execute(
-        `SELECT variant_id FROM product_variants WHERE product_id = ?`,
-        [productId],
-      );
-      for (const variant of variants) {
-        await connection.execute(
-          `DELETE FROM product_variant_images WHERE variant_id = ?`,
-          [variant.variant_id],
-        );
-      }
-
-      // Delete product variants
       await connection.execute(
-        `DELETE FROM product_variants WHERE product_id = ?`,
-        [productId],
-      );
-
-      // Delete product images
-      await connection.execute(
-        `DELETE FROM product_images WHERE product_id = ?`,
-        [productId],
-      );
-
-      // Delete product documents
-      await connection.execute(
-        `DELETE FROM product_documents WHERE product_id = ?`,
-        [productId],
-      );
-
-      // Delete main product
-      await connection.execute(
-        `DELETE FROM eproducts WHERE product_id = ? AND vendor_id = ?`,
+        `UPDATE eproducts 
+       SET is_deleted = 1 
+       WHERE product_id = ? AND vendor_id = ?`,
         [productId, vendorId],
       );
 
       return true;
     } catch (error) {
-      console.error("Error deleting product:", error);
+      console.error("Error soft deleting product:", error);
+      throw error;
+    }
+  }
+
+  // remove product
+  // async removeProduct(connection, productId) {
+  //   try {
+  //     // Delete product variant images
+  //     await connection.execute(
+  //       `
+  //       DELETE pvi FROM product_variant_images pvi
+  //       INNER JOIN product_variants pv
+  //         ON pvi.variant_id = pv.variant_id
+  //       WHERE pv.product_id = ?
+  //       `,
+  //       [productId],
+  //     );
+
+  //     // Delete product variants
+  //     await connection.execute(
+  //       `DELETE FROM product_variants WHERE product_id = ?`,
+  //       [productId],
+  //     );
+
+  //     // Delete product images
+  //     await connection.execute(
+  //       `DELETE FROM product_images WHERE product_id = ?`,
+  //       [productId],
+  //     );
+
+  //     // Delete product documents
+  //     await connection.execute(
+  //       `DELETE FROM product_documents WHERE product_id = ?`,
+  //       [productId],
+  //     );
+
+  //     // Delete main product
+  //     await connection.execute(`DELETE FROM eproducts WHERE product_id = ?`, [
+  //       productId,
+  //     ]);
+
+  //     return true;
+  //   } catch (error) {
+  //     console.error("Error deleting product:", error);
+  //     throw error;
+  //   }
+  // }
+
+  async removeProduct(connection, productId) {
+    try {
+      await connection.execute(
+        `UPDATE eproducts 
+       SET is_deleted = 1 
+       WHERE product_id = ?`,
+        [productId],
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Error soft deleting product:", error);
       throw error;
     }
   }
@@ -809,9 +918,10 @@ class ProductModel {
     sortOrder,
     limit,
     offset,
+    role,
   }) {
     try {
-      const conditions = [];
+      const conditions = ["p.is_deleted = 0"];
       const params = [];
 
       if (status) {
@@ -822,6 +932,10 @@ class ProductModel {
       if (search) {
         conditions.push("p.product_name LIKE ?");
         params.push(`%${search}%`);
+      }
+
+      if (role === "vendor_manager" || role === "admin") {
+        conditions.push("p.status != 'pending'");
       }
 
       const whereClause = conditions.length
@@ -901,12 +1015,28 @@ class ProductModel {
         };
       });
 
+      const [statsRows] = await db.execute(
+        `
+        SELECT 
+          COUNT(*) AS total,
+          SUM(CASE WHEN p.status = 'sent_for_approval' THEN 1 ELSE 0 END) AS pending,
+          SUM(CASE WHEN p.status = 'approved' THEN 1 ELSE 0 END) AS approved,
+          SUM(CASE WHEN p.status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
+          SUM(CASE WHEN p.status = 'resubmission' THEN 1 ELSE 0 END) AS resubmission
+        FROM eproducts p
+        ${whereClause}
+        `,
+        params,
+      );
+
+      const stats = statsRows[0];
+
       const [[{ total }]] = await db.execute(
         `SELECT COUNT(DISTINCT p.product_id) AS total FROM eproducts p ${whereClause}`,
         params,
       );
 
-      return { products, totalItems: total };
+      return { products, totalItems: total, stats };
     } catch (error) {
       console.error("Error fetching all products:", error);
       throw error;
@@ -919,7 +1049,7 @@ class ProductModel {
     { search, status, sortBy, sortOrder, limit, offset },
   ) {
     try {
-      let where = `WHERE p.vendor_id = ?`;
+      let where = `WHERE p.vendor_id = ? AND p.is_deleted = 0`;
       const params = [vendorId];
 
       if (status) {
@@ -980,7 +1110,7 @@ class ProductModel {
 
       const [rows] = await db.execute(query, params);
 
-      // 🔹 Parse images safely in Node.js
+      //  Parse images safely in Node.js
       const products = rows.map((row) => {
         let images = [];
 
@@ -1002,13 +1132,35 @@ class ProductModel {
         };
       });
 
+      //  Global Stats
+      const [statsRows] = await db.execute(
+        `
+      SELECT 
+        COUNT(*) AS total,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
+        SUM(CASE WHEN status = 'sent_for_approval' THEN 1 ELSE 0 END) AS sent_for_approval,
+        SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved,
+        SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
+        SUM(CASE WHEN status = 'resubmission' THEN 1 ELSE 0 END) AS resubmission
+      FROM eproducts
+       WHERE vendor_id = ? AND is_deleted = 0
+      `,
+        [vendorId],
+      );
+
+      const stats = statsRows[0];
+
       // Total count (no LIMIT/OFFSET)
       const [[{ total }]] = await db.execute(
         `SELECT COUNT(*) AS total FROM eproducts p ${where}`,
         params.slice(0, -2),
       );
 
-      return { products, totalItems: total };
+      return {
+        products,
+        totalItems: total,
+        stats,
+      };
     } catch (error) {
       console.error("Error fetching products by vendor:", error);
       throw error;

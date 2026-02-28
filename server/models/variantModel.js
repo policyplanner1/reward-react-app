@@ -59,21 +59,29 @@ class VariantModel {
   async updateVariant(variantId, data) {
     await db.execute(
       `
-      UPDATE product_variants
-      SET
-        mrp = ?,
-        sale_price = ?,
-        stock = ?,
-        manufacturing_date = ?,
-        expiry_date = ?
-      WHERE variant_id = ?
-      `,
+    UPDATE product_variants
+    SET
+      mrp = ?,
+      sale_price = ?,
+      stock = ?,
+      manufacturing_date = ?,
+      expiry_date = ?,
+      weight = ?,
+      length = ?,
+      breadth = ?,
+      height = ?
+    WHERE variant_id = ?
+    `,
       [
         data.mrp || null,
         data.sale_price || null,
         data.stock ?? 0,
         data.manufacturing_date || null,
         data.expiry_date || null,
+        Number(data.weight),
+        Number(data.length),
+        Number(data.breadth),
+        Number(data.height),
         variantId,
       ],
     );

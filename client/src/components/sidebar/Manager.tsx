@@ -10,6 +10,7 @@ import {
   FiUser,
   FiLogOut,
   FiSliders,
+  FiShoppingCart,
 } from "react-icons/fi";
 
 import { FaFileAlt, FaBolt } from "react-icons/fa";
@@ -99,7 +100,7 @@ export default function ManagerNavbar() {
     {
       label: "Orders",
       to: routes.manager.orders,
-      icon: <FiPackage />,
+      icon: <FiShoppingCart />,
       type: "link",
     },
   ];

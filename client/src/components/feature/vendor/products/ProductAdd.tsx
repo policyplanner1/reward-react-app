@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 import { api } from "../../../../api/api";
 import QuillEditor from "../../../QuillEditor";
 import Swal from "sweetalert2";
+import imageCompression from "browser-image-compression";
 
 type IconComp = ComponentType<any>;
 
@@ -215,33 +216,50 @@ export default function ProductListingDynamic() {
     }
   };
 
-  const handleMainImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMainImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
 
-    const newFiles = Array.from(e.target.files);
+    const file = e.target.files[0];
 
-    setProduct((prev) => {
-      const existingImages = prev.productImages;
+    if (!file.type.startsWith("image/")) {
+      setImageError("Only image files are allowed.");
+      return;
+    }
 
-      if (existingImages.length + newFiles.length > 1) {
-        setImageError("Only one cover image is allowed.");
-        return prev;
-      }
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+      initialQuality: 0.85,
+      fileType: "image/webp", // 🔥 convert to WebP
+    };
 
-      const newPreviews = newFiles.map((file) => ({
-        file,
-        url: URL.createObjectURL(file),
-      }));
+    try {
+      const compressedFile = await imageCompression(file, options);
 
-      return {
-        ...prev,
-        productImages: [...existingImages, ...newPreviews],
+      const preview = {
+        file: compressedFile,
+        url: URL.createObjectURL(compressedFile),
       };
-    });
 
-    setImageError("");
+      setProduct((prev) => {
+        // revoke old preview URLs
+        prev.productImages.forEach((img) => {
+          URL.revokeObjectURL(img.url);
+        });
 
-    // reset input so same file can be selected again if needed
+        return {
+          ...prev,
+          productImages: [preview],
+        };
+      });
+
+      setImageError("");
+    } catch (err) {
+      console.error("Image compression failed:", err);
+      setImageError("Failed to process image.");
+    }
+
     e.target.value = "";
   };
 
@@ -481,12 +499,60 @@ export default function ProductListingDynamic() {
       }
 
       // Validate required fields
-      if (!product.categoryId && !custom_category) {
+      if (!product.categoryId && !isCustomCategory) {
         throw new Error("Please select a category");
       }
 
+      if (isCustomCategory && !custom_category.trim()) {
+        throw new Error("Please enter custom category name");
+      }
+
+      if (isCustomSubcategory && !custom_subcategory.trim()) {
+        throw new Error("Please enter custom sub-category name");
+      }
+
+      if (isCustomSubSubcategory && !custom_subsubcategory.trim()) {
+        throw new Error("Please enter custom type / sub-type name");
+      }
+
+      // Product name brand and manufacturer validation
       if (!product.productName || !product.brandName || !product.manufacturer) {
         throw new Error("Please fill in all required product information");
+      }
+
+      // Description validation
+      if (!product.description?.trim()) {
+        throw new Error("Detailed description is required");
+      }
+
+      if (!product.brandDescription?.trim()) {
+        throw new Error("Brand description is required");
+      }
+
+      if (!product.shortDescription?.trim()) {
+        throw new Error("Short description is required");
+      }
+
+      // Delivery Days validation
+      const minDays = Number(product.deliveryMinDays);
+      const maxDays = Number(product.deliveryMaxDays);
+
+      if (minDays <= 0 || maxDays <= 0) {
+        throw new Error("Delivery days must be greater than 0");
+      }
+
+      if (minDays > maxDays) {
+        throw new Error(
+          "Minimum delivery days cannot exceed maximum delivery days",
+        );
+      }
+
+      // Return Window
+      if (product.isReturnable === 1) {
+        const days = Number(product.returnWindowDays);
+        if (!days || days < 1 || days > 30) {
+          throw new Error("Return window must be between 1 and 30 days");
+        }
       }
 
       // Validate required documents
@@ -600,6 +666,14 @@ export default function ProductListingDynamic() {
       setProduct(initialProductData);
       setDocFiles({});
       setRequiredDocs([]);
+      //Resetting image and video
+      product.productImages.forEach((img) => {
+        URL.revokeObjectURL(img.url);
+      });
+
+      if (product.productVideo) {
+        URL.revokeObjectURL(product.productVideo.url);
+      }
     } catch (err: any) {
       console.error("Submit error:", err);
       setError(err.message);

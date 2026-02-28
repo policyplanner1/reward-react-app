@@ -49,19 +49,19 @@ interface VendorOnboardingData {
   addressLine2: string;
   addressLine3: string;
   city: string;
-  state: string;
+  state: number | "";
   pincode: string;
 
   billingAddressLine1: string;
   billingAddressLine2: string;
   billingCity: string;
-  billingState: string;
+  billingState: number | "";
   billingPincode: string;
 
   shippingAddressLine1: string;
   shippingAddressLine2: string;
   shippingCity: string;
-  shippingState: string;
+  shippingState: number | "";
   shippingPincode: string;
 
   bankName: string;
@@ -75,6 +75,11 @@ interface VendorOnboardingData {
 
   paymentTerms: string;
   comments: string;
+}
+
+interface State {
+  state_id: number;
+  state_name: string;
 }
 
 /* ================= INITIAL STATE ================= */
@@ -379,19 +384,19 @@ const mapBackendToForm = (data: any): VendorOnboardingData => {
     addressLine2: getAddress("business", "line2"),
     addressLine3: getAddress("business", "line3"),
     city: getAddress("business", "city"),
-    state: getAddress("business", "state"),
+    state: getAddress("business", "state_id") || "",
     pincode: getAddress("business", "pincode"),
 
     billingAddressLine1: getAddress("billing", "line1"),
     billingAddressLine2: getAddress("billing", "line2"),
     billingCity: getAddress("billing", "city"),
-    billingState: getAddress("billing", "state"),
+    billingState: getAddress("billing", "state_id") || "",
     billingPincode: getAddress("billing", "pincode"),
 
     shippingAddressLine1: getAddress("shipping", "line1"),
     shippingAddressLine2: getAddress("shipping", "line2"),
     shippingCity: getAddress("shipping", "city"),
-    shippingState: getAddress("shipping", "state"),
+    shippingState: getAddress("shipping", "state_id") || "",
     shippingPincode: getAddress("shipping", "pincode"),
 
     bankName: bank?.bank_name || "",
@@ -436,6 +441,8 @@ export default function Onboarding() {
     useState<VendorOnboardingData>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const [states, setStates] = useState<State[]>([]);
+
   const [vendorStatus, setVendorStatus] = useState<
     "pending" | "sent_for_approval" | "approved" | "rejected" | null
   >(null);
@@ -463,7 +470,7 @@ export default function Onboarding() {
     panNumber: (value: string) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value),
     pincode: (value: string) => /^[0-9]{6}$/.test(value),
     phone: (value: string) => /^[0-9]{10}$/.test(value),
-    state: (value: string) => /^[A-Za-z ]+$/.test(value),
+    // state: (value: string) => /^[A-Za-z ]+$/.test(value),
     email: (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value),
   };
 
@@ -524,20 +531,21 @@ export default function Onboarding() {
         if (!validators.pincode(value)) return "Pincode must be 6 digits";
         return "";
 
+      case "state":
+        return value ? "" : "State is required";
+
       case "billingAddressLine1":
       case "billingCity":
       case "billingState":
-        if (!formData.vendorType) return "";
-        if (!flags.isSameAsAddress && !value.trim())
-          return "Billing field is required";
+        if (!flags.isSameAsAddress && !value)
+          return "Billing state is required";
         return "";
 
       case "shippingAddressLine1":
       case "shippingCity":
       case "shippingState":
-        if (!formData.vendorType) return "";
-        if (!flags.isSameAsBilling && !value.trim())
-          return "Shipping field is required";
+        if (!flags.isSameAsBilling && !value)
+          return "Shipping state is required";
         return "";
 
       case "bankName":
@@ -587,6 +595,23 @@ export default function Onboarding() {
     setErrors(newErrors);
     return newErrors;
   };
+
+  /* ================= FETCH STATES ================= */
+  useEffect(() => {
+    const fetchStates = async () => {
+      try {
+        const res = await api.get("/auth/all-states");
+        console.log(res.data.data, "data");
+        if (res.data.success) {
+          setStates(res.data.data);
+        }
+      } catch (err) {
+        console.error("Failed to load states", err);
+      }
+    };
+
+    fetchStates();
+  }, []);
 
   /* ================= FETCH STATUS ================= */
   useEffect(() => {
@@ -663,12 +688,12 @@ export default function Onboarding() {
     const alphabetOnlyFields = [
       // "fullName",
       // "companyName",
+      // "state",
+      // "billingState",
+      // "shippingState",
       "city",
-      "state",
       "billingCity",
-      "billingState",
       "shippingCity",
-      "shippingState",
       "bankName",
       "branch",
     ];
@@ -690,6 +715,17 @@ export default function Onboarding() {
 
     if (addressFields.includes(name)) {
       if (!allowAddressChars(value)) return;
+    }
+
+    /*  HANDLE STATE DROPDOWNS PROPERLY */
+    const stateFields = ["state", "billingState", "shippingState"];
+
+    if (stateFields.includes(name)) {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value === "" ? "" : Number(value),
+      }));
+      return;
     }
 
     // Numbers-only fields
@@ -1138,7 +1174,7 @@ export default function Onboarding() {
                       }))
                     }
                   />
-                  <label className="text-sm">
+                  <label className="text-sm mb-4">
                     I have read and agree to the Vendor Agreement
                   </label>
                 </div>
@@ -1214,13 +1250,33 @@ export default function Onboarding() {
                 onChange={handleChange}
                 required
               />
-              <FormInput
+              {/* <FormInput
                 id="state"
                 label="State"
                 value={formData.state}
                 onChange={handleChange}
                 required
-              />
+              /> */}
+              <div className="flex flex-col space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-600 ml-1">
+                  State <span className="text-[#FC3F78]">*</span>
+                </label>
+                <select
+                  name="state"
+                  id="state"
+                  value={formData.state}
+                  onChange={handleChange}
+                  required
+                  className="px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-[#852BAF]/20 focus:border-[#852BAF] focus:bg-white transition-all outline-none text-sm"
+                >
+                  <option value="">Select State</option>
+                  {states.map((s) => (
+                    <option key={s.state_id} value={s.state_id}>
+                      {s.state_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <FormInput
                 id="pincode"
                 label="Pincode"
@@ -1283,13 +1339,34 @@ export default function Onboarding() {
                 onChange={handleChange}
                 required={!isSameAsAddress}
               />
-              <FormInput
+              {/* <FormInput
                 id="billingState"
                 label="Billing State"
                 value={formData.billingState}
                 onChange={handleChange}
                 required={!isSameAsAddress}
-              />
+              /> */}
+
+              <div className="flex flex-col space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-600 ml-1">
+                  Billing State <span className="text-[#FC3F78]">*</span>
+                </label>
+                <select
+                  name="billingState"
+                  id="billingState"
+                  value={formData.billingState}
+                  onChange={handleChange}
+                  required
+                  className="px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-[#852BAF]/20 focus:border-[#852BAF] focus:bg-white transition-all outline-none text-sm"
+                >
+                  <option value="">Select Billing State</option>
+                  {states.map((s) => (
+                    <option key={s.state_id} value={s.state_id}>
+                      {s.state_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <FormInput
                 id="billingPincode"
                 label="Billing Pincode"
@@ -1352,13 +1429,33 @@ export default function Onboarding() {
                 onChange={handleChange}
                 required={!isSameAsBilling}
               />
-              <FormInput
+              {/* <FormInput
                 id="shippingState"
                 label="Shipping State"
                 value={formData.shippingState}
                 onChange={handleChange}
                 required={!isSameAsBilling}
-              />
+              /> */}
+              <div className="flex flex-col space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-600 ml-1">
+                  Shipping State <span className="text-[#FC3F78]">*</span>
+                </label>
+                <select
+                  name="shippingState"
+                  id="shippingState"
+                  value={formData.shippingState}
+                  onChange={handleChange}
+                  required
+                  className="px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-[#852BAF]/20 focus:border-[#852BAF] focus:bg-white transition-all outline-none text-sm"
+                >
+                  <option value="">Select Shipping State</option>
+                  {states.map((s) => (
+                    <option key={s.state_id} value={s.state_id}>
+                      {s.state_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <FormInput
                 id="shippingPincode"
                 label="Shipping Pincode"
