@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
 import "./css/orderList.css";
-import { FiBox } from "react-icons/fi";
+import { FiShoppingCart } from "react-icons/fi";
 import Swal from "sweetalert2";
 
 interface Order {
@@ -81,7 +81,7 @@ const OrderList: React.FC = () => {
     <div className="order-page">
       <div className=" flex items-center gap-4 mb-8">
   <div className="w-12 h-12 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-full flex items-center justify-center shrink-0">
-    <FiBox className="text-white text-xl" />
+    <FiShoppingCart className="text-white text-xl mr-0.75" />
   </div>
 
   <div>
