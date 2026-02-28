@@ -25,10 +25,4 @@ router.get(
   OrderController.cancellationDetails,
 );
 
-// Order Tracking
-router.get("/track-status/:orderId", auth, OrderController.getTracking);
-
-// Shipment cancellation
-router.post("/shipment-cancel/:shipmentId", auth, OrderController.cancelShipmentHandler);
-
 module.exports = router;
