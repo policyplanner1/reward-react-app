@@ -69,48 +69,6 @@ const OrderList: React.FC = () => {
     fetchOrders();
   }, [page]);
 
-  const handleCreateShipment = async (orderId: number) => {
-    try {
-      setCreatingShipmentId(orderId);
-
-      const res = await api.post(`/logistics/create-shipment/${orderId}`);
-
-      if (!res.data.success) {
-        throw new Error("Shipment creation failed");
-      }
-
-      //  Optimistic UI Update
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.order_id === orderId
-            ? {
-                ...o,
-                awb_number: res.data.shipment.awb_number,
-                shipping_status: res.data.shipment.shipping_status,
-              }
-            : o,
-        ),
-      );
-
-      Swal.fire({
-        icon: "success",
-        title: "Shipment Created",
-        text: `AWB Number: ${res.data.shipment.awb_number}`,
-        confirmButtonColor: "#2563eb",
-        confirmButtonText: "OK",
-      });
-    } catch (err) {
-      console.error(err);
-      Swal.fire({
-        icon: "error",
-        title: "Failed",
-        text: "Failed to create shipment",
-        confirmButtonColor: "#ef4444",
-      });
-    } finally {
-      setCreatingShipmentId(null);
-    }
-  };
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-IN", {
