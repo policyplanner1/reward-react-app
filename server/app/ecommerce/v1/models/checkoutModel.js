@@ -419,12 +419,17 @@ class CheckoutModel {
 
         p.product_id,
         p.product_name,
+        p.vendor_id,
 
         v.variant_id,
         v.mrp,
         v.sale_price,
         v.stock,
         v.reward_redemption_limit,
+        v.weight,
+        v.length,
+        v.breadth,
+        v.height,
 
         (ci.quantity * v.sale_price) AS item_total,
 
@@ -490,11 +495,99 @@ class CheckoutModel {
       };
     });
 
+    const [addressRows] = await db.execute(
+      `SELECT zipcode FROM customer_addresses
+        WHERE user_id = ?
+        AND is_default = 1
+        LIMIT 1`,
+      [userId],
+    );
+
+    if (!addressRows.length) {
+      throw new Error("INVALID_ADDRESS");
+    }
+
+    const destinationPincode = addressRows[0].zipcode;
+
+    // Group by vendor
+    const vendorGroups = {};
+
+    for (const row of rows) {
+      const vendorId = row.vendor_id;
+
+      if (!vendorGroups[vendorId]) {
+        vendorGroups[vendorId] = {
+          totalWeightKg: 0,
+          totalAmount: 0,
+          length: 0,
+          breadth: 0,
+          height: 0,
+        };
+      }
+
+      const group = vendorGroups[vendorId];
+
+      group.totalWeightKg += row.quantity * Number(row.weight);
+      group.totalAmount += row.quantity * Number(row.sale_price);
+
+      group.length = Math.max(group.length, Number(row.length));
+      group.breadth = Math.max(group.breadth, Number(row.breadth));
+      group.height += Number(row.height) * row.quantity;
+    }
+
+    let shippingTotal = 0;
+    const shippingBreakdown = [];
+
+    for (const vendorId in vendorGroups) {
+      const vendor = vendorGroups[vendorId];
+
+      const [[vendorAddress]] = await db.execute(
+        `SELECT pincode FROM vendor_addresses
+     WHERE vendor_id = ?
+       AND type = 'shipping'
+     LIMIT 1`,
+        [vendorId],
+      );
+
+      if (!vendorAddress) continue;
+
+      const weightGrams = Math.round(vendor.totalWeightKg * 1000);
+
+      const serviceResponse = await xpressService.checkServiceability({
+        origin: vendorAddress.pincode,
+        destination: destinationPincode,
+        payment_type: "prepaid",
+        order_amount: vendor.totalAmount.toString(),
+        weight: weightGrams.toString(),
+        length: Math.round(vendor.length).toString(),
+        breadth: Math.round(vendor.breadth).toString(),
+        height: Math.round(vendor.height).toString(),
+      });
+
+      if (!serviceResponse.status || !serviceResponse.data.length) continue;
+
+      const cheapest = serviceResponse.data
+        .filter((o) => o.total_charges > 0)
+        .sort((a, b) => a.total_charges - b.total_charges)[0];
+
+      const shippingCharge = Number(cheapest.total_charges);
+
+      shippingTotal += shippingCharge;
+
+      shippingBreakdown.push({
+        vendor_id: Number(vendorId),
+        courier_name: cheapest.name,
+        shipping_charges: shippingCharge,
+      });
+    }
+
     return {
       items,
-      totalAmount,
+      productTotal: totalAmount,
       totalDiscount,
-      payableAmount,
+      shippingTotal,
+      payableAmount: payableAmount + shippingTotal,
+      shippingBreakdown,
     };
   }
 

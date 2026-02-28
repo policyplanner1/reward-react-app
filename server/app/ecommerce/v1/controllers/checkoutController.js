@@ -183,9 +183,11 @@ class CheckoutController {
         success: true,
         mode: "cart",
         items: checkoutData.items,
-        totalAmount: checkoutData.totalAmount,
+        totalAmount: checkoutData.productTotal,
         totalDiscount: checkoutData.totalDiscount,
+        shippingTotal: checkoutData.shippingTotal,
         payableAmount: checkoutData.payableAmount,
+        shippingBreakdown: checkoutData.shippingBreakdown,
       });
     } catch (error) {
       console.error("Checkout cart fetch error:", error);
