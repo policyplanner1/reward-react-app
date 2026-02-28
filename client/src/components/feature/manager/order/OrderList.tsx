@@ -187,17 +187,7 @@ const OrderList: React.FC = () => {
                           <span className="awb-text">
                             AWB: {order.awb_number}
                           </span>
-                        ) : order.status === "paid" ? (
-                          <button
-                            className="ship-btn"
-                            disabled={creatingShipmentId === order.order_id}
-                            onClick={() => handleCreateShipment(order.order_id)}
-                          >
-                            {creatingShipmentId === order.order_id
-                              ? "Creating..."
-                              : "Create Shipment"}
-                          </button>
-                        ) : null}
+                        ) : ''}
                       </td>
                     </tr>
                   ))
