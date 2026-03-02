@@ -27,7 +27,6 @@ class ReviewController {
         good_quality,
         smooth_experience,
         review_text,
-        media,
       } = req.body;
 
       // Basic validation
@@ -35,6 +34,30 @@ class ReviewController {
         return res.status(400).json({ message: "Invalid rating" });
       }
 
+      //  1 verify purchase
+      const [orderCheck] = await conn.execute(
+        `
+       SELECT 1
+        FROM eorders o
+        JOIN eorder_items oi ON oi.order_id = o.order_id
+        WHERE o.order_id = ?
+        AND o.user_id = ?
+        AND o.status = 'delivered'
+        AND oi.variant_id = ?
+        LIMIT 1;
+        `,
+        [order_id, userId, variant_id],
+      );
+
+      if (orderCheck.length === 0) {
+        await conn.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Product not eligible for review",
+        });
+      }
+
+      //   2 Insert Review
       const reviewId = await ReviewModel.createReview(
         {
           user_id: userId,
@@ -50,10 +73,17 @@ class ReviewController {
         conn,
       );
 
-      // Media (optional)
-      if (media && media.length > 0) {
-        await ReviewModel.addReviewMedia(reviewId, media, conn);
-      }
+      //   3 update product rating summary
+      await conn.execute(
+        `
+      UPDATE eproducts
+      SET 
+        avg_rating = ((avg_rating * rating_count + ?) / (rating_count + 1)),
+        rating_count = rating_count + 1
+      WHERE product_id = ?
+    `,
+        [rating, product_id],
+      );
 
       await conn.commit();
 
@@ -63,8 +93,15 @@ class ReviewController {
       });
     } catch (err) {
       await conn.rollback();
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(400).json({
+          success: false,
+          message: "You already reviewed this product",
+        });
+      }
+
       console.error(err);
-      res.status(500).json({ message: "Failed to submit review" });
+      return res.status(500).json({ message: "Failed to submit review" });
     } finally {
       conn.release();
     }
