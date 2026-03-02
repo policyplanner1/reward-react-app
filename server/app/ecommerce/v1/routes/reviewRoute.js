@@ -9,7 +9,7 @@ const auth = require("../middlewares/auth");
 router.post(
   "/create-review",
   auth,
-  ReviewController.createReview,
+  ReviewController.submitReview,
 );
 
 // fetch reviews
