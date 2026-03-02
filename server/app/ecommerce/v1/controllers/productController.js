@@ -520,7 +520,7 @@ class ProductController {
   // Get Recent Products
   async getRecentProducts(req, res) {
     try {
-      const userId= req.user?.user_id
+      const userId = req.user?.user_id;
       // const userId = 1;
       let recentlyViewed = [];
 
@@ -631,6 +631,38 @@ class ProductController {
     } catch (error) {
       console.error("Error fetching recent products:", error);
       res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // Get recommendations
+  async getUserRecommendations(req, res) {
+    try {
+      const userId = req.user?.id; 
+      const limit = req.query.limit ? Number(req.query.limit) : 10;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const products = await ProductModel.getUserRecommendations(
+        userId,
+        limit,
+      );
+
+      return res.status(200).json({
+        success: true,
+        total: products.length,
+        products,
+      });
+    } catch (error) {
+      console.error("Recommendation error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch recommendations",
+      });
     }
   }
 

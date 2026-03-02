@@ -46,7 +46,10 @@ router.get(
 router.get("/similar/:productId", ProductController.getSimilarProducts);
 
 // Recent Products
-router.get("/recent-products", ProductController.getRecentProducts);
+router.get("/recent-products", optionalAuth,ProductController.getRecentProducts);
+
+// Recommended Products
+router.get("/recommendations", optionalAuth, ProductController.getUserRecommendations);
 
 // autosuggest products
 router.get("/search/suggestions", ProductController.getSearchSuggestions);

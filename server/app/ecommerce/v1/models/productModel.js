@@ -968,6 +968,136 @@ class ProductModel {
       throw error;
     }
   }
+
+  // Get User Recommendations
+  async getUserRecommendations(userId, limit = 10) {
+    try {
+      const query = `
+      SELECT 
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+        v.variant_id,
+        v.sale_price,
+        v.mrp,
+        v.reward_redemption_limit,
+
+        /* ---- Weighted Score ---- */
+        (
+          IFNULL(o.order_score, 0) +
+          IFNULL(w.wishlist_score, 0) +
+          IFNULL(c.cart_score, 0) +
+          IFNULL(r.view_score, 0)
+        ) AS total_score,
+
+        GROUP_CONCAT(
+          DISTINCT CONCAT(pi.image_id,'::',pi.image_url)
+        ) AS images
+
+      FROM eproducts p
+
+      /* ----- Orders Weight 5 ----- */
+      LEFT JOIN (
+        SELECT oi.product_id, COUNT(*) * 5 AS order_score
+        FROM eorder_items oi
+        INNER JOIN eorders o ON o.order_id = oi.order_id
+        WHERE o.user_id = ?
+          AND o.status IN ('paid','delivered')
+        GROUP BY oi.product_id
+      ) o ON o.product_id = p.product_id
+
+      /* ----- Wishlist Weight 4 ----- */
+      LEFT JOIN (
+        SELECT product_id, COUNT(*) * 4 AS wishlist_score
+        FROM customer_wishlist
+        WHERE user_id = ?
+        GROUP BY product_id
+      ) w ON w.product_id = p.product_id
+
+      /* ----- Cart Weight 3 ----- */
+      LEFT JOIN (
+        SELECT product_id, COUNT(*) * 3 AS cart_score
+        FROM cart_items
+        WHERE user_id = ?
+        GROUP BY product_id
+      ) c ON c.product_id = p.product_id
+
+      /* ----- Recently Viewed Weight 2 ----- */
+      LEFT JOIN (
+        SELECT product_id, COUNT(*) * 2 AS view_score
+        FROM recently_viewed
+        WHERE user_id = ?
+        GROUP BY product_id
+      ) r ON r.product_id = p.product_id
+
+      /* ----- Active variant ----- */
+      INNER JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+          ORDER BY pv2.sale_price ASC
+          LIMIT 1
+        )
+
+      LEFT JOIN product_images pi
+        ON pi.product_id = p.product_id
+
+      WHERE p.status = 'approved'
+        AND p.is_deleted = 0
+        AND p.is_visible = 1
+
+      GROUP BY p.product_id
+      HAVING total_score > 0
+      ORDER BY total_score DESC
+      LIMIT ?
+      `;
+
+      const [rows] = await db.execute(query, [
+        userId,
+        userId,
+        userId,
+        userId,
+        limit,
+      ]);
+
+      return rows.map((row) => {
+        const salePrice = Number(row.sale_price || 0);
+        const mrp = Number(row.mrp || 0);
+        const discountPercent = Number(row.reward_redemption_limit || 0);
+
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+        const finalPrice = salePrice - discountAmount;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        let image = null;
+
+        if (row.images) {
+          const first = row.images.split(",")[0];
+          image = first.split("::")[1];
+        }
+
+        return {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          brand_name: row.brand_name,
+          variant_id: row.variant_id,
+          image,
+          price: `₹${salePrice}`,
+          originalPrice: `₹${mrp}`,
+          discount: `${mrpDiscountPercent}%`,
+          pointsPrice: `₹${finalPrice}`,
+          score: row.total_score,
+        };
+      });
+    } catch (error) {
+      console.error("Recommendation model error:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new ProductModel();
