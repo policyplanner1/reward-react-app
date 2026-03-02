@@ -1090,7 +1090,10 @@ class ProductModel {
           originalPrice: `₹${mrp}`,
           discount: `${mrpDiscountPercent}%`,
           pointsPrice: `₹${finalPrice}`,
+          points: discountAmount,
           score: row.total_score,
+          rating: 4.6,
+          reviews: "18.9K",
         };
       });
     } catch (error) {
