@@ -45,6 +45,9 @@ router.get(
 // similar Products
 router.get("/similar/:productId", ProductController.getSimilarProducts);
 
+// Recent Products
+router.get("/recent-products", ProductController.getRecentProducts);
+
 // autosuggest products
 router.get("/search/suggestions", ProductController.getSearchSuggestions);
 

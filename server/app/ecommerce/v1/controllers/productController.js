@@ -445,63 +445,63 @@ class ProductController {
   //     `);
 
   //     // 3. Recently Viewed
-  //     let recentlyViewed = [];
-  //     // const userId = req.user?.user_id;
-  //     const userId = 1;
+  // let recentlyViewed = [];
+  // // const userId = req.user?.user_id;
+  // const userId = 1;
 
-  //     if (userId) {
-  //       const [rows] = await db.execute(
-  //         `
-  //       SELECT
-  //         p.product_id,
-  //         p.product_name,
-  //         v.sale_price,
-  //         v.mrp,
+  // if (userId) {
+  //   const [rows] = await db.execute(
+  //     `
+  //   SELECT
+  //     p.product_id,
+  //     p.product_name,
+  //     v.sale_price,
+  //     v.mrp,
 
-  //         GROUP_CONCAT(
-  //           DISTINCT CONCAT(
-  //             pi.image_id, '::',
-  //             pi.image_url, '::',
-  //             pi.sort_order
-  //           )
-  //           ORDER BY pi.sort_order ASC
-  //         ) AS images
+  //     GROUP_CONCAT(
+  //       DISTINCT CONCAT(
+  //         pi.image_id, '::',
+  //         pi.image_url, '::',
+  //         pi.sort_order
+  //       )
+  //       ORDER BY pi.sort_order ASC
+  //     ) AS images
 
-  //       FROM recently_viewed rv
+  //   FROM recently_viewed rv
 
-  //       JOIN eproducts p
-  //         ON p.product_id = rv.product_id
+  //   JOIN eproducts p
+  //     ON p.product_id = rv.product_id
 
-  //       LEFT JOIN product_variants v
-  //         ON v.variant_id = (
-  //           SELECT pv2.variant_id
-  //           FROM product_variants pv2
-  //           WHERE pv2.product_id = p.product_id
-  //             AND pv2.is_visible = 1
-  //             AND pv2.sale_price IS NOT NULL
-  //           ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
-  //           LIMIT 1
-  //         )
+  //   LEFT JOIN product_variants v
+  //     ON v.variant_id = (
+  //       SELECT pv2.variant_id
+  //       FROM product_variants pv2
+  //       WHERE pv2.product_id = p.product_id
+  //         AND pv2.is_visible = 1
+  //         AND pv2.sale_price IS NOT NULL
+  //       ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+  //       LIMIT 1
+  //     )
 
-  //       LEFT JOIN product_images pi
-  //         ON pi.product_id = p.product_id
+  //   LEFT JOIN product_images pi
+  //     ON pi.product_id = p.product_id
 
-  //       WHERE
-  //         rv.user_id = ?
-  //         AND p.status = 'approved'
-  //         AND p.is_visible = 1
-  //         AND p.is_searchable = 1
-  //         AND v.variant_id IS NOT NULL
+  //   WHERE
+  //     rv.user_id = ?
+  //     AND p.status = 'approved'
+  //     AND p.is_visible = 1
+  //     AND p.is_searchable = 1
+  //     AND v.variant_id IS NOT NULL
 
-  //       GROUP BY p.product_id
-  //       ORDER BY rv.viewed_at DESC
-  //       LIMIT 5
-  //     `,
-  //         [userId],
-  //       );
+  //   GROUP BY p.product_id
+  //   ORDER BY rv.viewed_at DESC
+  //   LIMIT 5
+  // `,
+  //     [userId],
+  //   );
 
-  //       recentlyViewed = rows;
-  //     }
+  //   recentlyViewed = rows;
+  // }
 
   //     return res.json({
   //       success: true,
@@ -516,6 +516,123 @@ class ProductController {
   //     res.status(500).json({ success: false });
   //   }
   // }
+
+  // Get Recent Products
+  async getRecentProducts(req, res) {
+    try {
+      // const userId= req.user?.user_id
+      const userId = 1;
+      let recentlyViewed = [];
+
+      if (!userId) {
+        return res.json({ success: true, data: [] });
+      }
+
+      const query = `
+      SELECT
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+        v.variant_id,
+        v.sale_price,
+        v.mrp,
+        v.reward_redemption_limit,
+
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id, '::',
+            pi.image_url, '::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
+        ) AS images
+
+      FROM recently_viewed rv
+
+      INNER JOIN eproducts p
+        ON p.product_id = rv.product_id
+
+      INNER JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+          LIMIT 1
+        )
+
+      LEFT JOIN product_images pi
+        ON pi.product_id = p.product_id
+
+      WHERE
+        rv.user_id = ?
+        AND p.status = 'approved'
+        AND p.is_deleted = 0
+        AND p.is_visible = 1
+        AND p.is_searchable = 1
+
+      GROUP BY p.product_id
+      ORDER BY rv.viewed_at DESC
+      LIMIT 6
+    `;
+
+      const [rows] = await db.execute(query, [userId]);
+
+      recentlyViewed = rows.map((row) => {
+        const salePrice = row.sale_price ? Number(row.sale_price) : 0;
+        const mrp = row.mrp ? Number(row.mrp) : 0;
+        const discountPercent = row.reward_redemption_limit
+          ? Number(row.reward_redemption_limit)
+          : 0;
+
+        // Reward discount amount
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+
+        // Final reward price
+        const finalPrice = salePrice - discountAmount;
+
+        // Total discount vs MRP
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        // Parse images
+        let images = [];
+        if (row.images) {
+          images = row.images.split(",").map((item) => {
+            const [, image_url] = item.split("::");
+            return { image_url };
+          });
+        }
+
+        return {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          brand_name: row.brand_name,
+          variant_id: row.variant_id,
+
+          image: images.length ? images[0].image_url : null,
+
+          price: `₹${salePrice}`,
+          originalPrice: `₹${mrp}`,
+          discount: `${mrpDiscountPercent}%`,
+          pointsPrice: `₹${finalPrice}`,
+          points: discountAmount,
+          rating: 4.6,
+          reviews: "18.9K",
+        };
+      });
+
+      return res.json({
+        success: true,
+        data: recentlyViewed,
+      });
+    } catch (error) {
+      console.error("Error fetching recent products:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
 
   // subcategories by category ID
   async getSubcategoriesByCategory(req, res) {
@@ -614,12 +731,7 @@ class ProductController {
       const limit = req.query.limit ? Number(req.query.limit) : 10;
 
       // validation
-      if (
-        !productId ||
-        !categoryId ||
-        !subcategoryId ||
-        !subSubcategoryId
-      ) {
+      if (!productId || !categoryId || !subcategoryId || !subSubcategoryId) {
         return res.status(400).json({
           success: false,
           message: "Invalid request",
