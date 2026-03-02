@@ -829,115 +829,123 @@ class ProductModel {
     });
   }
 
-  async getSimilarProducts({
-    productId,
-    categoryId,
-    subcategoryId,
-    sub_subcategoryId,
-    limit = 10,
-  }) {
+  async getSimilarProducts({ productId, limit = 10 }) {
     try {
+      /* -------------------------------
+       1 Get category hierarchy
+    --------------------------------*/
+      const [productRows] = await db.execute(
+        `
+      SELECT category_id, subcategory_id, sub_subcategory_id
+      FROM eproducts
+      WHERE product_id = ?
+        AND status = 'approved'
+        AND is_deleted = 0
+        AND is_visible = 1
+      `,
+        [productId],
+      );
+
+      if (!productRows.length) {
+        return [];
+      }
+
+      const { category_id, subcategory_id, sub_subcategory_id } =
+        productRows[0];
+
+      /* -------------------------------
+       2 Fetch similar products
+    --------------------------------*/
       const query = `
-    SELECT
-      p.product_id,
-      p.product_name,
-      p.brand_name,
-      p.created_at,
-      v.variant_id,
-      v.sale_price,
-      v.mrp,
-      v.reward_redemption_limit,
+      SELECT
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+        p.created_at,
+        v.variant_id,
+        v.sale_price,
+        v.mrp,
+        v.reward_redemption_limit,
 
-      GROUP_CONCAT(
-        DISTINCT CONCAT(
-          pi.image_id, '::',
-          pi.image_url, '::',
-          pi.sort_order
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id, '::',
+            pi.image_url, '::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
+        ) AS images
+
+      FROM eproducts p
+
+      INNER JOIN categories c
+        ON c.category_id = p.category_id
+       AND c.status = 1
+
+      INNER JOIN sub_categories sc
+        ON sc.subcategory_id = p.subcategory_id
+       AND sc.status = 1
+
+      INNER JOIN sub_sub_categories ssc
+        ON ssc.sub_subcategory_id = p.sub_subcategory_id
+       AND ssc.status = 1
+
+      INNER JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+          LIMIT 1
         )
-        ORDER BY pi.sort_order ASC
-      ) AS images
 
-    FROM eproducts p
+      LEFT JOIN product_images pi
+        ON pi.product_id = p.product_id
 
-    /* ---- Active category ---- */
-    INNER JOIN categories c
-      ON c.category_id = p.category_id
-     AND c.status = 1
+      WHERE p.status = 'approved'
+        AND p.is_deleted = 0
+        AND p.is_visible = 1
+        AND p.product_id != ?
+        AND (
+          p.category_id = ?
+          OR p.subcategory_id = ?
+          OR p.sub_subcategory_id = ?
+        )
 
-    /* ---- Active subcategory ---- */
-    INNER JOIN sub_categories sc
-      ON sc.subcategory_id = p.subcategory_id
-     AND sc.status = 1
-
-    /* ---- Active sub-subcategory ---- */
-    INNER JOIN sub_sub_categories ssc
-      ON ssc.sub_subcategory_id = p.sub_subcategory_id
-     AND ssc.status = 1
-
-  /* ---- Lowest visible variant per product ---- */
-    INNER JOIN product_variants v
-      ON v.variant_id = (
-        SELECT pv2.variant_id
-        FROM product_variants pv2
-        WHERE pv2.product_id = p.product_id
-          AND pv2.is_visible = 1
-          AND pv2.sale_price IS NOT NULL
-        ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
-        LIMIT 1
-      )
-
-    /* ---- Active images only ---- */
-    LEFT JOIN product_images pi
-      ON pi.product_id = p.product_id
-
-    WHERE p.status = "approved"
-      AND p.is_deleted = 0
-      AND p.is_visible = 1
-      AND p.product_id != ?
-      AND (
-        p.category_id = ?
-        OR p.subcategory_id = ?
-        OR p.sub_subcategory_id = ?
-      )
-
-    GROUP BY p.product_id
-    ORDER BY RAND()
-    LIMIT ?
-  `;
+      GROUP BY p.product_id
+      ORDER BY RAND()
+      LIMIT ?
+    `;
 
       const [rows] = await db.execute(query, [
         productId,
-        categoryId,
-        subcategoryId,
-        sub_subcategoryId,
+        category_id,
+        subcategory_id,
+        sub_subcategory_id,
         limit,
       ]);
 
-      const products = rows.map((row) => {
-        const salePrice = row.sale_price ? Number(row.sale_price) : 0;
-        const mrp = row.mrp ? Number(row.mrp) : 0;
-        const discountPercent = row.reward_redemption_limit
-          ? Number(row.reward_redemption_limit)
-          : 0;
+      /* -------------------------------
+       3 Format response
+    --------------------------------*/
+      return rows.map((row) => {
+        const salePrice = Number(row.sale_price || 0);
+        const mrp = Number(row.mrp || 0);
+        const discountPercent = Number(row.reward_redemption_limit || 0);
 
-        /* ---- Reward discount amount ---- */
         const discountAmount = Math.round((salePrice * discountPercent) / 100);
-
-        /* ---- Final reward price ---- */
         const finalPrice = salePrice - discountAmount;
 
-        /* ---- Total discount vs MRP ---- */
         const mrpDiscountPercent =
           mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
 
-        /* ---- Parse images ---- */
-        let images = [];
+        let image = null;
 
         if (row.images) {
-          images = row.images.split(",").map((item) => {
-            const [, image_url] = item.split("::");
-            return { image_url };
-          });
+          const first = row.images.split(",")[0];
+          image = first.split("::")[1];
         }
 
         return {
@@ -945,10 +953,7 @@ class ProductModel {
           product_name: row.product_name,
           brand_name: row.brand_name,
           variant_id: row.variant_id,
-
-          image: images.length ? images[0].image_url : null,
-
-          /* ---- Pricing ---- */
+          image,
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
           discount: `${mrpDiscountPercent}%`,
@@ -958,8 +963,6 @@ class ProductModel {
           reviews: "18.9K",
         };
       });
-
-      return products;
     } catch (error) {
       console.error("Error fetching similar products:", error);
       throw error;

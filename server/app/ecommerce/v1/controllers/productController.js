@@ -724,25 +724,17 @@ class ProductController {
   async getSimilarProducts(req, res) {
     try {
       const productId = Number(req.params.productId);
-      const categoryId = Number(req.query.category_id);
-      const subcategoryId = Number(req.query.subcategory_id);
-      const subSubcategoryId = Number(req.query.sub_subcategory_id);
-
       const limit = req.query.limit ? Number(req.query.limit) : 10;
 
-      // validation
-      if (!productId || !categoryId || !subcategoryId || !subSubcategoryId) {
+      if (!productId) {
         return res.status(400).json({
           success: false,
-          message: "Invalid request",
+          message: "Invalid product id",
         });
       }
 
       const products = await ProductModel.getSimilarProducts({
         productId,
-        categoryId,
-        subcategoryId,
-        sub_subcategoryId: subSubcategoryId,
         limit,
       });
 
