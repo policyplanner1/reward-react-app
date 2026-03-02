@@ -637,7 +637,7 @@ class ProductController {
   // Get recommendations
   async getUserRecommendations(req, res) {
     try {
-      const userId = req.user?.id; 
+      const userId = req.user?.user_id; 
       const limit = req.query.limit ? Number(req.query.limit) : 10;
 
       if (!userId) {
