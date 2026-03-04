@@ -210,7 +210,38 @@ class ReviewController {
         [product_id],
       );
 
-      // 2 Reviews
+      if (summary.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      // 2 Rating breakdown
+      const [distribution] = await db.execute(
+        `
+      SELECT rating, COUNT(*) AS count
+      FROM product_reviews
+      WHERE product_id = ?
+      AND status = 'approved'
+      GROUP BY rating
+      `,
+        [product_id],
+      );
+
+      const ratingBreakdown = {
+        5: 0,
+        4: 0,
+        3: 0,
+        2: 0,
+        1: 0,
+      };
+
+      distribution.forEach((r) => {
+        ratingBreakdown[r.rating] = r.count;
+      });
+
+      // 3 Reviews
       const reviews = await ReviewModel.getProductReviews(
         product_id,
         userId,
@@ -220,6 +251,7 @@ class ReviewController {
         offset,
       );
 
+      //  4 Get review media
       const reviewIds = reviews.map((r) => r.review_id);
       const media = await ReviewModel.getReviewMedia(reviewIds);
 
@@ -239,11 +271,15 @@ class ReviewController {
 
       res.json({
         success: true,
-        rating_summary: summary[0] || { avg_rating: 0, rating_count: 0 },
+        rating_summary: {
+          avg_rating: summary[0].avg_rating,
+          rating_count: summary[0].rating_count,
+          breakdown: ratingBreakdown,
+        },
         pagination: {
           page,
           limit,
-          total_reviews: summary[0]?.rating_count || 0,
+          total_reviews: summary[0].rating_count,
         },
         reviews: finalReviews,
       });
