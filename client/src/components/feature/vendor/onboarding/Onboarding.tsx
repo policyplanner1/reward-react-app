@@ -479,6 +479,7 @@ export default function Onboarding() {
   const validateField = (
     name: string,
     value: any,
+    // @ts-expect-error
     formData: VendorOnboardingData,
     flags: {
       isSameAsAddress: boolean;

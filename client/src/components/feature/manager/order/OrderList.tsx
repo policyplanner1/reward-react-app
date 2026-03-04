@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
 import "./css/orderList.css";
 import { FiShoppingCart } from "react-icons/fi";
-import Swal from "sweetalert2";
 
 interface Order {
   order_id: number;
@@ -37,9 +36,6 @@ const OrderList: React.FC = () => {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [creatingShipmentId, setCreatingShipmentId] = useState<number | null>(
-    null,
-  );
 
   const limit = 10;
 
