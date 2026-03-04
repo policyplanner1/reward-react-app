@@ -70,6 +70,10 @@ router.get(
 
 // Trending Products
 router.get("/trending", ProductController.getTrendingProducts);
+
+// Best seller
+router.get("/best-sellers", ProductController.getBestSellers);
+
 /* ======================================================Suggestions and History============================================ */
 
 // autosuggest products

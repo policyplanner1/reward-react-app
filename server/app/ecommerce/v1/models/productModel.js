@@ -1435,6 +1435,114 @@ class ProductModel {
       throw error;
     }
   }
+
+  // Best sellers
+  async getBestSellers(limit = 10, days = 30) {
+    try {
+      const query = `
+      SELECT
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+
+        v.variant_id,
+        v.sale_price,
+        v.mrp,
+        v.reward_redemption_limit,
+
+        SUM(oi.quantity) AS total_sold,
+
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id,'::',
+            pi.image_url,'::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
+        ) AS images
+
+      FROM eorder_items oi
+
+      INNER JOIN eorders o
+        ON o.order_id = oi.order_id
+
+      INNER JOIN eproducts p
+        ON p.product_id = oi.product_id
+
+      /* Lowest visible variant */
+      INNER JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC
+          LIMIT 1
+        )
+
+      LEFT JOIN product_images pi
+        ON pi.product_id = p.product_id
+
+      WHERE o.status IN ('paid','delivered')
+        AND o.created_at >= NOW() - INTERVAL ? DAY
+        AND p.status = 'approved'
+        AND p.is_deleted = 0
+        AND p.is_visible = 1
+
+      GROUP BY p.product_id
+      ORDER BY total_sold DESC
+      LIMIT ?
+    `;
+
+      const [rows] = await db.execute(query, [days, limit]);
+
+      const products = rows.map((row) => {
+        const salePrice = Number(row.sale_price || 0);
+        const mrp = Number(row.mrp || 0);
+        const discountPercent = Number(row.reward_redemption_limit || 0);
+
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+        const finalPrice = salePrice - discountAmount;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        let images = [];
+
+        if (row.images) {
+          images = row.images.split(",").map((item) => {
+            const [, image_url] = item.split("::");
+            return { image_url };
+          });
+        }
+
+        return {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          brand_name: row.brand_name,
+          variant_id: row.variant_id,
+
+          image: images.length ? images[0].image_url : null,
+
+          price: `₹${salePrice}`,
+          originalPrice: `₹${mrp}`,
+          discount: `${mrpDiscountPercent}%`,
+          pointsPrice: `₹${finalPrice}`,
+          points: discountAmount,
+
+          total_sold: row.total_sold,
+          rating: 4.6,
+          reviews: "18.9K",
+        };
+      });
+
+      return products;
+    } catch (error) {
+      console.error("Error fetching best sellers:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new ProductModel();

@@ -740,6 +740,29 @@ class ProductController {
     }
   }
 
+  // Best sellers
+  async getBestSellers(req, res) {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : 10;
+      const days = req.query.days ? Number(req.query.days) : 30;
+
+      const products = await ProductModel.getBestSellers(limit, days);
+
+      return res.status(200).json({
+        success: true,
+        total: products.length,
+        products,
+      });
+    } catch (error) {
+      console.error("Best sellers error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch best sellers",
+      });
+    }
+  }
+
   // subcategories by category ID
   async getSubcategoriesByCategory(req, res) {
     try {
