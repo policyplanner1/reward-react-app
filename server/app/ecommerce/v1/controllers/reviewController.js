@@ -192,7 +192,7 @@ class ReviewController {
   async getProductReviews(req, res) {
     try {
       const { product_id } = req.params;
-      const { sort } = req.query;
+      const { sort, rating } = req.query;
 
       // user may or may not be logged in
       const userId = req.user?.user_id || null;
@@ -212,6 +212,7 @@ class ReviewController {
         product_id,
         userId,
         sort,
+        rating,
       );
 
       const reviewIds = reviews.map((r) => r.review_id);

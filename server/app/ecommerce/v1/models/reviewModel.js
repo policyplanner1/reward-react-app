@@ -47,7 +47,14 @@ class ReviewModel {
     await connection.query(query, [values]);
   }
 
-  async getProductReviews(productId, userId = null, sort = "latest") {
+  async getProductReviews(
+    productId,
+    userId = null,
+    sort = "latest",
+    rating = null,
+  ) {
+    let orderBy = "pr.created_at DESC";
+
     if (sort === "helpful") {
       orderBy = "pr.helpful_count DESC";
     }
@@ -60,25 +67,34 @@ class ReviewModel {
       orderBy = "pr.rating ASC";
     }
 
+    let ratingFilter = "";
+    const params = [userId, productId];
+
+    if (rating) {
+      ratingFilter = "AND pr.rating = ?";
+      params.push(rating);
+    }
+
     const query = `
-      SELECT 
-        pr.*,
-        c.name AS user_name,
-        CASE 
-          WHEN rv.user_id IS NULL THEN 0
-          ELSE 1
-        END AS user_marked_helpful
-      FROM product_reviews pr
-      JOIN customer c ON pr.user_id = c.user_id
-      LEFT JOIN review_helpful_votes rv
-        ON rv.review_id = pr.review_id
-        AND rv.user_id = ?
-      WHERE pr.product_id = ?
-      AND pr.status = 'approved'
-      ORDER BY ${orderBy}
+         SELECT 
+      pr.*,
+      c.name AS user_name,
+      CASE 
+        WHEN rv.user_id IS NULL THEN 0
+        ELSE 1
+      END AS user_marked_helpful
+    FROM product_reviews pr
+    JOIN customer c ON pr.user_id = c.user_id
+    LEFT JOIN review_helpful_votes rv
+      ON rv.review_id = pr.review_id
+      AND rv.user_id = ?
+    WHERE pr.product_id = ?
+    AND pr.status = 'approved'
+    ${ratingFilter}
+    ORDER BY ${orderBy}
     `;
 
-    const [rows] = await db.execute(query, [userId, productId]);
+    const [rows] = await db.execute(query, params);
     return rows;
   }
 
