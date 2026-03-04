@@ -250,6 +250,21 @@ class ReviewController {
         };
       });
 
+      // 2.5 Media
+      const [mediaGallery] = await db.execute(
+        `
+          SELECT prm.media_url, prm.media_type
+          FROM product_review_media prm
+          JOIN product_reviews pr 
+          ON pr.review_id = prm.review_id
+          WHERE pr.product_id = ?
+          AND pr.status = 'approved'
+          ORDER BY prm.created_at DESC
+          LIMIT 20
+          `,
+        [product_id],
+      );
+
       // 3 Reviews
       const reviews = await ReviewModel.getProductReviews(
         product_id,
@@ -262,7 +277,11 @@ class ReviewController {
 
       //  4 Get review media
       const reviewIds = reviews.map((r) => r.review_id);
-      const media = await ReviewModel.getReviewMedia(reviewIds);
+      let media = [];
+
+      if (reviewIds.length > 0) {
+        media = await ReviewModel.getReviewMedia(reviewIds);
+      }
 
       const groupedMedia = {};
 
@@ -285,6 +304,7 @@ class ReviewController {
           rating_count: totalRatings,
           breakdown: ratingBreakdown,
         },
+        media_gallery: mediaGallery,
         pagination: {
           page,
           limit,
