@@ -684,6 +684,39 @@ class ProductController {
     }
   }
 
+  // Customer also Bought
+  async getCustomersAlsoBought(req, res) {
+    try {
+      const productId = Number(req.params.productId);
+      const limit = req.query.limit ? Number(req.query.limit) : 10;
+
+      if (!productId) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid product id",
+        });
+      }
+
+      const products = await ProductModel.getCustomersAlsoBought(
+        productId,
+        limit,
+      );
+
+      return res.status(200).json({
+        success: true,
+        total: products.length,
+        products,
+      });
+    } catch (error) {
+      console.error("Customers also bought error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch recommendations",
+      });
+    }
+  }
+
   // subcategories by category ID
   async getSubcategoriesByCategory(req, res) {
     try {

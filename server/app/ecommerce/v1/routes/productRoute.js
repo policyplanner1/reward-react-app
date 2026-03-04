@@ -46,13 +46,27 @@ router.get(
 router.get("/similar/:productId", ProductController.getSimilarProducts);
 
 // Recent Products
-router.get("/recent-products", optionalAuth,ProductController.getRecentProducts);
+router.get(
+  "/recent-products",
+  optionalAuth,
+  ProductController.getRecentProducts,
+);
 
 // Recommended Products
-router.get("/recommendations", optionalAuth, ProductController.getUserRecommendations);
+router.get(
+  "/recommendations",
+  optionalAuth,
+  ProductController.getUserRecommendations,
+);
 
 // New Arrivals
 router.get("/new-arrivals", ProductController.getNewArrivals);
+
+// Customer also bought
+router.get(
+  "/:productId/customers-also-bought",
+  ProductController.getCustomersAlsoBought,
+);
 
 /* ======================================================Suggestions and History============================================ */
 
