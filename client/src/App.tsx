@@ -44,9 +44,6 @@ import OrderView from "./components/feature/manager/order/OrderView";
 /* Attribute */
 import AttributeManagement from "./components/feature/manager/attribute/attributes";
 
-/* Payment */
-import Payment from "./payment";
-
 /* Sales */
 import FlashSaleCreate from "./components/feature/manager/flashSale/FlashSaleCreate";
 import FlashSaleList from "./components/feature/manager/flashSale/FlashSaleList";
@@ -67,7 +64,6 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />
-        <Route path="/test-payment" element={<Payment />} />
       </Route>
 
       {/* ========== VENDOR ========== */}
