@@ -194,7 +194,10 @@ class ReviewController {
       const { product_id } = req.params;
       const { sort, rating } = req.query;
 
-      // user may or may not be logged in
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 5;
+      const offset = (page - 1) * limit;
+
       const userId = req.user?.user_id || null;
 
       // 1 Product rating summary
@@ -213,6 +216,8 @@ class ReviewController {
         userId,
         sort,
         rating,
+        limit,
+        offset,
       );
 
       const reviewIds = reviews.map((r) => r.review_id);
@@ -235,6 +240,11 @@ class ReviewController {
       res.json({
         success: true,
         rating_summary: summary[0] || { avg_rating: 0, rating_count: 0 },
+        pagination: {
+          page,
+          limit,
+          total_reviews: summary[0]?.rating_count || 0,
+        },
         reviews: finalReviews,
       });
     } catch (err) {

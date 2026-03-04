@@ -52,6 +52,8 @@ class ReviewModel {
     userId = null,
     sort = "latest",
     rating = null,
+    limit = 5,
+    offset = 0,
   ) {
     let orderBy = "pr.created_at DESC";
 
@@ -75,8 +77,11 @@ class ReviewModel {
       params.push(rating);
     }
 
+    params.push(limit);
+    params.push(offset);
+
     const query = `
-         SELECT 
+    SELECT 
       pr.*,
       c.name AS user_name,
       CASE 
@@ -92,7 +97,9 @@ class ReviewModel {
     AND pr.status = 'approved'
     ${ratingFilter}
     ORDER BY ${orderBy}
-    `;
+    LIMIT ?
+    OFFSET ?
+  `;
 
     const [rows] = await db.execute(query, params);
     return rows;
