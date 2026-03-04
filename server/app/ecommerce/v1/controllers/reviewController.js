@@ -292,6 +292,7 @@ class ReviewController {
         },
         reviews: finalReviews,
       });
+      // `${avg_rating} out of 5 • ${rating_count} ratings`
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Failed to fetch reviews" });
