@@ -47,17 +47,26 @@ class ReviewModel {
     await connection.query(query, [values]);
   }
 
-  async getProductReviews(productId) {
+  async getProductReviews(productId, userId = null) {
     const query = `
-      SELECT pr.*, c.name as user_name
-      FROM product_reviews pr
-      JOIN customer c ON pr.user_id = c.user_id
-      WHERE pr.product_id = ?
-      AND pr.status = 'approved'
-      ORDER BY pr.created_at DESC
+         SELECT 
+      pr.*,
+      c.name AS user_name,
+      CASE 
+        WHEN rv.user_id IS NULL THEN 0
+        ELSE 1
+      END AS user_marked_helpful
+    FROM product_reviews pr
+    JOIN customer c ON pr.user_id = c.user_id
+    LEFT JOIN review_helpful_votes rv
+      ON rv.review_id = pr.review_id
+      AND rv.user_id = ?
+    WHERE pr.product_id = ?
+    AND pr.status = 'approved'
+    ORDER BY pr.created_at DESC
     `;
 
-    const [rows] = await db.execute(query, [productId]);
+    const [rows] = await db.execute(query, [userId, productId]);
     return rows;
   }
 

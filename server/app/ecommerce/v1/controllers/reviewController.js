@@ -193,6 +193,9 @@ class ReviewController {
     try {
       const { product_id } = req.params;
 
+      // user may or may not be logged in
+      const userId = req.user?.user_id || null;
+
       // 1 Product rating summary
       const [summary] = await db.execute(
         `
@@ -204,7 +207,7 @@ class ReviewController {
       );
 
       // 2 Reviews
-      const reviews = await ReviewModel.getProductReviews(product_id);
+      const reviews = await ReviewModel.getProductReviews(product_id, userId);
 
       const reviewIds = reviews.map((r) => r.review_id);
       const media = await ReviewModel.getReviewMedia(reviewIds);
@@ -406,7 +409,5 @@ class ReviewController {
       conn.release();
     }
   }
-
-  
 }
 module.exports = new ReviewController();

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const ReviewController = require("../controllers/reviewController");
 const auth = require("../middlewares/auth");
+const optionalAuth = require("../middlewares/optionalAuth");
 const reviewUpload = require("../../../../middleware/reviewUpload");
 
 /*===================================================Review===========================================*/
@@ -18,7 +19,7 @@ router.post(
 );
 
 // fetch reviews
-router.get("/all-reviews/:product_id", ReviewController.getProductReviews);
+router.get("/all-reviews/:product_id",optionalAuth, ReviewController.getProductReviews);
 
 // mark review helpful
 router.post("/:reviewId/helpful", auth, ReviewController.markReviewHelpful);
