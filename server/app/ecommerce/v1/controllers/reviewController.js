@@ -108,6 +108,7 @@ class ReviewController {
     }
   }
 
+  // Upload review media after review creation
   async uploadReviewMedia(req, res) {
     const conn = await db.getConnection();
 
@@ -217,6 +218,8 @@ class ReviewController {
         });
       }
 
+      const totalRatings = summary[0].rating_count || 0;
+
       // 2 Rating breakdown
       const [distribution] = await db.execute(
         `
@@ -230,15 +233,21 @@ class ReviewController {
       );
 
       const ratingBreakdown = {
-        5: 0,
-        4: 0,
-        3: 0,
-        2: 0,
-        1: 0,
+        5: { count: 0, percent: 0 },
+        4: { count: 0, percent: 0 },
+        3: { count: 0, percent: 0 },
+        2: { count: 0, percent: 0 },
+        1: { count: 0, percent: 0 },
       };
 
       distribution.forEach((r) => {
-        ratingBreakdown[r.rating] = r.count;
+        const percent =
+          totalRatings > 0 ? Math.round((r.count / totalRatings) * 100) : 0;
+
+        ratingBreakdown[r.rating] = {
+          count: r.count,
+          percent: percent,
+        };
       });
 
       // 3 Reviews
@@ -273,13 +282,13 @@ class ReviewController {
         success: true,
         rating_summary: {
           avg_rating: summary[0].avg_rating,
-          rating_count: summary[0].rating_count,
+          rating_count: totalRatings,
           breakdown: ratingBreakdown,
         },
         pagination: {
           page,
           limit,
-          total_reviews: summary[0].rating_count,
+          total_reviews: totalRatings,
         },
         reviews: finalReviews,
       });
