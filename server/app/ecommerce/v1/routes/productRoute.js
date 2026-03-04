@@ -77,6 +77,9 @@ router.get("/best-sellers", ProductController.getBestSellers);
 // Most viewed products
 router.get("/most-viewed", ProductController.getMostViewedProducts);
 
+// Top rated products
+router.get("/top-rated", ProductController.getTopRatedProducts);
+
 /* ======================================================Suggestions and History============================================ */
 
 // autosuggest products

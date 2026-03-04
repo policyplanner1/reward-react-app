@@ -786,6 +786,28 @@ class ProductController {
     }
   }
 
+  // Top rated Products
+  async getTopRatedProducts(req, res) {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : 10;
+
+      const products = await ProductModel.getTopRatedProducts(limit);
+
+      return res.status(200).json({
+        success: true,
+        total: products.length,
+        products,
+      });
+    } catch (error) {
+      console.error("Top rated products error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch top rated products",
+      });
+    }
+  }
+
   // subcategories by category ID
   async getSubcategoriesByCategory(req, res) {
     try {

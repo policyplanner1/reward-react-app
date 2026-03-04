@@ -1647,6 +1647,71 @@ class ProductModel {
       throw error;
     }
   }
+
+  // Get Rop rated products
+  async getTopRatedProducts(limit = 10) {
+    try {
+      const query = `
+      SELECT
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+
+        v.variant_id,
+        v.sale_price,
+        v.mrp,
+        v.reward_redemption_limit,
+
+        AVG(pr.rating) AS avg_rating,
+        COUNT(pr.review_id) AS total_reviews,
+
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id,'::',
+            pi.image_url,'::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
+        ) AS images
+
+      FROM product_reviews pr
+
+      INNER JOIN eproducts p
+        ON p.product_id = pr.product_id
+
+      INNER JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC
+          LIMIT 1
+        )
+
+      LEFT JOIN product_images pi
+        ON pi.product_id = p.product_id
+
+      WHERE pr.status = 'approved'
+        AND p.status = 'approved'
+        AND p.is_deleted = 0
+        AND p.is_visible = 1
+
+      GROUP BY p.product_id
+      HAVING total_reviews >= 3
+      ORDER BY avg_rating DESC, total_reviews DESC
+      LIMIT ?
+    `;
+
+      const [rows] = await db.execute(query, [limit]);
+
+      return rows;
+    } catch (error) {
+      console.error("Error fetching top rated products:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new ProductModel();
