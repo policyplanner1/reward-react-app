@@ -1,5 +1,6 @@
 const ReviewModel = require("../models/reviewModel");
 const db = require("../../../../config/database");
+const fs = require("fs");
 
 class ReviewController {
   // submit review
@@ -123,10 +124,22 @@ class ReviewController {
 
       const reviewId = req.params.reviewId;
 
+      if (!reviewId) {
+        await conn.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Invalid review id",
+        });
+      }
+
       // Ensure review belongs to user
       const [reviewCheck] = await conn.execute(
-        `SELECT review_id FROM product_reviews 
-       WHERE review_id = ? AND user_id = ?`,
+        `SELECT review_id 
+          FROM product_reviews 
+          WHERE review_id = ? 
+          AND user_id = ?
+          AND status = 'approved'
+          LIMIT 1`,
         [reviewId, userId],
       );
 
@@ -162,6 +175,13 @@ class ReviewController {
     } catch (err) {
       await conn.rollback();
       console.error(err);
+      if (req.files) {
+        req.files.forEach((file) => {
+          try {
+            fs.unlinkSync(file.path);
+          } catch (e) {}
+        });
+      }
       res.status(500).json({ message: "Failed to upload media" });
     } finally {
       conn.release();
@@ -171,9 +191,20 @@ class ReviewController {
   //  fetch reviews
   async getProductReviews(req, res) {
     try {
-      const { productId } = req.params;
+      const { product_id } = req.params;
 
-      const reviews = await ReviewModel.getProductReviews(productId);
+      // 1 Product rating summary
+      const [summary] = await db.execute(
+        `
+      SELECT avg_rating, rating_count
+      FROM eproducts
+      WHERE product_id = ?
+      `,
+        [product_id],
+      );
+
+      // 2 Reviews
+      const reviews = await ReviewModel.getProductReviews(product_id);
 
       const reviewIds = reviews.map((r) => r.review_id);
       const media = await ReviewModel.getReviewMedia(reviewIds);
@@ -187,12 +218,16 @@ class ReviewController {
         groupedMedia[m.review_id].push(m);
       });
 
-      const final = reviews.map((r) => ({
+      const finalReviews = reviews.map((r) => ({
         ...r,
         media: groupedMedia[r.review_id] || [],
       }));
 
-      res.json(final);
+      res.json({
+        success: true,
+        rating_summary: summary[0] || { avg_rating: 0, rating_count: 0 },
+        reviews: finalReviews,
+      });
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Failed to fetch reviews" });
