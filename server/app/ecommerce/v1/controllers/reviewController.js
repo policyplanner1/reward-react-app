@@ -233,5 +233,96 @@ class ReviewController {
       res.status(500).json({ message: "Failed to fetch reviews" });
     }
   }
+
+  // mark review helpful
+  async markReviewHelpful(req, res) {
+    const conn = await db.getConnection();
+
+    try {
+      await conn.beginTransaction();
+
+      const userId = req.user?.user_id;
+      const reviewId = parseInt(req.params.reviewId);
+
+      if (!userId) {
+        await conn.rollback();
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      if (!reviewId) {
+        await conn.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Invalid review id",
+        });
+      }
+
+      // 1 Ensure review exists
+      const [review] = await conn.execute(
+        `
+      SELECT review_id
+      FROM product_reviews
+      WHERE review_id = ?
+      AND status = 'approved'
+      LIMIT 1
+      `,
+        [reviewId],
+      );
+
+      if (review.length === 0) {
+        await conn.rollback();
+        return res.status(404).json({
+          success: false,
+          message: "Review not found",
+        });
+      }
+
+      // 2 Insert helpful vote
+      await conn.execute(
+        `
+      INSERT INTO review_helpful_votes (review_id, user_id)
+      VALUES (?, ?)
+      `,
+        [reviewId, userId],
+      );
+
+      // 3 Update helpful counter
+      await conn.execute(
+        `
+      UPDATE product_reviews
+      SET helpful_count = helpful_count + 1
+      WHERE review_id = ?
+      `,
+        [reviewId],
+      );
+
+      await conn.commit();
+
+      res.json({
+        success: true,
+        message: "Marked as helpful",
+      });
+    } catch (err) {
+      await conn.rollback();
+
+      // Prevent duplicate vote
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(400).json({
+          success: false,
+          message: "You already marked this review helpful",
+        });
+      }
+
+      console.error(err);
+      res.status(500).json({
+        message: "Failed to mark review helpful",
+      });
+    } finally {
+      conn.release();
+    }
+  }
 }
 module.exports = new ReviewController();

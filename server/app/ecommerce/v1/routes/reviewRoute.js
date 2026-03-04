@@ -24,4 +24,11 @@ router.post(
 // fetch reviews
 router.get("/:product_id", ReviewController.getProductReviews);
 
+// mark review helpful
+router.post(
+  "/:reviewId/helpful",
+  auth,
+  ReviewController.markReviewHelpful
+);
+
 module.exports = router;
