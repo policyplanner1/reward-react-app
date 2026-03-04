@@ -68,6 +68,8 @@ router.get(
   ProductController.getCustomersAlsoBought,
 );
 
+// Trending Products
+router.get("/trending", ProductController.getTrendingProducts);
 /* ======================================================Suggestions and History============================================ */
 
 // autosuggest products
