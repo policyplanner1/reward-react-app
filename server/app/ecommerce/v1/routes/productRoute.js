@@ -74,6 +74,9 @@ router.get("/trending", ProductController.getTrendingProducts);
 // Best seller
 router.get("/best-sellers", ProductController.getBestSellers);
 
+// Most viewed products
+router.get("/most-viewed", ProductController.getMostViewedProducts);
+
 /* ======================================================Suggestions and History============================================ */
 
 // autosuggest products
