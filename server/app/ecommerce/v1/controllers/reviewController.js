@@ -161,7 +161,8 @@ class ReviewController {
       }
 
       const mediaList = req.files.map((file, index) => ({
-        media_url: `/uploads/reviews/user_${userId}/review_${reviewId}/${file.filename}`,
+        // media_url: `/uploads/reviews/user_${userId}/review_${reviewId}/${file.filename}`,
+        media_url: `/reviews/user_${userId}/review_${reviewId}/${file.filename}`,
         media_type: file.mimetype.startsWith("video") ? "video" : "image",
       }));
 
