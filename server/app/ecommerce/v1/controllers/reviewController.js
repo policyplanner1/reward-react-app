@@ -324,5 +324,89 @@ class ReviewController {
       conn.release();
     }
   }
+
+  // remove helpful vote
+  async removeHelpfulVote(req, res) {
+    const conn = await db.getConnection();
+
+    try {
+      await conn.beginTransaction();
+
+      const userId = req.user?.user_id;
+      const reviewId = parseInt(req.params.reviewId);
+
+      if (!userId) {
+        await conn.rollback();
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      if (!reviewId) {
+        await conn.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Invalid review id",
+        });
+      }
+
+      // 1 Check if vote exists
+      const [vote] = await conn.execute(
+        `
+      SELECT id
+      FROM review_helpful_votes
+      WHERE review_id = ? AND user_id = ?
+      LIMIT 1
+      `,
+        [reviewId, userId],
+      );
+
+      if (vote.length === 0) {
+        await conn.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Helpful vote not found",
+        });
+      }
+
+      // 2 Delete vote
+      await conn.execute(
+        `
+      DELETE FROM review_helpful_votes
+      WHERE review_id = ? AND user_id = ?
+      `,
+        [reviewId, userId],
+      );
+
+      // 3 Decrease helpful count
+      await conn.execute(
+        `
+      UPDATE product_reviews
+      SET helpful_count = GREATEST(helpful_count - 1, 0)
+      WHERE review_id = ?
+      `,
+        [reviewId],
+      );
+
+      await conn.commit();
+
+      res.json({
+        success: true,
+        message: "Helpful vote removed",
+      });
+    } catch (err) {
+      await conn.rollback();
+      console.error(err);
+
+      res.status(500).json({
+        message: "Failed to remove helpful vote",
+      });
+    } finally {
+      conn.release();
+    }
+  }
+
+  
 }
 module.exports = new ReviewController();
