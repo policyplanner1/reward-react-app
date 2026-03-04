@@ -20,6 +20,9 @@ router.post(
 
 // fetch reviews
 router.get("/all-reviews/:product_id",optionalAuth, ReviewController.getProductReviews);
+// GET /reviews/10?sort=helpful
+// GET /reviews/10?sort=rating_high
+// GET /reviews/10?sort=rating_low
 
 // mark review helpful
 router.post("/:reviewId/helpful", auth, ReviewController.markReviewHelpful);

@@ -192,6 +192,7 @@ class ReviewController {
   async getProductReviews(req, res) {
     try {
       const { product_id } = req.params;
+      const { sort } = req.query;
 
       // user may or may not be logged in
       const userId = req.user?.user_id || null;
@@ -207,7 +208,11 @@ class ReviewController {
       );
 
       // 2 Reviews
-      const reviews = await ReviewModel.getProductReviews(product_id, userId);
+      const reviews = await ReviewModel.getProductReviews(
+        product_id,
+        userId,
+        sort,
+      );
 
       const reviewIds = reviews.map((r) => r.review_id);
       const media = await ReviewModel.getReviewMedia(reviewIds);
