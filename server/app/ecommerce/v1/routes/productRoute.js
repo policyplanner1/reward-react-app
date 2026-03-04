@@ -40,7 +40,7 @@ router.get(
   ProductController.getCategoriesWithSubcategories,
 );
 
-/* ======================================================Suggestion============================================ */
+/* ======================================================Promotional============================================ */
 
 // similar Products
 router.get("/similar/:productId", ProductController.getSimilarProducts);
@@ -50,6 +50,11 @@ router.get("/recent-products", optionalAuth,ProductController.getRecentProducts)
 
 // Recommended Products
 router.get("/recommendations", optionalAuth, ProductController.getUserRecommendations);
+
+// New Arrivals
+router.get("/new-arrivals", ProductController.getNewArrivals);
+
+/* ======================================================Suggestions and History============================================ */
 
 // autosuggest products
 router.get("/search/suggestions", ProductController.getSearchSuggestions);

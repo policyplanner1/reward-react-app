@@ -637,7 +637,7 @@ class ProductController {
   // Get recommendations
   async getUserRecommendations(req, res) {
     try {
-      const userId = req.user?.user_id; 
+      const userId = req.user?.user_id;
       const limit = req.query.limit ? Number(req.query.limit) : 10;
 
       if (!userId) {
@@ -647,10 +647,7 @@ class ProductController {
         });
       }
 
-      const products = await ProductModel.getUserRecommendations(
-        userId,
-        limit,
-      );
+      const products = await ProductModel.getUserRecommendations(userId, limit);
 
       return res.status(200).json({
         success: true,
@@ -662,6 +659,27 @@ class ProductController {
       return res.status(500).json({
         success: false,
         message: "Unable to fetch recommendations",
+      });
+    }
+  }
+
+  // Get New Arrivals
+  async getNewArrivals(req, res) {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : 10;
+
+      const products = await ProductModel.getNewArrivals(limit);
+
+      return res.status(200).json({
+        success: true,
+        total: products.length,
+        products,
+      });
+    } catch (error) {
+      console.error("New arrivals error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch new arrivals",
       });
     }
   }
