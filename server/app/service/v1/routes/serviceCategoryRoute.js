@@ -2,6 +2,10 @@ const express = require("express");
 const router = express.Router();
 const ServiceCategoryController = require("../controllers/serviceCategoryController");
 const upload = require("../../../../middleware/serviceCategoryUpload");
+const {
+  authenticateToken,
+  authorizeRoles,
+} = require("../../../../middleware/auth");
 
 // Fetch Active Services
 router.get("/all-categories", ServiceCategoryController.getCategories);
@@ -9,6 +13,8 @@ router.get("/all-categories", ServiceCategoryController.getCategories);
 // Create a category
 router.post(
   "/create-category",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
   upload.single("icon"),
   ServiceCategoryController.createCategory,
 );
@@ -19,11 +25,18 @@ router.get("/find/:id", ServiceCategoryController.getCategoryById);
 // update
 router.put(
   "/update/:id",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
   upload.single("icon"),
   ServiceCategoryController.updateCategory,
 );
 
 // Delete
-router.delete("/remove/:id", ServiceCategoryController.deleteCategory);
+router.delete(
+  "/remove/:id",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  ServiceCategoryController.deleteCategory,
+);
 
 module.exports = router;
