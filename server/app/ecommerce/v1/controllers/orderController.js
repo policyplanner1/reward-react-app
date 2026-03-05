@@ -14,32 +14,82 @@ function buildInvoiceHTML(invoice, items) {
     "utf8",
   );
 
+  // Build product rows
   const rows = items
     .map(
       (item) => `
-<tr>
-<td>
-<div style="font-weight:600;">${item.product_name}</div>
-<div style="font-size:11px;color:#64748b;">
-SKU: ${item.sku}
-</div>
-</td>
-<td style="text-align:center">${item.quantity}</td>
-<td style="text-align:right">${Number(item.unit_price).toFixed(2)}</td>
-<td style="text-align:right;font-weight:600">${Number(item.line_total).toFixed(2)}</td>
-</tr>
-`,
+      <tr>
+      <td>
+        <div style="font-weight:600;">${item.product_name}</div>
+        <div style="font-size:11px;color:#64748b;">
+          SKU: ${item.sku} • GST ${item.tax_rate}%
+        </div>
+      </td>
+
+      <td style="text-align:center">${item.quantity}</td>
+
+      <td style="text-align:right">
+      ${Number(item.unit_price).toFixed(2)}
+      </td>
+
+      <td style="text-align:right;font-weight:600">
+      ${Number(item.line_total).toFixed(2)}
+      </td>
+
+      </tr>
+      `,
     )
     .join("");
 
-  return template
-    .replace("{{invoice_number}}", invoice.invoice_number)
-    .replace("{{order_id}}", invoice.order_ref)
-    .replace("{{items}}", rows)
-    .replace("{{subtotal}}", invoice.subtotal.toFixed(2))
-    .replace("{{tax_total}}", invoice.tax_total.toFixed(2))
-    .replace("{{shipping}}", invoice.shipping_amount.toFixed(2))
-    .replace("{{grand_total}}", invoice.grand_total.toFixed(2));
+  let html = template;
+
+  // Replace placeholders (global)
+  html = html.replace(/{{invoice_number}}/g, invoice.invoice_number);
+  html = html.replace(
+    /{{invoice_date}}/g,
+    new Date(invoice.invoice_date).toLocaleDateString(),
+  );
+
+  html = html.replace(/{{order_ref}}/g, invoice.order_ref);
+  html = html.replace(
+    /{{order_date}}/g,
+    new Date(invoice.order_date).toLocaleDateString(),
+  );
+
+  html = html.replace(/{{vendor_name}}/g, invoice.company_name || "");
+  html = html.replace(/{{vendor_gstin}}/g, invoice.gstin || "");
+
+  html = html.replace(
+    /{{vendor_address}}/g,
+    `
+    ${invoice.line1 || ""} ${invoice.line2 || ""}<br>
+    ${invoice.city || ""}, ${invoice.state_name || ""} ${invoice.pincode || ""}
+  `,
+  );
+
+  html = html.replace(/{{customer_name}}/g, invoice.contact_name || "");
+  html = html.replace(
+    /{{customer_address}}/g,
+    `
+    ${invoice.address1 || ""} ${invoice.address2 || ""}<br>
+    ${invoice.customer_city || ""} ${invoice.zipcode || ""}
+  `,
+  );
+
+  html = html.replace(/{{items}}/g, rows);
+
+  html = html.replace(/{{subtotal}}/g, Number(invoice.subtotal).toFixed(2));
+  html = html.replace(/{{tax_total}}/g, Number(invoice.tax_total).toFixed(2));
+  html = html.replace(
+    /{{shipping_amount}}/g,
+    Number(invoice.shipping_amount).toFixed(2),
+  );
+  html = html.replace(
+    /{{grand_total}}/g,
+    Number(invoice.grand_total).toFixed(2),
+  );
+
+  return html;
 }
 
 class OrderController {
