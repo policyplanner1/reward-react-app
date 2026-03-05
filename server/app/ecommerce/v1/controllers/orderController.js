@@ -3,79 +3,43 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 const NotificationModel = require("../models/notificationModel");
+const {
+  generateInvoicePDF,
+} = require("../../../../services/Invoice/pdf-service");
 
 //Helper function For invoice
-async function getInvoiceData(invoiceId) {
-  const [rows] = await db.query(
-    `
-    SELECT
-      i.invoice_id,
-      i.invoice_number,
-      i.subtotal,
-      i.tax_total,
-      i.shipping_amount,
-      i.grand_total,
-      i.invoice_date,
-
-      o.order_ref,
-      o.created_at AS order_date,
-
-      v.vendor_id,
-      v.company_name,
-      v.gstin,
-
-      va.line1,
-      va.line2,
-      va.city,
-      va.pincode,
-      s.state_name,
-
-      ca.contact_name,
-      ca.address1,
-      ca.address2,
-      ca.city AS customer_city,
-      ca.zipcode
-
-    FROM invoices i
-    JOIN eorders o ON o.order_id = i.order_id
-
-    JOIN vendors v ON v.vendor_id = i.vendor_id
-    JOIN vendor_addresses va 
-      ON va.vendor_id = v.vendor_id AND va.type='shipping'
-    JOIN states s ON s.state_id = va.state_id
-
-    JOIN customer_addresses ca ON ca.address_id = o.address_id
-
-    WHERE i.invoice_id = ?
-    LIMIT 1
-    `,
-    [invoiceId],
+function buildInvoiceHTML(invoice, items) {
+  const template = fs.readFileSync(
+    path.join(__dirname, "../../../../templates/invoice.html"),
+    "utf8",
   );
 
-  return rows[0];
-}
+  const rows = items
+    .map(
+      (item) => `
+<tr>
+<td>
+<div style="font-weight:600;">${item.product_name}</div>
+<div style="font-size:11px;color:#64748b;">
+SKU: ${item.sku}
+</div>
+</td>
+<td style="text-align:center">${item.quantity}</td>
+<td style="text-align:right">${Number(item.unit_price).toFixed(2)}</td>
+<td style="text-align:right;font-weight:600">${Number(item.line_total).toFixed(2)}</td>
+</tr>
+`,
+    )
+    .join("");
 
-// Invoice Items
-async function getInvoiceItems(invoiceId) {
-  const [items] = await db.query(
-    `
-    SELECT
-      product_name,
-      sku,
-      quantity,
-      unit_price,
-      tax_rate,
-      cgst_amount,
-      sgst_amount,
-      igst_amount,
-      line_total
-    FROM invoice_items
-    WHERE invoice_id = ?
-    `,
-    [invoiceId],
-  );
-
-  return items;
+  return template
+    .replace("{{invoice_number}}", invoice.invoice_number)
+    .replace("{{order_id}}", invoice.order_ref)
+    .replace("{{items}}", rows)
+    .replace("{{subtotal}}", invoice.subtotal.toFixed(2))
+    .replace("{{tax_total}}", invoice.tax_total.toFixed(2))
+    .replace("{{shipping}}", invoice.shipping_amount.toFixed(2))
+    .replace("{{grand_total}}", invoice.grand_total.toFixed(2));
 }
 
 class OrderController {
@@ -330,105 +294,52 @@ class OrderController {
   async getInvoice(req, res) {
     try {
       const { orderId } = req.params;
-      const userId = req.user.user_id;
 
-      // 1 Verify order belongs to user
-      const [[order]] = await db.query(
+      // 1 Get invoices for this order
+      const [invoiceRows] = await db.query(
         `
-      SELECT order_id
-      FROM eorders
-      WHERE order_id = ? AND user_id = ?
-      LIMIT 1
-      `,
-        [orderId, userId],
-      );
-
-      if (!order) {
-        return res.status(404).json({
-          success: false,
-          message: "Order not found",
-        });
-      }
-
-      // 2 Fetch invoices
-      const [invoices] = await db.query(
-        `
-      SELECT
-        i.invoice_id,
-        i.invoice_number,
-        i.vendor_id,
-        i.subtotal,
-        i.tax_total,
-        i.shipping_amount,
-        i.grand_total,
-        i.invoice_date,
-
-        v.company_name,
-        v.gstin
-      FROM invoices i
-      JOIN vendors v ON v.vendor_id = i.vendor_id
-      WHERE i.order_id = ?
+      SELECT invoice_id
+      FROM invoices
+      WHERE order_id = ?
       `,
         [orderId],
       );
 
-      if (!invoices.length) {
-        return res.json({
-          success: true,
-          invoices: [],
+      if (!invoiceRows.length) {
+        return res.status(404).json({
+          success: false,
+          message: "Invoice not found",
         });
       }
 
-      const invoiceIds = invoices.map((i) => i.invoice_id);
+      // For now return first invoice
+      // (later you can loop and zip multiple PDFs)
+      const invoiceId = invoiceRows[0].invoice_id;
+
+      // 2 Fetch invoice data
+      const invoice = await OrderModel.getInvoiceData(invoiceId);
 
       // 3 Fetch invoice items
-      const [items] = await db.query(
-        `
-      SELECT
-        invoice_id,
-        product_name,
-        sku,
-        quantity,
-        unit_price,
-        tax_rate,
-        cgst_amount,
-        sgst_amount,
-        igst_amount,
-        line_total
-      FROM invoice_items
-      WHERE invoice_id IN (?)
-      `,
-        [invoiceIds],
-      );
+      const items = await OrderModel.getInvoiceItems(invoiceId);
 
-      // 4 Group items by invoice
-      const itemMap = {};
+      // 4 Build HTML
+      const html = buildInvoiceHTML(invoice, items);
 
-      for (const item of items) {
-        if (!itemMap[item.invoice_id]) {
-          itemMap[item.invoice_id] = [];
-        }
+      // 5 Generate PDF
+      const pdf = await generateInvoicePDF(html);
 
-        itemMap[item.invoice_id].push(item);
-      }
-
-      // 5 Attach items to invoices
-      const result = invoices.map((inv) => ({
-        ...inv,
-        items: itemMap[inv.invoice_id] || [],
-      }));
-
-      return res.json({
-        success: true,
-        order_id: orderId,
-        invoices: result,
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename=${invoice.invoice_number}.pdf`,
       });
+
+      return res.send(pdf);
     } catch (error) {
-      console.error("Get Invoice Error:", error);
+      console.error("Invoice PDF Error:", error);
 
       return res.status(500).json({
         success: false,
-        message: "Failed to fetch invoice",
+        message: "Failed to generate invoice",
       });
     }
   }
