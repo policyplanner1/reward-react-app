@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const xpressService = require("../xpressbees_service");
 const db = require("../../../config/database");
+const NotificationModel = require("../../../app/ecommerce/v1/models/notificationModel");
 
 // =====================
 // STATUS MAPPING
@@ -43,24 +44,40 @@ function mapXpressStatus(status) {
 // =====================
 async function syncOrderStatus(orderId) {
   const [shipments] = await db.query(
-    `SELECT shipping_status
-     FROM order_shipments
-     WHERE order_id = ?`,
+    `SELECT os.shipping_status, eo.user_id
+   FROM order_shipments os
+   JOIN eorders eo ON os.order_id = eo.order_id
+   WHERE os.order_id = ?`,
     [orderId],
   );
 
   if (!shipments.length) return;
 
   const statuses = shipments.map((s) => s.shipping_status);
+  const userId = shipments[0].user_id;
 
   if (statuses.every((s) => s === "delivered")) {
-    await db.query(
+    const [result] = await db.query(
       `UPDATE eorders
        SET status = 'delivered'
        WHERE order_id = ?
-         AND status != 'delivered'`,
+       AND status != 'delivered'`,
       [orderId],
     );
+
+    // Create notification only if status was actually updated
+    if (result.affectedRows > 0) {
+      await NotificationModel.create({
+        user_id: userId,
+        type: "delivery",
+        title: "Order Successful 📦",
+        message: "Your package has been delivered successfully.",
+        reference_type: "order",
+        reference_id: orderId,
+      });
+    }
+
+    return;
   }
 
   if (statuses.every((s) => s === "rto")) {

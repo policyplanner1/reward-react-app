@@ -2,6 +2,7 @@ const OrderModel = require("../models/orderModel");
 const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
+const NotificationModel = require("../models/notificationModel");
 
 class OrderController {
   // Get order history
@@ -200,6 +201,15 @@ class OrderController {
       );
 
       await conn.commit();
+
+      await NotificationModel.create({
+        userId,
+        type: "order",
+        title: "Order Cancelled ❌📦",
+        message: "Your order was cancelled as requested.",
+        reference_type: "order",
+        reference_id: orderId,
+      });
 
       return res.json({
         success: true,
