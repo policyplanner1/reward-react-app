@@ -25,4 +25,11 @@ router.get(
   OrderController.cancellationDetails,
 );
 
+// =======================================Invoice==========================================
+// Get order Invoice
+router.get("/invoice/:orderId", auth, OrderController.getInvoice);
+// router.get("/invoice/:orderId", OrderController.getInvoice);
+
+
+
 module.exports = router;
