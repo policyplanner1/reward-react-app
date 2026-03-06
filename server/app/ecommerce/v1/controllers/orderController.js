@@ -516,7 +516,7 @@ class OrderController {
 
       res.set({
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename=${invoice.invoice_number}.pdf`,
+        "Content-Disposition": `attachment; filename="${invoice.invoice_number}.pdf"`,
       });
 
       return res.send(pdf);
