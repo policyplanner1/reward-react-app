@@ -46,9 +46,8 @@ class ReviewController {
 
       const userId = req.user?.user_id;
 
-      console.log(userId, "userId");
-
       if (!userId) {
+        await conn.rollback();
         return res.status(401).json({
           success: false,
           message: "Unauthorized user",
@@ -65,8 +64,6 @@ class ReviewController {
         smooth_experience,
         review_text,
       } = req.body;
-
-      console.log(req.body, "request");
 
       // Basic validation
       if (!rating || rating < 1 || rating > 5) {
@@ -87,8 +84,6 @@ class ReviewController {
         `,
         [order_id, userId, variant_id],
       );
-
-      console.log(orderCheck, "orderCheck");
 
       if (orderCheck.length === 0) {
         await conn.rollback();
