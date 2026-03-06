@@ -126,7 +126,7 @@ class ReviewController {
       if (req.files && req.files.length > 0) {
         const reviewDir = path.join(
           __dirname,
-          `../uploads/reviews/user_${userId}/review_${reviewId}`,
+          `../../../../uploads/reviews/user_${userId}/review_${reviewId}`,
         );
 
         if (!fs.existsSync(reviewDir)) {
