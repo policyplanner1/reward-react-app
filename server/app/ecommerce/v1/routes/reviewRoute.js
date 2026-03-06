@@ -8,21 +8,26 @@ const reviewUpload = require("../../../../middleware/reviewUpload");
 /*===================================================Review===========================================*/
 
 // check review eligibility
-router.get("/reviewable-order/:variant_id",optionalAuth, ReviewController.getReviewableOrder);
+router.get(
+  "/reviewable-order/:variant_id",
+  optionalAuth,
+  ReviewController.getReviewableOrder,
+);
 
 // Add review
-router.post("/create-review", auth, ReviewController.submitReview);
-
-// upload media after review creation
 router.post(
-  "/:reviewId/media",
+  "/create-review",
   auth,
   reviewUpload.array("media", 5),
-  ReviewController.uploadReviewMedia,
+  ReviewController.submitReview,
 );
 
 // fetch reviews
-router.get("/all-reviews/:product_id",optionalAuth, ReviewController.getProductReviews);
+router.get(
+  "/all-reviews/:product_id",
+  optionalAuth,
+  ReviewController.getProductReviews,
+);
 // GET /reviews/10?sort=helpful
 // GET /reviews/10?sort=rating_high
 // GET /reviews/10?sort=rating_low

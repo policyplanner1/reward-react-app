@@ -65,23 +65,23 @@ class ReviewController {
         review_text,
       } = req.body;
 
-      // Basic validation
       if (!rating || rating < 1 || rating > 5) {
         await conn.rollback();
         return res.status(400).json({ message: "Invalid rating" });
       }
-      //  1 verify purchase
+
+      // Verify purchase
       const [orderCheck] = await conn.execute(
         `
-       SELECT 1
-        FROM eorders o
-        JOIN eorder_items oi ON oi.order_id = o.order_id
-        WHERE o.order_id = ?
-        AND o.user_id = ?
-        AND o.status = 'delivered'
-        AND oi.variant_id = ?
-        LIMIT 1;
-        `,
+      SELECT 1
+      FROM eorders o
+      JOIN eorder_items oi ON oi.order_id = o.order_id
+      WHERE o.order_id = ?
+      AND o.user_id = ?
+      AND o.status = 'delivered'
+      AND oi.variant_id = ?
+      LIMIT 1
+      `,
         [order_id, userId, variant_id],
       );
 
@@ -93,7 +93,7 @@ class ReviewController {
         });
       }
 
-      //   2 Insert Review
+      // Create review
       const reviewId = await ReviewModel.createReview(
         {
           user_id: userId,
@@ -109,7 +109,7 @@ class ReviewController {
         conn,
       );
 
-      //   3 update product rating summary
+      // Update product rating
       await conn.execute(
         `
       UPDATE eproducts
@@ -117,9 +117,42 @@ class ReviewController {
         avg_rating = ((avg_rating * rating_count + ?) / (rating_count + 1)),
         rating_count = rating_count + 1
       WHERE product_id = ?
-    `,
+      `,
         [rating, product_id],
       );
+
+      // HANDLE MEDIA
+      if (req.files && req.files.length > 0) {
+        const reviewDir = path.join(
+          __dirname,
+          `../uploads/reviews/user_${userId}/review_${reviewId}`,
+        );
+
+        if (!fs.existsSync(reviewDir)) {
+          fs.mkdirSync(reviewDir, { recursive: true });
+        }
+
+        const mediaList = [];
+
+        for (let i = 0; i < req.files.length; i++) {
+          const file = req.files[i];
+
+          const ext = path.extname(file.originalname);
+
+          const finalFileName = `${Date.now()}_${i}${ext}`;
+
+          const finalPath = path.join(reviewDir, finalFileName);
+
+          fs.renameSync(file.path, finalPath);
+
+          mediaList.push({
+            media_url: `reviews/user_${userId}/review_${reviewId}/${finalFileName}`,
+            media_type: file.mimetype.startsWith("video") ? "video" : "image",
+          });
+        }
+
+        await ReviewModel.addReviewMedia(reviewId, mediaList, conn);
+      }
 
       await conn.commit();
 
@@ -129,6 +162,15 @@ class ReviewController {
       });
     } catch (err) {
       await conn.rollback();
+
+      if (req.files) {
+        req.files.forEach((file) => {
+          try {
+            fs.unlinkSync(file.path);
+          } catch {}
+        });
+      }
+
       if (err.code === "ER_DUP_ENTRY") {
         return res.status(400).json({
           success: false,
@@ -137,89 +179,11 @@ class ReviewController {
       }
 
       console.error(err);
-      return res.status(500).json({ message: "Failed to submit review" });
-    } finally {
-      conn.release();
-    }
-  }
 
-  // Upload review media after review creation
-  async uploadReviewMedia(req, res) {
-    const conn = await db.getConnection();
-
-    try {
-      await conn.beginTransaction();
-
-      const userId = req.user.user_id;
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized user",
-        });
-      }
-
-      const reviewId = req.params.reviewId;
-
-      if (!reviewId) {
-        await conn.rollback();
-        return res.status(400).json({
-          success: false,
-          message: "Invalid review id",
-        });
-      }
-
-      // Ensure review belongs to user
-      const [reviewCheck] = await conn.execute(
-        `SELECT review_id 
-          FROM product_reviews 
-          WHERE review_id = ? 
-          AND user_id = ?
-          AND status = 'approved'
-          LIMIT 1`,
-        [reviewId, userId],
-      );
-
-      if (reviewCheck.length === 0) {
-        await conn.rollback();
-        return res.status(403).json({
-          success: false,
-          message: "Unauthorized review access",
-        });
-      }
-
-      if (!req.files || req.files.length === 0) {
-        await conn.rollback();
-        return res.status(400).json({
-          success: false,
-          message: "No files uploaded",
-        });
-      }
-
-      const mediaList = req.files.map((file, index) => ({
-        // media_url: `/uploads/reviews/user_${userId}/review_${reviewId}/${file.filename}`,
-        media_url: `/reviews/user_${userId}/review_${reviewId}/${file.filename}`,
-        media_type: file.mimetype.startsWith("video") ? "video" : "image",
-      }));
-
-      await ReviewModel.addReviewMedia(reviewId, mediaList, conn);
-
-      await conn.commit();
-
-      res.json({
-        success: true,
-        message: "Media uploaded successfully",
+      res.status(500).json({
+        success: false,
+        message: "Failed to submit review",
       });
-    } catch (err) {
-      await conn.rollback();
-      console.error(err);
-      if (req.files) {
-        req.files.forEach((file) => {
-          try {
-            fs.unlinkSync(file.path);
-          } catch (e) {}
-        });
-      }
-      res.status(500).json({ message: "Failed to upload media" });
     } finally {
       conn.release();
     }
