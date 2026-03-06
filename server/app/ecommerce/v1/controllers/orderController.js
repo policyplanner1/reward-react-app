@@ -13,7 +13,8 @@ function escapeHTML(str = "") {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function money(value) {
@@ -94,10 +95,12 @@ function buildInvoiceHTML(invoice = {}, items = []) {
 
   html = html.replace(/{{vendor_gstin}}/g, escapeHTML(invoice.gstin || ""));
 
-  const vendorAddress = `
-${escapeHTML(invoice.line1 || "")} ${escapeHTML(invoice.line2 || "")}<br>
-${escapeHTML(invoice.city || "")}, ${escapeHTML(invoice.state_name || "")} ${escapeHTML(invoice.pincode || "")}
-`.trim();
+  const vendorAddress = [
+    `${escapeHTML(invoice.line1 || "")} ${escapeHTML(invoice.line2 || "")}`.trim(),
+    `${escapeHTML(invoice.city || "")}, ${escapeHTML(invoice.state_name || "")} ${escapeHTML(invoice.pincode || "")}`.trim(),
+  ]
+    .filter(Boolean)
+    .join("<br>");
 
   html = html.replace(/{{vendor_address}}/g, vendorAddress);
 
@@ -387,6 +390,7 @@ class OrderController {
   async getInvoice(req, res) {
     try {
       const { orderId } = req.params;
+      console.log("orderId:", orderId);
 
       // 1 Get invoices for this order
       const [invoiceRows] = await db.query(
@@ -397,6 +401,8 @@ class OrderController {
       `,
         [orderId],
       );
+
+      console.log("invoiceRows:", invoiceRows);
 
       if (!invoiceRows.length) {
         return res.status(404).json({
@@ -419,6 +425,10 @@ class OrderController {
       const html = buildInvoiceHTML(invoice, items);
 
       // 5 Generate PDF
+      if (!html || typeof html !== "string") {
+        throw new Error("Invalid HTML generated for invoice");
+      }
+      
       const pdf = await generateInvoicePDF(html);
 
       res.set({

@@ -1,47 +1,38 @@
-const html_to_pdf = require("html-pdf-node");
-const fs = require("fs");
-const path = require("path");
+const puppeteer = require("puppeteer");
 
-async function generateInvoicePDF(html, fileName = null) {
-  try {
-    const options = {
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20px",
-        bottom: "20px",
-        left: "20px",
-        right: "20px",
-      },
-    };
+async function generateInvoicePDF(html) {
 
-    const file = { content: html };
+  const browser = await puppeteer.launch({
+    headless: true,
+    executablePath:
+      "/home/rewardplanners/.cache/puppeteer/chrome/linux-1108766/chrome-linux/chrome",
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage"
+    ]
+  });
 
-    const pdfBuffer = await html_to_pdf.generatePdf(file, options);
+  const page = await browser.newPage();
 
-    // Save to disk if filename provided
-    if (fileName) {
-      const filePath = path.join(
-        __dirname,
-        "../../uploads/invoices",
-        `${fileName}.pdf`
-      );
+  await page.setContent(html, {
+    waitUntil: "networkidle0"
+  });
 
-      fs.writeFileSync(filePath, pdfBuffer);
-
-      return {
-        path: filePath,
-        buffer: pdfBuffer,
-      };
+  const pdfBuffer = await page.pdf({
+    format: "A4",
+    printBackground: true,
+    margin: {
+      top: "20px",
+      bottom: "20px",
+      left: "20px",
+      right: "20px"
     }
+  });
 
-    return pdfBuffer;
-  } catch (error) {
-    console.error("PDF generation error:", error);
-    throw error;
-  }
+  await browser.close();
+
+  return pdfBuffer;
 }
 
-module.exports = {
-  generateInvoicePDF,
-};
+module.exports = { generateInvoicePDF };

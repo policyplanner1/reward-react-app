@@ -29,7 +29,7 @@ router.get(
 // Get order Invoice
 router.get(
   "/invoice/:orderId",
-  auth,
+  // auth,
   OrderController.getInvoice,
 );
 
