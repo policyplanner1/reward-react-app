@@ -31,6 +31,72 @@ function formatDate(date) {
   });
 }
 
+function numberToWords(num) {
+  const a = [
+    "",
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+    "Six",
+    "Seven",
+    "Eight",
+    "Nine",
+    "Ten",
+    "Eleven",
+    "Twelve",
+    "Thirteen",
+    "Fourteen",
+    "Fifteen",
+    "Sixteen",
+    "Seventeen",
+    "Eighteen",
+    "Nineteen",
+  ];
+
+  const b = [
+    "",
+    "",
+    "Twenty",
+    "Thirty",
+    "Forty",
+    "Fifty",
+    "Sixty",
+    "Seventy",
+    "Eighty",
+    "Ninety",
+  ];
+
+  function inWords(n) {
+    if (n < 20) return a[n];
+    if (n < 100) return b[Math.floor(n / 10)] + (n % 10 ? " " + a[n % 10] : "");
+    if (n < 1000)
+      return (
+        a[Math.floor(n / 100)] + " Hundred " + (n % 100 ? inWords(n % 100) : "")
+      );
+    if (n < 100000)
+      return (
+        inWords(Math.floor(n / 1000)) +
+        " Thousand " +
+        (n % 1000 ? inWords(n % 1000) : "")
+      );
+    if (n < 10000000)
+      return (
+        inWords(Math.floor(n / 100000)) +
+        " Lakh " +
+        (n % 100000 ? inWords(n % 100000) : "")
+      );
+    return (
+      inWords(Math.floor(n / 10000000)) +
+      " Crore " +
+      (n % 10000000 ? inWords(n % 10000000) : "")
+    );
+  }
+
+  return inWords(Math.floor(num)) + " Only";
+}
+
 const template = fs.readFileSync(
   path.join(__dirname, "../../../../templates/invoice2.html"),
   "utf8",
@@ -134,6 +200,10 @@ ${escapeHTML(invoice.customer_city || "")} ${escapeHTML(invoice.zipcode || "")}
   html = html.replace(/{{tax_total}}/g, money(invoice.tax_total));
   html = html.replace(/{{shipping_amount}}/g, money(invoice.shipping_amount));
   html = html.replace(/{{grand_total}}/g, money(invoice.grand_total));
+
+  const amountWords = numberToWords(invoice.grand_total || 0);
+
+  html = html.replace(/{{amount_words}}/g, escapeHTML(amountWords));
 
   return html;
 }
@@ -428,7 +498,7 @@ class OrderController {
       if (!html || typeof html !== "string") {
         throw new Error("Invalid HTML generated for invoice");
       }
-      
+
       const pdf = await generateInvoicePDF(html);
 
       res.set({
