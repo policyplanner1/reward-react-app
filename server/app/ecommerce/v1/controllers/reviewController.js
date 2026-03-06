@@ -1,6 +1,7 @@
 const ReviewModel = require("../models/reviewModel");
 const db = require("../../../../config/database");
 const fs = require("fs");
+const path=require("path");
 
 class ReviewController {
   // checking if user can review product, then submit review
@@ -146,7 +147,7 @@ class ReviewController {
           fs.renameSync(file.path, finalPath);
 
           mediaList.push({
-            media_url: `reviews/user_${userId}/review_${reviewId}/${finalFileName}`,
+            media_url: `/reviews/user_${userId}/review_${reviewId}/${finalFileName}`,
             media_type: file.mimetype.startsWith("video") ? "video" : "image",
           });
         }
