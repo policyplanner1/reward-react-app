@@ -45,17 +45,4 @@ router.get("/address/:address_id", auth, authController.getAddressById);
 /*===================================================User Information===========================================*/
 router.get("/user-info", optionalAuth, authController.getUserInfo);
 
-/*===================================================Review===========================================*/
-
-// Add review
-router.post(
-  "/reviews",
-  /* auth, */
-  // uploadReviewMedia,
-  authController.submitReview,
-);
-
-// fetch reviews
-router.get("/reviews/:product_id", authController.getProductReviews);
-
 module.exports = router;
