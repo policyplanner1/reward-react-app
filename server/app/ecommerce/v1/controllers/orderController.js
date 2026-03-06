@@ -8,86 +8,129 @@ const {
 } = require("../../../../services/Invoice/pdf-service");
 
 //Helper function For invoice
-function buildInvoiceHTML(invoice, items) {
-  const template = fs.readFileSync(
-    path.join(__dirname, "../../../../templates/invoice2.html"),
-    "utf8",
-  );
+function escapeHTML(str = "") {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
+function money(value) {
+  return Number(value || 0).toFixed(2);
+}
+
+function formatDate(date) {
+  if (!date) return "";
+
+  return new Date(date).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+const template = fs.readFileSync(
+  path.join(__dirname, "../../../../templates/invoice2.html"),
+  "utf8",
+);
+
+function buildInvoiceHTML(invoice = {}, items = []) {
   // Build product rows
   const rows = items
     .map(
       (item) => `
-      <tr>
-      <td>
-        <div style="font-weight:600;">${item.product_name}</div>
-        <div style="font-size:11px;color:#64748b;">
-          SKU: ${item.sku} • GST ${item.tax_rate}%
-        </div>
-      </td>
+        <tr>
+        <td>
+          <div style="font-weight:600;">
+            ${escapeHTML(item.product_name)}
+          </div>
 
-      <td style="text-align:center">${item.quantity}</td>
+          <div style="font-size:11px;color:#64748b;">
+            SKU: ${escapeHTML(item.sku || "")}
+            • GST ${item.tax_rate || 0}%
+          </div>
+        </td>
 
-      <td style="text-align:right">
-      ${Number(item.unit_price).toFixed(2)}
-      </td>
+        <td style="text-align:center">
+          ${item.quantity || 0}
+        </td>
 
-      <td style="text-align:right;font-weight:600">
-      ${Number(item.line_total).toFixed(2)}
-      </td>
+        <td style="text-align:right">
+          ${money(item.unit_price)}
+        </td>
 
-      </tr>
-      `,
+        <td style="text-align:right;font-weight:600">
+          ${money(item.line_total)}
+        </td>
+        </tr>
+        `,
     )
     .join("");
 
   let html = template;
 
-  // Replace placeholders (global)
-  html = html.replace(/{{invoice_number}}/g, invoice.invoice_number);
-  html = html.replace(
-    /{{invoice_date}}/g,
-    new Date(invoice.invoice_date).toLocaleDateString(),
-  );
-
-  html = html.replace(/{{order_ref}}/g, invoice.order_ref);
-  html = html.replace(
-    /{{order_date}}/g,
-    new Date(invoice.order_date).toLocaleDateString(),
-  );
-
-  html = html.replace(/{{vendor_name}}/g, invoice.company_name || "");
-  html = html.replace(/{{vendor_gstin}}/g, invoice.gstin || "");
+  // ------------------------
+  // Invoice Info
+  // ------------------------
 
   html = html.replace(
-    /{{vendor_address}}/g,
-    `
-    ${invoice.line1 || ""} ${invoice.line2 || ""}<br>
-    ${invoice.city || ""}, ${invoice.state_name || ""} ${invoice.pincode || ""}
-  `,
+    /{{invoice_number}}/g,
+    escapeHTML(invoice.invoice_number),
+  );
+  html = html.replace(/{{invoice_date}}/g, formatDate(invoice.invoice_date));
+
+  html = html.replace(/{{order_ref}}/g, escapeHTML(invoice.order_ref));
+  html = html.replace(/{{order_date}}/g, formatDate(invoice.order_date));
+
+  // ------------------------
+  // Vendor Info
+  // ------------------------
+
+  html = html.replace(
+    /{{vendor_name}}/g,
+    escapeHTML(invoice.company_name || ""),
   );
 
-  html = html.replace(/{{customer_name}}/g, invoice.contact_name || "");
+  html = html.replace(/{{vendor_gstin}}/g, escapeHTML(invoice.gstin || ""));
+
+  const vendorAddress = `
+${escapeHTML(invoice.line1 || "")} ${escapeHTML(invoice.line2 || "")}<br>
+${escapeHTML(invoice.city || "")}, ${escapeHTML(invoice.state_name || "")} ${escapeHTML(invoice.pincode || "")}
+`.trim();
+
+  html = html.replace(/{{vendor_address}}/g, vendorAddress);
+
+  // ------------------------
+  // Customer Info
+  // ------------------------
+
   html = html.replace(
-    /{{customer_address}}/g,
-    `
-    ${invoice.address1 || ""} ${invoice.address2 || ""}<br>
-    ${invoice.customer_city || ""} ${invoice.zipcode || ""}
-  `,
+    /{{customer_name}}/g,
+    escapeHTML(invoice.contact_name || ""),
   );
+
+  const customerAddress = `
+${escapeHTML(invoice.address1 || "")} ${escapeHTML(invoice.address2 || "")}<br>
+${escapeHTML(invoice.customer_city || "")} ${escapeHTML(invoice.zipcode || "")}
+`.trim();
+
+  html = html.replace(/{{customer_address}}/g, customerAddress);
+
+  // ------------------------
+  // Items
+  // ------------------------
 
   html = html.replace(/{{items}}/g, rows);
 
-  html = html.replace(/{{subtotal}}/g, Number(invoice.subtotal).toFixed(2));
-  html = html.replace(/{{tax_total}}/g, Number(invoice.tax_total).toFixed(2));
-  html = html.replace(
-    /{{shipping_amount}}/g,
-    Number(invoice.shipping_amount).toFixed(2),
-  );
-  html = html.replace(
-    /{{grand_total}}/g,
-    Number(invoice.grand_total).toFixed(2),
-  );
+  // ------------------------
+  // Totals
+  // ------------------------
+
+  html = html.replace(/{{subtotal}}/g, money(invoice.subtotal));
+  html = html.replace(/{{tax_total}}/g, money(invoice.tax_total));
+  html = html.replace(/{{shipping_amount}}/g, money(invoice.shipping_amount));
+  html = html.replace(/{{grand_total}}/g, money(invoice.grand_total));
 
   return html;
 }
