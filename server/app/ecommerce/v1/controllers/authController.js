@@ -747,10 +747,8 @@ class AuthController {
       }
 
       const { address_id } = req.params;
-      console.log(address_id, "address_id");
 
       const address = await AddressModel.getAddressById(address_id, userId);
-      console.log(address, "address");
 
       if (!address) {
         return res.status(404).json({

@@ -602,7 +602,6 @@ export default function Onboarding() {
     const fetchStates = async () => {
       try {
         const res = await api.get("/auth/all-states");
-        console.log(res.data.data, "data");
         if (res.data.success) {
           setStates(res.data.data);
         }

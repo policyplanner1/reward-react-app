@@ -5,7 +5,6 @@ class flashController {
   async createFlashSale(req, res) {
     try {
       const { title, start_at, end_at } = req.body;
-      console.log(req, "Req");
 
       // Multer file
       const banner_image = req.file ? req.file.filename : null;

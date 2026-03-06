@@ -7,9 +7,6 @@ const { sendTemplateMessage } = require("./interaktService");
 const MAX_RETRY = Number(process.env.WA_MAX_RETRY || 3);
 const RETRY_DELAY_MINUTES = Number(process.env.WA_RETRY_DELAY_MINUTES || 2);
 
-console.log("BASE_URL:", process.env.INTERAKT_BASE_URL);
-console.log("API_KEY:", process.env.INTERAKT_API_KEY ? "✅ loaded" : "❌ missing");
-
 function safeJsonParse(value, fallback) {
   if (value == null) return fallback;
   if (typeof value === "object") return value;

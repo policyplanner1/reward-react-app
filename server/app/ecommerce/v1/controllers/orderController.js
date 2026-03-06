@@ -473,7 +473,6 @@ class OrderController {
   async getInvoice(req, res) {
     try {
       const { orderId } = req.params;
-      console.log("orderId:", orderId);
 
       // 1 Get invoices for this order
       const [invoiceRows] = await db.query(
@@ -484,8 +483,6 @@ class OrderController {
       `,
         [orderId],
       );
-
-      console.log("invoiceRows:", invoiceRows);
 
       if (!invoiceRows.length) {
         return res.status(404).json({

@@ -26,7 +26,6 @@ const FlashSaleForm: React.FC = () => {
       if (isEdit && id) {
         const res = await api.get(`/flash/flash-sale/${id}`);
         const data = res.data.data;
-        console.log(data, "data");
 
         setTitle(data.title);
         setStartAt(data.start_at?.slice(0, 16));
