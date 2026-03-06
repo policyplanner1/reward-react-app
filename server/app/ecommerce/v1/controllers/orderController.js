@@ -10,7 +10,7 @@ const {
 //Helper function For invoice
 function buildInvoiceHTML(invoice, items) {
   const template = fs.readFileSync(
-    path.join(__dirname, "../../../../templates/invoice.html"),
+    path.join(__dirname, "../../../../templates/invoice2.html"),
     "utf8",
   );
 

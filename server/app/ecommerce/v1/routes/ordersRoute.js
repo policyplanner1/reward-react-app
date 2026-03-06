@@ -27,9 +27,10 @@ router.get(
 
 // =======================================Invoice==========================================
 // Get order Invoice
-router.get("/invoice/:orderId", auth, OrderController.getInvoice);
-// router.get("/invoice/:orderId", OrderController.getInvoice);
-
-
+router.get(
+  "/invoice/:orderId",
+  auth,
+  OrderController.getInvoice,
+);
 
 module.exports = router;
