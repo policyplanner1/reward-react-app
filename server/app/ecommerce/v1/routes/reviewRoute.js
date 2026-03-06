@@ -7,6 +7,9 @@ const reviewUpload = require("../../../../middleware/reviewUpload");
 
 /*===================================================Review===========================================*/
 
+// check review eligibility
+router.get("/reviewable-order/:variant_id",optionalAuth, ReviewController.getReviewableOrder);
+
 // Add review
 router.post("/create-review", auth, ReviewController.submitReview);
 

@@ -3,6 +3,40 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 
 class ReviewController {
+  // checking if user can review product, then submit review
+  async getReviewableOrder(req, res) {
+    try {
+      const userId = req.user?.user_id;
+      const { variant_id } = req.params;
+
+      const [rows] = await db.execute(
+        `
+      SELECT o.order_id
+      FROM eorders o
+      JOIN eorder_items oi ON oi.order_id = o.order_id
+      LEFT JOIN product_reviews pr
+        ON pr.order_id = o.order_id
+        AND pr.variant_id = oi.variant_id
+        AND pr.user_id = ?
+      WHERE oi.variant_id = ?
+      AND o.user_id = ?
+      AND o.status = 'delivered'
+      AND pr.review_id IS NULL
+      LIMIT 1
+      `,
+        [userId, variant_id, userId],
+      );
+
+      res.json({
+        can_review: rows.length > 0,
+        order_id: rows[0]?.order_id || null,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to check review eligibility" });
+    }
+  }
+
   // submit review
   async submitReview(req, res) {
     const conn = await db.getConnection();
@@ -11,6 +45,8 @@ class ReviewController {
       await conn.beginTransaction();
 
       const userId = req.user?.user_id;
+
+      console.log(userId, "userId");
 
       if (!userId) {
         return res.status(401).json({
@@ -29,6 +65,8 @@ class ReviewController {
         smooth_experience,
         review_text,
       } = req.body;
+
+      console.log(req.body, "request");
 
       // Basic validation
       if (!rating || rating < 1 || rating > 5) {
@@ -49,6 +87,8 @@ class ReviewController {
         `,
         [order_id, userId, variant_id],
       );
+
+      console.log(orderCheck, "orderCheck");
 
       if (orderCheck.length === 0) {
         await conn.rollback();
