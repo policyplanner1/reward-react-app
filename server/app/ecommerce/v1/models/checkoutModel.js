@@ -11,12 +11,8 @@ function generateOrderRef() {
   return `ORD-${ymd}-${rand}`;
 }
 
-async function generateInvoices(orderId) {
-  const conn = await db.getConnection();
-
+async function generateInvoices(orderId, conn) {
   try {
-    await conn.beginTransaction();
-
     // 1 Fetch order items with vendor
     const [items] = await conn.query(
       `
@@ -39,7 +35,6 @@ async function generateInvoices(orderId) {
     );
 
     if (!items.length) {
-      await conn.commit();
       return;
     }
 
@@ -178,13 +173,8 @@ async function generateInvoices(orderId) {
         );
       }
     }
-
-    await conn.commit();
   } catch (err) {
-    await conn.rollback();
     throw err;
-  } finally {
-    conn.release();
   }
 }
 
@@ -404,7 +394,7 @@ class CheckoutModel {
       }
 
       // 10 Invoice generation
-      await generateInvoices(orderId);
+      await generateInvoices(orderId, conn);
 
       // 11 Clear cart
       await conn.execute(`DELETE FROM cart_items WHERE user_id = ?`, [userId]);
