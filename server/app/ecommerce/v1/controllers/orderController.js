@@ -31,8 +31,8 @@ function formatDate(date) {
   });
 }
 
-function numberToWords(num) {
-  const a = [
+function amountToWords(amount) {
+  const ones = [
     "",
     "One",
     "Two",
@@ -55,7 +55,7 @@ function numberToWords(num) {
     "Nineteen",
   ];
 
-  const b = [
+  const tens = [
     "",
     "",
     "Twenty",
@@ -68,35 +68,47 @@ function numberToWords(num) {
     "Ninety",
   ];
 
-  function inWords(n) {
-    if (n < 20) return a[n];
-    if (n < 100) return b[Math.floor(n / 10)] + (n % 10 ? " " + a[n % 10] : "");
+  function numToWords(n) {
+    if (n < 20) return ones[n];
+    if (n < 100)
+      return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
     if (n < 1000)
       return (
-        a[Math.floor(n / 100)] + " Hundred " + (n % 100 ? inWords(n % 100) : "")
+        ones[Math.floor(n / 100)] +
+        " Hundred" +
+        (n % 100 ? " " + numToWords(n % 100) : "")
       );
     if (n < 100000)
       return (
-        inWords(Math.floor(n / 1000)) +
-        " Thousand " +
-        (n % 1000 ? inWords(n % 1000) : "")
+        numToWords(Math.floor(n / 1000)) +
+        " Thousand" +
+        (n % 1000 ? " " + numToWords(n % 1000) : "")
       );
     if (n < 10000000)
       return (
-        inWords(Math.floor(n / 100000)) +
-        " Lakh " +
-        (n % 100000 ? inWords(n % 100000) : "")
+        numToWords(Math.floor(n / 100000)) +
+        " Lakh" +
+        (n % 100000 ? " " + numToWords(n % 100000) : "")
       );
+
     return (
-      inWords(Math.floor(n / 10000000)) +
-      " Crore " +
-      (n % 10000000 ? inWords(n % 10000000) : "")
+      numToWords(Math.floor(n / 10000000)) +
+      " Crore" +
+      (n % 10000000 ? " " + numToWords(n % 10000000) : "")
     );
   }
 
-  return inWords(Math.floor(num)) + " Only";
-}
+  const rupees = Math.floor(amount);
+  const paise = Math.round((amount - rupees) * 100);
 
+  let words = numToWords(rupees) + " Rupees";
+
+  if (paise > 0) {
+    words += " and " + numToWords(paise) + " Paise";
+  }
+
+  return words + " Only";
+}
 const template = fs.readFileSync(
   path.join(__dirname, "../../../../templates/invoice2.html"),
   "utf8",
@@ -201,7 +213,8 @@ ${escapeHTML(invoice.customer_city || "")} ${escapeHTML(invoice.zipcode || "")}
   html = html.replace(/{{shipping_amount}}/g, money(invoice.shipping_amount));
   html = html.replace(/{{grand_total}}/g, money(invoice.grand_total));
 
-  const amountWords = numberToWords(invoice.grand_total || 0);
+  // amount to words
+  const amountWords = amountToWords(Number(invoice.grand_total || 0));
 
   html = html.replace(/{{amount_words}}/g, escapeHTML(amountWords));
 
