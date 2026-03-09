@@ -1,14 +1,28 @@
 const express = require("express");
 const router = express.Router();
 const ServiceEnquiryController = require("../controllers/serviceEnquiryController");
+const {
+  authenticateToken,
+  authorizeRoles,
+} = require("../../../../middleware/auth");
 
 // create Enquiry
 router.post("/", ServiceEnquiryController.createEnquiry);
 
 // Get all the Enquires
-router.get("/", ServiceEnquiryController.getAllEnquiries);
+router.get(
+  "/",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  ServiceEnquiryController.getAllEnquiries,
+);
 
 // Get Enquiry By Id
-router.get("/:id", ServiceEnquiryController.getEnquiryById);
+router.get(
+  "/:id",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  ServiceEnquiryController.getEnquiryById,
+);
 
 module.exports = router;
