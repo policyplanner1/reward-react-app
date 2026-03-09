@@ -1,4 +1,5 @@
 const CheckoutModel = require("../models/checkoutModel");
+const NotificationModel = require("../models/notificationModel");
 const db = require("../../../../config/database");
 // const {
 //   enqueueWhatsApp,
@@ -51,6 +52,15 @@ class CheckoutController {
       // } else {
       //   console.warn("WA not enqueued: missing customer phone for order:", orderId);
       // }
+
+      // await NotificationModel.create({
+      //   userId,
+      //   type: "order",
+      //   title: "Order placed ✅",
+      //   message: "Your order is confirmed and being processed.",
+      //   reference_type: "order",
+      //   reference_id: orderId,
+      // });
 
       return res.json({
         success: true,
@@ -142,6 +152,15 @@ class CheckoutController {
       //   console.warn("WA not enqueued: missing customer phone for order:", orderId);
       // }
 
+      await NotificationModel.create({
+        userId,
+        type: "order",
+        title: "Order placed ✅",
+        message: "Your order is confirmed and being processed.",
+        reference_type: "order",
+        reference_id: orderId,
+      });
+
       return res.json({
         success: true,
         message: "Order placed successfully",
@@ -232,7 +251,7 @@ class CheckoutController {
         productId: Number(product_id),
         variantId: Number(variant_id),
         quantity: Number(qty),
-        userId
+        userId,
       });
 
       return res.json({

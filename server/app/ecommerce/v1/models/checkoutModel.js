@@ -11,6 +11,173 @@ function generateOrderRef() {
   return `ORD-${ymd}-${rand}`;
 }
 
+async function generateInvoices(orderId, conn) {
+  try {
+    // 1 Fetch order items with vendor
+    const [items] = await conn.query(
+      `
+      SELECT 
+        oi.product_id,
+        oi.variant_id,
+        oi.quantity,
+        oi.price,
+        p.product_name,
+        p.vendor_id,
+        p.gst_slab,
+        p.hsn_sac_code,
+        v.sku
+      FROM eorder_items oi
+      JOIN eproducts p ON oi.product_id = p.product_id
+      JOIN product_variants v ON oi.variant_id = v.variant_id
+      WHERE oi.order_id = ?
+      `,
+      [orderId],
+    );
+
+    if (!items.length) {
+      return;
+    }
+
+    // 2 Group items by vendor
+    const vendorMap = {};
+
+    for (const item of items) {
+      if (!vendorMap[item.vendor_id]) {
+        vendorMap[item.vendor_id] = [];
+      }
+      vendorMap[item.vendor_id].push(item);
+    }
+
+    // 3 Create invoice per vendor
+    for (const vendorId of Object.keys(vendorMap)) {
+      // Prevent duplicates
+      const [[existing]] = await conn.query(
+        `SELECT invoice_id FROM invoices 
+         WHERE order_id = ? AND vendor_id = ? 
+         LIMIT 1`,
+        [orderId, vendorId],
+      );
+
+      if (existing) continue;
+
+      const vendorItems = vendorMap[vendorId];
+      const invoiceNumber = `INV-${orderId}-${vendorId}`;
+
+      let subtotal = 0;
+      let taxTotal = 0;
+
+      // Calculate totals
+      for (const item of vendorItems) {
+        const lineSubtotal = Number(item.price) * Number(item.quantity);
+        const gstRate = Number(item.gst_slab || 0);
+        const taxAmount = lineSubtotal * (gstRate / 100);
+
+        subtotal += lineSubtotal;
+        taxTotal += taxAmount;
+      }
+
+      // 4 Fetch shipping charges for vendor
+      const [[shipment]] = await conn.query(
+        `
+        SELECT shipping_charges
+        FROM order_shipments
+        WHERE order_id = ? AND vendor_id = ?
+        LIMIT 1
+        `,
+        [orderId, vendorId],
+      );
+
+      const shippingCharges = Number(shipment?.shipping_charges || 0);
+
+      const grandTotal = subtotal + taxTotal + shippingCharges;
+
+      // 5 Create invoice
+      const [invResult] = await conn.query(
+        `
+        INSERT INTO invoices
+        (
+          invoice_number,
+          order_id,
+          vendor_id,
+          user_id,
+          subtotal,
+          tax_total,
+          shipping_amount,
+          grand_total
+        )
+        SELECT ?, o.order_id, ?, o.user_id, ?, ?, ?, ?
+        FROM eorders o
+        WHERE o.order_id = ?
+        `,
+        [
+          invoiceNumber,
+          vendorId,
+          subtotal,
+          taxTotal,
+          shippingCharges,
+          grandTotal,
+          orderId,
+        ],
+      );
+
+      const invoiceId = invResult.insertId;
+
+      // 6 Insert invoice items
+      for (const item of vendorItems) {
+        const lineSubtotal = Number(item.price) * Number(item.quantity);
+        const gstRate = Number(item.gst_slab || 0);
+
+        const totalTax = lineSubtotal * (gstRate / 100);
+
+        const cgst = totalTax / 2;
+        const sgst = totalTax / 2;
+        const igst = 0;
+
+        const lineTotal = lineSubtotal + totalTax;
+
+        await conn.query(
+          `
+            INSERT INTO invoice_items
+            (
+              invoice_id,
+              product_id,
+              variant_id,
+              product_name,
+              sku,
+              quantity,
+              unit_price,
+              tax_rate,
+              hsn_code,
+              cgst_amount,
+              sgst_amount,
+              igst_amount,
+              line_total
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+          [
+            invoiceId,
+            item.product_id,
+            item.variant_id,
+            item.product_name,
+            item.sku,
+            item.quantity,
+            item.price,
+            gstRate,
+            item.hsn_sac_code,
+            cgst,
+            sgst,
+            igst,
+            lineTotal,
+          ],
+        );
+      }
+    }
+  } catch (err) {
+    throw err;
+  }
+}
+
 class CheckoutModel {
   // Buy cart items
   async checkoutCart(userId, companyId = null, addressId) {
@@ -226,7 +393,10 @@ class CheckoutModel {
         );
       }
 
-      // 10 Clear cart
+      // 10 Invoice generation
+      await generateInvoices(orderId, conn);
+
+      // 11 Clear cart
       await conn.execute(`DELETE FROM cart_items WHERE user_id = ?`, [userId]);
 
       await conn.commit();
@@ -384,7 +554,10 @@ class CheckoutModel {
         ],
       );
 
-      // 8 Deduct stock
+      // 8 Invoice generation
+      await generateInvoices(orderId);
+
+      // 9 Deduct stock
       const [updateRes] = await conn.execute(
         `
       UPDATE product_variants
@@ -592,7 +765,7 @@ class CheckoutModel {
   }
 
   // Get buy now checkout Details
-  async getBuyNowCheckout({ productId, variantId, quantity,userId }) {
+  async getBuyNowCheckout({ productId, variantId, quantity, userId }) {
     const [[row]] = await db.execute(
       `
     SELECT 

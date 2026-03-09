@@ -345,6 +345,78 @@ class orderModel {
       totalRefund,
     };
   }
+
+  async getInvoiceData(invoiceId) {
+    const [rows] = await db.query(
+      `
+    SELECT
+      i.invoice_id,
+      i.invoice_number,
+      i.subtotal,
+      i.tax_total,
+      i.shipping_amount,
+      i.grand_total,
+      i.invoice_date,
+
+      o.order_ref,
+      o.created_at AS order_date,
+
+      v.vendor_id,
+      v.company_name,
+      v.gstin,
+
+      va.line1,
+      va.line2,
+      va.city,
+      va.pincode,
+      s.state_name,
+
+      ca.contact_name,
+      ca.address1,
+      ca.address2,
+      ca.city AS customer_city,
+      ca.zipcode
+
+    FROM invoices i
+    JOIN eorders o ON o.order_id = i.order_id
+
+    JOIN vendors v ON v.vendor_id = i.vendor_id
+    JOIN vendor_addresses va 
+      ON va.vendor_id = v.vendor_id AND va.type='shipping'
+    JOIN states s ON s.state_id = va.state_id
+
+    JOIN customer_addresses ca ON ca.address_id = o.address_id
+
+    WHERE i.invoice_id = ?
+    LIMIT 1
+    `,
+      [invoiceId],
+    );
+
+    return rows[0];
+  }
+
+  async getInvoiceItems(invoiceId) {
+    const [items] = await db.query(
+      `
+    SELECT
+      product_name,
+      sku,
+      quantity,
+      unit_price,
+      tax_rate,
+      cgst_amount,
+      sgst_amount,
+      igst_amount,
+      line_total
+    FROM invoice_items
+    WHERE invoice_id = ?
+    `,
+      [invoiceId],
+    );
+
+    return items;
+  }
 }
 
 module.exports = new orderModel();

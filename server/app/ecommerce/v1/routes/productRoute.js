@@ -40,10 +40,47 @@ router.get(
   ProductController.getCategoriesWithSubcategories,
 );
 
-/* ======================================================Suggestion============================================ */
+/* ======================================================Promotional============================================ */
 
 // similar Products
 router.get("/similar/:productId", ProductController.getSimilarProducts);
+
+// Recent Products
+router.get(
+  "/recent-products",
+  optionalAuth,
+  ProductController.getRecentProducts,
+);
+
+// Recommended Products
+router.get(
+  "/recommendations",
+  optionalAuth,
+  ProductController.getUserRecommendations,
+);
+
+// New Arrivals
+router.get("/new-arrivals", ProductController.getNewArrivals);
+
+// Customer also bought
+router.get(
+  "/:productId/customers-also-bought",
+  ProductController.getCustomersAlsoBought,
+);
+
+// Trending Products
+router.get("/trending", ProductController.getTrendingProducts);
+
+// Best seller
+router.get("/best-sellers", ProductController.getBestSellers);
+
+// Most viewed products
+router.get("/most-viewed", ProductController.getMostViewedProducts);
+
+// Top rated products
+router.get("/top-rated", ProductController.getTopRatedProducts);
+
+/* ======================================================Suggestions and History============================================ */
 
 // autosuggest products
 router.get("/search/suggestions", ProductController.getSearchSuggestions);

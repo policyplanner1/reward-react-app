@@ -13,7 +13,6 @@ const paymentRoute=require('../common/Routes/indexRoute')
 const offerRoute=require('./offerRoute')
 const flashRoutes=require('./flashSaleRoute')
 const orderRoutes=require('./orderRoutes')
-const logisticRoute=require('./logisticsRoute')
 
 // dashboard Routes
 router.use("/auth", authRoutes);
@@ -29,6 +28,5 @@ router.use("/payment",paymentRoute)
 router.use("/offer",offerRoute)
 router.use("/flash",flashRoutes)
 router.use("/order",orderRoutes)
-router.use("/logistics",logisticRoute)
 
 module.exports = router;

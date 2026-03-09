@@ -435,8 +435,6 @@ class wareHouseController {
     try {
       const { query } = req.query;
 
-      console.log(query, "query");
-
       if (!query) {
         return res.json({ success: true, data: [] });
       }

@@ -7,6 +7,8 @@ const v1OrderRoutes = require("./ordersRoute");
 const v1AuthRoutes = require("./authRoute");
 const v1WishlistRoutes = require("./wishlistRoute");
 const v1NotificationRoutes = require("./notificationRoute");
+const v1LogisticRoute=require('./logisticsRoute')
+const v1ReviewRoute=require('./reviewRoute')
 
 
 router.use("/auth", v1AuthRoutes);
@@ -16,5 +18,7 @@ router.use("/checkout", v1CheckoutRoutes);
 router.use("/orders", v1OrderRoutes);
 router.use("/wishlist", v1WishlistRoutes);
 router.use("/notification", v1NotificationRoutes);
+router.use("/logistics",v1LogisticRoute)
+router.use("/review",v1ReviewRoute)
 
 module.exports = router;

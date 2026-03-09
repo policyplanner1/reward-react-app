@@ -1,40 +1,50 @@
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs");
+
+const tempFolder = path.join(__dirname, "../uploads/temp");
+
+if (!fs.existsSync(tempFolder)) {
+  fs.mkdirSync(tempFolder, { recursive: true });
+}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/reviews");
+    cb(null, tempFolder);
   },
+
   filename: (req, file, cb) => {
-    const uniqueName =
-      Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueName + path.extname(file.originalname));
+    const safeName = file.originalname
+      .replace(/\s+/g, "_")
+      .replace(/[^a-zA-Z0-9._-]/g, "");
+
+    cb(null, `${Date.now()}-${safeName}`);
   },
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = [
+  const allowedMimeTypes = [
     "image/jpeg",
     "image/png",
-    "image/jpg",
+    "image/webp",
     "video/mp4",
-    "video/webm",
+    "video/quicktime",
   ];
 
-  if (!allowedTypes.includes(file.mimetype)) {
-    return cb(new Error("INVALID_FILE_TYPE"));
+  if (allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only images and videos allowed"), false);
   }
-
-  cb(null, true);
 };
 
-const uploadReviewMedia = multer({
+const reviewUpload = multer({
   storage,
   fileFilter,
   limits: {
+    fileSize: 20 * 1024 * 1024,
     files: 5,
-    fileSize: 10 * 1024 * 1024, 
   },
 });
 
-module.exports = uploadReviewMedia;
+module.exports = reviewUpload;

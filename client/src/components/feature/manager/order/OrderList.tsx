@@ -2,8 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
 import "./css/orderList.css";
-import { FiBox } from "react-icons/fi";
-import Swal from "sweetalert2";
+import { FiShoppingCart } from "react-icons/fi";
 
 interface Order {
   order_id: number;
@@ -37,9 +36,6 @@ const OrderList: React.FC = () => {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [creatingShipmentId, setCreatingShipmentId] = useState<number | null>(
-    null,
-  );
 
   const limit = 10;
 
@@ -81,7 +77,7 @@ const OrderList: React.FC = () => {
     <div className="order-page">
       <div className=" flex items-center gap-4 mb-8">
   <div className="w-12 h-12 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-full flex items-center justify-center shrink-0">
-    <FiBox className="text-white text-xl" />
+    <FiShoppingCart className="text-white text-xl mr-0.75" />
   </div>
 
   <div>
@@ -161,13 +157,6 @@ const OrderList: React.FC = () => {
                         >
                           View
                         </button>
-
-                        {/* Shipment Logic */}
-                        {order.awb_number ? (
-                          <span className="awb-text">
-                            AWB: {order.awb_number}
-                          </span>
-                        ) : ''}
                       </td>
                     </tr>
                   ))

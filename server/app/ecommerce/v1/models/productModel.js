@@ -829,108 +829,355 @@ class ProductModel {
     });
   }
 
-  async getSimilarProducts({
-    productId,
-    categoryId,
-    subcategoryId,
-    sub_subcategoryId,
-    limit = 10,
-  }) {
+  async getSimilarProducts({ productId, limit = 10 }) {
     try {
+      /* -------------------------------
+       1 Get category hierarchy
+    --------------------------------*/
+      const [productRows] = await db.execute(
+        `
+      SELECT category_id, subcategory_id, sub_subcategory_id
+      FROM eproducts
+      WHERE product_id = ?
+        AND status = 'approved'
+        AND is_deleted = 0
+        AND is_visible = 1
+      `,
+        [productId],
+      );
+
+      if (!productRows.length) {
+        return [];
+      }
+
+      const { category_id, subcategory_id, sub_subcategory_id } =
+        productRows[0];
+
+      /* -------------------------------
+       2 Fetch similar products
+    --------------------------------*/
       const query = `
-    SELECT
-      p.product_id,
-      p.product_name,
-      p.brand_name,
-      p.created_at,
-      v.variant_id,
-      v.sale_price,
-      v.mrp,
-      v.reward_redemption_limit,
+      SELECT
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+        p.created_at,
+        v.variant_id,
+        v.sale_price,
+        v.mrp,
+        v.reward_redemption_limit,
 
-      GROUP_CONCAT(
-        DISTINCT CONCAT(
-          pi.image_id, '::',
-          pi.image_url, '::',
-          pi.sort_order
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id, '::',
+            pi.image_url, '::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
+        ) AS images
+
+      FROM eproducts p
+
+      INNER JOIN categories c
+        ON c.category_id = p.category_id
+       AND c.status = 1
+
+      INNER JOIN sub_categories sc
+        ON sc.subcategory_id = p.subcategory_id
+       AND sc.status = 1
+
+      INNER JOIN sub_sub_categories ssc
+        ON ssc.sub_subcategory_id = p.sub_subcategory_id
+       AND ssc.status = 1
+
+      INNER JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
+          LIMIT 1
         )
-        ORDER BY pi.sort_order ASC
-      ) AS images
 
-    FROM eproducts p
+      LEFT JOIN product_images pi
+        ON pi.product_id = p.product_id
 
-    /* ---- Active category ---- */
-    INNER JOIN categories c
-      ON c.category_id = p.category_id
-     AND c.status = 1
+      WHERE p.status = 'approved'
+        AND p.is_deleted = 0
+        AND p.is_visible = 1
+        AND p.product_id != ?
+        AND (
+          p.category_id = ?
+          OR p.subcategory_id = ?
+          OR p.sub_subcategory_id = ?
+        )
 
-    /* ---- Active subcategory ---- */
-    INNER JOIN sub_categories sc
-      ON sc.subcategory_id = p.subcategory_id
-     AND sc.status = 1
-
-    /* ---- Active sub-subcategory ---- */
-    INNER JOIN sub_sub_categories ssc
-      ON ssc.sub_subcategory_id = p.sub_subcategory_id
-     AND ssc.status = 1
-
-  /* ---- Lowest visible variant per product ---- */
-    INNER JOIN product_variants v
-      ON v.variant_id = (
-        SELECT pv2.variant_id
-        FROM product_variants pv2
-        WHERE pv2.product_id = p.product_id
-          AND pv2.is_visible = 1
-          AND pv2.sale_price IS NOT NULL
-        ORDER BY pv2.sale_price ASC, pv2.variant_id ASC
-        LIMIT 1
-      )
-
-    /* ---- Active images only ---- */
-    LEFT JOIN product_images pi
-      ON pi.product_id = p.product_id
-
-    WHERE p.status = "approved"
-      AND p.is_deleted = 0
-      AND p.is_visible = 1
-      AND p.product_id != ?
-      AND (
-        p.category_id = ?
-        OR p.subcategory_id = ?
-        OR p.sub_subcategory_id = ?
-      )
-
-    GROUP BY p.product_id
-    ORDER BY RAND()
-    LIMIT ?
-  `;
+      GROUP BY p.product_id
+      ORDER BY RAND()
+      LIMIT ?
+    `;
 
       const [rows] = await db.execute(query, [
         productId,
-        categoryId,
-        subcategoryId,
-        sub_subcategoryId,
+        category_id,
+        subcategory_id,
+        sub_subcategory_id,
         limit,
       ]);
 
-      const products = rows.map((row) => {
-        const salePrice = row.sale_price ? Number(row.sale_price) : 0;
-        const mrp = row.mrp ? Number(row.mrp) : 0;
-        const discountPercent = row.reward_redemption_limit
-          ? Number(row.reward_redemption_limit)
-          : 0;
+      /* -------------------------------
+       3 Format response
+    --------------------------------*/
+      return rows.map((row) => {
+        const salePrice = Number(row.sale_price || 0);
+        const mrp = Number(row.mrp || 0);
+        const discountPercent = Number(row.reward_redemption_limit || 0);
 
-        /* ---- Reward discount amount ---- */
         const discountAmount = Math.round((salePrice * discountPercent) / 100);
-
-        /* ---- Final reward price ---- */
         const finalPrice = salePrice - discountAmount;
 
-        /* ---- Total discount vs MRP ---- */
         const mrpDiscountPercent =
           mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
 
-        /* ---- Parse images ---- */
+        let image = null;
+
+        if (row.images) {
+          const first = row.images.split(",")[0];
+          image = first.split("::")[1];
+        }
+
+        return {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          brand_name: row.brand_name,
+          variant_id: row.variant_id,
+          image,
+          price: `₹${salePrice}`,
+          originalPrice: `₹${mrp}`,
+          discount: `${mrpDiscountPercent}%`,
+          pointsPrice: `₹${finalPrice}`,
+          points: discountAmount,
+          rating: 4.6,
+          reviews: "18.9K",
+        };
+      });
+    } catch (error) {
+      console.error("Error fetching similar products:", error);
+      throw error;
+    }
+  }
+
+  // Get User Recommendations
+  async getUserRecommendations(userId, limit = 10) {
+    try {
+      const query = `
+      SELECT 
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+        v.variant_id,
+        v.sale_price,
+        v.mrp,
+        v.reward_redemption_limit,
+
+        /* ---- Weighted Score ---- */
+        (
+          IFNULL(o.order_score, 0) +
+          IFNULL(w.wishlist_score, 0) +
+          IFNULL(c.cart_score, 0) +
+          IFNULL(r.view_score, 0)
+        ) AS total_score,
+
+        GROUP_CONCAT(
+          DISTINCT CONCAT(pi.image_id,'::',pi.image_url)
+        ) AS images
+
+      FROM eproducts p
+
+      /* ----- Orders Weight 5 ----- */
+      LEFT JOIN (
+        SELECT oi.product_id, COUNT(*) * 5 AS order_score
+        FROM eorder_items oi
+        INNER JOIN eorders o ON o.order_id = oi.order_id
+        WHERE o.user_id = ?
+          AND o.status IN ('paid','delivered')
+        GROUP BY oi.product_id
+      ) o ON o.product_id = p.product_id
+
+      /* ----- Wishlist Weight 4 ----- */
+      LEFT JOIN (
+        SELECT product_id, COUNT(*) * 4 AS wishlist_score
+        FROM customer_wishlist
+        WHERE user_id = ?
+        GROUP BY product_id
+      ) w ON w.product_id = p.product_id
+
+      /* ----- Cart Weight 3 ----- */
+      LEFT JOIN (
+        SELECT product_id, COUNT(*) * 3 AS cart_score
+        FROM cart_items
+        WHERE user_id = ?
+        GROUP BY product_id
+      ) c ON c.product_id = p.product_id
+
+      /* ----- Recently Viewed Weight 2 ----- */
+      LEFT JOIN (
+        SELECT product_id, COUNT(*) * 2 AS view_score
+        FROM recently_viewed
+        WHERE user_id = ?
+        GROUP BY product_id
+      ) r ON r.product_id = p.product_id
+
+      /* ----- Active variant ----- */
+      INNER JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+          ORDER BY pv2.sale_price ASC
+          LIMIT 1
+        )
+
+      LEFT JOIN product_images pi
+        ON pi.product_id = p.product_id
+
+      WHERE p.status = 'approved'
+        AND p.is_deleted = 0
+        AND p.is_visible = 1
+
+      GROUP BY p.product_id
+      HAVING total_score > 0
+      ORDER BY total_score DESC
+      LIMIT ?
+      `;
+
+      const [rows] = await db.execute(query, [
+        userId,
+        userId,
+        userId,
+        userId,
+        limit,
+      ]);
+
+      return rows.map((row) => {
+        const salePrice = Number(row.sale_price || 0);
+        const mrp = Number(row.mrp || 0);
+        const discountPercent = Number(row.reward_redemption_limit || 0);
+
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+        const finalPrice = salePrice - discountAmount;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        let image = null;
+
+        if (row.images) {
+          const first = row.images.split(",")[0];
+          image = first.split("::")[1];
+        }
+
+        return {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          brand_name: row.brand_name,
+          variant_id: row.variant_id,
+          image,
+          price: `₹${salePrice}`,
+          originalPrice: `₹${mrp}`,
+          discount: `${mrpDiscountPercent}%`,
+          pointsPrice: `₹${finalPrice}`,
+          points: discountAmount,
+          score: row.total_score,
+          rating: 4.6,
+          reviews: "18.9K",
+        };
+      });
+    } catch (error) {
+      console.error("Recommendation model error:", error);
+      throw error;
+    }
+  }
+
+  // New Arrivals
+  async getNewArrivals(limit = 10) {
+    try {
+      const query = `
+      SELECT
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+        p.created_at,
+
+        v.variant_id,
+        v.sale_price,
+        v.mrp,
+        v.reward_redemption_limit,
+
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id,'::',
+            pi.image_url,'::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
+        ) AS images
+
+      FROM eproducts p
+
+      /* Active category */
+      INNER JOIN categories c
+        ON c.category_id = p.category_id
+       AND c.status = 1
+
+      INNER JOIN sub_categories sc
+        ON sc.subcategory_id = p.subcategory_id
+       AND sc.status = 1
+
+      INNER JOIN sub_sub_categories ssc
+        ON ssc.sub_subcategory_id = p.sub_subcategory_id
+       AND ssc.status = 1
+
+      /* Lowest visible variant */
+      INNER JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC
+          LIMIT 1
+        )
+
+      LEFT JOIN product_images pi
+        ON pi.product_id = p.product_id
+
+      WHERE p.status = 'approved'
+        AND p.is_deleted = 0
+        AND p.is_visible = 1
+
+      GROUP BY p.product_id
+      ORDER BY p.created_at DESC
+      LIMIT ?
+    `;
+
+      const [rows] = await db.execute(query, [limit]);
+
+      const products = rows.map((row) => {
+        const salePrice = Number(row.sale_price || 0);
+        const mrp = Number(row.mrp || 0);
+        const discountPercent = Number(row.reward_redemption_limit || 0);
+
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+        const finalPrice = salePrice - discountAmount;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
         let images = [];
 
         if (row.images) {
@@ -948,12 +1195,127 @@ class ProductModel {
 
           image: images.length ? images[0].image_url : null,
 
-          /* ---- Pricing ---- */
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
           discount: `${mrpDiscountPercent}%`,
           pointsPrice: `₹${finalPrice}`,
           points: discountAmount,
+
+          rating: 4.6,
+          reviews: "18.9K",
+
+          created_at: row.created_at,
+        };
+      });
+
+      return products;
+    } catch (error) {
+      console.error("Error fetching new arrivals:", error);
+      throw error;
+    }
+  }
+
+  // Customer also bought
+  async getCustomersAlsoBought(productId, limit = 10) {
+    try {
+      const query = `
+      SELECT
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+
+        v.variant_id,
+        v.sale_price,
+        v.mrp,
+        v.reward_redemption_limit,
+
+        COUNT(*) AS frequency,
+
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id,'::',
+            pi.image_url,'::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
+        ) AS images
+
+      FROM eorder_items oi1
+
+      /* Orders containing this product */
+      INNER JOIN eorder_items oi2
+        ON oi1.order_id = oi2.order_id
+
+      INNER JOIN eorders o
+        ON o.order_id = oi1.order_id
+
+      INNER JOIN eproducts p
+        ON p.product_id = oi2.product_id
+
+      /* Lowest visible variant */
+      INNER JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC
+          LIMIT 1
+        )
+
+      LEFT JOIN product_images pi
+        ON pi.product_id = p.product_id
+
+      WHERE oi1.product_id = ?
+        AND oi2.product_id != ?
+        AND o.status IN ('paid','delivered')
+        AND p.status = 'approved'
+        AND p.is_deleted = 0
+        AND p.is_visible = 1
+
+      GROUP BY p.product_id
+      ORDER BY frequency DESC
+      LIMIT ?
+    `;
+
+      const [rows] = await db.execute(query, [productId, productId, limit]);
+
+      const products = rows.map((row) => {
+        const salePrice = Number(row.sale_price || 0);
+        const mrp = Number(row.mrp || 0);
+        const discountPercent = Number(row.reward_redemption_limit || 0);
+
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+        const finalPrice = salePrice - discountAmount;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        let images = [];
+
+        if (row.images) {
+          images = row.images.split(",").map((item) => {
+            const [, image_url] = item.split("::");
+            return { image_url };
+          });
+        }
+
+        return {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          brand_name: row.brand_name,
+          variant_id: row.variant_id,
+
+          image: images.length ? images[0].image_url : null,
+
+          price: `₹${salePrice}`,
+          originalPrice: `₹${mrp}`,
+          discount: `${mrpDiscountPercent}%`,
+          pointsPrice: `₹${finalPrice}`,
+          points: discountAmount,
+
+          frequency: row.frequency,
           rating: 4.6,
           reviews: "18.9K",
         };
@@ -961,7 +1323,392 @@ class ProductModel {
 
       return products;
     } catch (error) {
-      console.error("Error fetching similar products:", error);
+      console.error("Error fetching customers also bought:", error);
+      throw error;
+    }
+  }
+
+  // Trending Products
+  async getTrendingProducts(limit = 10, days = 30) {
+    try {
+      const query = `
+      SELECT
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+
+        v.variant_id,
+        v.sale_price,
+        v.mrp,
+        v.reward_redemption_limit,
+
+        SUM(oi.quantity) AS total_sold,
+
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id,'::',
+            pi.image_url,'::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
+        ) AS images
+
+      FROM eorder_items oi
+
+      INNER JOIN eorders o
+        ON o.order_id = oi.order_id
+
+      INNER JOIN eproducts p
+        ON p.product_id = oi.product_id
+
+      /* Lowest visible variant */
+      INNER JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC
+          LIMIT 1
+        )
+
+      LEFT JOIN product_images pi
+        ON pi.product_id = p.product_id
+
+      WHERE o.status IN ('paid','delivered')
+        AND o.created_at >= NOW() - INTERVAL ? DAY
+        AND p.status = 'approved'
+        AND p.is_deleted = 0
+        AND p.is_visible = 1
+
+      GROUP BY p.product_id
+      ORDER BY total_sold DESC
+      LIMIT ?
+    `;
+
+      const [rows] = await db.execute(query, [days, limit]);
+
+      const products = rows.map((row) => {
+        const salePrice = Number(row.sale_price || 0);
+        const mrp = Number(row.mrp || 0);
+        const discountPercent = Number(row.reward_redemption_limit || 0);
+
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+        const finalPrice = salePrice - discountAmount;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        let images = [];
+
+        if (row.images) {
+          images = row.images.split(",").map((item) => {
+            const [, image_url] = item.split("::");
+            return { image_url };
+          });
+        }
+
+        return {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          brand_name: row.brand_name,
+          variant_id: row.variant_id,
+
+          image: images.length ? images[0].image_url : null,
+
+          price: `₹${salePrice}`,
+          originalPrice: `₹${mrp}`,
+          discount: `${mrpDiscountPercent}%`,
+          pointsPrice: `₹${finalPrice}`,
+          points: discountAmount,
+
+          total_sold: row.total_sold,
+          rating: 4.6,
+          reviews: "18.9K",
+        };
+      });
+
+      return products;
+    } catch (error) {
+      console.error("Error fetching trending products:", error);
+      throw error;
+    }
+  }
+
+  // Best sellers
+  async getBestSellers(limit = 10, days = 30) {
+    try {
+      const query = `
+      SELECT
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+
+        v.variant_id,
+        v.sale_price,
+        v.mrp,
+        v.reward_redemption_limit,
+
+        SUM(oi.quantity) AS total_sold,
+
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id,'::',
+            pi.image_url,'::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
+        ) AS images
+
+      FROM eorder_items oi
+
+      INNER JOIN eorders o
+        ON o.order_id = oi.order_id
+
+      INNER JOIN eproducts p
+        ON p.product_id = oi.product_id
+
+      /* Lowest visible variant */
+      INNER JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC
+          LIMIT 1
+        )
+
+      LEFT JOIN product_images pi
+        ON pi.product_id = p.product_id
+
+      WHERE o.status IN ('paid','delivered')
+        AND o.created_at >= NOW() - INTERVAL ? DAY
+        AND p.status = 'approved'
+        AND p.is_deleted = 0
+        AND p.is_visible = 1
+
+      GROUP BY p.product_id
+      ORDER BY total_sold DESC
+      LIMIT ?
+    `;
+
+      const [rows] = await db.execute(query, [days, limit]);
+
+      const products = rows.map((row) => {
+        const salePrice = Number(row.sale_price || 0);
+        const mrp = Number(row.mrp || 0);
+        const discountPercent = Number(row.reward_redemption_limit || 0);
+
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+        const finalPrice = salePrice - discountAmount;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        let images = [];
+
+        if (row.images) {
+          images = row.images.split(",").map((item) => {
+            const [, image_url] = item.split("::");
+            return { image_url };
+          });
+        }
+
+        return {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          brand_name: row.brand_name,
+          variant_id: row.variant_id,
+
+          image: images.length ? images[0].image_url : null,
+
+          price: `₹${salePrice}`,
+          originalPrice: `₹${mrp}`,
+          discount: `${mrpDiscountPercent}%`,
+          pointsPrice: `₹${finalPrice}`,
+          points: discountAmount,
+
+          total_sold: row.total_sold,
+          rating: 4.6,
+          reviews: "18.9K",
+        };
+      });
+
+      return products;
+    } catch (error) {
+      console.error("Error fetching best sellers:", error);
+      throw error;
+    }
+  }
+
+  // Get Most viewed products
+  async getMostViewedProducts(limit = 10, days = 30) {
+    try {
+      const query = `
+      SELECT
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+
+        v.variant_id,
+        v.sale_price,
+        v.mrp,
+        v.reward_redemption_limit,
+
+        COUNT(rv.product_id) AS view_count,
+
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id,'::',
+            pi.image_url,'::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
+        ) AS images
+
+      FROM recently_viewed rv
+
+      INNER JOIN eproducts p
+        ON p.product_id = rv.product_id
+
+      /* lowest visible variant */
+      INNER JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC
+          LIMIT 1
+        )
+
+      LEFT JOIN product_images pi
+        ON pi.product_id = p.product_id
+
+      WHERE rv.viewed_at >= NOW() - INTERVAL ? DAY
+        AND p.status = 'approved'
+        AND p.is_deleted = 0
+        AND p.is_visible = 1
+
+      GROUP BY p.product_id
+      ORDER BY view_count DESC
+      LIMIT ?
+    `;
+
+      const [rows] = await db.execute(query, [days, limit]);
+
+      const products = rows.map((row) => {
+        const salePrice = Number(row.sale_price || 0);
+        const mrp = Number(row.mrp || 0);
+        const discountPercent = Number(row.reward_redemption_limit || 0);
+
+        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+        const finalPrice = salePrice - discountAmount;
+
+        const mrpDiscountPercent =
+          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        let images = [];
+
+        if (row.images) {
+          images = row.images.split(",").map((item) => {
+            const [, image_url] = item.split("::");
+            return { image_url };
+          });
+        }
+
+        return {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          brand_name: row.brand_name,
+          variant_id: row.variant_id,
+
+          image: images.length ? images[0].image_url : null,
+
+          price: `₹${salePrice}`,
+          originalPrice: `₹${mrp}`,
+          discount: `${mrpDiscountPercent}%`,
+          pointsPrice: `₹${finalPrice}`,
+          points: discountAmount,
+
+          view_count: row.view_count,
+          rating: 4.6,
+          reviews: "18.9K",
+        };
+      });
+
+      return products;
+    } catch (error) {
+      console.error("Error fetching most viewed products:", error);
+      throw error;
+    }
+  }
+
+  // Get Rop rated products
+  async getTopRatedProducts(limit = 10) {
+    try {
+      const query = `
+      SELECT
+        p.product_id,
+        p.product_name,
+        p.brand_name,
+
+        v.variant_id,
+        v.sale_price,
+        v.mrp,
+        v.reward_redemption_limit,
+
+        AVG(pr.rating) AS avg_rating,
+        COUNT(pr.review_id) AS total_reviews,
+
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id,'::',
+            pi.image_url,'::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
+        ) AS images
+
+      FROM product_reviews pr
+
+      INNER JOIN eproducts p
+        ON p.product_id = pr.product_id
+
+      INNER JOIN product_variants v
+        ON v.variant_id = (
+          SELECT pv2.variant_id
+          FROM product_variants pv2
+          WHERE pv2.product_id = p.product_id
+            AND pv2.is_visible = 1
+            AND pv2.sale_price IS NOT NULL
+          ORDER BY pv2.sale_price ASC
+          LIMIT 1
+        )
+
+      LEFT JOIN product_images pi
+        ON pi.product_id = p.product_id
+
+      WHERE pr.status = 'approved'
+        AND p.status = 'approved'
+        AND p.is_deleted = 0
+        AND p.is_visible = 1
+
+      GROUP BY p.product_id
+      HAVING total_reviews >= 3
+      ORDER BY avg_rating DESC, total_reviews DESC
+      LIMIT ?
+    `;
+
+      const [rows] = await db.execute(query, [limit]);
+
+      return rows;
+    } catch (error) {
+      console.error("Error fetching top rated products:", error);
       throw error;
     }
   }

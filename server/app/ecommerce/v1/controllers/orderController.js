@@ -2,20 +2,225 @@ const OrderModel = require("../models/orderModel");
 const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
-const {cancelShipment}=require('../../../../services/ExpressBees/xpressbees_service')
+const NotificationModel = require("../models/notificationModel");
+const {
+  generateInvoicePDF,
+} = require("../../../../services/Invoice/pdf-service");
+const archiver = require("archiver");
 
-// Helper functions
-const statusLabelMap = {
-  booked: "Shipment Booked",
-  picked_up: "Picked Up",
-  in_transit: "In Transit",
-  out_for_delivery: "Out for Delivery",
-  delivered: "Delivered",
-  rto: "Returned to Origin",
-  ndr: "Delivery Attempt Failed",
-  cancelled: "Cancelled",
-  pending: "Preparing Shipment",
-};
+//Helper function For invoice
+function escapeHTML(str = "") {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function money(value) {
+  return Number(value || 0).toFixed(2);
+}
+
+function formatDate(date) {
+  if (!date) return "";
+
+  return new Date(date).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function amountToWords(amount) {
+  const ones = [
+    "",
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+    "Six",
+    "Seven",
+    "Eight",
+    "Nine",
+    "Ten",
+    "Eleven",
+    "Twelve",
+    "Thirteen",
+    "Fourteen",
+    "Fifteen",
+    "Sixteen",
+    "Seventeen",
+    "Eighteen",
+    "Nineteen",
+  ];
+
+  const tens = [
+    "",
+    "",
+    "Twenty",
+    "Thirty",
+    "Forty",
+    "Fifty",
+    "Sixty",
+    "Seventy",
+    "Eighty",
+    "Ninety",
+  ];
+
+  function numToWords(n) {
+    if (n < 20) return ones[n];
+    if (n < 100)
+      return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
+    if (n < 1000)
+      return (
+        ones[Math.floor(n / 100)] +
+        " Hundred" +
+        (n % 100 ? " " + numToWords(n % 100) : "")
+      );
+    if (n < 100000)
+      return (
+        numToWords(Math.floor(n / 1000)) +
+        " Thousand" +
+        (n % 1000 ? " " + numToWords(n % 1000) : "")
+      );
+    if (n < 10000000)
+      return (
+        numToWords(Math.floor(n / 100000)) +
+        " Lakh" +
+        (n % 100000 ? " " + numToWords(n % 100000) : "")
+      );
+
+    return (
+      numToWords(Math.floor(n / 10000000)) +
+      " Crore" +
+      (n % 10000000 ? " " + numToWords(n % 10000000) : "")
+    );
+  }
+
+  const rupees = Math.floor(amount);
+  const paise = Math.round((amount - rupees) * 100);
+
+  let words = numToWords(rupees) + " Rupees";
+
+  if (paise > 0) {
+    words += " and " + numToWords(paise) + " Paise";
+  }
+
+  return words + " Only";
+}
+const template = fs.readFileSync(
+  path.join(__dirname, "../../../../templates/invoice2.html"),
+  "utf8",
+);
+
+function buildInvoiceHTML(invoice = {}, items = []) {
+  // Build product rows
+  const rows = items
+    .map(
+      (item) => `
+        <tr>
+        <td>
+          <div style="font-weight:600;">
+            ${escapeHTML(item.product_name)}
+          </div>
+
+          <div style="font-size:11px;color:#64748b;">
+            SKU: ${escapeHTML(item.sku || "")}
+            • GST ${item.tax_rate || 0}%
+          </div>
+        </td>
+
+        <td style="text-align:center">
+          ${item.quantity || 0}
+        </td>
+
+        <td style="text-align:right">
+          ${money(item.unit_price)}
+        </td>
+
+        <td style="text-align:right;font-weight:600">
+          ${money(item.line_total)}
+        </td>
+        </tr>
+        `,
+    )
+    .join("");
+
+  let html = template;
+
+  // ------------------------
+  // Invoice Info
+  // ------------------------
+
+  html = html.replace(
+    /{{invoice_number}}/g,
+    escapeHTML(invoice.invoice_number),
+  );
+  html = html.replace(/{{invoice_date}}/g, formatDate(invoice.invoice_date));
+
+  html = html.replace(/{{order_ref}}/g, escapeHTML(invoice.order_ref));
+  html = html.replace(/{{order_date}}/g, formatDate(invoice.order_date));
+
+  // ------------------------
+  // Vendor Info
+  // ------------------------
+
+  html = html.replace(
+    /{{vendor_name}}/g,
+    escapeHTML(invoice.company_name || ""),
+  );
+
+  html = html.replace(/{{vendor_gstin}}/g, escapeHTML(invoice.gstin || ""));
+
+  const vendorAddress = [
+    `${escapeHTML(invoice.line1 || "")} ${escapeHTML(invoice.line2 || "")}`.trim(),
+    `${escapeHTML(invoice.city || "")}, ${escapeHTML(invoice.state_name || "")} ${escapeHTML(invoice.pincode || "")}`.trim(),
+  ]
+    .filter(Boolean)
+    .join("<br>");
+
+  html = html.replace(/{{vendor_address}}/g, vendorAddress);
+
+  // ------------------------
+  // Customer Info
+  // ------------------------
+
+  html = html.replace(
+    /{{customer_name}}/g,
+    escapeHTML(invoice.contact_name || ""),
+  );
+
+  const customerAddress = `
+${escapeHTML(invoice.address1 || "")} ${escapeHTML(invoice.address2 || "")}<br>
+${escapeHTML(invoice.customer_city || "")} ${escapeHTML(invoice.zipcode || "")}
+`.trim();
+
+  html = html.replace(/{{customer_address}}/g, customerAddress);
+
+  // ------------------------
+  // Items
+  // ------------------------
+
+  html = html.replace(/{{items}}/g, rows);
+
+  // ------------------------
+  // Totals
+  // ------------------------
+
+  html = html.replace(/{{subtotal}}/g, money(invoice.subtotal));
+  html = html.replace(/{{tax_total}}/g, money(invoice.tax_total));
+  html = html.replace(/{{shipping_amount}}/g, money(invoice.shipping_amount));
+  html = html.replace(/{{grand_total}}/g, money(invoice.grand_total));
+
+  // amount to words
+  const amountWords = amountToWords(Number(invoice.grand_total || 0));
+
+  html = html.replace(/{{amount_words}}/g, escapeHTML(amountWords));
+
+  return html;
+}
 
 class OrderController {
   // Get order history
@@ -215,6 +420,15 @@ class OrderController {
 
       await conn.commit();
 
+      await NotificationModel.create({
+        userId,
+        type: "order",
+        title: "Order Cancelled ❌📦",
+        message: "Your order was cancelled as requested.",
+        reference_type: "order",
+        reference_id: orderId,
+      });
+
       return res.json({
         success: true,
         message: "Cancellation request submitted successfully",
@@ -256,107 +470,93 @@ class OrderController {
     }
   }
 
-  // Track Order status
-  async getTracking(req, res) {
+  // ====================================================Invoice=================================================
+
+  async getInvoice(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1;
-
-      // if (!userId) {
-      //   return res.status(401).json({
-      //     success: false,
-      //     message: "Unauthorized user",
-      //   });
-      // }
-
       const { orderId } = req.params;
+      // const userId = req.user?.user_id;
+      const userId=1;
 
-      const [orders] = await db.query(
-        `SELECT order_id
-       FROM eorders
-       WHERE order_id = ?
-         AND user_id = ?
-       LIMIT 1`,
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      // Get all invoices
+      const [invoiceRows] = await db.query(
+        `SELECT invoice_id FROM invoices WHERE order_id = ? AND user_id = ?`,
         [orderId, userId],
       );
 
-      if (!orders.length) {
-        return res.status(404).json({ message: "Order not found" });
+      if (!invoiceRows.length) {
+        return res.status(404).json({
+          success: false,
+          message: "Invoice not found",
+        });
       }
 
-      const [shipments] = await db.query(
-        `SELECT
-         vendor_id,
-         courier_name,
-         awb_number,
-         shipping_status,
-         label_url,
-         manifest_url
-       FROM order_shipments
-       WHERE order_id = ?`,
-        [orderId],
-      );
+      // If only one invoice -> return PDF normally
+      if (invoiceRows.length === 1) {
+        const invoiceId = invoiceRows[0].invoice_id;
 
-      //  Add label to each shipment
-      const formattedShipments = shipments.map((shipment) => ({
-        ...shipment,
-        status_label:
-          statusLabelMap[shipment.shipping_status] || shipment.shipping_status,
-      }));
+        const invoice = await OrderModel.getInvoiceData(invoiceId);
+        const items = await OrderModel.getInvoiceItems(invoiceId);
 
-      return res.json({
-        order_id: orderId,
-        shipments: formattedShipments,
-      });
-    } catch (err) {
-      console.error("Tracking API error:", err);
-      res.status(500).json({ message: "Tracking fetch failed" });
-    }
-  }
+        const html = buildInvoiceHTML(invoice, items);
 
-  // Shipment cancellation
-  async cancelShipmentHandler(req, res) {
-    try {
-      // const userId = req.user?.user_id;
-      const userId = 1;
+        if (!html || typeof html !== "string") {
+          throw new Error("Invalid HTML generated for invoice");
+        }
 
-      // if (!userId) {
-      //   return res.status(401).json({
-      //     success: false,
-      //     message: "Unauthorized user",
-      //   });
-      // }
+        const pdf = await generateInvoicePDF(html);
 
-      const { shipmentId } = req.params;
+        res.set({
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="${invoice.invoice_number}.pdf"`,
+        });
 
-      // Authorization check
-      const [rows] = await db.query(
-        `SELECT os.order_id, o.user_id
-       FROM order_shipments os
-       JOIN eorders o ON os.order_id = o.order_id
-       WHERE os.id = ?
-         AND o.user_id = ?
-       LIMIT 1`,
-        [shipmentId, userId],
-      );
-
-      if (!rows.length) {
-        return res.status(404).json({ message: "Shipment not found" });
+        return res.send(pdf);
       }
 
-      const { order_id } = rows[0];
+      //  Multiple invoices->Zip
 
-      // Cancel
-      await cancelShipment(shipmentId);
-
-      return res.json({
-        success: true,
-        message: "Shipment cancelled successfully",
-        order_id,
+      res.set({
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="invoices-${orderId}.zip"`,
       });
-    } catch (err) {
-      console.error("Cancel shipment error:", err);
-      return res.status(400).json({ success: false, message: err.message });
+
+      const archive = archiver("zip", { zlib: { level: 9 } });
+
+      archive.pipe(res);
+
+      for (const row of invoiceRows) {
+        const invoice = await OrderModel.getInvoiceData(row.invoice_id);
+        const items = await OrderModel.getInvoiceItems(row.invoice_id);
+
+        const html = buildInvoiceHTML(invoice, items);
+
+        if (!html || typeof html !== "string") {
+          throw new Error("Invalid HTML generated for invoice");
+        }
+
+        const pdf = await generateInvoicePDF(html);
+
+        archive.append(pdf, {
+          name: `${invoice.invoice_number}.pdf`,
+        });
+      }
+
+      await archive.finalize();
+    } catch (error) {
+      console.error("Invoice ZIP Error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to generate invoices",
+      });
     }
   }
 }
