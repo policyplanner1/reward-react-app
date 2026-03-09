@@ -6,6 +6,7 @@ const NotificationModel = require("../models/notificationModel");
 const {
   generateInvoicePDF,
 } = require("../../../../services/Invoice/pdf-service");
+const archiver = require("archiver");
 
 //Helper function For invoice
 function escapeHTML(str = "") {
@@ -470,12 +471,12 @@ class OrderController {
   }
 
   // ====================================================Invoice=================================================
+
   async getInvoice(req, res) {
     try {
       const { orderId } = req.params;
-
-      const userId = req.user?.user_id;
-      // const userId = 1;
+      // const userId = req.user?.user_id;
+      const userId=1;
 
       if (!userId) {
         return res.status(401).json({
@@ -484,14 +485,10 @@ class OrderController {
         });
       }
 
-      // 1 Get invoices for this order
+      // Get all invoices
       const [invoiceRows] = await db.query(
-        `
-      SELECT invoice_id
-      FROM invoices
-      WHERE order_id = ? and user_id = ?
-      `,
-        [orderId, userId],  
+        `SELECT invoice_id FROM invoices WHERE order_id = ? AND user_id = ?`,
+        [orderId, userId],
       );
 
       if (!invoiceRows.length) {
@@ -501,38 +498,64 @@ class OrderController {
         });
       }
 
-      // For now return first invoice
-      // (later you can loop and zip multiple PDFs)
-      const invoiceId = invoiceRows[0].invoice_id;
+      // If only one invoice -> return PDF normally
+      if (invoiceRows.length === 1) {
+        const invoiceId = invoiceRows[0].invoice_id;
 
-      // 2 Fetch invoice data
-      const invoice = await OrderModel.getInvoiceData(invoiceId);
+        const invoice = await OrderModel.getInvoiceData(invoiceId);
+        const items = await OrderModel.getInvoiceItems(invoiceId);
 
-      // 3 Fetch invoice items
-      const items = await OrderModel.getInvoiceItems(invoiceId);
+        const html = buildInvoiceHTML(invoice, items);
 
-      // 4 Build HTML
-      const html = buildInvoiceHTML(invoice, items);
+        if (!html || typeof html !== "string") {
+          throw new Error("Invalid HTML generated for invoice");
+        }
 
-      // 5 Generate PDF
-      if (!html || typeof html !== "string") {
-        throw new Error("Invalid HTML generated for invoice");
+        const pdf = await generateInvoicePDF(html);
+
+        res.set({
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="${invoice.invoice_number}.pdf"`,
+        });
+
+        return res.send(pdf);
       }
 
-      const pdf = await generateInvoicePDF(html);
+      //  Multiple invoices->Zip
 
       res.set({
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${invoice.invoice_number}.pdf"`,
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="invoices-${orderId}.zip"`,
       });
 
-      return res.send(pdf);
+      const archive = archiver("zip", { zlib: { level: 9 } });
+
+      archive.pipe(res);
+
+      for (const row of invoiceRows) {
+        const invoice = await OrderModel.getInvoiceData(row.invoice_id);
+        const items = await OrderModel.getInvoiceItems(row.invoice_id);
+
+        const html = buildInvoiceHTML(invoice, items);
+
+        if (!html || typeof html !== "string") {
+          throw new Error("Invalid HTML generated for invoice");
+        }
+
+        const pdf = await generateInvoicePDF(html);
+
+        archive.append(pdf, {
+          name: `${invoice.invoice_number}.pdf`,
+        });
+      }
+
+      await archive.finalize();
     } catch (error) {
-      console.error("Invoice PDF Error:", error);
+      console.error("Invoice ZIP Error:", error);
 
       return res.status(500).json({
         success: false,
-        message: "Failed to generate invoice",
+        message: "Failed to generate invoices",
       });
     }
   }
