@@ -474,14 +474,24 @@ class OrderController {
     try {
       const { orderId } = req.params;
 
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       // 1 Get invoices for this order
       const [invoiceRows] = await db.query(
         `
       SELECT invoice_id
       FROM invoices
-      WHERE order_id = ?
+      WHERE order_id = ? and user_id = ?
       `,
-        [orderId],
+        [orderId, userId],  
       );
 
       if (!invoiceRows.length) {
