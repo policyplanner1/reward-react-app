@@ -294,6 +294,14 @@ class authModel {
 
     return result;
   }
+
+  async deleteUserRefreshTokens(userId) {
+    await db.execute(
+      `DELETE FROM refresh_tokens
+     WHERE user_id = ?`,
+      [userId],
+    );
+  }
 }
 
 module.exports = new authModel();

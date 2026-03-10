@@ -824,21 +824,16 @@ class AuthController {
         });
       }
 
-      const result = await AuthModel.deleteCustomer(userId);
+      await AuthModel.deleteCustomer(userId);
 
-      if (result.affectedRows === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
+      await AuthModel.deleteUserRefreshTokens(userId);
 
-      return res.status(200).json({
+      return res.json({
         success: true,
-        message: "User deleted successfully",
+        message: "Account deleted successfully",
       });
     } catch (error) {
-      console.error("Delete User Error:", error);
+      console.error("Delete Account Error:", error);
 
       return res.status(500).json({
         success: false,
