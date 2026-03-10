@@ -234,13 +234,15 @@ class AuthController {
 
       if (!user) return res.status(401).json({ success: false });
 
+      if (Number(user.status) !== 1)
+        return res
+          .status(403)
+          .json({ success: false, message: "Account inactive" });
+
       if (!user.is_verified)
         return res
           .status(403)
           .json({ success: false, message: "Email not verified" });
-
-      if (Number(user.status) !== 1)
-        return res.status(403).json({ success: false });
 
       const match = await bcrypt.compare(password, user.password);
       if (!match) return res.status(401).json({ success: false });
@@ -300,6 +302,11 @@ class AuthController {
       if (!exists) return res.status(403).json({ success: false });
 
       const user = await AuthModel.findById(payload.user_id);
+
+      if (!user) return res.status(401).json({ success: false });
+
+      if (Number(user.status) !== 1)
+        return res.status(403).json({ success: false });
 
       const newAccessToken = jwt.sign(
         { user_id: user.user_id, token_version: user.token_version },
