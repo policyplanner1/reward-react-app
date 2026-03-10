@@ -9,6 +9,9 @@ router.get("/orders-history", auth, OrderController.getOrderHistory);
 // get order Details
 router.get("/order-details/:orderId", auth, OrderController.getOrderDetails);
 
+// Buy again
+router.get("/buy-again", auth, OrderController.getBuyAgainProducts);
+
 // Get cancellation Reason
 router.get("/cancellation-reasons", OrderController.getCancellationReasons);
 

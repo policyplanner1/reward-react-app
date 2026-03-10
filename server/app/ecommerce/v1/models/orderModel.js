@@ -242,6 +242,102 @@ class orderModel {
     };
   }
 
+  // Buy again
+  async getBuyAgainProducts({ userId, page = 1, limit = 20 }) {
+    const offset = (page - 1) * limit;
+
+    const [rows] = await db.execute(
+      `
+    SELECT
+      p.product_id,
+      p.product_name,
+      p.brand_name,
+
+      v.variant_id,
+      v.sale_price,
+      v.mrp,
+      v.variant_attributes,
+
+      MAX(o.created_at) AS last_purchased,
+
+      (
+        SELECT pi.image_url
+        FROM product_images pi
+        WHERE pi.product_id = p.product_id
+        ORDER BY pi.sort_order ASC
+        LIMIT 1
+      ) AS image
+
+    FROM eorders o
+
+    JOIN eorder_items oi
+      ON o.order_id = oi.order_id
+
+    JOIN eproducts p
+      ON oi.product_id = p.product_id
+
+    JOIN product_variants v
+      ON oi.variant_id = v.variant_id
+
+    WHERE o.user_id = ?
+
+    GROUP BY oi.variant_id
+    ORDER BY last_purchased DESC
+
+    LIMIT ? OFFSET ?
+    `,
+      [userId, limit, offset],
+    );
+
+    const [[{ total }]] = await db.execute(
+      `
+    SELECT COUNT(DISTINCT oi.variant_id) AS total
+
+    FROM eorders o
+    JOIN eorder_items oi
+      ON o.order_id = oi.order_id
+
+    WHERE o.user_id = ?
+    `,
+      [userId],
+    );
+
+    const products = rows.map((p) => {
+      let attributes = {};
+
+      if (p.variant_attributes) {
+        try {
+          attributes = JSON.parse(p.variant_attributes);
+        } catch {
+          attributes = {};
+        }
+      }
+
+      return {
+        product_id: p.product_id,
+        product_name: p.product_name,
+        brand_name: p.brand_name,
+
+        variant_id: p.variant_id,
+        sale_price: p.sale_price,
+        mrp: p.mrp,
+
+        attributes,
+
+        image: p.image,
+
+        last_purchased: p.last_purchased,
+      };
+    });
+
+    return {
+      products,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+    };
+  }
+
   // Get cancellation Details
   async getCancellationDetails({ userId, orderId }) {
     // 1 Order validation + address + user

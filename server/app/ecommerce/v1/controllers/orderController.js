@@ -318,6 +318,41 @@ class OrderController {
     }
   }
 
+  // Buy Again
+  async getBuyAgainProducts(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+
+      const data = await OrderModel.getBuyAgainProducts({
+        userId,
+        page,
+        limit,
+      });
+
+      return res.json({
+        success: true,
+        ...data,
+      });
+    } catch (error) {
+      console.error("Buy again products error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch buy again products",
+      });
+    }
+  }
+
   // Cancellation Reason
   async getCancellationReasons(req, res) {
     const [rows] = await db.execute(
@@ -476,7 +511,7 @@ class OrderController {
     try {
       const { orderId } = req.params;
       // const userId = req.user?.user_id;
-      const userId=1;
+      const userId = 1;
 
       if (!userId) {
         return res.status(401).json({
