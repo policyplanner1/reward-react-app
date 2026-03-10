@@ -286,7 +286,8 @@ class authModel {
   async deleteCustomer(userId) {
     const [result] = await db.execute(
       `UPDATE customer
-     SET status = 0
+     SET status = 0,
+         token_version = token_version + 1
      WHERE user_id = ?`,
       [userId],
     );
