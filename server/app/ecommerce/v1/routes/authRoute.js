@@ -45,4 +45,10 @@ router.get("/address/:address_id", auth, authController.getAddressById);
 /*===================================================User Information===========================================*/
 router.get("/user-info", optionalAuth, authController.getUserInfo);
 
+router.delete(
+  "/delete-customer",
+  auth,
+  authController.deleteCustomer,
+);
+
 module.exports = router;

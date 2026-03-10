@@ -281,6 +281,18 @@ class authModel {
         : null,
     };
   }
+
+  // Delete Customer
+  async deleteCustomer(userId) {
+    const [result] = await db.execute(
+      `UPDATE customer
+     SET status = 0
+     WHERE user_id = ?`,
+      [userId],
+    );
+
+    return result;
+  }
 }
 
 module.exports = new authModel();
