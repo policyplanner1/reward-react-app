@@ -1074,5 +1074,31 @@ class ProductController {
       });
     }
   }
+
+  // Clear Search History
+  async clearSearchHistory(req, res) {
+    try {
+      if (!req.user?.user_id) {
+        return res.status(401).json({ success: false });
+      }
+
+      const userId = req.user.user_id;
+
+      await db.execute(`DELETE FROM search_history WHERE user_id = ?`, [
+        userId,
+      ]);
+
+      return res.json({
+        success: true,
+        message: "Search history cleared",
+      });
+    } catch (error) {
+      console.error("Clear search history error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
 }
 module.exports = new ProductController();
