@@ -152,14 +152,14 @@ class CheckoutController {
       //   console.warn("WA not enqueued: missing customer phone for order:", orderId);
       // }
 
-      await NotificationModel.create({
-        userId,
-        type: "order",
-        title: "Order placed ✅",
-        message: "Your order is confirmed and being processed.",
-        reference_type: "order",
-        reference_id: orderId,
-      });
+      // await NotificationModel.create({
+      //   userId,
+      //   type: "order",
+      //   title: "Order placed ✅",
+      //   message: "Your order is confirmed and being processed.",
+      //   reference_type: "order",
+      //   reference_id: orderId,
+      // });
 
       return res.json({
         success: true,
