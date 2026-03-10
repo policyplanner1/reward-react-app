@@ -824,9 +824,7 @@ class AuthController {
         });
       }
 
-      await AuthModel.deleteCustomer(userId);
-
-      await AuthModel.deleteUserRefreshTokens(userId);
+      await AuthModel.deleteCustomerAccount(userId);
 
       return res.json({
         success: true,

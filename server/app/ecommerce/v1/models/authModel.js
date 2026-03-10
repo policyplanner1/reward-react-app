@@ -283,24 +283,55 @@ class authModel {
   }
 
   // Delete Customer
-  async deleteCustomer(userId) {
-    const [result] = await db.execute(
-      `UPDATE customer
-     SET status = 0,
-         token_version = token_version + 1
-     WHERE user_id = ?`,
-      [userId],
-    );
+  async deleteCustomerAccount(userId) {
+    const connection = await db.getConnection();
 
-    return result;
-  }
+    try {
+      await connection.beginTransaction();
 
-  async deleteUserRefreshTokens(userId) {
-    await db.execute(
-      `DELETE FROM refresh_tokens
-     WHERE user_id = ?`,
-      [userId],
-    );
+      // Soft delete customer
+      await connection.execute(
+        `UPDATE customer
+       SET status = 0,
+           token_version = token_version + 1
+       WHERE user_id = ?`,
+        [userId],
+      );
+
+      // Remove cart items
+      await connection.execute(`DELETE FROM cart_items WHERE user_id = ?`, [
+        userId,
+      ]);
+
+      // Remove wishlist
+      await connection.execute(
+        `DELETE FROM customer_wishlist WHERE user_id = ?`,
+        [userId],
+      );
+
+      // Remove addresses
+      await connection.execute(
+        `DELETE FROM customer_addresses WHERE user_id = ?`,
+        [userId],
+      );
+
+      // Remove notifications
+      await connection.execute(`DELETE FROM notifications WHERE user_id = ?`, [
+        userId,
+      ]);
+
+      // Remove refresh tokens
+      await connection.execute(`DELETE FROM customer_refresh_tokens WHERE user_id = ?`, [
+        userId,
+      ]);
+
+      await connection.commit();
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
   }
 }
 
