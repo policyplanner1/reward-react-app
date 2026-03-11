@@ -467,6 +467,7 @@ class ProductModel {
     subcategoryId = null,
     priceMin = null,
     priceMax = null,
+    ratingMin = null,
   }) {
     try {
       const conditions = [];
@@ -506,6 +507,12 @@ class ProductModel {
         params.push(priceMax);
       }
 
+      // rating filter
+      if (ratingMin !== null) {
+        conditions.push("p.avg_rating >= ?");
+        params.push(ratingMin);
+      }
+
       const whereClause = conditions.length
         ? `WHERE ${conditions.join(" AND ")}`
         : "";
@@ -521,6 +528,8 @@ class ProductModel {
         p.product_id,
         p.product_name,
         p.brand_name,
+        p.avg_rating,
+        p.rating_count,
         p.created_at,
         c.category_name,
         sc.subcategory_name,
@@ -590,6 +599,8 @@ class ProductModel {
           brand_name: row.brand_name,
           category_name: row.category_name,
           created_at: row.created_at,
+          avg_rating: row.avg_rating,
+          rating_count: row.rating_count,
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,

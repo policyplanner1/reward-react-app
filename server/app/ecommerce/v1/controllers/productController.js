@@ -113,7 +113,6 @@ class ProductController {
         ? Number(req.query.ratingMin)
         : null;
 
-
       const { products, category_name, totalItems } =
         await ProductModel.getProductsByCategory({
           search,
@@ -209,6 +208,11 @@ class ProductController {
 
       const priceMax = req.query.priceMax ? Number(req.query.priceMax) : null;
 
+      // rating filter
+      const ratingMin = req.query.ratingMin
+        ? Number(req.query.ratingMin)
+        : null;
+
       const { products, subcategory_name, totalItems } =
         await ProductModel.getProductsBySubcategory({
           search,
@@ -219,6 +223,7 @@ class ProductController {
           subcategoryId,
           priceMin,
           priceMax,
+          ratingMin,
         });
 
       const processedProducts = products.map((product) => {
@@ -255,8 +260,8 @@ class ProductController {
           discount: `${mrpDiscountPercent}%`,
           pointsPrice: `₹${finalPrice}`,
           points: discountAmount,
-          rating: 4.6,
-          reviews: "18.9K",
+          rating: product.avg_rating,
+          reviews: product.rating_count,
         };
       });
 
