@@ -245,6 +245,37 @@ class orderModel {
 
     const itemTotal = processedItems.reduce((sum, i) => sum + i.item_total, 0);
 
+    // 4 shipping
+    const [shipments] = await db.execute(
+      `
+        SELECT
+        os.vendor_id,
+        os.courier_name,
+        os.awb_number,
+        os.shipping_charges,
+        os.shipping_status,
+        os.label_url,
+        os.manifest_url
+        FROM order_shipments os
+        WHERE os.order_id = ?
+        `,
+      [orderId],
+    );
+
+    const shippingTotal = shipments.reduce(
+      (sum, s) => sum + Number(s.shipping_charges ?? 0),
+      0,
+    );
+
+    const shipmentDetails = shipments.map((s) => ({
+      vendor_id: s.vendor_id,
+      courier_name: s.courier_name,
+      awb_number: s.awb_number,
+      shipping_status: s.shipping_status,
+      shipping_charges: Number(s.shipping_charges ?? 0),
+      label_url: s.label_url,
+    }));
+
     return {
       order: {
         order_id: order.order_id,
@@ -269,8 +300,11 @@ class orderModel {
 
       items: processedItems,
 
+      shipments: shipmentDetails,
+
       summary: {
         item_total: itemTotal,
+        shipping_total: shippingTotal,
         order_total: order.total_amount,
       },
     };
