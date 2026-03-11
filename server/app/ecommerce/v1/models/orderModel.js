@@ -10,6 +10,7 @@ class orderModel {
     fromDate = null,
     toDate = null,
     timeFilter = null,
+    search = null,
     page = 1,
     limit = 10,
   }) {
@@ -21,6 +22,25 @@ class orderModel {
     if (orderId) {
       conditions.push("o.order_id = ?");
       params.push(orderId);
+    }
+
+    if (search) {
+      conditions.push(`(
+      o.order_ref LIKE ?
+      OR EXISTS (
+        SELECT 1
+        FROM eorder_items oi2
+        JOIN eproducts p2 ON oi2.product_id = p2.product_id
+        WHERE oi2.order_id = o.order_id
+        AND (
+          p2.product_name LIKE ?
+          OR p2.brand_name LIKE ?
+        )
+      )
+  )`);
+
+      const searchValue = `%${search}%`;
+      params.push(searchValue, searchValue, searchValue);
     }
 
     if (status) {

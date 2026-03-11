@@ -239,7 +239,9 @@ class OrderController {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
 
-      const orderId = req.query.order_id ? Number(req.query.order_id) : null;
+      const search = req.query.search?.trim() || null;
+
+      const orderId = Number(req.query.order_id) || null;
 
       const status = req.query.status || null;
       const fromDate = req.query.from_date || null;
@@ -253,6 +255,7 @@ class OrderController {
         fromDate,
         toDate,
         timeFilter,
+        search,
         page,
         limit,
       });
