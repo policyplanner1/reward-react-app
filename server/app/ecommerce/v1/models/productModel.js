@@ -264,6 +264,7 @@ class ProductModel {
     categoryId = null,
     priceMin = null,
     priceMax = null,
+    ratingMin = null,
   }) {
     try {
       const conditions = [];
@@ -306,6 +307,12 @@ class ProductModel {
       if (priceMax !== null) {
         conditions.push("v.sale_price <= ?");
         params.push(priceMax);
+      }
+
+      // rating filter
+      if (ratingMin !== null) {
+        conditions.push("p.avg_rating >= ?");
+        params.push(ratingMin);
       }
 
       const whereClause = conditions.length
@@ -826,6 +833,7 @@ class ProductModel {
       categoryId: null,
       priceMin: null,
       priceMax: null,
+      ratingMin: null,
     });
   }
 

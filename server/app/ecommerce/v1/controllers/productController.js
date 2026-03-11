@@ -108,6 +108,12 @@ class ProductController {
 
       const priceMax = req.query.priceMax ? Number(req.query.priceMax) : null;
 
+      // rating filter
+      const ratingMin = req.query.ratingMin
+        ? Number(req.query.ratingMin)
+        : null;
+
+
       const { products, category_name, totalItems } =
         await ProductModel.getProductsByCategory({
           search,
@@ -118,6 +124,7 @@ class ProductController {
           categoryId,
           priceMin,
           priceMax,
+          ratingMin,
         });
 
       const processedProducts = products.map((product) => {
