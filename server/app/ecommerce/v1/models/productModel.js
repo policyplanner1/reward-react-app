@@ -286,7 +286,7 @@ class ProductModel {
       conditions.push("p.is_deleted = ?");
       params.push(0);
 
-      // conditions.push("v.variant_id IS NOT NULL");
+      conditions.push("v.variant_id IS NOT NULL");
 
       if (categoryId) {
         conditions.push("p.category_id = ?");
@@ -335,6 +335,8 @@ class ProductModel {
         p.product_id,
         p.product_name,
         p.brand_name,
+        p.avg_rating,
+        p.rating_count,
         p.created_at,
         c.category_name,
         sc.subcategory_name,
@@ -411,6 +413,8 @@ class ProductModel {
           subcategory_name: row.subcategory_name,
           sub_subcategory_name: row.sub_subcategory_name,
           created_at: row.created_at,
+          avg_rating: row.avg_rating,
+          rating_count: row.rating_count,
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,

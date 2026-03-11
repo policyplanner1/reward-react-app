@@ -160,8 +160,8 @@ class ProductController {
           price: salePrice ? `₹${salePrice}` : null,
           originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
           discount: `${mrpDiscountPercent}%`,
-          rating: 4.6,
-          reviews: "18.9K",
+          rating: product.avg_rating,
+          reviews: product.rating_count,
           pointsPrice: salePrice ? `₹${finalPrice}` : null,
           points: discountAmount,
         };
