@@ -9,6 +9,7 @@ class orderModel {
     status = null,
     fromDate = null,
     toDate = null,
+    timeFilter = null,
     page = 1,
     limit = 10,
   }) {
@@ -35,6 +36,19 @@ class orderModel {
     if (toDate) {
       conditions.push("DATE(o.created_at) <= ?");
       params.push(toDate);
+    }
+
+    if (!fromDate && !toDate && timeFilter) {
+      if (timeFilter === "30days") {
+        conditions.push("o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
+      } else if (timeFilter === "3months") {
+        conditions.push("o.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)");
+      } else if (timeFilter === "6months") {
+        conditions.push("o.created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)");
+      } else if (/^\d{4}$/.test(timeFilter)) {
+        conditions.push("YEAR(o.created_at) = ?");
+        params.push(Number(timeFilter));
+      }
     }
 
     const whereClause = `WHERE ${conditions.join(" AND ")}`;

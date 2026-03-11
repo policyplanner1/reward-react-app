@@ -244,6 +244,7 @@ class OrderController {
       const status = req.query.status || null;
       const fromDate = req.query.from_date || null;
       const toDate = req.query.to_date || null;
+      const timeFilter = req.query.time_filter || null;
 
       const { orders, total } = await OrderModel.getOrderHistory({
         userId,
@@ -251,6 +252,7 @@ class OrderController {
         status,
         fromDate,
         toDate,
+        timeFilter,
         page,
         limit,
       });
