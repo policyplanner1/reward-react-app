@@ -11,11 +11,22 @@ router.get(
   orderController.getOrderList,
 );
 
+// Get order details by order ID
 router.get(
   "/order-details/:orderId",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
   orderController.getAdminOrderDetails,
 );
+
+
+// ===================================Order details for vendor======================================================
+router.get(
+  "/order-summary",
+  authenticateToken,
+  authorizeRoles("vendor"),
+  orderController.getOrderSummary,
+);
+
 
 module.exports = router;

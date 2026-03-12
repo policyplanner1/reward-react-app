@@ -538,6 +538,19 @@ class CheckoutModel {
 
       const orderId = orderRes.insertId;
 
+      // create vendor order
+
+      const [vendorOrderRes] = await conn.execute(
+        `
+        INSERT INTO vendor_orders
+        (order_id, vendor_id, vendor_total, shipping_status)
+        VALUES (?, ?, ?, 'pending')
+        `,
+        [orderId, variant.vendor_id, productTotal],
+      );
+
+      const vendorOrderId = vendorOrderRes.insertId;
+
       // 6 Create order item
       await conn.execute(
         `
