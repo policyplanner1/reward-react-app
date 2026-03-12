@@ -555,7 +555,7 @@ class CheckoutModel {
       );
 
       // 8 Invoice generation
-      await generateInvoices(orderId);
+      await generateInvoices(orderId,conn);
 
       // 9 Deduct stock
       const [updateRes] = await conn.execute(
