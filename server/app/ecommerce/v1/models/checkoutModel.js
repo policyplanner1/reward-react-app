@@ -356,14 +356,17 @@ class CheckoutModel {
 
       // 9 Order items + stock deduction
       for (const item of cartItems) {
+        const vendorOrderId = vendorOrders[item.vendor_id];
+
         await conn.execute(
           `
         INSERT INTO eorder_items
-        (order_id, product_id, variant_id, quantity, price)
-        VALUES (?, ?, ?, ?, ?)
+        (order_id, vendor_order_id, product_id, variant_id, quantity, price)
+        VALUES (?, ?, ?, ?, ?, ?)
         `,
           [
             orderId,
+            vendorOrderId,
             item.product_id,
             item.variant_id,
             item.quantity,
@@ -387,17 +390,20 @@ class CheckoutModel {
 
       // 10 Shipment creation
       for (const shipment of shippingResults) {
+        const vendorOrderId = vendorOrders[shipment.vendor_id];
+
         await conn.execute(
           `
         INSERT INTO order_shipments
-        (order_id, vendor_id, courier_id, courier_name,
-         shipping_charges, chargeable_weight,
-         weight, length, breadth, height,
-         shipping_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
+        (order_id, vendor_order_id, vendor_id, courier_id, courier_name,
+        shipping_charges, chargeable_weight,
+        weight, length, breadth, height,
+        shipping_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
         `,
           [
             orderId,
+            vendorOrderId,
             shipment.vendor_id,
             shipment.courier_id,
             shipment.courier_name,
@@ -538,8 +544,7 @@ class CheckoutModel {
 
       const orderId = orderRes.insertId;
 
-      // create vendor order
-
+      //6 create vendor order
       const [vendorOrderRes] = await conn.execute(
         `
         INSERT INTO vendor_orders
@@ -551,28 +556,36 @@ class CheckoutModel {
 
       const vendorOrderId = vendorOrderRes.insertId;
 
-      // 6 Create order item
+      // 7 Create order item
       await conn.execute(
         `
-      INSERT INTO eorder_items
-        (order_id, product_id, variant_id, quantity, price)
-      VALUES (?, ?, ?, ?, ?)
-      `,
-        [orderId, productId, variantId, quantity, variant.sale_price],
-      );
-
-      // 7 Create shipment row
-      await conn.execute(
-        `
-      INSERT INTO order_shipments
-      (order_id, vendor_id, courier_id, courier_name,
-       shipping_charges, chargeable_weight,
-       weight, length, breadth, height,
-       shipping_status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
-      `,
+        INSERT INTO eorder_items
+        (order_id, vendor_order_id, product_id, variant_id, quantity, price)
+        VALUES (?, ?, ?, ?, ?, ?)
+        `,
         [
           orderId,
+          vendorOrderId,
+          productId,
+          variantId,
+          quantity,
+          variant.sale_price,
+        ],
+      );
+
+      // 8 Create shipment row
+      await conn.execute(
+        `
+        INSERT INTO order_shipments
+        (order_id, vendor_order_id, vendor_id, courier_id, courier_name,
+        shipping_charges, chargeable_weight,
+        weight, length, breadth, height,
+        shipping_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
+        `,
+        [
+          orderId,
+          vendorOrderId,
           variant.vendor_id,
           cheapest.id,
           cheapest.name,
@@ -585,10 +598,10 @@ class CheckoutModel {
         ],
       );
 
-      // 8 Invoice generation
+      // 9 Invoice generation
       await generateInvoices(orderId, conn);
 
-      // 9 Deduct stock
+      // 10 Deduct stock
       const [updateRes] = await conn.execute(
         `
       UPDATE product_variants
