@@ -9,6 +9,7 @@ import {
   FiPlusSquare,
   FiBriefcase,
   FiChevronRight,
+  FiShoppingCart,
 } from "react-icons/fi";
 import { HiOutlineUserCircle } from "react-icons/hi2";
 import { api } from "../../api/api";
@@ -84,6 +85,11 @@ export default function VendorNavbar() {
         { label: "Product List", to: "/vendor/products/list", Icon: FiPackage },
       ],
     },
+    isApproved && {
+      label: "Orders",
+      to: "/vendor/orders/summary",
+      Icon: FiShoppingCart,
+    },
   ].filter(Boolean) as NavItem[];
 
   if (loading) return null;
@@ -120,7 +126,7 @@ export default function VendorNavbar() {
                   <button
                     onClick={() =>
                       setOpenDropdown(
-                        openDropdown === item.label ? null : item.label
+                        openDropdown === item.label ? null : item.label,
                       )
                     }
                     className={`flex items-center justify-between w-full gap-3 px-4 py-3 rounded-xl transition-all duration-300 group
@@ -200,8 +206,8 @@ export default function VendorNavbar() {
                       item.isDisabled
                         ? "bg-emerald-50 text-emerald-600 cursor-default opacity-80"
                         : isLinkActive
-                        ? "bg-gradient-to-r from-[#852BAF] to-[#C64EFE] text-white shadow-md shadow-[#852BAF]/20"
-                        : "text-gray-500 hover:bg-gray-50 hover:text-[#852BAF]"
+                          ? "bg-gradient-to-r from-[#852BAF] to-[#C64EFE] text-white shadow-md shadow-[#852BAF]/20"
+                          : "text-gray-500 hover:bg-gray-50 hover:text-[#852BAF]"
                     }`}
                 >
                   <item.Icon

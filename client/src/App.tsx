@@ -38,6 +38,12 @@ import ReviewProductPage from "./components/feature/vendor/products/ProductView"
 import VendorApprovalList from "./components/feature/manager/vendor/VendorApprovalList";
 import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprovalForm";
 import NotFoundPage from "./pages/NotFound";
+
+// Vendor Orders
+import OrderSummary from "./components/feature/vendor/orders/OrderSummary";
+import OrderDetail from "./components/feature/vendor/orders/orderDetail";
+
+// Manager Order
 import OrderList from "./components/feature/manager/order/OrderList";
 import OrderView from "./components/feature/manager/order/OrderView";
 
@@ -119,6 +125,17 @@ export default function App() {
           path={routes.vendor.productManagerList}
           element={<ProductManagerList />}
         />
+
+        {/* Orders */}
+        <Route
+          path={routes.vendor.orders.summary}
+          element={<OrderSummary />}
+        />
+
+        <Route
+          path={routes.vendor.orders.details}
+          element={<OrderDetail />}
+        />
       </Route>
 
       {/* ========== MANAGER ========== */}
@@ -191,10 +208,7 @@ export default function App() {
         {/* Orders */}
         <Route path={routes.manager.orders} element={<OrderList />} />
 
-        <Route
-          path="/manager/order-view/:orderId"
-          element={<OrderView />}
-        />
+        <Route path="/manager/order-view/:orderId" element={<OrderView />} />
       </Route>
 
       {/* ========== FALLBACK ========== */}

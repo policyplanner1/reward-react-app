@@ -1,3 +1,5 @@
+import { list } from "postcss";
+
 export const routes = {
   vendor: {
     dashboard: "/vendor/dashboard",
@@ -11,6 +13,10 @@ export const routes = {
     variantEdit:"/vendor/products/variant-edit/:variantId",
     variantImage:"/vendor/products/variant-image/:variantId",
     review: "/vendor/products/review/:productId", 
+    },
+    orders:{
+      summary: "/vendor/orders/summary",
+      details: "/vendor/orders/details/:orderId",
     },
     productManagerList: "/vendor/product-managers",
   },
