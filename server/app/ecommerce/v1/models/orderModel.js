@@ -311,12 +311,43 @@ class orderModel {
   }
 
   // Buy again
-  async getBuyAgainProducts({ userId, page = 1, limit = 20 }) {
+  async getBuyAgainProducts({
+    userId,
+    page = 1,
+    search = null,
+    sort = "recent",
+    limit = 20,
+  }) {
     const offset = (page - 1) * limit;
+
+    const conditions = ["o.user_id = ?", "p.is_visible = 1", "v.is_visible = 1"];
+    const params = [userId];
+
+    if (search) {
+      conditions.push(`(
+      p.product_name LIKE ?
+      OR p.brand_name LIKE ?
+    )`);
+
+      const value = `%${search}%`;
+      params.push(value, value);
+    }
+
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
+
+    let orderBy = "last_purchased DESC";
+
+    if (sort === "frequent") {
+      orderBy = "purchase_count DESC";
+    } else if (sort === "price_low") {
+      orderBy = "v.sale_price ASC";
+    } else if (sort === "price_high") {
+      orderBy = "v.sale_price DESC";
+    }
 
     const [rows] = await db.execute(
       `
-    SELECT
+      SELECT
       p.product_id,
       p.product_name,
       p.brand_name,
@@ -327,6 +358,7 @@ class orderModel {
       v.variant_attributes,
 
       MAX(o.created_at) AS last_purchased,
+      COUNT(oi.order_item_id) AS purchase_count,
 
       (
         SELECT pi.image_url
@@ -347,27 +379,29 @@ class orderModel {
     JOIN product_variants v
       ON oi.variant_id = v.variant_id
 
-    WHERE o.user_id = ?
+    ${whereClause}
 
     GROUP BY oi.variant_id
-    ORDER BY last_purchased DESC
+    ORDER BY ${orderBy}
 
     LIMIT ? OFFSET ?
     `,
-      [userId, limit, offset],
+      [...params, limit, offset],
     );
 
     const [[{ total }]] = await db.execute(
       `
-    SELECT COUNT(DISTINCT oi.variant_id) AS total
+      SELECT COUNT(DISTINCT oi.variant_id) AS total
 
-    FROM eorders o
-    JOIN eorder_items oi
-      ON o.order_id = oi.order_id
+      FROM eorders o
+      JOIN eorder_items oi
+        ON o.order_id = oi.order_id
+      JOIN eproducts p
+        ON oi.product_id = p.product_id
 
-    WHERE o.user_id = ?
-    `,
-      [userId],
+      ${whereClause}
+      `,
+      params,
     );
 
     const products = rows.map((p) => {
@@ -391,10 +425,10 @@ class orderModel {
         mrp: p.mrp,
 
         attributes,
-
         image: p.image,
 
         last_purchased: p.last_purchased,
+        purchase_count: p.purchase_count,
       };
     });
 

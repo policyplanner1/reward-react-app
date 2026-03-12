@@ -335,11 +335,16 @@ class OrderController {
         });
       }
 
+      const search = req.query.search?.trim() || null;
+      const sort = req.query.sort || "recent";
+
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
 
       const data = await OrderModel.getBuyAgainProducts({
         userId,
+        search,
+        sort,
         page,
         limit,
       });
