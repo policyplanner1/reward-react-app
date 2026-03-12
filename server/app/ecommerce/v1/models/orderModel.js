@@ -398,6 +398,8 @@ class orderModel {
         ON o.order_id = oi.order_id
       JOIN eproducts p
         ON oi.product_id = p.product_id
+      JOIN product_variants v
+        ON oi.variant_id = v.variant_id
 
       ${whereClause}
       `,
