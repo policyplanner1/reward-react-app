@@ -336,7 +336,25 @@ class CheckoutModel {
 
       const orderId = orderRes.insertId;
 
-      // 8 Order items + stock deduction
+      // 8 create vendor Order
+      const vendorOrders = {};
+
+      for (const vendorId in vendorGroups) {
+        const vendor = vendorGroups[vendorId];
+
+        const [vendorOrderRes] = await conn.execute(
+          `
+        INSERT INTO vendor_orders
+        (order_id, vendor_id, vendor_total, shipping_status)
+        VALUES (?, ?, ?, 'pending')
+        `,
+          [orderId, vendorId, vendor.totalAmount],
+        );
+
+        vendorOrders[vendorId] = vendorOrderRes.insertId;
+      }
+
+      // 9 Order items + stock deduction
       for (const item of cartItems) {
         await conn.execute(
           `
@@ -367,7 +385,7 @@ class CheckoutModel {
         }
       }
 
-      // 9 Shipment creation
+      // 10 Shipment creation
       for (const shipment of shippingResults) {
         await conn.execute(
           `
@@ -393,10 +411,10 @@ class CheckoutModel {
         );
       }
 
-      // 10 Invoice generation
+      // 11 Invoice generation
       await generateInvoices(orderId, conn);
 
-      // 11 Clear cart
+      // 12 Clear cart
       await conn.execute(`DELETE FROM cart_items WHERE user_id = ?`, [userId]);
 
       await conn.commit();
@@ -555,7 +573,7 @@ class CheckoutModel {
       );
 
       // 8 Invoice generation
-      await generateInvoices(orderId,conn);
+      await generateInvoices(orderId, conn);
 
       // 9 Deduct stock
       const [updateRes] = await conn.execute(
