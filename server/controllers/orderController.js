@@ -73,6 +73,41 @@ class OrderController {
     }
   }
 
+  // GetVendor order summary
+  async getOrderSummary(req, res) {
+    try {
+      const vendorId = req.user?.vendor_id;
+
+      if (!vendorId) {
+        return res.status(404).json({
+          success: false,
+          message: "Vendor ID is required",
+        });
+      }
+
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const offset = (page - 1) * limit;
+
+      const data = await orderModel.getVendorOrders({
+        vendorId,
+        limit,
+        offset,
+      });
+
+      return res.json({
+        success: true,
+        ...data,
+      });
+    } catch (error) {
+      console.error("Vendor order list error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch orders",
+      });
+    }
+  }
 }
 
 module.exports = new OrderController();

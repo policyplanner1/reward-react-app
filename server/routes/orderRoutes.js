@@ -25,7 +25,7 @@ router.get(
   "/order-summary",
   authenticateToken,
   authorizeRoles("vendor"),
-  orderController.getOrderSummary,
+  orderController.getOrderSummary
 );
 
 
