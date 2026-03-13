@@ -7,6 +7,8 @@ const {
   sendVerificationMail,
 } = require("../../../../services/userVerification");
 
+const {sendNewDeviceLoginEmail}=require("../../../../services/deviceNotification");
+
 const ACCESS_EXPIRES = "15m";
 const REFRESH_EXPIRES_DAYS = 7;
 
@@ -183,7 +185,7 @@ class AuthController {
                 <title>Email Verified</title>
               </head>
               <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
-                <h2>Email verified successfully ✅</h2>
+                <h2>Email verified successfully </h2>
                 <p>You can now login in the app.</p>
 
                 <a href="rewardplanners://login"
@@ -263,12 +265,31 @@ class AuthController {
         Date.now() + REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
       );
 
+      // check existing device
+      const deviceInfo = req.headers["user-agent"];
+      const ipAddress = req.ip;
+
+      // check if device already exists
+      const existingDevice = await AuthModel.checkExistingDevice(
+        user.user_id,
+        deviceInfo,
+      );
+
+      if (!existingDevice) {
+        await sendNewDeviceLoginEmail({
+          email: user.email,
+          name: user.name,
+          ip: ipAddress,
+          device: deviceInfo,
+        });
+      }
+
       await AuthModel.storeRefreshToken(
         user.user_id,
         refreshToken,
         expiryDate,
-        req.headers["user-agent"],
-        req.ip,
+        deviceInfo,
+        ipAddress,
       );
 
       await AuthModel.updateLoginMeta(user.user_id, req.ip);

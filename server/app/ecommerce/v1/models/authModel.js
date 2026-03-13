@@ -140,6 +140,21 @@ class authModel {
       [userId],
     );
   }
+  /* ======================================================
+     CHECK EXISTING DEVICE
+  ====================================================== */
+  async checkExistingDevice(userId, deviceInfo) {
+    const [rows] = await db.execute(
+      `SELECT id
+     FROM customer_refresh_tokens
+     WHERE user_id = ?
+     AND device_info = ?
+     LIMIT 1`,
+      [userId, deviceInfo],
+    );
+
+    return rows.length > 0;
+  }
 
   /* ======================================================
      LOGIN TRACKING
@@ -321,9 +336,10 @@ class authModel {
       ]);
 
       // Remove refresh tokens
-      await connection.execute(`DELETE FROM customer_refresh_tokens WHERE user_id = ?`, [
-        userId,
-      ]);
+      await connection.execute(
+        `DELETE FROM customer_refresh_tokens WHERE user_id = ?`,
+        [userId],
+      );
 
       await connection.commit();
     } catch (err) {
