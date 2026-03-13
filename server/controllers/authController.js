@@ -234,7 +234,12 @@ const authController = {
       [userId, otpHash, expiresAt],
     );
 
-    await sendOtpEmail(email, otp);
+    // Send mail
+    try {
+      await sendOtpEmail(email, otp);
+    } catch (mailErr) {
+      console.error("OTP MAIL FAILED:", mailErr);
+    }
 
     return res.json({
       success: true,
@@ -289,7 +294,12 @@ const authController = {
 
     const resetLink = `https://rewardplanners.com/crm/reset-password?token=${rawToken}`;
 
-    await sendPasswordResetEmail(user.email, resetLink);
+    // Send mail
+    try {
+      await sendPasswordResetEmail(user.email, resetLink);
+    } catch (mailErr) {
+      console.error("PASSWORD RESET MAIL FAILED:", mailErr);
+    }
 
     return res.json(genericResponse);
   },
