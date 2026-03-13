@@ -149,7 +149,7 @@ const OrderSummary: React.FC = () => {
                           className="view-btn"
                           onClick={() =>
                             navigate(
-                              `/manager/order-view/${order.vendor_order_id}`,
+                              `/vendor/orders/details/${order.vendor_order_id}`,
                             )
                           }
                         >

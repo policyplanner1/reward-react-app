@@ -4,36 +4,14 @@ import { api } from "../../../../api/api";
 import "./css/OrderDetail.css";
 
 interface Order {
+  vendor_order_id: number;
+  vendor_total: number;
+  shipping_status: string;
+  created_at: string;
   order_id: number;
   order_ref: string;
-  status: string;
-  total_amount: number;
-  created_at: string;
-}
-
-interface Customer {
-  user_id: number;
-  name: string;
-  email: string;
-  phone: string;
-}
-
-interface Company {
-  company_id: number;
-  company_name: string;
-}
-
-interface Address {
-  type: string;
-  name: string;
-  phone: string;
-  line1: string;
-  line2: string;
-  city: string;
-  state: string;
-  country: string;
-  zipcode: string;
-  landmark: string;
+  awb_number?: string;
+  courier_name?: string;
 }
 
 interface OrderItem {
@@ -43,33 +21,23 @@ interface OrderItem {
   product_name: string;
   brand_name: string;
   image: string | null;
-  attributes: Record<string, string>;
+  variant_attributes: string;
   quantity: number;
   price: number;
-  item_total: number;
 }
 
-interface OrderSummary {
-  item_total: number;
-  order_total: number;
-}
-
-interface OrderDetailsResponse {
+interface VendorOrderDetailsResponse {
   success: boolean;
   order: Order;
-  customer: Customer;
-  company: Company | null;
-  address: Address;
   items: OrderItem[];
-  summary: OrderSummary;
 }
 
 const OrderDetail: React.FC = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
 
-  const [data, setData] = useState<OrderDetailsResponse | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [data, setData] = useState<VendorOrderDetailsResponse | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchOrderDetails = async () => {
@@ -77,8 +45,8 @@ const OrderDetail: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const res = await api.get<OrderDetailsResponse>(
-        `/order/order-details/${orderId}`,
+      const res = await api.get<VendorOrderDetailsResponse>(
+        `/order/order-view/${orderId}`
       );
 
       if (!res.data.success) {
@@ -86,8 +54,9 @@ const OrderDetail: React.FC = () => {
       }
 
       setData(res.data);
+
     } catch (err) {
-      console.error("Failed to fetch order details", err);
+      console.error("Failed to fetch vendor order details", err);
       setError("Unable to load order details.");
     } finally {
       setLoading(false);
@@ -106,170 +75,145 @@ const OrderDetail: React.FC = () => {
       currency: "INR",
     }).format(amount);
 
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
   if (loading) return <div style={{ padding: 20 }}>Loading order...</div>;
   if (error) return <div style={{ padding: 20, color: "red" }}>{error}</div>;
   if (!data) return null;
 
- return (
-  <div className="min-h-screen bg-gradient-to-br from-[#f5f7ff] via-white to-[#f0f9ff] p-6 md:p-10">
+  const { order, items } = data;
 
-    {/* HEADER */}
-    <div className="flex items-center justify-between mb-8">
-      <button
-        className="inline-flex items-center gap-2 text-sm font-semibold
-        bg-gradient-to-r from-[#852BAF] to-[#FC3F78] text-white
-        px-5 py-2.5 rounded-lg
-        shadow-lg hover:scale-[1.03] active:scale-95 transition cursor-pointer"
-        onClick={() => navigate(-1)}
-      >
-        ← Back
-      </button>
+  const itemTotal = items.reduce(
+    (sum, item) => sum + item.quantity * item.price,
+    0
+  );
 
-      <h2 className="text-2xl md:text-3xl font-bold text-slate-800">
-        Order #{data.order.order_ref}
-      </h2>
-    </div>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#f5f7ff] via-white to-[#f0f9ff] p-6 md:p-10">
 
-    {/* ORDER INFO */}
-    <div className="bg-white/70 backdrop-blur-xl border border-white/40 rounded-2xl p-6 shadow-xl mb-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* HEADER */}
+      <div className="flex items-center justify-between mb-8">
+        <button
+          className="inline-flex items-center gap-2 text-sm font-semibold
+          bg-gradient-to-r from-[#852BAF] to-[#FC3F78] text-white
+          px-5 py-2.5 rounded-lg shadow-lg"
+          onClick={() => navigate(-1)}
+        >
+          ← Back
+        </button>
 
-        <div>
-          <span className="text-xs text-slate-500">Status</span>
-          <p className={`mt-1 inline-block px-3 py-1 rounded-full text-sm font-semibold status-${data.order.status.toLowerCase()}`}>
-            {data.order.status}
-          </p>
-        </div>
-
-        <div>
-          <span className="text-xs text-slate-500">Date</span>
-          <p className="mt-1 font-medium text-slate-700">
-            {new Date(data.order.created_at).toLocaleDateString("en-IN")}
-          </p>
-        </div>
-
-        <div>
-          <span className="text-xs text-slate-500">Total</span>
-          <p className="mt-1 text-lg font-bold text-[#2563eb]">
-            {formatCurrency(data.order.total_amount)}
-          </p>
-        </div>
-
+        <h2 className="text-2xl md:text-3xl font-bold text-slate-800">
+          Order #{order.order_ref}
+        </h2>
       </div>
-    </div>
 
-    {/* CUSTOMER */}
-    <div className="bg-white/70 backdrop-blur-xl border border-white/40 rounded-2xl p-6 shadow-xl mb-6">
-      <h3 className="text-lg font-semibold text-slate-800 mb-4">Customer Details</h3>
+      {/* ORDER INFO */}
+      <div className="bg-white rounded-2xl p-6 shadow mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <span className="text-xs text-slate-500">Name</span>
-          <p className="mt-1 font-medium">{data.customer.name}</p>
+          <div>
+            <span className="text-xs text-slate-500">Shipment Status</span>
+            <p className={`mt-1 inline-block px-3 py-1 rounded-full text-sm font-semibold status-${order.shipping_status}`}>
+              {order.shipping_status}
+            </p>
+          </div>
+
+          <div>
+            <span className="text-xs text-slate-500">Date</span>
+            <p className="mt-1 font-medium">
+              {formatDate(order.created_at)}
+            </p>
+          </div>
+
+          <div>
+            <span className="text-xs text-slate-500">Vendor Total</span>
+            <p className="mt-1 text-lg font-bold text-[#2563eb]">
+              {formatCurrency(order.vendor_total)}
+            </p>
+          </div>
+
         </div>
-        <div>
-          <span className="text-xs text-slate-500">Email</span>
-          <p className="mt-1 font-medium">{data.customer.email}</p>
-        </div>
-        <div>
-          <span className="text-xs text-slate-500">Phone</span>
-          <p className="mt-1 font-medium">{data.customer.phone}</p>
-        </div>
+
+        {order.awb_number && (
+          <div className="mt-4 text-sm text-slate-600">
+            Courier: {order.courier_name} | AWB: {order.awb_number}
+          </div>
+        )}
       </div>
-    </div>
 
-    {/* COMPANY */}
-    {data.company && (
-      <div className="bg-white/70 backdrop-blur-xl border border-white/40 rounded-2xl p-6 shadow-xl mb-6">
-        <h3 className="text-lg font-semibold text-slate-800 mb-2">Company</h3>
-        <p className="text-slate-700">{data.company.company_name}</p>
-      </div>
-    )}
+      {/* ITEMS */}
+      <div className="bg-white rounded-2xl p-6 shadow">
 
-    {/* ADDRESS */}
-    <div className="bg-white/70 backdrop-blur-xl border border-white/40 rounded-2xl p-6 shadow-xl mb-6">
-      <h3 className="text-lg font-semibold text-slate-800 mb-3">Shipping Address</h3>
+        <h3 className="text-lg font-semibold mb-4">Order Items</h3>
 
-      <p className="font-medium">{data.address.name}</p>
-      <p>{data.address.phone}</p>
-      <p>{data.address.line1}, {data.address.line2}</p>
-      <p>
-        {data.address.city}, {data.address.state}, {data.address.country} - {data.address.zipcode}
-      </p>
+        <div className="overflow-x-auto border rounded-xl">
+          <table className="w-full text-sm">
 
-      {data.address.landmark && (
-        <p className="text-sm text-slate-500 mt-2">
-          Landmark: {data.address.landmark}
-        </p>
-      )}
-    </div>
-
-    {/* ITEMS */}
-    <div className="bg-white/70 backdrop-blur-xl border border-white/40 rounded-2xl p-6 shadow-xl">
-
-      <h3 className="text-lg font-semibold text-slate-800 mb-4">Order Items</h3>
-
-      <div className="overflow-x-auto rounded-xl border border-slate-200">
-        <table className="w-full text-sm">
-
-          <thead className="bg-slate-100">
-            <tr>
-              <th className="p-3 text-left">Product</th>
-              <th className="p-3 text-left">Brand</th>
-              <th className="p-3 text-left">Attributes</th>
-              <th className="p-3 text-left">Qty</th>
-              <th className="p-3 text-left">Price</th>
-              <th className="p-3 text-left">Total</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {data.items.map((item) => (
-              <tr key={item.order_item_id} className="border-t hover:bg-slate-50 transition">
-
-                <td className="p-3 font-medium">{item.product_name}</td>
-
-                <td className="p-3">{item.brand_name}</td>
-
-                <td className="p-3 text-xs text-slate-600">
-                  {Object.entries(item.attributes).map(([key, value]) => (
-                    <div key={key}>{key}: {value}</div>
-                  ))}
-                </td>
-
-                <td className="p-3">{item.quantity}</td>
-
-                <td className="p-3">{formatCurrency(item.price)}</td>
-
-                <td className="p-3 font-semibold text-[#2563eb]">
-                  {formatCurrency(item.item_total)}
-                </td>
-
+            <thead className="bg-slate-100">
+              <tr>
+                <th className="p-3 text-left">Product</th>
+                <th className="p-3 text-left">Brand</th>
+                <th className="p-3 text-left">Qty</th>
+                <th className="p-3 text-left">Price</th>
+                <th className="p-3 text-left">Total</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
 
-      {/* SUMMARY */}
-      <div className="mt-6 border-t pt-4 space-y-2 text-sm">
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.order_item_id} className="border-t">
 
-        <div className="flex justify-between">
-          <span className="text-slate-600">Items Total:</span>
-          <span className="font-medium">{formatCurrency(data.summary.item_total)}</span>
+                  <td className="p-3 font-medium">
+                    {item.product_name}
+                  </td>
+
+                  <td className="p-3">
+                    {item.brand_name}
+                  </td>
+
+                  <td className="p-3">
+                    {item.quantity}
+                  </td>
+
+                  <td className="p-3">
+                    {formatCurrency(item.price)}
+                  </td>
+
+                  <td className="p-3 font-semibold text-[#2563eb]">
+                    {formatCurrency(item.price * item.quantity)}
+                  </td>
+
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        <div className="flex justify-between text-lg font-bold text-slate-800">
-          <span>Order Total:</span>
-          <span className="text-[#2563eb]">
-            {formatCurrency(data.summary.order_total)}
-          </span>
+        {/* SUMMARY */}
+        <div className="mt-6 border-t pt-4 space-y-2 text-sm">
+
+          <div className="flex justify-between">
+            <span>Items Total:</span>
+            <span>{formatCurrency(itemTotal)}</span>
+          </div>
+
+          <div className="flex justify-between text-lg font-bold">
+            <span>Vendor Total:</span>
+            <span className="text-[#2563eb]">
+              {formatCurrency(order.vendor_total)}
+            </span>
+          </div>
+
         </div>
 
       </div>
     </div>
-  </div>
-);
+  );
 };
 
 export default OrderDetail;
