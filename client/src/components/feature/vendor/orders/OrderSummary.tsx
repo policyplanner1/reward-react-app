@@ -132,7 +132,14 @@ const OrderSummary: React.FC = () => {
                       </td>
 
                       <td>
-                        {new Date(order.created_at).toLocaleDateString("en-IN")}
+                        {new Date(order.created_at).toLocaleDateString(
+                          "en-IN",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          },
+                        )}
                       </td>
 
                       <td>{order.item_count}</td>
@@ -142,7 +149,7 @@ const OrderSummary: React.FC = () => {
                           className="view-btn"
                           onClick={() =>
                             navigate(
-                              `/manager/order-view/${order.vendor_order_id}`
+                              `/manager/order-view/${order.vendor_order_id}`,
                             )
                           }
                         >
