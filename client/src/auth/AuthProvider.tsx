@@ -11,7 +11,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -19,48 +20,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const t = localStorage.getItem("token");
 
     if (u && t) {
-      setUser(JSON.parse(u));
+      try {
+        setUser(JSON.parse(u));
+      } catch {
+        localStorage.clear();
+      }
     }
 
-    setLoading(false);
+    setInitializing(false);
   }, []);
 
   const resolveRoute = (role: User["role"]) =>
     role === "vendor"
       ? "vendor"
       : role === "vendor_manager"
-      ? "manager"
-      : role === "warehouse_manager"
-      ? "warehouse_manager"
-      : "admin";
+        ? "manager"
+        : role === "warehouse_manager"
+          ? "warehouse_manager"
+          : "admin";
 
   const resolveDashboard = (role: User["role"]) =>
     role === "vendor"
       ? "/vendor/dashboard"
       : role === "vendor_manager"
-      ? "/manager/dashboard"
-      : role === "warehouse_manager"
-      ? "/warehouse/dashboard"
-      : "/admin/dashboard";
+        ? "/manager/dashboard"
+        : role === "warehouse_manager"
+          ? "/warehouse/dashboard"
+          : "/admin/dashboard";
 
   const login = async (email: string, password: string, role: User["role"]) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.post(`/auth/${resolveRoute(role)}/login`, {
+
+      const { data } = await api.post(`/auth/${resolveRoute(role)}/login`, {
         email,
         password,
       });
 
-      const data = await res.data;
-      if (!data.success) throw new Error(data.message);
+      if (!data?.success) {
+        throw new Error(data?.message || "Login failed");
+      }
 
-      const { token, user } = res.data.data;
+      const { token, user } = data.data;
+
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
       setUser(user);
 
-      navigate(resolveDashboard(user.role));
+      navigate(resolveDashboard(user.role), { replace: true });
     } catch (err: unknown) {
       if (err instanceof AxiosError) {
         const code = err.response?.data?.code;
@@ -72,10 +80,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           sessionStorage.setItem("otp_email", email);
           sessionStorage.setItem("otp_role", role);
 
-          navigate("/verify-otp");
+          navigate("/verify-otp", { replace: true });
           return;
         }
         setError(err.response?.data?.message ?? "Login failed");
+      } else if (err instanceof Error) {
+        setError(err.message);
       } else {
         setError("Login failed");
       }
@@ -89,7 +99,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     email: string,
     password: string,
     role: User["role"],
-    phone?: string
+    phone?: string,
   ) => {
     try {
       setLoading(true);
@@ -111,10 +121,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       sessionStorage.setItem("otp_email", email);
       sessionStorage.setItem("otp_role", role);
 
-      navigate("/verify-otp");
+      navigate("/verify-otp", {
+        replace: true,
+        state: { email },
+      });
     } catch (err: any) {
       setError(
-        err?.response?.data?.message || err.message || "Registration failed"
+        err?.response?.data?.message || err.message || "Registration failed",
       );
       throw err;
     } finally {
@@ -127,8 +140,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
 
-      const role = sessionStorage.getItem("otp_role") as User["role"];
-      if (!role) throw new Error("Role not found for OTP verification");
+      // const role = sessionStorage.getItem("otp_role") as User["role"];
+      // if (!role) throw new Error("Role not found for OTP verification");
 
       const { data } = await api.post(`/auth/verify-otp`, {
         email,
@@ -139,18 +152,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(data?.message || "OTP verification failed");
       }
 
-      const { token, user } = data.data;
+      // const { token, user } = data.data;
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-      setUser(user);
+      // localStorage.setItem("token", token);
+      // localStorage.setItem("user", JSON.stringify(user));
+      // setUser(user);
 
       sessionStorage.removeItem("otp_email");
       sessionStorage.removeItem("otp_role");
 
-      navigate(resolveDashboard(user.role));
+      setError(null);
+
+      // navigate(resolveDashboard(user.role));
+      navigate("/login", {
+        replace: true,
+        state: {
+          message: "Account verified successfully. Please login.",
+        },
+      });
     } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || "Invalid OTP");
+      setError(err?.response?.data?.message || "Invalid OTP");
       throw err;
     } finally {
       setLoading(false);
@@ -162,8 +183,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
 
-      const role = sessionStorage.getItem("otp_role") as User["role"];
-      if (!role) throw new Error("Role not found for OTP resend");
+      // const role = sessionStorage.getItem("otp_role") as User["role"];
+      // if (!role) throw new Error("Role not found for OTP resend");
 
       const { data } = await api.post(`/auth/resend-otp`, { email });
 
@@ -172,7 +193,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (err: any) {
       setError(
-        err?.response?.data?.message || err.message || "Failed to resend OTP"
+        err?.response?.data?.message || err.message || "Failed to resend OTP",
       );
       throw err;
     } finally {
@@ -192,6 +213,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         loading,
+        initializing,
         error,
         login,
         register,

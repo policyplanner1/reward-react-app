@@ -14,6 +14,21 @@ type FieldProps = {
   children: React.ReactNode;
 };
 
+const FullScreenLoader = ({ text }: { text: string }) => (
+  <div
+    className="min-h-screen flex items-center justify-center
+                  bg-gradient-to-tr from-[#38bdf8] via-[#a855f7] to-[#ec4899]"
+  >
+    <div className="bg-white px-8 py-6 rounded-2xl shadow-xl text-center">
+      <div
+        className="animate-spin h-8 w-8 mx-auto mb-3 rounded-full
+                      border-4 border-[#852BAF] border-t-transparent"
+      />
+      <p className="text-sm font-semibold text-gray-600">{text}</p>
+    </div>
+  </div>
+);
+
 function Field({ label, htmlFor, labelClass, children }: FieldProps) {
   return (
     <div className="min-w-0">
@@ -37,6 +52,7 @@ export default function RegisterPage() {
   const { register, loading, error: authError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -56,26 +72,30 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setSubmitting(true);
     setError("");
 
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
+      setSubmitting(false);
       return;
     }
 
     try {
       await register(
-        formData.name,
-        formData.email,
+        formData.name.trim(),
+        formData.email.trim(),
         formData.password,
         "vendor",
-        formData.phone
+        formData.phone.trim(),
       );
     } catch (err: unknown) {
       if (err instanceof AxiosError) {
         setError(err.response?.data?.message ?? "Register failed");
+        setSubmitting(false);
       } else {
         setError("Unexpected error occurred");
+        setSubmitting(false);
       }
     }
   };
@@ -86,10 +106,13 @@ export default function RegisterPage() {
     "border border-slate-200 shadow-sm outline-none transition-all duration-300 " +
     "focus:border-transparent focus:ring-4 focus:ring-[#852BAF]/15";
 
+  if (submitting) {
+    return <FullScreenLoader text="Creating your account..." />;
+  }
+
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-tr from-[#38bdf8] via-[#a855f7] to-[#ec4899] px-4">
       <div className="relative z-10 w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
-
         {/* LEFT SIDE */}
         <div className="relative hidden md:flex items-center justify-center bg-white p-6">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_20%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(900px_circle_at_85%_30%,rgba(168,85,247,0.10),transparent_55%),radial-gradient(900px_circle_at_50%_110%,rgba(236,72,153,0.08),transparent_55%)]" />
@@ -129,7 +152,6 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="grid grid-cols-1 gap-3">
-
               <Field label="Full Name" htmlFor="name" labelClass={labelClass}>
                 <input
                   id="name"
@@ -141,35 +163,60 @@ export default function RegisterPage() {
                 />
               </Field>
 
-              <Field label="Email Address" htmlFor="email" labelClass={labelClass}>
+              <Field
+                label="Email Address"
+                htmlFor="email"
+                labelClass={labelClass}
+              >
                 <input
                   id="email"
                   name="email"
                   type="email"
                   className={inputBase}
                   value={formData.email}
-                  onChange={handleChange}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      email: e.target.value.trimStart(),
+                    }))
+                  }
                   required
+                  autoComplete="email"
                 />
               </Field>
 
-              <Field label="Phone Number" htmlFor="phone" labelClass={labelClass}>
+              <Field
+                label="Phone Number"
+                htmlFor="phone"
+                labelClass={labelClass}
+              >
                 <input
                   id="phone"
                   name="phone"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   className={inputBase}
                   value={formData.phone}
-                  onChange={handleChange}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      phone: e.target.value.replace(/\D/g, ""),
+                    }))
+                  }
                 />
               </Field>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-
-                <Field label="Password" htmlFor="password" labelClass={labelClass}>
+                <Field
+                  label="Password"
+                  htmlFor="password"
+                  labelClass={labelClass}
+                >
                   <div className="relative">
                     <input
                       id="password"
                       name="password"
+                      autoComplete="new-password"
                       type={showPassword ? "text" : "password"}
                       className={inputBase}
                       value={formData.password}
@@ -216,12 +263,11 @@ export default function RegisterPage() {
                     </button>
                   </div>
                 </Field>
-
               </div>
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={submitting || loading}
                 className="w-full mt-6 text-white font-bold py-3.5 rounded-full text-xl
                            bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                            shadow-lg shadow-[#852BAF]/25 transition-all duration-300
@@ -229,7 +275,7 @@ export default function RegisterPage() {
                            hover:shadow-xl active:scale-95
                            disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               >
-                {loading ? (
+                {submitting ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     Creating Account...
@@ -248,7 +294,6 @@ export default function RegisterPage() {
                   Login
                 </Link>
               </p>
-
             </div>
           </form>
         </div>

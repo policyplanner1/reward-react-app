@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { AxiosError } from "axios";
 import { useAuth } from "./useAuth";
 
@@ -18,8 +18,14 @@ const FullScreenLoader = ({ text }: { text: string }) => (
   </div>
 );
 
+const maskEmail = (email: string) => {
+  const [name, domain] = email.split("@");
+  return `${name.slice(0, 3)}***@${domain}`;
+};
+
 export default function VerifyOtpPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { verifyOtp, resendOtp, loading, error } = useAuth();
 
   const [otp, setOtp] = useState("");
@@ -29,7 +35,8 @@ export default function VerifyOtpPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const storedEmail = sessionStorage.getItem("otp_email");
+    const storedEmail =
+      location.state?.email || sessionStorage.getItem("otp_email");
 
     if (!storedEmail) {
       navigate("/register", { replace: true });
@@ -38,6 +45,12 @@ export default function VerifyOtpPage() {
 
     setEmail(storedEmail);
   }, [navigate]);
+
+  useEffect(() => {
+    if (otp.length === 6 && email) {
+      verifyOtp(email, otp);
+    }
+  }, [otp]);
 
   useEffect(() => {
     if (!loading && email) {
@@ -49,7 +62,7 @@ export default function VerifyOtpPage() {
     if (cooldown <= 0) return;
 
     const timer = setInterval(() => {
-      setCooldown((c) => c - 1);
+      setCooldown((c) => (c > 0 ? c - 1 : 0));
     }, 1000);
 
     return () => clearInterval(timer);
@@ -65,7 +78,7 @@ export default function VerifyOtpPage() {
     }
 
     try {
-      await verifyOtp(email!, otp);
+      await verifyOtp(email!, otp.trim());
     } catch (err: unknown) {
       if (err instanceof AxiosError) {
         setLocalError(
@@ -115,7 +128,7 @@ export default function VerifyOtpPage() {
             <p className="mt-2 text-sm text-gray-600 text-center">
               Enter the 6-digit code sent to{" "}
               <span className="font-semibold text-gray-900">
-                {email || "your email"}
+                {email ? maskEmail(email) : "your email"}
               </span>
             </p>
           </div>
@@ -144,7 +157,10 @@ export default function VerifyOtpPage() {
                     type="text"
                     maxLength={6}
                     value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                    onChange={(e) => {
+                      setLocalError("");
+                      setOtp(e.target.value.replace(/\D/g, ""));
+                    }}
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     className="relative w-full px-4 py-2.5 rounded-2xl bg-white/90
@@ -155,6 +171,7 @@ export default function VerifyOtpPage() {
                              focus:shadow-lg focus:shadow-[#852BAF]/10
                              text-center tracking-[0.35em] md:tracking-[0.5em]"
                     placeholder="••••••"
+                    autoFocus
                   />
                 </div>
               </div>
@@ -162,7 +179,7 @@ export default function VerifyOtpPage() {
               {/* Submit */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || otp.length !== 6}
                 className="w-full text-white font-bold py-3 rounded-full text-base
                          bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                          shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer

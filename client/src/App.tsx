@@ -56,10 +56,23 @@ import FlashSaleList from "./components/feature/manager/flashSale/FlashSaleList"
 import FlashSaleVariant from "./components/feature/manager/flashSale/FlashSaleVariant";
 
 export default function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, initializing } = useAuth();
 
-  if (loading) {
-    return null;
+  // if (loading ) {
+  //   return null;
+  // }
+
+  if (initializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-[#38bdf8] via-[#a855f7] to-[#ec4899]">
+        <div className="bg-white px-8 py-6 rounded-2xl shadow-xl text-center">
+          <div className="animate-spin h-8 w-8 mx-auto mb-3 rounded-full border-4 border-[#852BAF] border-t-transparent" />
+          <p className="text-sm font-semibold text-gray-600">
+            Preparing application...
+          </p>
+        </div>
+      </div>
+    );
   }
   return (
     <Routes>
@@ -127,15 +140,9 @@ export default function App() {
         />
 
         {/* Orders */}
-        <Route
-          path={routes.vendor.orders.summary}
-          element={<OrderSummary />}
-        />
+        <Route path={routes.vendor.orders.summary} element={<OrderSummary />} />
 
-        <Route
-          path={routes.vendor.orders.details}
-          element={<OrderDetail />}
-        />
+        <Route path={routes.vendor.orders.details} element={<OrderDetail />} />
       </Route>
 
       {/* ========== MANAGER ========== */}
