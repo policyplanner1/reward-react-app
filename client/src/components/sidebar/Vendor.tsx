@@ -9,7 +9,7 @@ import {
   FiPlusSquare,
   FiBriefcase,
   FiChevronRight,
-  FiShoppingCart,
+  // FiShoppingCart,
 } from "react-icons/fi";
 import { HiOutlineUserCircle } from "react-icons/hi2";
 import { api } from "../../api/api";
@@ -85,11 +85,11 @@ export default function VendorNavbar() {
         { label: "Product List", to: "/vendor/products/list", Icon: FiPackage },
       ],
     },
-    isApproved && {
-      label: "Orders",
-      to: "/vendor/orders/summary",
-      Icon: FiShoppingCart,
-    },
+    // isApproved && {
+    //   label: "Orders",
+    //   to: "/vendor/orders/summary",
+    //   Icon: FiShoppingCart,
+    // },
   ].filter(Boolean) as NavItem[];
 
   if (loading) return null;
