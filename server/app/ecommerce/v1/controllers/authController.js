@@ -7,7 +7,9 @@ const {
   sendVerificationMail,
 } = require("../../../../services/userVerification");
 
-const {sendNewDeviceLoginEmail}=require("../../../../services/deviceNotification");
+const {
+  sendNewDeviceLoginEmail,
+} = require("../../../../services/deviceNotification");
 
 const ACCESS_EXPIRES = "15m";
 const REFRESH_EXPIRES_DAYS = 7;
@@ -291,6 +293,15 @@ class AuthController {
         deviceInfo,
         ipAddress,
       );
+
+      const isFirstLogin = !user.last_login_at;
+
+      if (isFirstLogin) {
+        await MailService.sendFirstLoginEmail({
+          email: user.email,
+          name: user.name,
+        });
+      }
 
       await AuthModel.updateLoginMeta(user.user_id, req.ip);
 

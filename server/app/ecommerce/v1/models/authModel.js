@@ -38,7 +38,7 @@ class authModel {
 
   async findById(userId) {
     const [rows] = await db.execute(
-      `SELECT user_id, name, email, status, is_verified, token_version
+      `SELECT user_id, name, email, status, is_verified, token_version,last_login_at
        FROM customer
        WHERE user_id = ?`,
       [userId],
