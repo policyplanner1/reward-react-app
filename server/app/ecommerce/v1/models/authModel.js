@@ -80,7 +80,7 @@ class authModel {
 
   async findByVerificationToken() {
     const [rows] = await db.execute(
-      `SELECT user_id, verification_token, verification_token_expiry
+      `SELECT user_id, name, verification_token, verification_token_expiry
        FROM customer
        WHERE verification_token IS NOT NULL`,
     );
