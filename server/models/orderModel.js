@@ -297,7 +297,7 @@ class OrderModel {
   }
 
   // Get vendor order summary
-  async getVendorOrders({ vendorId, limit, offset }) {
+  async getOrderSummary({ vendorId, limit, offset }) {
     const [rows] = await db.execute(
       `
     SELECT
@@ -349,6 +349,82 @@ class OrderModel {
     return {
       orders: rows,
       total,
+    };
+  }
+
+  // view vendor details
+  async viewVendorOrderDetails(vendorOrderId, vendorId) {
+    const [[order]] = await db.execute(
+      `
+    SELECT
+      vo.vendor_order_id,
+      vo.vendor_total,
+      vo.shipping_status,
+      vo.created_at,
+
+      o.order_id,
+      o.order_ref,
+
+      s.awb_number,
+      s.courier_name,
+      s.shipping_status
+
+    FROM vendor_orders vo
+
+    JOIN eorders o
+      ON vo.order_id = o.order_id
+
+    LEFT JOIN order_shipments s
+      ON s.vendor_order_id = vo.vendor_order_id
+
+    WHERE vo.vendor_order_id = ?
+    AND vo.vendor_id = ?
+    `,
+      [vendorOrderId, vendorId],
+    );
+
+    if (!order) {
+      throw new Error("ORDER_NOT_FOUND");
+    }
+
+    const [items] = await db.execute(
+      `
+    SELECT
+      oi.order_item_id,
+      oi.product_id,
+      oi.variant_id,
+      oi.quantity,
+      oi.price,
+
+      p.product_name,
+      p.brand_name,
+
+      v.variant_attributes,
+
+      (
+        SELECT image_url
+        FROM product_variant_images
+        WHERE variant_id = oi.variant_id
+        ORDER BY sort_order
+        LIMIT 1
+      ) AS image
+
+    FROM eorder_items oi
+
+    JOIN eproducts p
+      ON oi.product_id = p.product_id
+
+    JOIN product_variants v
+      ON oi.variant_id = v.variant_id
+
+    WHERE oi.vendor_order_id = ?
+    `,
+      [vendorOrderId],
+    );
+
+    return {
+      order,
+      items,
     };
   }
 }

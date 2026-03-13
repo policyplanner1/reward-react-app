@@ -89,7 +89,7 @@ class OrderController {
       const limit = parseInt(req.query.limit) || 10;
       const offset = (page - 1) * limit;
 
-      const data = await orderModel.getVendorOrders({
+      const data = await orderModel.getOrderSummary({
         vendorId,
         limit,
         offset,
@@ -105,6 +105,52 @@ class OrderController {
       return res.status(500).json({
         success: false,
         message: "Unable to fetch orders",
+      });
+    }
+  }
+
+  // view vendor Order Details
+  async viewVendorOrderDetails(req, res) {
+    try {
+      const vendorId = req.user.vendor_id;
+      if (!vendorId) {
+        return res.status(404).json({
+          success: false,
+          message: "Vendor ID is required",
+        });
+      }
+
+      const vendorOrderId = Number(req.params.vendorOrderId);
+
+      if (!vendorOrderId) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid order",
+        });
+      }
+
+      const data = await orderModel.viewVendorOrderDetails(
+        vendorOrderId,
+        vendorId,
+      );
+
+      return res.json({
+        success: true,
+        ...data,
+      });
+    } catch (error) {
+      console.error("Vendor order details error:", error);
+
+      if (error.message === "ORDER_NOT_FOUND") {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch order details",
       });
     }
   }

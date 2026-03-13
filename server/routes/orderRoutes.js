@@ -28,5 +28,12 @@ router.get(
   orderController.getOrderSummary
 );
 
+router.get(
+  "/order-view/:vendorOrderId",
+  authenticateToken,
+  authorizeRoles("vendor"),
+  orderController.viewVendorOrderDetails
+);
+
 
 module.exports = router;

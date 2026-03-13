@@ -5,27 +5,21 @@ import "./css/OrderSummary.css";
 import { FiShoppingCart } from "react-icons/fi";
 
 interface Order {
+  vendor_order_id: number;
   order_id: number;
   order_ref: string;
-  user_id: number;
-  company_id: number | null;
-  total_amount: number;
-  status: string;
+  vendor_total: number;
+  shipping_status: string;
   created_at: string;
   item_count: number;
-  product_name: string | null;
-  brand_name: string | null;
-  image: string | null;
-  shipping_status?: string;
   awb_number?: string;
+  courier_name?: string;
 }
 
 interface OrderListResponse {
   success: boolean;
   orders: Order[];
   total: number;
-  totalPages: number;
-  currentPage: number;
 }
 
 const OrderSummary: React.FC = () => {
@@ -44,7 +38,7 @@ const OrderSummary: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const res = await api.get<OrderListResponse>("/order/order-list", {
+      const res = await api.get<OrderListResponse>("/order/order-summary", {
         params: { page, limit },
       });
 
@@ -53,7 +47,7 @@ const OrderSummary: React.FC = () => {
       }
 
       setOrders(res.data.orders);
-      setTotalPages(res.data.totalPages);
+      setTotalPages(Math.ceil(res.data.total / limit));
     } catch (err) {
       console.error("Failed to fetch orders", err);
       setError("Unable to load orders.");
@@ -66,7 +60,6 @@ const OrderSummary: React.FC = () => {
     fetchOrders();
   }, [page]);
 
-
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -75,19 +68,18 @@ const OrderSummary: React.FC = () => {
 
   return (
     <div className="order-page">
-      <div className=" flex items-center gap-4 mb-8">
-  <div className="w-12 h-12 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-full flex items-center justify-center shrink-0">
-    <FiShoppingCart className="text-white text-xl mr-0.75" />
-  </div>
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-12 h-12 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-full flex items-center justify-center shrink-0">
+          <FiShoppingCart className="text-white text-xl mr-0.75" />
+        </div>
 
-  <div>
-    <h2 className="text-2xl font-semibold">Orders</h2>
-    <p className="text-gray-500">
-      Manage and monitor all customer orders
-    </p>
-  </div>
-</div>
-
+        <div>
+          <h2 className="text-2xl font-semibold">Orders</h2>
+          <p className="text-gray-500">
+            Manage and monitor all customer orders
+          </p>
+        </div>
+      </div>
 
       {loading && <div className="loader"></div>}
       {error && <p className="error">{error}</p>}
@@ -99,10 +91,8 @@ const OrderSummary: React.FC = () => {
               <thead>
                 <tr>
                   <th>Order Ref</th>
-                  <th>Product</th>
-                  <th>Brand</th>
                   <th>Total</th>
-                  <th>Status</th>
+                  <th>Shipment Status</th>
                   <th>Date</th>
                   <th>Items</th>
                   <th>Action</th>
@@ -112,15 +102,16 @@ const OrderSummary: React.FC = () => {
               <tbody>
                 {orders.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="no-data">
+                    <td colSpan={6} className="no-data">
                       No orders found
                     </td>
                   </tr>
                 ) : (
                   orders.map((order) => (
-                    <tr key={order.order_id}>
+                    <tr key={order.vendor_order_id}>
                       <td className="order-ref">
                         {order.order_ref}
+
                         {order.awb_number && (
                           <div className="awb-text">
                             AWB: {order.awb_number}
@@ -128,31 +119,31 @@ const OrderSummary: React.FC = () => {
                         )}
                       </td>
 
-                      <td>{order.product_name ?? "-"}</td>
-
-                      <td>{order.brand_name ?? "-"}</td>
-
                       <td className="amount">
-                        {formatCurrency(order.total_amount)}
+                        {formatCurrency(order.vendor_total)}
                       </td>
 
                       <td>
                         <span
-                          className={`status-badge status-${order.status.toLowerCase()}`}
+                          className={`status-badge status-${order.shipping_status}`}
                         >
-                          {order.status}
+                          {order.shipping_status}
                         </span>
                       </td>
+
                       <td>
                         {new Date(order.created_at).toLocaleDateString("en-IN")}
                       </td>
+
                       <td>{order.item_count}</td>
+
                       <td>
-                        {/* View Button */}
                         <button
                           className="view-btn"
                           onClick={() =>
-                            navigate(`/manager/order-view/${order.order_id}`)
+                            navigate(
+                              `/manager/order-view/${order.vendor_order_id}`
+                            )
                           }
                         >
                           View
