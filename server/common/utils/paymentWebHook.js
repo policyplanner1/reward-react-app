@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const db = require("../../config/database");
 const { enqueueWhatsApp } = require("../../services/whatsapp/waEnqueueService");
 const xpressService = require("../../services/ExpressBees/xpressbees_service");
+const { orderConfirmationMail } = require("../../services/orderConfirmation");
 
 // booking payload
 async function buildXpressBookingPayload(orderId, vendorId) {
@@ -233,6 +234,39 @@ async function sendOrderPlacedWhatsApp(orderId) {
   });
 }
 
+// send email
+async function sendOrderPlacedEmail(orderId) {
+  try {
+    const [rows] = await db.query(
+      `SELECT 
+        o.order_ref,
+        o.total_amount,
+        cu.name AS customer_name,
+        cu.email
+     FROM eorders o
+     JOIN customer cu ON cu.user_id = o.user_id
+     WHERE o.order_id = ?
+     LIMIT 1`,
+      [orderId],
+    );
+
+    if (!rows.length) return;
+
+    const ctx = rows[0];
+
+    if (!ctx.email) return;
+
+    await orderConfirmationMail({
+      name: ctx.customer_name,
+      email: ctx.email,
+      amount: ctx.total_amount,
+      orderId: ctx.order_ref,
+    });
+  } catch (err) {
+    console.error("Email sending error:", err);
+  }
+}
+
 // webhook
 async function handleWebhook(req, res) {
   const conn = await db.getConnection();
@@ -319,6 +353,10 @@ async function handleWebhook(req, res) {
       // 7 Send WhatsApp
       sendOrderPlacedWhatsApp(order_id).catch((err) =>
         console.error("WA failed:", err),
+      );
+
+      sendOrderPlacedEmail(order_id).catch((err) =>
+        console.error("Email failed:", err),
       );
     }
 
