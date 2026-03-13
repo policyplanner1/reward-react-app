@@ -193,7 +193,7 @@ class AuthController {
                 <h2 style="margin-bottom:10px;">Email verified successfully 🎉</h2>
 
                 <p style="font-size:16px;color:#333;">
-                  Hi {{name}},
+                  Hi ${user.name},
                 </p>
 
                 <p style="font-size:15px;color:#555;line-height:1.6;">
