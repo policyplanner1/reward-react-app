@@ -180,34 +180,60 @@ class AuthController {
           new Date() < new Date(user.verification_token_expiry)
         ) {
           await AuthModel.markEmailVerified(user.user_id);
-
           return res.send(`
-            <html>
-              <head>
-                <title>Email Verified</title>
-              </head>
-              <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
-                <h2>Email verified successfully </h2>
-                <p>You can now login in the app.</p>
+          <html>
+            <head>
+              <title>Email Verified</title>
+            </head>
 
-                <a href="rewardplanners://login"
-                  style="padding:12px 20px;background:black;color:white;text-decoration:none;border-radius:5px;">
-                  Open App
-                </a>
+            <body style="font-family: Arial, sans-serif; background:#f6f6f6; margin:0; padding:0;">
+              
+              <div style="max-width:600px;margin:60px auto;background:#ffffff;padding:40px;border-radius:8px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.05);">
+                
+                <h2 style="margin-bottom:10px;">Email verified successfully 🎉</h2>
 
-                <script>
-                  // Try opening app via custom scheme
-                  setTimeout(function() {
-                    window.location.href = "rewardplanners://login";
-                  }, 500);
+                <p style="font-size:16px;color:#333;">
+                  Hi {{name}},
+                </p>
 
-                  // Fallback for Android Chrome
-                  setTimeout(function() {
-                    window.location.href = "intent://login#Intent;scheme=rewardplanners;package=com.rewardsplanners;end";
-                  }, 1500);
-                </script>
-              </body>
-            </html>
+                <p style="font-size:15px;color:#555;line-height:1.6;">
+                  Welcome to <b>RewardPlanners</b>! Your account has been successfully created and is now ready to use.
+                  <br><br>
+                  You can now start earning and redeeming rewards, explore exclusive benefits, and make smarter financial decisions — all from one platform.
+                </p>
+
+                <p style="font-size:15px;color:#555;margin-top:20px;">
+                  Log in to your account and begin your RewardPlanners journey today.
+                </p>
+
+                <div style="margin:30px 0;">
+                  <a href="rewardplanners://login"
+                    style="padding:14px 28px;background:#000;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">
+                    Open RewardPlanners App
+                  </a>
+                </div>
+
+                <p style="font-size:14px;color:#777;">
+                  Warm regards,<br>
+                  <b>Team RewardPlanners</b>
+                </p>
+
+              </div>
+
+              <script>
+                // Try opening app via custom scheme
+                setTimeout(function() {
+                  window.location.href = "rewardplanners://login";
+                }, 500);
+
+                // Android Chrome fallback
+                setTimeout(function() {
+                  window.location.href = "intent://login#Intent;scheme=rewardplanners;package=com.rewardsplanners;end";
+                }, 1500);
+              </script>
+
+            </body>
+          </html>
           `);
         }
       }
@@ -293,15 +319,6 @@ class AuthController {
         deviceInfo,
         ipAddress,
       );
-
-      const isFirstLogin = !user.last_login_at;
-
-      if (isFirstLogin) {
-        await MailService.sendFirstLoginEmail({
-          email: user.email,
-          name: user.name,
-        });
-      }
 
       await AuthModel.updateLoginMeta(user.user_id, req.ip);
 
