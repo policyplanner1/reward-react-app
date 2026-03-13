@@ -41,7 +41,7 @@ import NotFoundPage from "./pages/NotFound";
 
 // Vendor Orders
 import OrderSummary from "./components/feature/vendor/orders/OrderSummary";
-import OrderDetail from "./components/feature/vendor/orders/orderDetail";
+import OrderDetail from "./components/feature/vendor/orders/OrderDetail";
 
 // Manager Order
 import OrderList from "./components/feature/manager/order/OrderList";
@@ -56,7 +56,8 @@ import FlashSaleList from "./components/feature/manager/flashSale/FlashSaleList"
 import FlashSaleVariant from "./components/feature/manager/flashSale/FlashSaleVariant";
 
 export default function App() {
-  const { user, loading, initializing } = useAuth();
+  // const { user, loading } = useAuth();
+  const { user, initializing } = useAuth();
 
   // if (loading ) {
   //   return null;
