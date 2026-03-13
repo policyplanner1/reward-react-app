@@ -359,23 +359,53 @@ class OrderModel {
     SELECT
       vo.vendor_order_id,
       vo.vendor_total,
-      vo.shipping_status,
+      vo.shipping_status AS vendor_shipping_status,
       vo.created_at,
 
       o.order_id,
       o.order_ref,
+      o.total_amount AS order_total,
 
-      s.awb_number,
-      s.courier_name,
-      s.shipping_status
+      cu.user_id,
+      cu.name  AS customer_name,
+      cu.email AS customer_email,
+      cu.phone AS customer_phone,
+
+      ca.address_type,
+      ca.address1,
+      ca.address2,
+      ca.city,
+      ca.zipcode,
+      ca.landmark,
+      ca.contact_name,
+      ca.contact_phone,
+
+      s.state_name,
+      c.country_name,
+
+      sh.awb_number,
+      sh.courier_name,
+      sh.shipping_status
 
     FROM vendor_orders vo
 
     JOIN eorders o
       ON vo.order_id = o.order_id
 
-    LEFT JOIN order_shipments s
-      ON s.vendor_order_id = vo.vendor_order_id
+    LEFT JOIN customer cu
+      ON o.user_id = cu.user_id
+
+    LEFT JOIN customer_addresses ca
+      ON o.address_id = ca.address_id
+
+    LEFT JOIN states s
+      ON ca.state_id = s.state_id
+
+    LEFT JOIN countries c
+      ON ca.country_id = c.country_id
+
+    LEFT JOIN order_shipments sh
+      ON sh.vendor_order_id = vo.vendor_order_id
 
     WHERE vo.vendor_order_id = ?
     AND vo.vendor_id = ?
@@ -387,6 +417,7 @@ class OrderModel {
       throw new Error("ORDER_NOT_FOUND");
     }
 
+    // 2) Order Items
     const [items] = await db.execute(
       `
     SELECT
@@ -422,9 +453,71 @@ class OrderModel {
       [vendorOrderId],
     );
 
+    // 3) Parse attributes
+    const processedItems = items.map((i) => {
+      let attributes = {};
+      if (i.variant_attributes) {
+        try {
+          attributes = JSON.parse(i.variant_attributes);
+        } catch {
+          attributes = {};
+        }
+      }
+
+      return {
+        order_item_id: i.order_item_id,
+        product_id: i.product_id,
+        variant_id: i.variant_id,
+        product_name: i.product_name,
+        brand_name: i.brand_name,
+        image: i.image,
+        attributes,
+        quantity: i.quantity,
+        price: i.price,
+        item_total: i.quantity * i.price,
+      };
+    });
+
+    const itemTotal = processedItems.reduce((sum, i) => sum + i.item_total, 0);
+
     return {
-      order,
-      items,
+      order: {
+        vendor_order_id: order.vendor_order_id,
+        order_id: order.order_id,
+        order_ref: order.order_ref,
+        shipping_status: order.shipping_status,
+        awb_number: order.awb_number,
+        courier_name: order.courier_name,
+        created_at: order.created_at,
+        vendor_total: order.vendor_total,
+      },
+
+      customer: {
+        user_id: order.user_id,
+        name: order.customer_name,
+        email: order.customer_email,
+        phone: order.customer_phone,
+      },
+
+      address: {
+        type: order.address_type,
+        name: order.contact_name,
+        phone: order.contact_phone,
+        line1: order.address1,
+        line2: order.address2,
+        city: order.city,
+        state: order.state_name,
+        country: order.country_name,
+        zipcode: order.zipcode,
+        landmark: order.landmark,
+      },
+
+      items: processedItems,
+
+      summary: {
+        item_total: itemTotal,
+        vendor_total: order.vendor_total,
+      },
     };
   }
 }

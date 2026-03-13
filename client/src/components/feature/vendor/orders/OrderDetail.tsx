@@ -14,6 +14,26 @@ interface Order {
   courier_name?: string;
 }
 
+interface Customer {
+  user_id: number;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+interface Address {
+  type: string;
+  name: string;
+  phone: string;
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  country: string;
+  zipcode: string;
+  landmark?: string;
+}
+
 interface OrderItem {
   order_item_id: number;
   product_id: number;
@@ -21,15 +41,24 @@ interface OrderItem {
   product_name: string;
   brand_name: string;
   image: string | null;
-  variant_attributes: string;
+  attributes: Record<string, string>;
   quantity: number;
   price: number;
+  item_total: number;
+}
+
+interface Summary {
+  item_total: number;
+  vendor_total: number;
 }
 
 interface VendorOrderDetailsResponse {
   success: boolean;
   order: Order;
+  customer: Customer;
+  address: Address;
   items: OrderItem[];
+  summary: Summary;
 }
 
 const OrderDetail: React.FC = () => {
@@ -64,9 +93,7 @@ const OrderDetail: React.FC = () => {
   };
 
   useEffect(() => {
-    if (orderId) {
-      fetchOrderDetails();
-    }
+    if (orderId) fetchOrderDetails();
   }, [orderId]);
 
   const formatCurrency = (amount: number) =>
@@ -86,12 +113,7 @@ const OrderDetail: React.FC = () => {
   if (error) return <div style={{ padding: 20, color: "red" }}>{error}</div>;
   if (!data) return null;
 
-  const { order, items } = data;
-
-  const itemTotal = items.reduce(
-    (sum, item) => sum + item.quantity * item.price,
-    0
-  );
+  const { order, customer, address, items, summary } = data;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f5f7ff] via-white to-[#f0f9ff] p-6 md:p-10">
@@ -146,6 +168,47 @@ const OrderDetail: React.FC = () => {
         )}
       </div>
 
+      {/* CUSTOMER */}
+      <div className="bg-white rounded-2xl p-6 shadow mb-6">
+        <h3 className="text-lg font-semibold mb-4">Customer Details</h3>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          <div>
+            <span className="text-xs text-slate-500">Name</span>
+            <p className="font-medium">{customer.name}</p>
+          </div>
+
+          <div>
+            <span className="text-xs text-slate-500">Email</span>
+            <p>{customer.email}</p>
+          </div>
+
+          <div>
+            <span className="text-xs text-slate-500">Phone</span>
+            <p>{customer.phone}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ADDRESS */}
+      <div className="bg-white rounded-2xl p-6 shadow mb-6">
+        <h3 className="text-lg font-semibold mb-3">Shipping Address</h3>
+
+        <p className="font-medium">{address.name}</p>
+        <p>{address.phone}</p>
+        <p>{address.line1}, {address.line2}</p>
+
+        <p>
+          {address.city}, {address.state}, {address.country} - {address.zipcode}
+        </p>
+
+        {address.landmark && (
+          <p className="text-sm text-slate-500 mt-2">
+            Landmark: {address.landmark}
+          </p>
+        )}
+      </div>
+
       {/* ITEMS */}
       <div className="bg-white rounded-2xl p-6 shadow">
 
@@ -158,6 +221,7 @@ const OrderDetail: React.FC = () => {
               <tr>
                 <th className="p-3 text-left">Product</th>
                 <th className="p-3 text-left">Brand</th>
+                <th className="p-3 text-left">Attributes</th>
                 <th className="p-3 text-left">Qty</th>
                 <th className="p-3 text-left">Price</th>
                 <th className="p-3 text-left">Total</th>
@@ -168,24 +232,22 @@ const OrderDetail: React.FC = () => {
               {items.map((item) => (
                 <tr key={item.order_item_id} className="border-t">
 
-                  <td className="p-3 font-medium">
-                    {item.product_name}
+                  <td className="p-3 font-medium">{item.product_name}</td>
+
+                  <td className="p-3">{item.brand_name}</td>
+
+                  <td className="p-3 text-xs text-slate-600">
+                    {Object.entries(item.attributes).map(([k, v]) => (
+                      <div key={k}>{k}: {v}</div>
+                    ))}
                   </td>
 
-                  <td className="p-3">
-                    {item.brand_name}
-                  </td>
+                  <td className="p-3">{item.quantity}</td>
 
-                  <td className="p-3">
-                    {item.quantity}
-                  </td>
-
-                  <td className="p-3">
-                    {formatCurrency(item.price)}
-                  </td>
+                  <td className="p-3">{formatCurrency(item.price)}</td>
 
                   <td className="p-3 font-semibold text-[#2563eb]">
-                    {formatCurrency(item.price * item.quantity)}
+                    {formatCurrency(item.item_total)}
                   </td>
 
                 </tr>
@@ -199,13 +261,13 @@ const OrderDetail: React.FC = () => {
 
           <div className="flex justify-between">
             <span>Items Total:</span>
-            <span>{formatCurrency(itemTotal)}</span>
+            <span>{formatCurrency(summary.item_total)}</span>
           </div>
 
           <div className="flex justify-between text-lg font-bold">
             <span>Vendor Total:</span>
             <span className="text-[#2563eb]">
-              {formatCurrency(order.vendor_total)}
+              {formatCurrency(summary.vendor_total)}
             </span>
           </div>
 
