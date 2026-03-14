@@ -123,7 +123,7 @@ const OrderDetail: React.FC = () => {
         <button
           className="inline-flex items-center gap-2 text-sm font-semibold
           bg-gradient-to-r from-[#852BAF] to-[#FC3F78] text-white
-          px-5 py-2.5 rounded-lg shadow-lg"
+          px-5 py-2.5 rounded-lg shadow-lg cursor-pointer"
           onClick={() => navigate(-1)}
         >
           ← Back
