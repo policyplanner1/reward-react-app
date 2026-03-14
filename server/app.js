@@ -16,6 +16,7 @@ const webhook = require("./common/utils/paymentWebHook");
 // App Route
 const ecommerceRoute = require("./app/ecommerce/v1/routes/indexRoute");
 const serviceRoute = require("./app/service/v1/routes/indexRoute");
+const stepCounterRoute= require("./app/step-counter/v1/routes/indexRoute");
 
 const app = express();
 
@@ -69,6 +70,7 @@ app.use("/", dashboardRoute);
 // App Routes
 app.use("/v1", ecommerceRoute);
 app.use("/v1", serviceRoute);
+app.use("/v1", stepCounterRoute);
 
 // 404 Handler
 app.use((req, res) => {
