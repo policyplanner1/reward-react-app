@@ -355,6 +355,7 @@ async function handleWebhook(req, res) {
         console.error("WA failed:", err),
       );
 
+      // 8 Send Email
       sendOrderPlacedEmail(order_id).catch((err) =>
         console.error("Email failed:", err),
       );

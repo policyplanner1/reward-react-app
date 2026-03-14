@@ -7,6 +7,9 @@ const {
   generateInvoicePDF,
 } = require("../../../../services/Invoice/pdf-service");
 const archiver = require("archiver");
+const {
+  enqueueWhatsApp,
+} = require("../../../../services/whatsapp/waEnqueueService");
 
 //Helper function For invoice
 function escapeHTML(str = "") {
@@ -220,6 +223,41 @@ ${escapeHTML(invoice.customer_city || "")} ${escapeHTML(invoice.zipcode || "")}
   html = html.replace(/{{amount_words}}/g, escapeHTML(amountWords));
 
   return html;
+}
+
+// send whatsapp
+async function sendOrderPlacedWhatsApp(orderId) {
+  const [rows] = await db.query(
+    `SELECT 
+        o.order_id,
+        o.order_ref,
+        o.company_id,
+        o.total_amount,
+        cu.name AS customer_name,
+        cu.phone
+     FROM eorders o
+     JOIN customer cu ON cu.user_id = o.user_id
+     WHERE o.order_id = ?
+     LIMIT 1`,
+    [orderId],
+  );
+
+  if (!rows.length) return;
+
+  const ctx = rows[0];
+
+  if (!ctx.phone) return;
+
+  await enqueueWhatsApp({
+    eventName: "cancel_order",
+    ctx: {
+      phone: ctx.phone,
+      company_id: ctx.company_id ?? null,
+      customer_name: ctx.customer_name || "User",
+      order_id: ctx.order_ref || ctx.order_id,
+      total_amount: ctx.total_amount,
+    },
+  });
 }
 
 class OrderController {
@@ -465,14 +503,19 @@ class OrderController {
 
       await conn.commit();
 
-      await NotificationModel.create({
-        userId,
-        type: "order",
-        title: "Order Cancelled ❌📦",
-        message: "Your order was cancelled as requested.",
-        reference_type: "order",
-        reference_id: orderId,
-      });
+      // await NotificationModel.create({
+      //   userId,
+      //   type: "order",
+      //   title: "Order Cancelled ❌📦",
+      //   message: "Your order was cancelled as requested.",
+      //   reference_type: "order",
+      //   reference_id: orderId,
+      // });
+
+      //  Send WhatsApp
+      sendOrderPlacedWhatsApp(orderId).catch((err) =>
+        console.error("WA failed:", err),
+      );
 
       return res.json({
         success: true,
