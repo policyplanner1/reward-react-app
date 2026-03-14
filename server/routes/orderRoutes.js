@@ -19,21 +19,54 @@ router.get(
   orderController.getAdminOrderDetails,
 );
 
-
 // ===================================Order details for vendor======================================================
+// get order list of a vendor
 router.get(
   "/order-summary",
   authenticateToken,
   authorizeRoles("vendor"),
-  orderController.getOrderSummary
+  orderController.getOrderSummary,
 );
 
+// view orders
 router.get(
   "/order-view/:vendorOrderId",
   authenticateToken,
   authorizeRoles("vendor"),
-  orderController.viewVendorOrderDetails
+  orderController.viewVendorOrderDetails,
 );
 
+// ===================================Admin order cancellation========================================
+// all cancellation requests
+// router.get(
+//   "/cancellation-requests",
+//   authenticateToken,
+//   authorizeRoles("vendor_manager", "admin"),
+//   orderController.getCancellationReasons,
+// );
+
+// // cancelled order details
+// router.get(
+//   "/cancellation-request/:orderId",
+//   authenticateToken,
+//   authorizeRoles("vendor_manager", "admin"),
+//   orderController.getCancellationRequestDetails,
+// );
+
+// // approve cancellation request
+// router.post(
+//   "/approve-cancellation/:orderId",
+//   authenticateToken,
+//   authorizeRoles("vendor_manager", "admin"),
+//   orderController.approveCancellation,
+// );
+
+// // reject cancellation request
+// router.post(
+//   "/reject-cancellation/:orderId",
+//   authenticateToken,
+//   authorizeRoles("vendor_manager", "admin"),
+//   orderController.rejectCancellation,
+// );
 
 module.exports = router;
