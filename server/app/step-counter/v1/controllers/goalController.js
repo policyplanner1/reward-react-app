@@ -19,12 +19,22 @@ exports.getGoals = async (req, res) => {
 
 exports.selectGoal = async (req, res) => {
   try {
-    const { user_id, goal_id } = req.body;
+    const userId = req.user?.user_id;
+    // const userId = 1;
 
-    if (!user_id || !goal_id) {
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user",
+      });
+    }
+
+    const { goal_id } = req.body;
+
+    if (!goal_id) {
       return res.status(400).json({
         success: false,
-        message: "user_id and goal_id required",
+        message: "goal_id required",
       });
     }
 
@@ -45,7 +55,7 @@ exports.selectGoal = async (req, res) => {
     endDate.setDate(startDate.getDate() + goalData.days_required);
 
     await goalModel.selectGoal({
-      user_id,
+      userId,
       goal_id,
       start_date: startDate,
       end_date: endDate,
@@ -65,7 +75,15 @@ exports.selectGoal = async (req, res) => {
 
 exports.getUserGoal = async (req, res) => {
   try {
-    const user_id = req.params.user_id;
+    const userId = req.user?.user_id;
+    // const userId = 1;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user",
+      });
+    }
 
     const [rows] = await db.query(
       `
@@ -82,7 +100,7 @@ exports.getUserGoal = async (req, res) => {
       WHERE ug.user_id = ?
       AND ug.status = 'active'
     `,
-      [user_id],
+      [userId],
     );
 
     if (rows.length === 0) {

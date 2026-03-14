@@ -2,11 +2,19 @@ const db = require("../../../../config/database");
 
 exports.getDashboard = async (req, res) => {
   try {
-    const user_id = req.params.user_id;
+    const userId = req.user?.user_id;
+    // const userId = 1;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user",
+      });
+    }
 
     const [user] = await db.query(
       "SELECT name FROM customer WHERE user_id = ?",
-      [user_id],
+      [userId],
     );
 
     const [goal] = await db.query(
@@ -16,7 +24,7 @@ exports.getDashboard = async (req, res) => {
       JOIN activity_goals g ON g.id = ug.goal_id
       WHERE ug.user_id = ? AND ug.status='active'
     `,
-      [user_id],
+      [userId],
     );
 
     const [todaySteps] = await db.query(
@@ -26,7 +34,7 @@ exports.getDashboard = async (req, res) => {
       WHERE user_id = ?
       AND step_date = CURDATE()
     `,
-      [user_id],
+      [userId],
     );
 
     const [weekSteps] = await db.query(
@@ -36,7 +44,7 @@ exports.getDashboard = async (req, res) => {
       WHERE user_id = ?
       AND step_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
     `,
-      [user_id],
+      [userId],
     );
 
     res.json({

@@ -2,7 +2,17 @@ const db = require("../../../../config/database");
 
 exports.calculateBMI = async (req, res) => {
   try {
-    const { user_id, height_ft, weight_kg, goal_type } = req.body;
+    const userId = req.user?.user_id;
+    // const userId = 1;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user",
+      });
+    }
+
+    const { height_ft, weight_kg, goal_type } = req.body;
 
     // convert feet to meters
     const height_m = height_ft * 0.3048;
@@ -21,7 +31,7 @@ exports.calculateBMI = async (req, res) => {
       `INSERT INTO user_health_profile
       (user_id,height_cm,weight_kg,bmi,bmi_category)
       VALUES (?,?,?,?,?)`,
-      [user_id, height_m * 100, weight_kg, bmi.toFixed(1), bmi_category],
+      [userId, height_m * 100, weight_kg, bmi.toFixed(1), bmi_category],
     );
 
     // get step plan
@@ -46,7 +56,17 @@ exports.calculateBMI = async (req, res) => {
 
 exports.getBMIPlan = async (req, res) => {
   try {
-    const { user_id, goal_type } = req.body;
+    const userId = req.user?.user_id;
+    // const userId = 1;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user",
+      });
+    }
+
+    const { goal_type } = req.body;
 
     // Get user health data
     const [profile] = await db.query(
@@ -54,7 +74,7 @@ exports.getBMIPlan = async (req, res) => {
        FROM user_health_profile
        WHERE user_id = ? 
        ORDER BY id DESC LIMIT 1`,
-      [user_id],
+      [userId],
     );
 
     if (profile.length === 0) {
@@ -85,7 +105,7 @@ exports.getBMIPlan = async (req, res) => {
       `UPDATE user_health_profile
        SET bmi=?, bmi_category=?
        WHERE user_id=?`,
-      [bmi.toFixed(1), bmi_category, user_id],
+      [bmi.toFixed(1), bmi_category, userId],
     );
 
     // Get step plan
