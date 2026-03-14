@@ -47,7 +47,7 @@ const OrderSummary: React.FC = () => {
       }
 
       setOrders(res.data.orders);
-      setTotalPages(Math.ceil(res.data.total / limit));
+      setTotalPages(Math.max(1, Math.ceil(res.data.total / limit)));
     } catch (err) {
       console.error("Failed to fetch orders", err);
       setError("Unable to load orders.");
@@ -163,25 +163,27 @@ const OrderSummary: React.FC = () => {
             </table>
           </div>
 
-          <div className="pagination">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage((prev) => prev - 1)}
-            >
-              ← Prev
-            </button>
+          {orders.length > 0 && (
+            <div className="pagination">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage((prev) => prev - 1)}
+              >
+                ← Prev
+              </button>
 
-            <span>
-              Page {page} of {totalPages}
-            </span>
+              <span>
+                Page {page} of {totalPages}
+              </span>
 
-            <button
-              disabled={page === totalPages}
-              onClick={() => setPage((prev) => prev + 1)}
-            >
-              Next →
-            </button>
-          </div>
+              <button
+                disabled={page >= totalPages}
+                onClick={() => setPage((prev) => prev + 1)}
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
