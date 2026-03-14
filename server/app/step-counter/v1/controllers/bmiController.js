@@ -1,5 +1,6 @@
 const db = require("../../../../config/database");
 
+// calculate BMI
 exports.calculateBMI = async (req, res) => {
   try {
     const userId = req.user?.user_id;
@@ -54,6 +55,7 @@ exports.calculateBMI = async (req, res) => {
   }
 };
 
+// Get BMI plan
 exports.getBMIPlan = async (req, res) => {
   try {
     const userId = req.user?.user_id;

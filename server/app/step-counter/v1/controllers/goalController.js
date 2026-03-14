@@ -17,6 +17,7 @@ exports.getGoals = async (req, res) => {
   }
 };
 
+// SELECT GOAL
 exports.selectGoal = async (req, res) => {
   try {
     const userId = req.user?.user_id;
@@ -73,6 +74,7 @@ exports.selectGoal = async (req, res) => {
   }
 };
 
+// get user goal
 exports.getUserGoal = async (req, res) => {
   try {
     const userId = req.user?.user_id;

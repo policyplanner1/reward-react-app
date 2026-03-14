@@ -1,5 +1,6 @@
 const db = require("../../../../config/database");
 
+// get Dashboard data
 exports.getDashboard = async (req, res) => {
   try {
     const userId = req.user?.user_id;
