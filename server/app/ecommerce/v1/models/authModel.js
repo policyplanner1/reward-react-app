@@ -88,17 +88,62 @@ class authModel {
 
   async verifyOTP(email, otp) {
     const [rows] = await db.execute(
-      `SELECT id
+      `SELECT id, attempt_count
      FROM email_otps
      WHERE email = ?
      AND otp = ?
      AND expiry > NOW()
-     ORDER BY id DESC
      LIMIT 1`,
-      [email.toLowerCase(), otp],
+      [email, otp],
     );
 
     return rows[0];
+  }
+
+  async incrementOtpAttempts(email) {
+    await db.execute(
+      `UPDATE email_otps
+     SET attempt_count = attempt_count + 1
+     WHERE email = ?`,
+      [email],
+    );
+  }
+
+  async getOtpAttempts(email) {
+    const [rows] = await db.execute(
+      `SELECT attempt_count
+     FROM email_otps
+     WHERE email = ?
+     ORDER BY id DESC
+     LIMIT 1`,
+      [email],
+    );
+
+    return rows[0];
+  }
+
+  async markOTPVerified(email) {
+    await db.execute(
+      `UPDATE email_otps
+     SET is_verified = 1
+     WHERE email = ?
+     ORDER BY id DESC
+     LIMIT 1`,
+      [email],
+    );
+  }
+
+  async checkOTPVerified(email) {
+    const [rows] = await db.execute(
+      `SELECT is_verified
+     FROM email_otps
+     WHERE email = ?
+     ORDER BY id DESC
+     LIMIT 1`,
+      [email],
+    );
+
+    return rows[0]?.is_verified === 1;
   }
 
   async deleteOTP(email) {

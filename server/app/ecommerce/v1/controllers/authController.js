@@ -11,7 +11,11 @@ const {
   sendNewDeviceLoginEmail,
 } = require("../../../../services/deviceNotification");
 
-const {accountCreationSuccessMail}=require("../../../../services/accountCreation");
+const {
+  accountCreationSuccessMail,
+} = require("../../../../services/accountCreation");
+
+const { sendOtpMail } = require("../../../../services/sendOTP");
 
 const ACCESS_EXPIRES = "15m";
 const REFRESH_EXPIRES_DAYS = 7;
@@ -113,7 +117,11 @@ class AuthController {
 
     await AuthModel.storeActivationOTP(email, otp);
 
-    await sendEmailOTP(email, otp);
+    await sendOtpMail({
+      email,
+      name: employee.name,
+      otp,
+    });
 
     return res.json({
       success: true,
@@ -125,67 +133,128 @@ class AuthController {
      VERIFY OTP
   ====================================================== */
   async verifyActivationOTP(req, res) {
-    const { email, otp } = req.body;
+    try {
+      const { email, otp } = req.body;
 
-    if (!email || !otp) {
-      return res.status(400).json({
+      if (!email || !otp) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and OTP are required",
+        });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const attempt = await AuthModel.getOtpAttempts(normalizedEmail);
+
+      if (attempt && attempt.attempt_count >= 5) {
+        return res.status(429).json({
+          success: false,
+          message: "Too many OTP attempts. Try again later.",
+        });
+      }
+
+      const otpRecord = await AuthModel.verifyOTP(normalizedEmail, otp);
+
+      if (!otpRecord) {
+        await AuthModel.incrementOtpAttempts(normalizedEmail);
+
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or expired OTP",
+        });
+      }
+
+      await AuthModel.markOTPVerified(normalizedEmail);
+
+      return res.json({
+        success: true,
+        message: "OTP verified successfully",
+      });
+    } catch (err) {
+      return res.status(500).json({
         success: false,
-        message: "Email and OTP are required",
+        message: "Server error",
       });
     }
-
-    const normalizedEmail = email.trim().toLowerCase();
-
-    const isValid = await AuthModel.verifyOTP(normalizedEmail, otp);
-
-    if (!isValid) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid OTP",
-      });
-    }
-
-    await AuthModel.deleteOTP(normalizedEmail);
-
-    return res.json({
-      success: true,
-    });
   }
 
   /* ======================================================
      SET PASSWORD
   ====================================================== */
-
   async setPassword(req, res) {
-    const { email, password } = req.body;
+    try {
+      const { email, password } = req.body;
 
-    const employee = await AuthModel.findEmployeeByEmail(email);
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and password are required",
+        });
+      }
 
-    if (!employee) {
-      return res.status(404).json({
+      const normalizedEmail = email.trim().toLowerCase();
+
+      if (password.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 8 characters",
+        });
+      }
+
+      const existing = await AuthModel.findByEmail(normalizedEmail);
+
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: "Account already exists",
+        });
+      }
+
+      const otpVerified = await AuthModel.checkOTPVerified(normalizedEmail);
+
+      if (!otpVerified) {
+        return res.status(403).json({
+          success: false,
+          message: "OTP verification required",
+        });
+      }
+
+      const employee = await AuthModel.findEmployeeByEmail(normalizedEmail);
+
+      if (!employee) {
+        return res.status(404).json({
+          success: false,
+          message: "Employee not found",
+        });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      await AuthModel.createCustomer({
+        company_user_id: employee.id,
+        name: employee.name,
+        email: employee.email,
+        password: hashedPassword,
+      });
+
+      await AuthModel.deleteOTP(normalizedEmail);
+
+      await accountCreationSuccessMail({
+        name: employee.name,
+        email: employee.email,
+      });
+
+      return res.json({
+        success: true,
+        message: "Account activated successfully",
+      });
+    } catch (err) {
+      return res.status(500).json({
         success: false,
-        message: "Employee not found",
+        message: "Server error",
       });
     }
-
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    const userId = await AuthModel.createCustomer({
-      company_user_id: employee.id,
-      name: employee.name,
-      email: employee.email,
-      password: hashedPassword,
-    });
-
-    await accountCreationSuccessMail({
-      name: employee.name,
-      email: employee.email,
-    });
-
-    return res.json({
-      success: true,
-      message: "Account activated",
-    });
   }
 
   /* ======================================================
