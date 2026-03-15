@@ -3,25 +3,6 @@ const fs = require("fs");
 const path = require("path");
 
 class authModel {
-  // async findByEmail(email) {
-  //   const [rows] = await db.execute(
-  //     `SELECT user_id, name, email, password, status
-  //      FROM customer
-  //      WHERE email = ?`,
-  //     [email],
-  //   );
-  //   return rows[0];
-  // }
-
-  // async createCustomer({ name, email, phone, password, status = 1 }) {
-  //   const [result] = await db.execute(
-  //     `INSERT INTO customer (name, email, phone, password,status)
-  //      VALUES (?, ?, ?, ?, ?)`,
-  //     [name, email, phone, password, status],
-  //   );
-  //   return result.insertId;
-  // }
-
   /* ======================================================
      BASIC USER QUERIES
   ====================================================== */
@@ -46,29 +27,103 @@ class authModel {
     return rows[0];
   }
 
+  // async createCustomer(data) {
+  //   const {
+  //     name,
+  //     email,
+  //     phone,
+  //     password,
+  //     verification_token,
+  //     verification_token_expiry,
+  //   } = data;
+
+  //   const [result] = await db.execute(
+  //     `INSERT INTO customer
+  //      (name, email, phone, password,
+  //       verification_token, verification_token_expiry)
+  //      VALUES (?, ?, ?, ?, ?, ?)`,
+  //     [
+  //       name,
+  //       email,
+  //       phone,
+  //       password,
+  //       verification_token,
+  //       verification_token_expiry,
+  //     ],
+  //   );
+
+  //   return result.insertId;
+  // }
+
+  /* ======================================================
+     ACCOUNT ACTIVATION
+  ====================================================== */
+
+  async findEmployeeByEmail(email) {
+    const [rows] = await db.execute(
+      `SELECT 
+        id,
+        company_id,
+        name,
+        email
+     FROM company_users
+     WHERE email = ?
+     LIMIT 1`,
+      [email.toLowerCase()],
+    );
+
+    return rows[0];
+  }
+
+  async storeActivationOTP(email, otp) {
+    const expiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    await db.execute(
+      `INSERT INTO email_otps
+     (email, otp, expiry)
+     VALUES (?, ?, ?)`,
+      [email.toLowerCase(), otp, expiry],
+    );
+  }
+
+  async verifyOTP(email, otp) {
+    const [rows] = await db.execute(
+      `SELECT id
+     FROM email_otps
+     WHERE email = ?
+     AND otp = ?
+     AND expiry > NOW()
+     ORDER BY id DESC
+     LIMIT 1`,
+      [email.toLowerCase(), otp],
+    );
+
+    return rows[0];
+  }
+
+  async deleteOTP(email) {
+    await db.execute(
+      `DELETE FROM email_otps
+     WHERE email = ?`,
+      [email.toLowerCase()],
+    );
+  }
+
   async createCustomer(data) {
-    const {
-      name,
-      email,
-      phone,
-      password,
-      verification_token,
-      verification_token_expiry,
-    } = data;
+    const { company_user_id, name, email, phone, password } = data;
 
     const [result] = await db.execute(
       `INSERT INTO customer
-       (name, email, phone, password,
-        verification_token, verification_token_expiry)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        name,
-        email,
-        phone,
-        password,
-        verification_token,
-        verification_token_expiry,
-      ],
+     (
+       company_user_id,
+       name,
+       email,
+       phone,
+       password,
+       is_verified
+     )
+     VALUES (?, ?, ?, ?, ?, 1)`,
+      [company_user_id, name, email.toLowerCase(), phone, password],
     );
 
     return result.insertId;

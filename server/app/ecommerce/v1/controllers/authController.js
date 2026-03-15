@@ -14,86 +14,11 @@ const {
 const ACCESS_EXPIRES = "15m";
 const REFRESH_EXPIRES_DAYS = 7;
 
+function generateOTP() {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
 class AuthController {
-  // Basic Registration and Login
-  // async registerUser(req, res) {
-  //   try {
-  //     const { name, email, phone, password, cpassword } = req.body;
-
-  //     if (!name || !email || !phone || !password || !cpassword)
-  //       return res.status(400).json({ message: "All fields required" });
-
-  //     if (password !== cpassword) {
-  //       return res.status(400).json({ message: "Passwords do not match" });
-  //     }
-
-  //     const normalizedEmail = email.trim().toLowerCase();
-
-  //     const existing = await AuthModel.findByEmail(normalizedEmail);
-  //     if (existing)
-  //       return res.status(409).json({ message: "Email already registered" });
-
-  //     if (password.length < 6)
-  //       return res.status(400).json({ message: "Password too short" });
-
-  //     const hashedPassword = await bcrypt.hash(password, 10);
-
-  //     await AuthModel.createCustomer({
-  //       name,
-  //       email: normalizedEmail,
-  //       phone: phone,
-  //       password: hashedPassword,
-  //     });
-
-  //     return res.status(201).json({
-  //       success: true,
-  //       message: "Registration successful",
-  //     });
-  //   } catch (err) {
-  //     return res.status(500).json({ success: false });
-  //   }
-  // }
-
-  // async loginUser(req, res) {
-  //   try {
-  //     const { email, password } = req.body;
-
-  //     if (!email || !password)
-  //       return res.status(400).json({ message: "Email and password required" });
-
-  //     const normalizedEmail = email.trim().toLowerCase();
-
-  //     const user = await AuthModel.findByEmail(normalizedEmail);
-  //     if (!user)
-  //       return res.status(401).json({ message: "Invalid credentials" });
-
-  //     if (Number(user.status) !== 1)
-  //       return res.status(403).json({ message: "Account inactive" });
-
-  //     const match = await bcrypt.compare(password, user.password);
-  //     if (!match)
-  //       return res.status(401).json({ message: "Invalid credentials" });
-
-  //     const accessToken = jwt.sign(
-  //       { user_id: user.user_id },
-  //       process.env.ACCESS_TOKEN_SECRET,
-  //       { expiresIn: "1d" },
-  //     );
-
-  //     return res.json({
-  //       success: true,
-  //       accessToken,
-  //       user: {
-  //         id: user.user_id,
-  //         name: user.name,
-  //         email: user.email,
-  //       },
-  //     });
-  //   } catch (err) {
-  //     return res.status(500).json({ success: false, message: err.message });
-  //   }
-  // }
-
   /* ======================================================
      REGISTER
   ====================================================== */
@@ -156,6 +81,86 @@ class AuthController {
     } catch (err) {
       return res.status(500).json({ success: false });
     }
+  }
+
+  /* ======================================================
+     ACTIVATE ACCOUNT
+  ====================================================== */
+  async activateAccount(req, res) {
+    const { email } = req.body;
+
+    const employee = await AuthModel.findEmployeeByEmail(email);
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found",
+      });
+    }
+
+    const existingAccount = await AuthModel.findByEmail(email);
+
+    if (existingAccount) {
+      return res.status(400).json({
+        success: false,
+        message: "Account already activated",
+      });
+    }
+
+    const otp = generateOTP();
+
+    await AuthModel.storeActivationOTP(email, otp);
+
+    await sendEmailOTP(email, otp);
+
+    return res.json({
+      success: true,
+      message: "OTP sent to email",
+    });
+  }
+
+  /* ======================================================
+     VERIFY OTP
+  ====================================================== */
+  async verifyActivationOTP(req, res) {
+    const { email, otp } = req.body;
+
+    const isValid = await AuthModel.verifyOTP(email, otp);
+
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    return res.json({
+      success: true,
+    });
+  }
+
+  /* ======================================================
+     SET PASSWORD
+  ====================================================== */
+
+  async setPassword(req, res) {
+    const { email, password } = req.body;
+
+    const employee = await AuthModel.findEmployeeByEmail(email);
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const userId = await AuthModel.createCustomer({
+      company_user_id: employee.id,
+      name: employee.name,
+      email: employee.email,
+      password: hashedPassword,
+    });
+
+    return res.json({
+      success: true,
+      message: "Account activated",
+    });
   }
 
   /* ======================================================
