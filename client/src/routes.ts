@@ -39,6 +39,7 @@ export const routes = {
       orderList: "/manager/orders",
       details: "/manager/order-view/:orderId",
       cancellationRequest: "/manager/cancellation-request",
+      cancellationDetail: "/manager/cancellation-detail/:orderId",
     },
   },
 };
