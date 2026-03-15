@@ -516,6 +516,77 @@ class AuthController {
     }
   }
 
+  /* ======================================================
+     CHANGE PASSWORD
+  ====================================================== */
+  async changePassword(req, res) {
+    try {
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: "Current password and new password are required",
+        });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 8 characters",
+        });
+      }
+
+      const user = await AuthModel.getUserPassword(userId);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+      if (!isMatch) {
+        return res.status(400).json({
+          success: false,
+          message: "Current password is incorrect",
+        });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+      await AuthModel.updatePassword(userId, hashedPassword);
+
+      // invalidate all sessions
+      await AuthModel.incrementTokenVersion(userId);
+      await AuthModel.deleteAllUserRefreshTokens(userId);
+
+      return res.json({
+        success: true,
+        message: "Password changed successfully. Please login again.",
+      });
+    } catch (error) {
+      console.error("Change Password Error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
   /*====================================Address============================================*/
 
   // Get all countries

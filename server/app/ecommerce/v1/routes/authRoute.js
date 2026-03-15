@@ -16,6 +16,11 @@ router.post("/logout-all", auth, authController.logoutAllDevices);
 router.post("/forgot-password", authController.forgotPassword);
 router.post("/reset-password", authController.resetPassword);
 router.post("/resend-verification", authController.resendVerification);
+router.put(
+  "/change-password",
+  auth,
+  authController.changePassword,
+);
 
 /*=============================================Address================================================*/
 // Fetch all the countries

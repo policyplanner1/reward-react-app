@@ -121,6 +121,15 @@ class authModel {
     return rows;
   }
 
+  async getUserPassword(userId) {
+    const [rows] = await db.execute(
+      `SELECT password FROM customer WHERE user_id = ?`,
+      [userId],
+    );
+
+    return rows[0];
+  }
+
   async updatePassword(userId, hashedPassword) {
     await db.execute(
       `UPDATE customer
