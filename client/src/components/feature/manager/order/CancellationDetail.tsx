@@ -3,6 +3,17 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
 import "./css/orderView.css";
 
+interface Order {
+  order_id: number;
+  order_ref: string;
+  status: string;
+  cancellation_status: string;
+  total_amount: string;
+  reason: string;
+  comment: string;
+  requested_at: string;
+}
+
 interface Timeline {
   label: string;
   date: string;
@@ -25,20 +36,19 @@ interface Address {
   landmark: string;
 }
 
+interface Customer {
+  user_id: number;
+  name: string;
+  email: string;
+  phone: string;
+}
+
 interface CancellationData {
-  orderId: number;
-  status: string;
-
-  customer: {
-    name: string;
-  };
-
+  order: Order;
+  customer: Customer;
   address: Address;
-
   timeline: Timeline[];
-
   refunds: Refund[];
-
   totalRefund: number;
 }
 
@@ -53,39 +63,27 @@ const CancellationDetail: React.FC = () => {
 
   const [data, setData] = useState<CancellationData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const fetchDetails = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+    setLoading(true);
 
-      const res = await api.get<CancellationResponse>(
-        `/order/cancellation-request/${orderId}`
-      );
+    const res = await api.get<CancellationResponse>(
+      `/order/cancellation-request/${orderId}`
+    );
 
-      if (!res.data.success) {
-        throw new Error("Failed to load cancellation details");
-      }
-
-      setData(res.data.data);
-    } catch (err) {
-      console.error("Failed to fetch cancellation details", err);
-      setError("Unable to load cancellation details.");
-    } finally {
-      setLoading(false);
-    }
+    setData(res.data.data);
+    setLoading(false);
   };
 
   useEffect(() => {
     if (orderId) fetchDetails();
   }, [orderId]);
 
-  const formatCurrency = (amount: number) =>
+  const formatCurrency = (amount: number | string) =>
     new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-    }).format(amount);
+    }).format(Number(amount));
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-IN", {
@@ -104,8 +102,7 @@ const CancellationDetail: React.FC = () => {
     fetchDetails();
   };
 
-  if (loading) return <div style={{ padding: 20 }}>Loading...</div>;
-  if (error) return <div style={{ padding: 20, color: "red" }}>{error}</div>;
+  if (loading) return <div className="p-6">Loading...</div>;
   if (!data) return null;
 
   return (
@@ -114,91 +111,170 @@ const CancellationDetail: React.FC = () => {
       {/* HEADER */}
       <div className="flex items-center justify-between mb-8">
         <button
-          className="bg-gradient-to-r from-[#852BAF] to-[#FC3F78] text-white px-5 py-2.5 rounded-lg"
           onClick={() => navigate(-1)}
+          className="bg-gradient-to-r from-[#852BAF] to-[#FC3F78] text-white px-6 py-2.5 rounded-lg shadow cursor-pointer"
         >
           ← Back
         </button>
 
-        <h2 className="text-2xl font-bold">
-          Cancellation Details (Order #{data.orderId})
+        <h2 className="text-2xl font-bold text-slate-800">
+          Cancellation Request
         </h2>
       </div>
 
-      {/* ORDER STATUS */}
-      <div className="bg-white rounded-2xl p-6 shadow mb-6">
-        <span className="text-sm text-gray-500">Order Status</span>
-        <p className="font-semibold mt-1">{data.status}</p>
+      {/* ORDER SUMMARY */}
+      <div className="bg-white rounded-2xl shadow p-6 mb-6 grid md:grid-cols-4 gap-6">
+
+        <div>
+          <span className="text-xs text-gray-500">Order Ref</span>
+          <p className="font-semibold">{data.order.order_ref}</p>
+        </div>
+
+        <div>
+          <span className="text-xs text-gray-500">Order Status</span>
+          <p className="font-semibold capitalize">{data.order.status}</p>
+        </div>
+
+        <div>
+          <span className="text-xs text-gray-500">Cancellation Status</span>
+          <p className="font-semibold text-orange-600 capitalize">
+            {data.order.cancellation_status}
+          </p>
+        </div>
+
+        <div>
+          <span className="text-xs text-gray-500">Order Total</span>
+          <p className="font-bold text-[#2563eb]">
+            {formatCurrency(data.order.total_amount)}
+          </p>
+        </div>
+
+      </div>
+
+      {/* CANCELLATION REASON */}
+      <div className="bg-white rounded-2xl shadow p-6 mb-6">
+
+        <h3 className="text-lg font-semibold mb-3">Cancellation Reason</h3>
+
+        <p className="font-medium">{data.order.reason}</p>
+
+        {data.order.comment && (
+          <p className="text-gray-600 mt-2">
+            Comment: {data.order.comment}
+          </p>
+        )}
+
+        <p className="text-sm text-gray-400 mt-2">
+          Requested on {formatDate(data.order.requested_at)}
+        </p>
+
       </div>
 
       {/* CUSTOMER */}
-      <div className="bg-white rounded-2xl p-6 shadow mb-6">
-        <h3 className="text-lg font-semibold mb-3">Customer</h3>
-        <p>{data.customer.name}</p>
+      <div className="bg-white rounded-2xl shadow p-6 mb-6">
+
+        <h3 className="text-lg font-semibold mb-4">Customer Details</h3>
+
+        <div className="grid md:grid-cols-3 gap-6">
+
+          <div>
+            <span className="text-xs text-gray-500">Name</span>
+            <p>{data.customer.name}</p>
+          </div>
+
+          <div>
+            <span className="text-xs text-gray-500">Email</span>
+            <p>{data.customer.email}</p>
+          </div>
+
+          <div>
+            <span className="text-xs text-gray-500">Phone</span>
+            <p>{data.customer.phone}</p>
+          </div>
+
+        </div>
+
       </div>
 
       {/* ADDRESS */}
-      <div className="bg-white rounded-2xl p-6 shadow mb-6">
-        <h3 className="text-lg font-semibold mb-3">Address</h3>
+      <div className="bg-white rounded-2xl shadow p-6 mb-6">
+
+        <h3 className="text-lg font-semibold mb-3">Shipping Address</h3>
 
         <p>{data.address.line1}, {data.address.line2}</p>
         <p>
           {data.address.city}, {data.address.state}, {data.address.country}
         </p>
         <p>{data.address.zipcode}</p>
+
+        {data.address.landmark && (
+          <p className="text-sm text-gray-500">
+            Landmark: {data.address.landmark}
+          </p>
+        )}
+
       </div>
 
       {/* TIMELINE */}
-      <div className="bg-white rounded-2xl p-6 shadow mb-6">
+      <div className="bg-white rounded-2xl shadow p-6 mb-6">
+
         <h3 className="text-lg font-semibold mb-4">Cancellation Timeline</h3>
 
-        {data.timeline.map((event, index) => (
-          <div key={index} className="mb-2">
-            <span className="font-medium">{event.label}</span>
-            <span className="text-gray-500 ml-2">
+        {data.timeline.map((event, i) => (
+          <div key={i} className="flex justify-between border-b py-2">
+            <span className="capitalize">{event.label}</span>
+            <span className="text-gray-500">
               {formatDate(event.date)}
             </span>
           </div>
         ))}
+
       </div>
 
       {/* REFUND */}
-      <div className="bg-white rounded-2xl p-6 shadow mb-6">
-        <h3 className="text-lg font-semibold mb-4">Refunds</h3>
+      <div className="bg-white rounded-2xl shadow p-6 mb-6">
+
+        <h3 className="text-lg font-semibold mb-4">Refund Details</h3>
 
         {data.refunds.length === 0 ? (
-          <p>No refunds yet</p>
+          <p className="text-gray-500">No refunds yet</p>
         ) : (
-          data.refunds.map((refund, index) => (
-            <div key={index} className="flex justify-between mb-2">
+          data.refunds.map((refund, i) => (
+            <div key={i} className="flex justify-between mb-2">
               <span>{refund.method}</span>
               <span>{formatCurrency(refund.amount)}</span>
-              <span>{refund.status}</span>
+              <span className="capitalize">{refund.status}</span>
             </div>
           ))
         )}
 
-        <div className="mt-4 font-bold">
-          Total Refund: {formatCurrency(data.totalRefund)}
+        <div className="flex justify-between mt-4 border-t pt-3 font-semibold">
+          <span>Total Refund</span>
+          <span className="text-[#2563eb]">
+            {formatCurrency(data.totalRefund)}
+          </span>
         </div>
+
       </div>
 
-      {/* ACTIONS */}
-      {data.status !== "cancelled" && (
+      {/* ACTION BUTTONS */}
+      {data.order.cancellation_status === "requested" && (
         <div className="flex gap-4">
+
           <button
             onClick={approveCancellation}
-            className="bg-green-600 text-white px-6 py-2 rounded-lg cursor-pointer"
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg cursor-pointer"
           >
             Approve Cancellation
           </button>
 
           <button
             onClick={rejectCancellation}
-            className="bg-red-600 text-white px-6 py-2 rounded-lg cursor-pointer"
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg cursor-pointer"
           >
-            Reject
+            Reject Cancellation
           </button>
+
         </div>
       )}
 
