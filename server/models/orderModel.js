@@ -66,6 +66,7 @@ class OrderModel {
         o.company_id,
         o.total_amount,
         o.status,
+        o.cancellation_status,
         o.created_at,
 
         COUNT(oi.order_item_id) AS item_count,
@@ -142,6 +143,7 @@ class OrderModel {
       o.order_ref,
       o.total_amount,
       o.status,
+      o.cancellation_status,
       o.created_at,
 
       cu.user_id,
@@ -309,6 +311,7 @@ class OrderModel {
 
       o.order_ref,
       o.status AS order_status,
+      o.cancellation_status,
 
       COUNT(oi.order_item_id) AS item_count,
 
@@ -535,6 +538,7 @@ class OrderModel {
       o.order_ref,
       o.total_amount,
       o.status,
+      o.cancellation_status,
 
       c.name AS customer_name
 
@@ -563,6 +567,7 @@ class OrderModel {
       o.order_ref,
       o.total_amount,
       o.status,
+      o.cancellation_status,
 
       c.name,
       c.email,
