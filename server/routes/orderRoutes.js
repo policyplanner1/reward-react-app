@@ -45,7 +45,7 @@ router.get(
   orderController.getCancellationRequests,
 );
 
-// // cancelled order details
+//  cancelled order details
 router.get(
   "/cancellation-request/:orderId",
   authenticateToken,
@@ -53,7 +53,7 @@ router.get(
   orderController.getCancellationRequestDetails,
 );
 
-// // approve cancellation request
+// approve cancellation request
 router.post(
   "/approve-cancellation/:orderId",
   authenticateToken,
@@ -61,7 +61,7 @@ router.post(
   orderController.approveCancellation,
 );
 
-// // reject cancellation request
+// reject cancellation request
 router.post(
   "/reject-cancellation/:orderId",
   authenticateToken,
