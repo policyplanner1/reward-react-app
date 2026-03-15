@@ -570,7 +570,7 @@ class OrderModel {
 
       r.reason_id,
       r.comment,
-      r.created_at
+      r.requested_at
 
     FROM order_cancellation_requests r
 
