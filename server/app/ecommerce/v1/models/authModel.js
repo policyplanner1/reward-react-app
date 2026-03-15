@@ -121,8 +121,8 @@ class authModel {
     return rows;
   }
 
-  async getUserPassword(userId) {
-    const [rows] = await db.execute(
+  async getUserPassword(conn, userId) {
+    const [rows] = await conn.execute(
       `SELECT password FROM customer WHERE user_id = ?`,
       [userId],
     );
@@ -130,8 +130,8 @@ class authModel {
     return rows[0];
   }
 
-  async updatePassword(userId, hashedPassword) {
-    await db.execute(
+  async updatePassword(conn, userId, hashedPassword) {
+    await conn.execute(
       `UPDATE customer
        SET password = ?,
            reset_token = NULL,
@@ -141,8 +141,8 @@ class authModel {
     );
   }
 
-  async incrementTokenVersion(userId) {
-    await db.execute(
+  async incrementTokenVersion(conn, userId) {
+    await conn.execute(
       `UPDATE customer
        SET token_version = token_version + 1
        WHERE user_id = ?`,
@@ -212,8 +212,8 @@ class authModel {
     );
   }
 
-  async deleteAllUserRefreshTokens(userId) {
-    await db.execute(
+  async deleteAllUserRefreshTokens(conn, userId) {
+    await conn.execute(
       `DELETE FROM customer_refresh_tokens
        WHERE user_id = ?`,
       [userId],

@@ -520,7 +520,9 @@ class AuthController {
      CHANGE PASSWORD
   ====================================================== */
   async changePassword(req, res) {
+    const connection = await db.getConnection();
     try {
+      await connection.beginTransaction();
       const userId = req.user?.user_id;
       // const userId = 1;
 
@@ -547,7 +549,7 @@ class AuthController {
         });
       }
 
-      const user = await AuthModel.getUserPassword(userId);
+      const user = await AuthModel.getUserPassword(connection, userId);
 
       if (!user) {
         return res.status(404).json({
@@ -567,23 +569,28 @@ class AuthController {
 
       const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-      await AuthModel.updatePassword(userId, hashedPassword);
+      await AuthModel.updatePassword(connection, userId, hashedPassword);
 
       // invalidate all sessions
-      await AuthModel.incrementTokenVersion(userId);
-      await AuthModel.deleteAllUserRefreshTokens(userId);
+      await AuthModel.incrementTokenVersion(connection, userId);
+      await AuthModel.deleteAllUserRefreshTokens(connection, userId);
+
+      await connection.commit();
 
       return res.json({
         success: true,
         message: "Password changed successfully. Please login again.",
       });
     } catch (error) {
+      await connection.rollback();
       console.error("Change Password Error:", error);
 
       return res.status(500).json({
         success: false,
         message: "Internal server error",
       });
+    } finally {
+      connection.release();
     }
   }
 
