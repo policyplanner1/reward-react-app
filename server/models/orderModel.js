@@ -564,6 +564,7 @@ class OrderModel {
   }
 
   async getCancellationRequestDetails(orderId) {
+    // 1 Order + Customer + Address
     const [[order]] = await db.execute(
       `
     SELECT
@@ -572,7 +573,9 @@ class OrderModel {
       o.total_amount,
       o.status,
       o.cancellation_status,
+      o.address_id,
 
+      c.user_id,
       c.name,
       c.email,
       c.phone,
@@ -580,7 +583,17 @@ class OrderModel {
       r.reason_id,
       r.comment,
       r.requested_at,
-      rr.reason_text as reason
+      rr.reason_text AS reason,
+
+      ca.address_type,
+      ca.address1,
+      ca.address2,
+      ca.city,
+      ca.zipcode,
+      ca.landmark,
+
+      s.state_name,
+      co.country_name
 
     FROM order_cancellation_requests r
 
@@ -593,6 +606,15 @@ class OrderModel {
     LEFT JOIN order_cancellation_reasons rr
       ON r.reason_id = rr.reason_id
 
+    LEFT JOIN customer_addresses ca
+      ON o.address_id = ca.address_id
+
+    LEFT JOIN states s
+      ON ca.state_id = s.state_id
+
+    LEFT JOIN countries co
+      ON ca.country_id = co.country_id
+
     WHERE r.order_id = ?
     `,
       [orderId],
@@ -602,7 +624,78 @@ class OrderModel {
       throw new Error("ORDER_NOT_FOUND");
     }
 
-    return order;
+    // 2 Cancellation Timeline
+    const [timeline] = await db.execute(
+      `
+    SELECT event, event_time
+    FROM order_cancellation_timeline
+    WHERE order_id = ?
+    ORDER BY event_time ASC
+    `,
+      [orderId],
+    );
+
+    // 3 Refund Details
+    const [refunds] = await db.execute(
+      `
+    SELECT
+      refund_amount,
+      refund_method,
+      status
+    FROM order_refunds
+    WHERE order_id = ?
+    `,
+      [orderId],
+    );
+
+    const totalRefund = refunds.reduce(
+      (sum, r) => sum + Number(r.refund_amount),
+      0,
+    );
+
+    return {
+      order: {
+        order_id: order.order_id,
+        order_ref: order.order_ref,
+        status: order.status,
+        cancellation_status: order.cancellation_status,
+        total_amount: order.total_amount,
+        reason: order.reason,
+        comment: order.comment,
+        requested_at: order.requested_at,
+      },
+
+      customer: {
+        user_id: order.user_id,
+        name: order.name,
+        email: order.email,
+        phone: order.phone,
+      },
+
+      address: {
+        type: order.address_type,
+        line1: order.address1,
+        line2: order.address2,
+        city: order.city,
+        state: order.state_name,
+        country: order.country_name,
+        zipcode: order.zipcode,
+        landmark: order.landmark,
+      },
+
+      timeline: timeline.map((t) => ({
+        label: t.event.replace(/_/g, " "),
+        date: t.event_time,
+      })),
+
+      refunds: refunds.map((r) => ({
+        amount: r.refund_amount,
+        method: r.refund_method,
+        status: r.status,
+      })),
+
+      totalRefund,
+    };
   }
 
   async approveCancellation(orderId, conn) {

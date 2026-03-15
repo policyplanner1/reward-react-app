@@ -129,7 +129,7 @@ const CancellationRequests: React.FC = () => {
                       <button
                         className="view-btn"
                         onClick={() =>
-                          navigate(`/manager/cancellation-view/${req.order_id}`)
+                          navigate(`/manager/cancellation-detail/${req.order_id}`)
                         }
                       >
                         View
