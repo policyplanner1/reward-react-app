@@ -532,6 +532,7 @@ class OrderModel {
       r.request_id,
       r.order_id,
       r.reason_id,
+      rr.reason_text as reason,
       r.comment,
       r.requested_at,
 
@@ -549,6 +550,9 @@ class OrderModel {
 
     JOIN customer c
       ON r.user_id = c.user_id
+
+    LEFT JOIN order_cancellation_reasons rr
+      ON r.reason_id = rr.reason_id
 
     WHERE o.cancellation_status = 'requested'
 
@@ -575,7 +579,8 @@ class OrderModel {
 
       r.reason_id,
       r.comment,
-      r.requested_at
+      r.requested_at,
+      rr.reason_text as reason
 
     FROM order_cancellation_requests r
 
@@ -584,6 +589,9 @@ class OrderModel {
 
     JOIN customer c
       ON r.user_id = c.user_id
+
+    LEFT JOIN order_cancellation_reasons rr
+      ON r.reason_id = rr.reason_id
 
     WHERE r.order_id = ?
     `,
