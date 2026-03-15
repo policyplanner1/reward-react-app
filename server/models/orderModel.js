@@ -651,7 +651,7 @@ class OrderModel {
       `
     INSERT INTO order_cancellation_timeline
     (order_id, event)
-    VALUES (?, 'cancellation_approved')
+    VALUES (?, 'cancellation_confirmed')
     `,
       [orderId],
     );
