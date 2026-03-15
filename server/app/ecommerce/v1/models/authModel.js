@@ -27,33 +27,33 @@ class authModel {
     return rows[0];
   }
 
-  // async createCustomer(data) {
-  //   const {
-  //     name,
-  //     email,
-  //     phone,
-  //     password,
-  //     verification_token,
-  //     verification_token_expiry,
-  //   } = data;
+  async createCustomer(data) {
+    const {
+      name,
+      email,
+      phone,
+      password,
+      verification_token,
+      verification_token_expiry,
+    } = data;
 
-  //   const [result] = await db.execute(
-  //     `INSERT INTO customer
-  //      (name, email, phone, password,
-  //       verification_token, verification_token_expiry)
-  //      VALUES (?, ?, ?, ?, ?, ?)`,
-  //     [
-  //       name,
-  //       email,
-  //       phone,
-  //       password,
-  //       verification_token,
-  //       verification_token_expiry,
-  //     ],
-  //   );
+    const [result] = await db.execute(
+      `INSERT INTO customer
+       (name, email, phone, password,
+        verification_token, verification_token_expiry)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        name,
+        email,
+        phone,
+        password,
+        verification_token,
+        verification_token_expiry,
+      ],
+    );
 
-  //   return result.insertId;
-  // }
+    return result.insertId;
+  }
 
   /* ======================================================
      ACCOUNT ACTIVATION
@@ -65,7 +65,8 @@ class authModel {
         id,
         company_id,
         name,
-        email
+        email,
+        contact AS phone
      FROM company_users
      WHERE email = ?
      LIMIT 1`,
@@ -154,25 +155,26 @@ class authModel {
     );
   }
 
-  async createCustomer(data) {
-    const { company_user_id, name, email, phone, password } = data;
+  // async createCustomer(data) {
+  //   const { company_id, company_user_id, name, email, phone, password } = data;
 
-    const [result] = await db.execute(
-      `INSERT INTO customer
-     (
-       company_user_id,
-       name,
-       email,
-       phone,
-       password,
-       is_verified
-     )
-     VALUES (?, ?, ?, ?, ?, 1)`,
-      [company_user_id, name, email.toLowerCase(), phone, password],
-    );
+  //   const [result] = await db.execute(
+  //     `INSERT INTO customer
+  //    (
+  //      company_id,
+  //      company_user_id,
+  //      name,
+  //      email,
+  //      phone,
+  //      password,
+  //      is_verified
+  //    )
+  //    VALUES (?,?, ?, ?, ?, ?, 1)`,
+  //     [company_id, company_user_id, name, email.toLowerCase(), phone, password],
+  //   );
 
-    return result.insertId;
-  }
+  //   return result.insertId;
+  // }
 
   /* ======================================================
      EMAIL VERIFICATION

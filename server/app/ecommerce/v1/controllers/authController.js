@@ -15,7 +15,7 @@ const {
   accountCreationSuccessMail,
 } = require("../../../../services/accountCreation");
 
-const { sendOtpMail } = require("../../../../services/sendOTP");
+const { sendOtpMail } = require("../../../../services/sendOtp");
 
 const ACCESS_EXPIRES = "15m";
 const REFRESH_EXPIRES_DAYS = 7;
@@ -185,7 +185,7 @@ class AuthController {
   async setPassword(req, res) {
     try {
       const { email, password } = req.body;
-
+   
       if (!email || !password) {
         return res.status(400).json({
           success: false,
@@ -229,12 +229,14 @@ class AuthController {
         });
       }
 
-      const hashedPassword = await bcrypt.hash(password, 12);
+      const hashedPassword = await bcrypt.hash(password.toString(), 12);
 
       await AuthModel.createCustomer({
+        company_id: employee.company_id,
         company_user_id: employee.id,
         name: employee.name,
         email: employee.email,
+        phone: employee.phone,
         password: hashedPassword,
       });
 
@@ -250,6 +252,8 @@ class AuthController {
         message: "Account activated successfully",
       });
     } catch (err) {
+      console.error("SET PASSWORD ERROR:", err);
+
       return res.status(500).json({
         success: false,
         message: "Server error",
