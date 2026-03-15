@@ -125,7 +125,16 @@ class AuthController {
   async verifyActivationOTP(req, res) {
     const { email, otp } = req.body;
 
-    const isValid = await AuthModel.verifyOTP(email, otp);
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required",
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const isValid = await AuthModel.verifyOTP(normalizedEmail, otp);
 
     if (!isValid) {
       return res.status(400).json({
@@ -133,6 +142,8 @@ class AuthController {
         message: "Invalid OTP",
       });
     }
+
+    await AuthModel.deleteOTP(normalizedEmail);
 
     return res.json({
       success: true,
@@ -147,6 +158,13 @@ class AuthController {
     const { email, password } = req.body;
 
     const employee = await AuthModel.findEmployeeByEmail(email);
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found",
+      });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 12);
 

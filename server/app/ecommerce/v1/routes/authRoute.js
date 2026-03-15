@@ -7,18 +7,18 @@ const { uploadReviewMedia } = require("../../../../middleware/productUpload");
 
 /*============================================Profile=================================================*/
 
-router.post("/register", authController.registerUser);
+// router.post("/register", authController.registerUser);
 router.post('/activate-account', authController.activateAccount);
 router.post('/verify-activation-otp', authController.verifyActivationOTP);
 router.post('/set-password', authController.setPassword);
 router.post("/login", authController.loginUser);
-router.get("/verify-email", authController.verifyEmail);
+// router.get("/verify-email", authController.verifyEmail);
 router.post("/refresh", authController.refreshAccessToken);
 router.post("/logout", auth, authController.logoutUser);
 router.post("/logout-all", auth, authController.logoutAllDevices);
 router.post("/forgot-password", authController.forgotPassword);
 router.post("/reset-password", authController.resetPassword);
-router.post("/resend-verification", authController.resendVerification);
+// router.post("/resend-verification", authController.resendVerification);
 router.put(
   "/change-password",
   auth,
