@@ -520,6 +520,181 @@ class OrderModel {
       },
     };
   }
+
+  // ==================================== cancellation====================================================
+  async getCancellationRequests() {
+    const [rows] = await db.execute(
+      `
+    SELECT
+      r.request_id,
+      r.order_id,
+      r.reason_id,
+      r.comment,
+      r.requested_at,
+
+      o.order_ref,
+      o.total_amount,
+      o.status,
+
+      c.name AS customer_name
+
+    FROM order_cancellation_requests r
+
+    JOIN eorders o
+      ON r.order_id = o.order_id
+
+    JOIN customer c
+      ON r.user_id = c.user_id
+
+    WHERE o.cancellation_status = 'requested'
+
+    ORDER BY r.requested_at DESC
+    `,
+    );
+
+    return rows;
+  }
+
+  async getCancellationRequestDetails(orderId) {
+    const [[order]] = await db.execute(
+      `
+    SELECT
+      o.order_id,
+      o.order_ref,
+      o.total_amount,
+      o.status,
+
+      c.name,
+      c.email,
+      c.phone,
+
+      r.reason_id,
+      r.comment,
+      r.created_at
+
+    FROM order_cancellation_requests r
+
+    JOIN eorders o
+      ON r.order_id = o.order_id
+
+    JOIN customer c
+      ON r.user_id = c.user_id
+
+    WHERE r.order_id = ?
+    `,
+      [orderId],
+    );
+
+    if (!order) {
+      throw new Error("ORDER_NOT_FOUND");
+    }
+
+    return order;
+  }
+
+  async approveCancellation(orderId, conn) {
+    // 1 Get order items
+    const [items] = await conn.execute(
+      `
+    SELECT variant_id, quantity
+    FROM eorder_items
+    WHERE order_id = ?
+    `,
+      [orderId],
+    );
+
+    // 2 Restore stock
+    for (const item of items) {
+      await conn.execute(
+        `
+      UPDATE product_variants
+      SET stock = stock + ?
+      WHERE variant_id = ?
+      `,
+        [item.quantity, item.variant_id],
+      );
+    }
+
+    // 3 Update order
+    await conn.execute(
+      `
+    UPDATE eorders
+    SET status = 'cancelled',
+        cancellation_status = 'approved'
+    WHERE order_id = ?
+    `,
+      [orderId],
+    );
+
+    // 4 Update vendor orders
+    await conn.execute(
+      `
+    UPDATE vendor_orders
+    SET shipping_status = 'cancelled'
+    WHERE order_id = ?
+    `,
+      [orderId],
+    );
+
+    // 5 Update shipments
+    await conn.execute(
+      `
+    UPDATE order_shipments
+    SET shipping_status = 'cancelled'
+    WHERE order_id = ?
+    `,
+      [orderId],
+    );
+
+    // 6 Timeline event
+    await conn.execute(
+      `
+    INSERT INTO order_cancellation_timeline
+    (order_id, event)
+    VALUES (?, 'cancellation_approved')
+    `,
+      [orderId],
+    );
+
+    // 7 Create refund record
+    const [[order]] = await conn.execute(
+      `
+    SELECT total_amount
+    FROM eorders
+    WHERE order_id = ?
+    `,
+      [orderId],
+    );
+
+    await conn.execute(
+      `
+    INSERT INTO order_refunds
+    (order_id, refund_amount, refund_method, status)
+    VALUES (?, ?, 'original', 'pending')
+    `,
+      [orderId, order.total_amount],
+    );
+  }
+
+  async rejectCancellation(orderId, conn) {
+    await conn.execute(
+      `
+    UPDATE eorders
+    SET cancellation_status = 'rejected'
+    WHERE order_id = ?
+    `,
+      [orderId],
+    );
+
+    await conn.execute(
+      `
+    INSERT INTO order_cancellation_timeline
+    (order_id, event)
+    VALUES (?, 'cancellation_rejected')
+    `,
+      [orderId],
+    );
+  }
 }
 
 module.exports = new OrderModel();

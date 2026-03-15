@@ -38,35 +38,35 @@ router.get(
 
 // ===================================Admin order cancellation========================================
 // all cancellation requests
-// router.get(
-//   "/cancellation-requests",
-//   authenticateToken,
-//   authorizeRoles("vendor_manager", "admin"),
-//   orderController.getCancellationReasons,
-// );
+router.get(
+  "/cancellation-requests",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  orderController.getCancellationRequests,
+);
 
 // // cancelled order details
-// router.get(
-//   "/cancellation-request/:orderId",
-//   authenticateToken,
-//   authorizeRoles("vendor_manager", "admin"),
-//   orderController.getCancellationRequestDetails,
-// );
+router.get(
+  "/cancellation-request/:orderId",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  orderController.getCancellationRequestDetails,
+);
 
 // // approve cancellation request
-// router.post(
-//   "/approve-cancellation/:orderId",
-//   authenticateToken,
-//   authorizeRoles("vendor_manager", "admin"),
-//   orderController.approveCancellation,
-// );
+router.post(
+  "/approve-cancellation/:orderId",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  orderController.approveCancellation,
+);
 
 // // reject cancellation request
-// router.post(
-//   "/reject-cancellation/:orderId",
-//   authenticateToken,
-//   authorizeRoles("vendor_manager", "admin"),
-//   orderController.rejectCancellation,
-// );
+router.post(
+  "/reject-cancellation/:orderId",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  orderController.rejectCancellation,
+);
 
 module.exports = router;

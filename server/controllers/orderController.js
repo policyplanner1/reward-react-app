@@ -154,6 +154,116 @@ class OrderController {
       });
     }
   }
+
+  // ==================================== cancellation====================================================
+  //  List cancellation requests
+  async getCancellationRequests(req, res) {
+    try {
+      const data = await orderModel.getCancellationRequests();
+
+      return res.json({
+        success: true,
+        requests: data,
+      });
+    } catch (error) {
+      console.error("Cancellation requests error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch cancellation requests",
+      });
+    }
+  }
+
+  // Get cancellation request details
+  async getCancellationRequestDetails(req, res) {
+    try {
+      const orderId = Number(req.params.orderId);
+
+      const data = await orderModel.getCancellationRequestDetails(orderId);
+
+      return res.json({
+        success: true,
+        data,
+      });
+    } catch (error) {
+      console.error("Cancellation request details error:", error);
+
+      if (error.message === "ORDER_NOT_FOUND") {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to fetch cancellation request",
+      });
+    }
+  }
+
+  // Approve cancellation
+  async approveCancellation(req, res) {
+    const conn = await db.getConnection();
+
+    try {
+      await conn.beginTransaction();
+
+      const orderId = Number(req.params.orderId);
+
+      await orderModel.approveCancellation(orderId, conn);
+
+      await conn.commit();
+
+      return res.json({
+        success: true,
+        message: "Cancellation approved successfully",
+      });
+    } catch (error) {
+      await conn.rollback();
+
+      console.error("Approve cancellation error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to approve cancellation",
+      });
+    } finally {
+      conn.release();
+    }
+  }
+
+  // 4 Reject cancellation
+  async rejectCancellation(req, res) {
+    const conn = await db.getConnection();
+
+    try {
+      await conn.beginTransaction();
+
+      const orderId = Number(req.params.orderId);
+
+      await orderModel.rejectCancellation(orderId, conn);
+
+      await conn.commit();
+
+      return res.json({
+        success: true,
+        message: "Cancellation rejected",
+      });
+    } catch (error) {
+      await conn.rollback();
+
+      console.error("Reject cancellation error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to reject cancellation",
+      });
+    } finally {
+      conn.release();
+    }
+  }
 }
 
 module.exports = new OrderController();
