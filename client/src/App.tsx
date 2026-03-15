@@ -54,6 +54,7 @@ import AttributeManagement from "./components/feature/manager/attribute/attribut
 import FlashSaleCreate from "./components/feature/manager/flashSale/FlashSaleCreate";
 import FlashSaleList from "./components/feature/manager/flashSale/FlashSaleList";
 import FlashSaleVariant from "./components/feature/manager/flashSale/FlashSaleVariant";
+import CancellationRequest from "./components/feature/manager/order/CancellationRequest";
 
 export default function App() {
   // const { user, loading } = useAuth();
@@ -214,9 +215,12 @@ export default function App() {
         />
 
         {/* Orders */}
-        <Route path={routes.manager.orders} element={<OrderList />} />
+        <Route path={routes.manager.orders.orderList} element={<OrderList />} />
 
-        <Route path="/manager/order-view/:orderId" element={<OrderView />} />
+        <Route path={routes.manager.orders.details} element={<OrderView />} />
+
+        <Route path={routes.manager.orders.cancellationRequest} element={<CancellationRequest />} />
+
       </Route>
 
       {/* ========== FALLBACK ========== */}

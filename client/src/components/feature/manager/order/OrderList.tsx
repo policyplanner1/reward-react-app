@@ -81,7 +81,7 @@ const OrderList: React.FC = () => {
   </div>
 
   <div>
-    <h2 className="text-2xl font-semibold">Orders</h2>
+    <h2 className="text-2xl font-semibold">Order List</h2>
     <p className="text-gray-500">
       Manage and monitor all customer orders
     </p>

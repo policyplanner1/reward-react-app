@@ -35,7 +35,10 @@ export const routes = {
     attributes: "/manager/attributes",
     flashlist: "/manager/flashlist",
     flashCreate: "/manager/flash-sale",
-    orders: "/manager/orders",
-    orderView: "/manager/order-view/:orderId",
+    orders:{
+      orderList: "/manager/orders",
+      details: "/manager/order-view/:orderId",
+      cancellationRequest: "/manager/cancellation-request",
+    },
   },
 };
