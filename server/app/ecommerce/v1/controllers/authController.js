@@ -11,6 +11,8 @@ const {
   sendNewDeviceLoginEmail,
 } = require("../../../../services/deviceNotification");
 
+const {accountCreationSuccessMail}=require("../../../../services/accountCreation");
+
 const ACCESS_EXPIRES = "15m";
 const REFRESH_EXPIRES_DAYS = 7;
 
@@ -173,6 +175,11 @@ class AuthController {
       name: employee.name,
       email: employee.email,
       password: hashedPassword,
+    });
+
+    await accountCreationSuccessMail({
+      name: employee.name,
+      email: employee.email,
     });
 
     return res.json({
