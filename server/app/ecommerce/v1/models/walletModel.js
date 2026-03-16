@@ -6,13 +6,17 @@ class WalletModel {
   // create wallet
   async createWalletOnFirstLogin(userId) {
     const conn = await db.getConnection();
+
     try {
       await conn.beginTransaction();
-      let FIRST_LOGIN_REWARD = 3000; 
 
-      // check if wallet already exists
+      const FIRST_LOGIN_REWARD = 3000;
+
+      // check wallet
       const [wallet] = await conn.execute(
-        `SELECT wallet_id FROM customer_wallet WHERE user_id = ?`,
+        `SELECT wallet_id
+         FROM customer_wallet
+         WHERE user_id = ?`,
         [userId],
       );
 
@@ -21,22 +25,31 @@ class WalletModel {
         return false;
       }
 
-      // create wallet with 3000 coins
+      // create wallet
       await conn.execute(
-        `INSERT INTO customer_wallet (user_id, balance)
-         VALUES (?, ?)`,
+        `INSERT INTO customer_wallet
+        (user_id, balance)
+        VALUES (?, ?)`,
         [userId, FIRST_LOGIN_REWARD],
       );
 
-      // add transaction record
+      // insert transaction
       await conn.execute(
         `INSERT INTO wallet_transactions
-         (user_id, activity, coins, reference_type)
-         VALUES (?, ?, ?, ?)`,
-        [userId, "First Login Bonus", FIRST_LOGIN_REWARD, "FIRST_LOGIN"],
+        (user_id, title, description, transaction_type, coins, category)
+        VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          userId,
+          "Welcome Bonus",
+          "First login reward",
+          "credit",
+          FIRST_LOGIN_REWARD,
+          "reward",
+        ],
       );
 
       await conn.commit();
+
       return true;
     } catch (err) {
       await conn.rollback();
