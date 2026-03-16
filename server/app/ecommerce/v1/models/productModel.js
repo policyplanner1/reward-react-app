@@ -852,7 +852,7 @@ class ProductModel {
     });
   }
 
-  async getSimilarProducts({ productId, limit = 10 }) {
+  async getSimilarProducts({ productId, limit = 10, offset = 0 }) {
     try {
       /* -------------------------------
        1 Get category hierarchy
@@ -938,8 +938,8 @@ class ProductModel {
         )
 
       GROUP BY p.product_id
-      ORDER BY RAND()
-      LIMIT ?
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
     `;
 
       const [rows] = await db.execute(query, [
@@ -948,6 +948,7 @@ class ProductModel {
         subcategory_id,
         sub_subcategory_id,
         limit,
+        offset,
       ]);
 
       /* -------------------------------
