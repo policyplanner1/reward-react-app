@@ -1,5 +1,6 @@
 const AuthModel = require("../models/authModel");
 const AddressModel = require("../models/addressModel");
+const WalletModel = require("../models/walletModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -185,7 +186,7 @@ class AuthController {
   async setPassword(req, res) {
     try {
       const { email, password } = req.body;
-   
+
       if (!email || !password) {
         return res.status(400).json({
           success: false,
@@ -425,10 +426,15 @@ class AuthController {
 
       await AuthModel.updateLoginMeta(user.user_id, req.ip);
 
+      const firstLoginBonus = await WalletModel.createWalletOnFirstLogin(
+        user.user_id,
+      );
+
       return res.json({
         success: true,
         accessToken,
         refreshToken,
+        firstLoginBonus,
       });
     } catch (err) {
       return res.status(500).json({ success: false });
