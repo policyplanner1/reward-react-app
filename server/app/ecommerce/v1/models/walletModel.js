@@ -58,6 +58,53 @@ class WalletModel {
       conn.release();
     }
   }
+
+  // Get wallet
+  async getWalletSummary(userId) {
+    const [rows] = await db.execute(
+      `SELECT balance
+     FROM customer_wallet
+     WHERE user_id = ?`,
+      [userId],
+    );
+
+    return rows[0] || { balance: 0 };
+  }
+
+  // Get wallet transactions
+  async getWalletTransactions(userId, type, page, limit) {
+    let condition = "";
+
+    if (type === "credit") {
+      condition = "AND transaction_type = 'credit'";
+    }
+
+    if (type === "debit") {
+      condition = "AND transaction_type = 'debit'";
+    }
+
+    const offset = (page - 1) * limit;
+
+    const [rows] = await db.execute(
+      `SELECT
+      transaction_id,
+      title,
+      description,
+      transaction_type,
+      coins,
+      category,
+      created_at
+     FROM wallet_transactions
+     WHERE user_id = ?
+     ${condition}
+     ORDER BY transaction_id DESC
+     LIMIT ? OFFSET ?`,
+
+      [userId, Number(limit), Number(offset)],
+    );
+
+    return rows;
+  }
 }
 
 module.exports = new WalletModel();
