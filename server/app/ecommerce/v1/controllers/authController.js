@@ -434,7 +434,10 @@ class AuthController {
         success: true,
         accessToken,
         refreshToken,
-        firstLoginBonus,
+        firstLoginReward: {
+          awarded: firstLoginBonus,
+          coins: firstLoginBonus ? 3000 : 0,
+        },
       });
     } catch (err) {
       return res.status(500).json({ success: false });
