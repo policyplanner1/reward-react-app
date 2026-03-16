@@ -1304,7 +1304,12 @@ class ProductModel {
       LIMIT ? OFFSET ?
     `;
 
-      const [rows] = await db.execute(query, [productId, productId, limit, offset]);
+      const [rows] = await db.execute(query, [
+        productId,
+        productId,
+        limit,
+        offset,
+      ]);
 
       const products = rows.map((row) => {
         const salePrice = Number(row.sale_price || 0);
@@ -1354,7 +1359,7 @@ class ProductModel {
   }
 
   // Trending Products
-  async getTrendingProducts(limit = 10, days = 30) {
+  async getTrendingProducts(limit = 10, offset = 0, days = 30) {
     try {
       const query = `
       SELECT
@@ -1409,10 +1414,10 @@ class ProductModel {
 
       GROUP BY p.product_id
       ORDER BY total_sold DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `;
 
-      const [rows] = await db.execute(query, [days, limit]);
+      const [rows] = await db.execute(query, [days, limit, offset]);
 
       const products = rows.map((row) => {
         const salePrice = Number(row.sale_price || 0);
