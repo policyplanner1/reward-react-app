@@ -652,6 +652,7 @@ class ProductController {
     try {
       const userId = req.user?.user_id;
       const limit = req.query.limit ? Number(req.query.limit) : 10;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
 
       if (!userId) {
         return res.status(401).json({
@@ -660,11 +661,16 @@ class ProductController {
         });
       }
 
-      const products = await ProductModel.getUserRecommendations(userId, limit);
+      const products = await ProductModel.getUserRecommendations(
+        userId,
+        limit,
+        offset,
+      );
 
       return res.status(200).json({
         success: true,
         total: products.length,
+        hasMore: products.length === limit,
         products,
       });
     } catch (error) {

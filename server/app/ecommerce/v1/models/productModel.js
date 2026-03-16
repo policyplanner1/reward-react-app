@@ -994,7 +994,7 @@ class ProductModel {
   }
 
   // Get User Recommendations
-  async getUserRecommendations(userId, limit = 10) {
+  async getUserRecommendations(userId, limit = 10, offset = 0) {
     try {
       const query = `
       SELECT 
@@ -1075,7 +1075,7 @@ class ProductModel {
       GROUP BY p.product_id
       HAVING total_score > 0
       ORDER BY total_score DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
       `;
 
       const [rows] = await db.execute(query, [
@@ -1084,6 +1084,7 @@ class ProductModel {
         userId,
         userId,
         limit,
+        offset,
       ]);
 
       return rows.map((row) => {
