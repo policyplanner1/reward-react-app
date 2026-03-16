@@ -1679,7 +1679,7 @@ class ProductModel {
   }
 
   // Get Rop rated products
-  async getTopRatedProducts(limit = 10) {
+  async getTopRatedProducts(limit = 10, offset = 0) {
     try {
       const query = `
       SELECT
@@ -1731,10 +1731,10 @@ class ProductModel {
       GROUP BY p.product_id
       HAVING total_reviews >= 3
       ORDER BY avg_rating DESC, total_reviews DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `;
 
-      const [rows] = await db.execute(query, [limit]);
+      const [rows] = await db.execute(query, [limit, offset]);
 
       return rows;
     } catch (error) {

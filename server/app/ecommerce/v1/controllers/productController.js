@@ -828,12 +828,14 @@ class ProductController {
   async getTopRatedProducts(req, res) {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 10;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
 
-      const products = await ProductModel.getTopRatedProducts(limit);
+      const products = await ProductModel.getTopRatedProducts(limit, offset);
 
       return res.status(200).json({
         success: true,
         total: products.length,
+        hasMore: products.length === limit,
         products,
       });
     } catch (error) {
