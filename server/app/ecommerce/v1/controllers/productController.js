@@ -686,12 +686,14 @@ class ProductController {
   async getNewArrivals(req, res) {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 10;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
 
-      const products = await ProductModel.getNewArrivals(limit);
+      const products = await ProductModel.getNewArrivals(limit, offset);
 
       return res.status(200).json({
         success: true,
         total: products.length,
+        hasMore: products.length === limit,
         products,
       });
     } catch (error) {

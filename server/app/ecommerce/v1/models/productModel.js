@@ -1128,7 +1128,7 @@ class ProductModel {
   }
 
   // New Arrivals
-  async getNewArrivals(limit = 10) {
+  async getNewArrivals(limit = 10, offset = 0) {
     try {
       const query = `
       SELECT
@@ -1187,10 +1187,10 @@ class ProductModel {
 
       GROUP BY p.product_id
       ORDER BY p.created_at DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `;
 
-      const [rows] = await db.execute(query, [limit]);
+      const [rows] = await db.execute(query, [limit, offset]);
 
       const products = rows.map((row) => {
         const salePrice = Number(row.sale_price || 0);
