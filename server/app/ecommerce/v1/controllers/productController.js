@@ -710,6 +710,7 @@ class ProductController {
     try {
       const productId = Number(req.params.productId);
       const limit = req.query.limit ? Number(req.query.limit) : 10;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
 
       if (!productId) {
         return res.status(400).json({
@@ -721,11 +722,13 @@ class ProductController {
       const products = await ProductModel.getCustomersAlsoBought(
         productId,
         limit,
+        offset,
       );
 
       return res.status(200).json({
         success: true,
         total: products.length,
+        hasMore: products.length === limit,
         products,
       });
     } catch (error) {

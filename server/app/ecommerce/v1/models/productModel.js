@@ -1241,7 +1241,7 @@ class ProductModel {
   }
 
   // Customer also bought
-  async getCustomersAlsoBought(productId, limit = 10) {
+  async getCustomersAlsoBought(productId, limit = 10, offset = 0) {
     try {
       const query = `
       SELECT
@@ -1301,10 +1301,10 @@ class ProductModel {
 
       GROUP BY p.product_id
       ORDER BY frequency DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `;
 
-      const [rows] = await db.execute(query, [productId, productId, limit]);
+      const [rows] = await db.execute(query, [productId, productId, limit, offset]);
 
       const products = rows.map((row) => {
         const salePrice = Number(row.sale_price || 0);
