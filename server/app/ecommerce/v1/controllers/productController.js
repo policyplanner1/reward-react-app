@@ -775,12 +775,14 @@ class ProductController {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 10;
       const days = req.query.days ? Number(req.query.days) : 30;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
 
-      const products = await ProductModel.getBestSellers(limit, days);
+      const products = await ProductModel.getBestSellers(limit, offset, days);
 
       return res.status(200).json({
         success: true,
         total: products.length,
+        hasMore: products.length === limit,
         products,
       });
     } catch (error) {
