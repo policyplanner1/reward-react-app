@@ -1575,7 +1575,7 @@ class ProductModel {
   }
 
   // Get Most viewed products
-  async getMostViewedProducts(limit = 10, days = 30) {
+  async getMostViewedProducts(limit = 10, offset = 0, days = 30) {
     try {
       const query = `
       SELECT
@@ -1626,10 +1626,10 @@ class ProductModel {
 
       GROUP BY p.product_id
       ORDER BY view_count DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `;
 
-      const [rows] = await db.execute(query, [days, limit]);
+      const [rows] = await db.execute(query, [days, limit, offset]);
 
       const products = rows.map((row) => {
         const salePrice = Number(row.sale_price || 0);
