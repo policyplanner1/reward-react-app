@@ -153,56 +153,132 @@ class PaymentController {
   }
 
   async refundPayment(req, res) {
+    const conn = await db.getConnection();
+
     try {
+      await conn.beginTransaction();
+
       const { orderId } = req.body;
 
-      // Get successful payment for this order
-      const [payment] = await db.query(
-        `SELECT razorpay_payment_id, amount 
-       FROM order_payments
-       WHERE order_id = ? AND status = 'success'
-       LIMIT 1`,
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: "Order ID is required",
+        });
+      }
+
+      // 1 Get successful payment
+      const [payments] = await conn.execute(
+        `
+        SELECT
+          payment_id,
+          razorpay_order_id,
+          razorpay_payment_id,
+          amount
+        FROM order_payments
+        WHERE order_id = ?
+        AND status = 'success'
+        LIMIT 1
+        `,
         [orderId],
       );
 
-      if (!payment) {
-        return res.status(400).json({ message: "No successful payment found" });
+      if (!payments.length) {
+        await conn.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "No successful payment found for this order",
+        });
       }
 
-      // Call Razorpay refund API
+      const payment = payments[0];
+
+      // 2 Prevent duplicate refunds
+      const [existingRefund] = await conn.execute(
+        `
+        SELECT payment_id
+        FROM order_payments
+        WHERE order_id = ?
+        AND status = 'refunded'
+        LIMIT 1
+        `,
+        [orderId],
+      );
+
+      if (existingRefund.length) {
+        await conn.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Refund already processed",
+        });
+      }
+
+      // 3 Call Razorpay refund API
       const refund = await razorpay.payments.refund(
         payment.razorpay_payment_id,
         {
-          amount: payment.amount * 100, // full refund
+          amount: Math.round(Number(payment.amount) * 100), // convert to paise
         },
       );
 
-      // Insert refund as new payment row (audit trail)
-      await db.query(
-        `INSERT INTO order_payments 
-       (order_id, razorpay_order_id, razorpay_payment_id, amount, status, payment_method, raw_webhook)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      // 4 Insert refund entry
+      await conn.execute(
+        `
+        INSERT INTO order_payments
+        (
+          order_id,
+          razorpay_order_id,
+          razorpay_payment_id,
+          razorpay_refund_id,
+          amount,
+          status,
+          payment_method,
+          raw_webhook
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
         [
           orderId,
-          refund.order_id || null,
+          payment.razorpay_order_id,
+          payment.razorpay_payment_id,
           refund.id,
           payment.amount,
           "refunded",
-          "refund",
+          "razorpay_refund",
           JSON.stringify(refund),
         ],
       );
 
-      // Update order status
-      await db.query(
-        `UPDATE eorders SET status = 'cancelled' WHERE order_id = ?`,
+      // 5 Update order status
+      await conn.execute(
+        `
+        UPDATE eorders
+        SET
+          status = 'cancelled',
+          cancellation_status = 'approved'
+        WHERE order_id = ?
+        `,
         [orderId],
       );
 
-      res.json({ message: "Refund successful", refund });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Refund failed" });
+      await conn.commit();
+
+      return res.json({
+        success: true,
+        message: "Refund successful",
+        refund_id: refund.id,
+      });
+    } catch (error) {
+      await conn.rollback();
+
+      console.error("Refund error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Refund failed",
+      });
+    } finally {
+      conn.release();
     }
   }
 }
