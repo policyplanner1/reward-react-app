@@ -549,6 +549,7 @@ class ProductController {
         v.sale_price,
         v.mrp,
         v.reward_redemption_limit,
+        MAX(rv.viewed_at) AS viewed_at,
 
         GROUP_CONCAT(
           DISTINCT CONCAT(
@@ -585,9 +586,9 @@ class ProductController {
         AND p.is_visible = 1
         AND p.is_searchable = 1
 
-      GROUP BY p.product_id
+      GROUP BY rv.product_id
       ORDER BY rv.viewed_at DESC
-      LIMIT 6
+      LIMIT 10
     `;
 
       const [rows] = await db.execute(query, [userId]);
@@ -923,7 +924,7 @@ class ProductController {
       const products = await ProductModel.getSimilarProducts({
         productId,
         limit,
-        offset
+        offset,
       });
 
       return res.status(200).json({
