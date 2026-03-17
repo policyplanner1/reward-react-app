@@ -212,9 +212,14 @@ class OrderController {
 
       const orderId = Number(req.params.orderId);
 
-      await orderModel.approveCancellation(orderId, conn);
+      const refundData = await orderModel.approveCancellation(orderId, conn);
 
       await conn.commit();
+
+      //  refund AFTER commit
+      if (refundData?.razorpay_payment_id) {
+        await orderModel.processRefund(refundData, orderId);
+      }
 
       return res.json({
         success: true,

@@ -1,4 +1,10 @@
 const db = require("../config/database");
+const Razorpay = require("razorpay");
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZOR_API_KEY,
+  key_secret: process.env.RAZOR_SECRET_KEY,
+});
 
 class OrderModel {
   // order Lists
@@ -699,7 +705,64 @@ class OrderModel {
   }
 
   async approveCancellation(orderId, conn) {
-    // 1 Get order items
+    //  0 Validate Order
+    const [[order]] = await conn.execute(
+      `
+    SELECT status, cancellation_status
+    FROM eorders
+    WHERE order_id = ?
+    `,
+      [orderId],
+    );
+
+    if (!order) throw new Error("ORDER_NOT_FOUND");
+
+    if (order.cancellation_status !== "requested") {
+      throw new Error("INVALID_CANCELLATION_STATE");
+    }
+
+    if (order.status === "cancelled") {
+      throw new Error("ORDER_ALREADY_CANCELLED");
+    }
+
+    // 1 Get payment info
+    const [payments] = await conn.execute(
+      `
+     SELECT
+          payment_id,
+          razorpay_order_id,
+          razorpay_payment_id,
+          amount
+        FROM order_payments
+        WHERE order_id = ?
+        AND status = 'success'
+        LIMIT 1
+        FOR UPDATE
+    `,
+      [orderId],
+    );
+
+    const payment = payments[0] || null;
+
+    // 2 Prevent duplicate refund
+    if (payment) {
+      const [existingRefund] = await conn.execute(
+        `
+        SELECT payment_id
+        FROM order_payments
+        WHERE order_id = ?
+        AND status = 'refunded'
+        LIMIT 1
+        `,
+        [orderId],
+      );
+
+      if (existingRefund.length) {
+        throw new Error("REFUND_ALREADY_DONE");
+      }
+    }
+
+    // 3 Restore stock
     const [items] = await conn.execute(
       `
     SELECT variant_id, quantity
@@ -709,7 +772,6 @@ class OrderModel {
       [orderId],
     );
 
-    // 2 Restore stock
     for (const item of items) {
       await conn.execute(
         `
@@ -721,7 +783,7 @@ class OrderModel {
       );
     }
 
-    // 3 Update order
+    // 4 Cancel order
     await conn.execute(
       `
     UPDATE eorders
@@ -732,7 +794,7 @@ class OrderModel {
       [orderId],
     );
 
-    // 4 Update vendor orders
+    // 5 Cancel vendor orders
     await conn.execute(
       `
     UPDATE vendor_orders
@@ -742,7 +804,7 @@ class OrderModel {
       [orderId],
     );
 
-    // 5 Update shipments
+    // 6 Cancel shipments
     await conn.execute(
       `
     UPDATE order_shipments
@@ -752,7 +814,7 @@ class OrderModel {
       [orderId],
     );
 
-    // 6 Timeline event
+    // 7 Timeline event
     await conn.execute(
       `
     INSERT INTO order_cancellation_timeline
@@ -762,24 +824,22 @@ class OrderModel {
       [orderId],
     );
 
-    // 7 Create refund record
-    const [[order]] = await conn.execute(
-      `
-    SELECT total_amount
-    FROM eorders
-    WHERE order_id = ?
-    `,
-      [orderId],
-    );
+    // 8 Create refund record
+    let refundId = null;
+    if (payment) {
+      const [result] = await conn.execute(
+        `
+      INSERT INTO order_refunds
+      (order_id, refund_amount, refund_method, status)
+      VALUES (?, ?, 'razorpay', 'pending')
+      `,
+        [orderId, payment.amount],
+      );
 
-    await conn.execute(
-      `
-    INSERT INTO order_refunds
-    (order_id, refund_amount, refund_method, status)
-    VALUES (?, ?, 'original', 'pending')
-    `,
-      [orderId, order.total_amount],
-    );
+      refundId = result.insertId;
+    }
+
+    return payment ? { ...payment, refundId } : null;
   }
 
   async rejectCancellation(orderId, conn) {
@@ -800,6 +860,68 @@ class OrderModel {
     `,
       [orderId],
     );
+  }
+
+  async processRefund(payment, orderId) {
+    try {
+      const refund = await razorpay.payments.refund(
+        payment.razorpay_payment_id,
+        {
+          amount: Math.round(Number(payment.amount) * 100),
+        },
+      );
+
+      await db.execute(
+        `
+      UPDATE order_refunds
+      SET status = 'completed'
+      WHERE order_id = ?
+      AND status = 'pending'
+      ORDER BY created_at DESC
+      LIMIT 1
+      `,
+        [orderId],
+      );
+
+      await db.execute(
+        `
+      INSERT INTO order_payments
+      (
+        order_id,
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_refund_id,
+        amount,
+        status,
+        payment_method,
+        raw_webhook
+      )
+      VALUES (?, ?, ?, ?, ?, 'refunded', 'razorpay_refund', ?)
+      `,
+        [
+          orderId,
+          payment.razorpay_order_id,
+          payment.razorpay_payment_id,
+          refund.id,
+          payment.amount,
+          JSON.stringify(refund),
+        ],
+      );
+    } catch (error) {
+      console.error("Refund failed:", error);
+
+      await db.execute(
+        `
+      UPDATE order_refunds
+      SET status = 'failed'
+      WHERE order_id = ?
+      AND status = 'pending'
+      ORDER BY created_at DESC
+      LIMIT 1
+      `,
+        [orderId],
+      );
+    }
   }
 }
 
