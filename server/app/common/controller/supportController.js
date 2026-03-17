@@ -53,6 +53,25 @@ class SupportController {
         });
       }
 
+      // check for existing open ticket in the same category
+      const [existing] = await db.execute(
+        `SELECT ticket_id 
+       FROM support_tickets 
+       WHERE user_id = ?
+         AND category_id = ?
+         AND status IN ('open', 'in_progress')
+       LIMIT 1`,
+        [userId, category_id],
+      );
+
+      if (existing.length > 0) {
+        return res.status(200).json({
+          success: false,
+          message: "You already have an active request for this issue",
+          existing_ticket_id: existing[0].ticket_id,
+        });
+      }
+
       const [result] = await db.execute(
         `INSERT INTO support_tickets 
        (user_id, subject, description, category_id, attachment_url,
