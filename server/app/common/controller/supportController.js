@@ -1,4 +1,5 @@
 const db = require("../../../config/database");
+const { sendNewTicketMail } = require("../../../services/ticketNotification");
 
 class SupportController {
   async getCategories(req, res) {
@@ -89,6 +90,26 @@ class SupportController {
           os_version || null,
         ],
       );
+
+      const ticketId = result.insertId;
+      
+      const [[meta]] = await db.execute(
+        `SELECT 
+          c.name AS user_name,
+          sc.name AS category_name
+       FROM customer c
+       JOIN support_categories sc ON sc.category_id = ?
+       WHERE c.user_id = ?`,
+        [category_id, userId],
+      );
+
+      sendNewTicketMail({
+        ticketId,
+        subject,
+        description,
+        category: meta?.category_name,
+        user: meta?.user_name,
+      }).catch(console.error);
 
       return res.status(201).json({
         success: true,
