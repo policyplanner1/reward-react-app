@@ -831,7 +831,7 @@ class OrderModel {
         `
       INSERT INTO order_refunds
       (order_id, refund_amount, refund_method, status)
-      VALUES (?, ?, 'razorpay', 'pending')
+      VALUES (?, ?, 'original', 'pending')
       `,
         [orderId, payment.amount],
       );
