@@ -110,6 +110,120 @@ class cartModel {
     };
   }
 
+  //cart summary
+  async getCartSummary(user_id) {
+    // 1. Get wallet
+    const [[wallet]] = await db.execute(
+      `SELECT balance FROM customer_wallet WHERE user_id = ?`,
+      [user_id],
+    );
+
+    const walletBalance = wallet?.balance || 0;
+
+    // 2. Get cart + reward config
+    const [cartItems] = await db.execute(
+      `
+      SELECT 
+        ci.cart_item_id,
+        ci.product_id,
+        ci.variant_id,
+        ci.quantity,
+
+        pv.sale_price,
+        pv.reward_redemption_limit,
+
+        prs.can_earn_reward,
+        prs.can_redeem_reward,
+
+        rr.reward_type,
+        rr.reward_value,
+        rr.max_reward
+
+      FROM cart_items ci
+
+      JOIN product_variants pv ON pv.variant_id = ci.variant_id
+
+      LEFT JOIN product_reward_settings prs 
+        ON (prs.variant_id = ci.variant_id OR prs.product_id = ci.product_id)
+
+      LEFT JOIN reward_rules rr 
+        ON rr.reward_rule_id = prs.reward_rule_id
+
+      WHERE ci.user_id = ?
+
+      ORDER BY prs.variant_id DESC
+    `,
+      [user_id],
+    );
+
+    // 3. Build cart
+    let cartTotal = 0;
+    let totalRewardEarn = 0;
+
+    const items = cartItems.map((item) => {
+      const itemTotal = item.sale_price * item.quantity;
+      cartTotal += itemTotal;
+
+      return {
+        ...item,
+        itemTotal,
+        rewardEarn: 0,
+        redeemable: 0,
+      };
+    });
+
+    // 4. Calculate earning
+    for (let item of items) {
+      if (!item.can_earn_reward) continue;
+
+      let reward = 0;
+
+      if (item.reward_type === "fixed") {
+        reward = item.reward_value;
+      } else {
+        reward = (item.itemTotal * item.reward_value) / 100;
+      }
+
+      if (item.max_reward) {
+        reward = Math.min(reward, item.max_reward);
+      }
+
+      item.rewardEarn = Math.floor(reward);
+      totalRewardEarn += item.rewardEarn;
+    }
+
+    // 5. Wallet redemption
+    let remainingWallet = walletBalance;
+    let totalRedeemed = 0;
+
+    for (let item of items) {
+      if (!item.can_redeem_reward) continue;
+      if (remainingWallet <= 0) break;
+
+      const maxAllowed = item.reward_redemption_limit || 0;
+
+      const usable = Math.min(remainingWallet, maxAllowed, item.itemTotal);
+
+      item.redeemable = usable;
+
+      remainingWallet -= usable;
+      totalRedeemed += usable;
+    }
+
+    totalRedeemed = Math.min(totalRedeemed, cartTotal);
+
+    const finalPayable = cartTotal - totalRedeemed;
+
+    return {
+      cartTotal,
+      walletBalance,
+      totalRedeemed,
+      totalRewardEarn,
+      finalPayable,
+      items,
+    };
+  }
+
   // Add to cart
   async addToCart({ userId, productId, variantId, quantity }) {
     const [[variant]] = await db.execute(
