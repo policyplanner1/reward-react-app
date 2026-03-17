@@ -1,0 +1,89 @@
+const db = require("../../../config/database");
+
+class SupportController {
+  async getCategories(req, res) {
+    try {
+      const [categories] = await db.execute(
+        `SELECT category_id, name 
+       FROM support_categories 
+       WHERE is_active = 1`,
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: categories,
+      });
+    } catch (error) {
+      console.error("Get categories error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
+  // create ticket
+  async createTicket(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const {
+        subject,
+        description,
+        category_id,
+        attachment_url,
+        app_version,
+        platform,
+        device_info,
+        os_version,
+      } = req.body;
+
+      // validation
+      if (!subject || !description || !category_id) {
+        return res.status(400).json({
+          success: false,
+          message: "subject, description and category_id are required",
+        });
+      }
+
+      const [result] = await db.execute(
+        `INSERT INTO support_tickets 
+       (user_id, subject, description, category_id, attachment_url,
+        app_version, platform, device_info, os_version)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          userId,
+          subject,
+          description,
+          category_id,
+          attachment_url || null,
+          app_version || null,
+          platform || null,
+          device_info || null,
+          os_version || null,
+        ],
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: "Ticket created successfully",
+        ticket_id: result.insertId,
+      });
+    } catch (error) {
+      console.error("Create ticket error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+}
+
+module.exports = new SupportController();

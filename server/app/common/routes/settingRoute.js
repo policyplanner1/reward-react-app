@@ -3,7 +3,7 @@ const router = express.Router();
 const SettingController = require("../controller/settingController");
 
 
-// Product Listing
+// All settings
 router.get("/app-settings", SettingController.getAppSettings);
 
 module.exports = router;
