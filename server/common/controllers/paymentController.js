@@ -152,135 +152,135 @@ class PaymentController {
     });
   }
 
-  async refundPayment(req, res) {
-    const conn = await db.getConnection();
+  // async refundPayment(req, res) {
+  //   const conn = await db.getConnection();
 
-    try {
-      await conn.beginTransaction();
+  //   try {
+  //     await conn.beginTransaction();
 
-      const { orderId } = req.body;
+  //     const { orderId } = req.body;
 
-      if (!orderId) {
-        return res.status(400).json({
-          success: false,
-          message: "Order ID is required",
-        });
-      }
+  //     if (!orderId) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: "Order ID is required",
+  //       });
+  //     }
 
-      // 1 Get successful payment
-      const [payments] = await conn.execute(
-        `
-        SELECT
-          payment_id,
-          razorpay_order_id,
-          razorpay_payment_id,
-          amount
-        FROM order_payments
-        WHERE order_id = ?
-        AND status = 'success'
-        LIMIT 1
-        `,
-        [orderId],
-      );
+  //     // 1 Get successful payment
+  //     const [payments] = await conn.execute(
+  //       `
+  //       SELECT
+  //         payment_id,
+  //         razorpay_order_id,
+  //         razorpay_payment_id,
+  //         amount
+  //       FROM order_payments
+  //       WHERE order_id = ?
+  //       AND status = 'success'
+  //       LIMIT 1
+  //       `,
+  //       [orderId],
+  //     );
 
-      if (!payments.length) {
-        await conn.rollback();
-        return res.status(400).json({
-          success: false,
-          message: "No successful payment found for this order",
-        });
-      }
+  //     if (!payments.length) {
+  //       await conn.rollback();
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: "No successful payment found for this order",
+  //       });
+  //     }
 
-      const payment = payments[0];
+  //     const payment = payments[0];
 
-      // 2 Prevent duplicate refunds
-      const [existingRefund] = await conn.execute(
-        `
-        SELECT payment_id
-        FROM order_payments
-        WHERE order_id = ?
-        AND status = 'refunded'
-        LIMIT 1
-        `,
-        [orderId],
-      );
+  //     // 2 Prevent duplicate refunds
+  //     const [existingRefund] = await conn.execute(
+  //       `
+  //       SELECT payment_id
+  //       FROM order_payments
+  //       WHERE order_id = ?
+  //       AND status = 'refunded'
+  //       LIMIT 1
+  //       `,
+  //       [orderId],
+  //     );
 
-      if (existingRefund.length) {
-        await conn.rollback();
-        return res.status(400).json({
-          success: false,
-          message: "Refund already processed",
-        });
-      }
+  //     if (existingRefund.length) {
+  //       await conn.rollback();
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: "Refund already processed",
+  //       });
+  //     }
 
-      // 3 Call Razorpay refund API
-      const refund = await razorpay.payments.refund(
-        payment.razorpay_payment_id,
-        {
-          amount: Math.round(Number(payment.amount) * 100), // convert to paise
-        },
-      );
+  //     // 3 Call Razorpay refund API
+  //     const refund = await razorpay.payments.refund(
+  //       payment.razorpay_payment_id,
+  //       {
+  //         amount: Math.round(Number(payment.amount) * 100), // convert to paise
+  //       },
+  //     );
 
-      // 4 Insert refund entry
-      await conn.execute(
-        `
-        INSERT INTO order_payments
-        (
-          order_id,
-          razorpay_order_id,
-          razorpay_payment_id,
-          razorpay_refund_id,
-          amount,
-          status,
-          payment_method,
-          raw_webhook
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `,
-        [
-          orderId,
-          payment.razorpay_order_id,
-          payment.razorpay_payment_id,
-          refund.id,
-          payment.amount,
-          "refunded",
-          "razorpay_refund",
-          JSON.stringify(refund),
-        ],
-      );
+  //     // 4 Insert refund entry
+  //     await conn.execute(
+  //       `
+  //       INSERT INTO order_payments
+  //       (
+  //         order_id,
+  //         razorpay_order_id,
+  //         razorpay_payment_id,
+  //         razorpay_refund_id,
+  //         amount,
+  //         status,
+  //         payment_method,
+  //         raw_webhook
+  //       )
+  //       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  //       `,
+  //       [
+  //         orderId,
+  //         payment.razorpay_order_id,
+  //         payment.razorpay_payment_id,
+  //         refund.id,
+  //         payment.amount,
+  //         "refunded",
+  //         "razorpay_refund",
+  //         JSON.stringify(refund),
+  //       ],
+  //     );
 
-      // 5 Update order status
-      await conn.execute(
-        `
-        UPDATE eorders
-        SET
-          status = 'cancelled',
-          cancellation_status = 'approved'
-        WHERE order_id = ?
-        `,
-        [orderId],
-      );
+  //     // 5 Update order status
+  //     await conn.execute(
+  //       `
+  //       UPDATE eorders
+  //       SET
+  //         status = 'cancelled',
+  //         cancellation_status = 'approved'
+  //       WHERE order_id = ?
+  //       `,
+  //       [orderId],
+  //     );
 
-      await conn.commit();
+  //     await conn.commit();
 
-      return res.json({
-        success: true,
-        message: "Refund successful",
-        refund_id: refund.id,
-      });
-    } catch (error) {
-      await conn.rollback();
+  //     return res.json({
+  //       success: true,
+  //       message: "Refund successful",
+  //       refund_id: refund.id,
+  //     });
+  //   } catch (error) {
+  //     await conn.rollback();
 
-      console.error("Refund error:", error);
+  //     console.error("Refund error:", error);
 
-      return res.status(500).json({
-        success: false,
-        message: "Refund failed",
-      });
-    } finally {
-      conn.release();
-    }
-  }
+  //     return res.status(500).json({
+  //       success: false,
+  //       message: "Refund failed",
+  //     });
+  //   } finally {
+  //     conn.release();
+  //   }
+  // }
 }
 
 module.exports = new PaymentController();
