@@ -21,15 +21,6 @@ class ServiceCategoryModel {
     }
   }
 
-  // Find by slug
-  async findBySlug(slug) {
-    const [rows] = await db.execute(
-      `SELECT * FROM service_categories WHERE slug = ? AND status = 1`,
-      [slug],
-    );
-    return rows[0];
-  }
-
   //   Fetch all service categories
   async findAll(onlyActive = true) {
     let sql = `SELECT * FROM service_categories`;

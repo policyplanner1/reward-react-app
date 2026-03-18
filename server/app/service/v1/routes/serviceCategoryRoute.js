@@ -10,8 +10,6 @@ const {
 // Fetch Active Services
 router.get("/all-categories", ServiceCategoryController.getCategories);
 
-router.get("/slug/:slug", ServiceCategoryController.getCategoryDetails);
-
 // Create a category
 router.post(
   "/create-category",

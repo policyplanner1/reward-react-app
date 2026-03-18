@@ -2,10 +2,6 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 const ServiceCategoryModel = require("../models/serviceCategoryModel");
-const ServiceModel = require("../models/serviceModel");
-const ServiceVariantModel = require("../models/serviceVariantModel");
-const ServiceDocumentModel = require("../models/serviceDocumentModel");
-const ServiceFormModel = require("../models/serviceFormModel");
 const { UPLOAD_BASE } = require("../../../../config/path");
 
 class ServiceCatalogController {
@@ -17,92 +13,6 @@ class ServiceCatalogController {
       res.json({
         success: true,
         data: categories,
-      });
-    } catch (err) {
-      res.status(500).json({
-        success: false,
-        message: err.message,
-      });
-    }
-  }
-
-  // get category details by slug
-  async getCategoryDetails(req, res) {
-    try {
-      const { slug } = req.params;
-
-      const category = await ServiceCategoryModel.findBySlug(slug);
-
-      if (!category) {
-        return res.status(404).json({
-          success: false,
-          message: "Category not found",
-        });
-      }
-
-      // ================= DIRECT FLOW =================
-      if (category.display_type === "direct") {
-        if (!category.direct_service_id) {
-          return res.status(400).json({
-            success: false,
-            message: "Direct service not configured",
-          });
-        }
-
-        const service = await ServiceModel.findBasicById(
-          category.direct_service_id,
-        );
-
-        if (!service) {
-          return res.status(404).json({
-            success: false,
-            message: "Service not found",
-          });
-        }
-        
-        const variants = await ServiceVariantModel.getVariantsWithSections(
-          service.id,
-        );
-
-        const hasVariants = variants && variants.length > 0;
-
-        // Fallback: service-level sections
-        let sections = [];
-        if (!hasVariants) {
-          sections = await ServiceVariantModel.getSectionsByService(service.id);
-        }
-
-        const documents = await ServiceDocumentModel.findActiveByServiceId(
-          service.id,
-        );
-
-        const form = await ServiceFormModel.findFormByServiceId(service.id);
-
-        return res.json({
-          success: true,
-          type: "direct",
-          data: {
-            category,
-            service,
-            has_variants: hasVariants,
-            variants: hasVariants ? variants : [],
-            sections: !hasVariants ? sections : [],
-            documents,
-            form_fields: form,
-          },
-        });
-      }
-
-      // ================= LIST FLOW =================
-      const services = await ServiceModel.findByCategoryId(category.id);
-
-      return res.json({
-        success: true,
-        type: "list",
-        data: {
-          category,
-          services,
-        },
       });
     } catch (err) {
       res.status(500).json({
