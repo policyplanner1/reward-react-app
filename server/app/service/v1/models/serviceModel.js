@@ -128,6 +128,16 @@ class ServiceModel {
 
     return rows;
   }
+
+  async findBasicById(id) {
+    const [rows] = await db.execute(
+      `SELECT id, name, description, service_image
+     FROM services
+     WHERE id = ? AND status = 1`,
+      [id],
+    );
+    return rows[0];
+  }
 }
 
 module.exports = new ServiceModel();

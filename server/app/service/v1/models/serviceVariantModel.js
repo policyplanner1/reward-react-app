@@ -77,6 +77,33 @@ class ServiceVariantModel {
   async deleteVariantSection(id) {
     await db.execute(`DELETE FROM service_variant_sections WHERE id = ?`, [id]);
   }
+
+  // get variant with sections
+  async getVariantsWithSections(serviceId) {
+    const [variants] = await db.execute(
+      `SELECT id, variant_name, title, short_description, price
+     FROM service_variants
+     WHERE service_id = ? AND status = 1`,
+      [serviceId],
+    );
+
+    for (let v of variants) {
+      const [sections] = await db.execute(
+        `SELECT section_type, title, content
+       FROM service_variant_sections
+       WHERE variant_id = ?
+       ORDER BY sort_order`,
+        [v.id],
+      );
+
+      v.sections = sections.map((s) => ({
+        ...s,
+        content: JSON.parse(s.content || "{}"),
+      }));
+    }
+
+    return variants;
+  }
 }
 
 module.exports = new ServiceVariantModel();
