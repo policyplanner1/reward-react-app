@@ -104,6 +104,22 @@ class ServiceVariantModel {
 
     return variants;
   }
+
+  // Get sections by service Id
+  async getSectionsByService(serviceId) {
+    const [rows] = await db.execute(
+      `SELECT section_type, title, content
+     FROM service_variant_sections
+     WHERE service_id = ?
+     ORDER BY sort_order`,
+      [serviceId],
+    );
+
+    return rows.map((r) => ({
+      ...r,
+      content: JSON.parse(r.content || "{}"),
+    }));
+  }
 }
 
 module.exports = new ServiceVariantModel();

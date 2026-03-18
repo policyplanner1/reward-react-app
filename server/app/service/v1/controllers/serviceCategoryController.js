@@ -59,10 +59,18 @@ class ServiceCatalogController {
             message: "Service not found",
           });
         }
-
+        
         const variants = await ServiceVariantModel.getVariantsWithSections(
           service.id,
         );
+
+        const hasVariants = variants && variants.length > 0;
+
+        // Fallback: service-level sections
+        let sections = [];
+        if (!hasVariants) {
+          sections = await ServiceVariantModel.getSectionsByService(service.id);
+        }
 
         const documents = await ServiceDocumentModel.findActiveByServiceId(
           service.id,
@@ -76,7 +84,9 @@ class ServiceCatalogController {
           data: {
             category,
             service,
-            variants,
+            has_variants: hasVariants,
+            variants: hasVariants ? variants : [],
+            sections: !hasVariants ? sections : [],
             documents,
             form_fields: form,
           },
