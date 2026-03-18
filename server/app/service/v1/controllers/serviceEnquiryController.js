@@ -32,7 +32,6 @@ class ServiceEnquiryController {
         city,
         mobile,
         email,
-        enquiry_data,
         enquiry_data: safeEnquiryData,
       });
 
