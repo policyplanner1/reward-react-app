@@ -470,28 +470,57 @@ class FitnessService {
      STATS (Graph Data)
   ------------------------------------------ */
   async getStats(customerId, range) {
-    let days = 7;
-
-    if (range === "30days") {
-      days = 30;
-    }
+    let days = range === "30days" ? 30 : 7;
 
     const [rows] = await db.execute(
       `
-      SELECT 
-        step_date,
-        steps,
-        distance_km,
-        calories
-      FROM fitness_steps
-      WHERE user_id = ?
-      AND step_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-      ORDER BY step_date ASC
-      `,
+    SELECT 
+      step_date,
+      steps,
+      distance_km,
+      calories
+    FROM fitness_steps
+    WHERE user_id = ?
+    AND step_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+    `,
       [customerId, days],
     );
 
-    return rows;
+    // -------------------------------
+    // Convert DB rows → map
+    // -------------------------------
+    const dataMap = {};
+
+    rows.forEach((row) => {
+      const dateStr = new Date(row.step_date).toLocaleDateString("en-CA");
+
+      dataMap[dateStr] = {
+        steps: row.steps,
+        distance_km: row.distance_km,
+        calories: row.calories,
+      };
+    });
+
+    // -------------------------------
+    // Fill missing dates
+    // -------------------------------
+    const result = [];
+
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+
+      const dateStr = d.toLocaleDateString("en-CA");
+
+      result.push({
+        date: dateStr,
+        steps: dataMap[dateStr]?.steps || 0,
+        distance_km: dataMap[dateStr]?.distance_km || 0,
+        calories: dataMap[dateStr]?.calories || 0,
+      });
+    }
+
+    return result;
   }
 
   // Get todays summary (for dashboard)
