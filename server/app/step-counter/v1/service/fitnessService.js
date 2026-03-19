@@ -6,12 +6,50 @@ class FitnessService {
   async syncSteps(customerId, payload) {
     const { steps, distance_km, calories, active_minutes, date } = payload;
 
+    // -------------------------------
     // Anti cheat
+    // -------------------------------
     if (steps > 40000) {
       throw new Error("Invalid step count");
     }
 
-    // 1. Save steps
+    // -------------------------------
+    // 1. Get goal
+    // -------------------------------
+    const goal = await FitnessModel.getGoal(customerId);
+
+    if (!goal) {
+      return { message: "No goal set" };
+    }
+
+    // -------------------------------
+    // 2. STEP DELTA VALIDATION
+    // -------------------------------
+    const existingSteps = await FitnessModel.getStepsByDate(customerId, date);
+
+    if (existingSteps) {
+      const previousSteps = existingSteps.steps;
+
+      //  Case 1: Same or lower steps → ignore
+      if (steps <= previousSteps) {
+        return {
+          message: "No new steps to process",
+          goalAchieved: previousSteps >= goal.daily_steps,
+          reward: 0,
+        };
+      }
+
+      //  Case 2: Unrealistic jump (anti-cheat)
+      const stepDiff = steps - previousSteps;
+
+      if (stepDiff > 20000) {
+        throw new Error("Suspicious step increase detected");
+      }
+    }
+
+    // -------------------------------
+    // 3. SAVE STEPS (ALWAYS if valid)
+    // -------------------------------
     await FitnessModel.upsertSteps({
       customer_id: customerId,
       step_date: date,
@@ -21,16 +59,14 @@ class FitnessService {
       active_minutes,
     });
 
-    // 2. Get goal
-    const goal = await FitnessModel.getGoal(customerId);
-
-    if (!goal) {
-      return { message: "No goal set" };
-    }
-
+    // -------------------------------
+    // 4. CHECK GOAL (AFTER SAVE)
+    // -------------------------------
     let goalAchieved = false;
 
-    if (steps < goal.daily_steps) {
+    if (steps >= goal.daily_steps) {
+      goalAchieved = true;
+    } else {
       return {
         message: "Steps synced",
         goalAchieved: false,
@@ -38,10 +74,8 @@ class FitnessService {
       };
     }
 
-    goalAchieved = true;
-
     // -------------------------------
-    // 3. STREAK LOGIC
+    // 5. STREAK LOGIC
     // -------------------------------
     const streakData = await FitnessModel.getStreak(customerId);
 
@@ -72,7 +106,7 @@ class FitnessService {
     }
 
     // -------------------------------
-    // 4. TRANSACTION START
+    // 6. TRANSACTION START
     // -------------------------------
     const conn = await db.getConnection();
     await conn.beginTransaction();

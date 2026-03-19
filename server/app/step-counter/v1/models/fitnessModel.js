@@ -145,6 +145,16 @@ class FitnessModel {
 
     await conn.execute(query, [customerId, date, type, referenceId, coins]);
   }
+
+  async getStepsByDate(customerId, date) {
+    const [rows] = await db.execute(
+      `SELECT steps FROM fitness_steps
+     WHERE user_id = ? AND step_date = ?`,
+      [customerId, date],
+    );
+
+    return rows[0];
+  }
 }
 
 module.exports = new FitnessModel();
