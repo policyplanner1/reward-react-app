@@ -205,7 +205,7 @@ class FitnessService {
     const calendar = {};
 
     rows.forEach((row) => {
-      if (row.steps >= goal.daily_steps) {
+     if (goal && row.steps >= goal.daily_steps) {
         calendar[row.step_date] = "completed";
       } else {
         calendar[row.step_date] = "missed";
