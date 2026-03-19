@@ -45,6 +45,10 @@ class FitnessService {
       if (stepDiff > 20000) {
         throw new Error("Suspicious step increase detected");
       }
+
+      if (stepDiff > 5000 && active_minutes < 5) {
+        throw new Error("Invalid activity pattern");
+      }
     }
 
     // -------------------------------
