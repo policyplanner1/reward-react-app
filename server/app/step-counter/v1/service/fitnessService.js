@@ -502,6 +502,22 @@ class FitnessService {
       active_minutes: stepsData?.active_minutes || 0,
     };
   }
+
+  // Weekly progress
+  async getWeeklyProgress(customerId) {
+    const [rows] = await db.execute(
+      `
+    SELECT step_date, steps
+    FROM fitness_steps
+    WHERE user_id = ?
+    AND step_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+    ORDER BY step_date ASC
+    `,
+      [customerId],
+    );
+
+    return rows;
+  }
 }
 
 module.exports = new FitnessService();
