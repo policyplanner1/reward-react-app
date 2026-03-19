@@ -6,9 +6,6 @@ const auth = require("../../../ecommerce/v1/middlewares/auth");
 // check user exists
 router.get("/status", auth, FitnessController.getOnboardingStatus);
 
-// set user onboarding status
-router.post("/status", auth, FitnessController.completeOnboarding);
-
 // select goals for user
 router.post("/select-goals", auth, FitnessController.selectGoal);
 
