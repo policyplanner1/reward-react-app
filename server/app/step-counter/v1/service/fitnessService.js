@@ -269,12 +269,6 @@ class FitnessService {
       // -------------------------------
       if (totalReward > 0) {
         await conn.execute(
-          `INSERT INTO wallet_transactions (user_id, coins, activity)
-         VALUES (?, ?, ?)`,
-          [customerId, totalReward, "Fitness Reward"],
-        );
-
-        await conn.execute(
           `INSERT INTO customer_wallet (user_id, balance)
             VALUES (?, 0)
             ON DUPLICATE KEY UPDATE user_id = user_id`,
@@ -286,6 +280,12 @@ class FitnessService {
          SET balance = balance + ?
          WHERE user_id = ?`,
           [totalReward, customerId],
+        );
+
+        await conn.execute(
+          `INSERT INTO wallet_transactions (user_id, coins, activity)
+         VALUES (?, ?, ?)`,
+          [customerId, totalReward, "Fitness Reward"],
         );
       }
 
