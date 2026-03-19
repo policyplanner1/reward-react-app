@@ -333,12 +333,12 @@ class FitnessService {
   }
 
   // basic profiles
-  async saveBasicProfile(customerId, gender, age) {
+  async saveBasicProfile(customerId, gender, age, goal_type) {
     await db.execute(
-      `INSERT INTO fitness_profiles (user_id, gender, age)
-       VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE gender=?, age=?`,
-      [customerId, gender, age, gender, age],
+      `INSERT INTO fitness_profiles (user_id, gender, age, goal_type)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE gender=?, age=?, goal_type=?`,
+      [customerId, gender, age, goal_type, gender, age, goal_type],
     );
   }
 

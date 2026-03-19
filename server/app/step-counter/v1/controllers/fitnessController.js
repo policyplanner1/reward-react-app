@@ -36,11 +36,30 @@ class FitnessController {
           message: "Unauthorized user",
         });
       }
-      const { gender, age } = req.body;
+      const { gender, age, goal_type } = req.body;
 
-      await FitnessService.saveBasicProfile(userId, gender, age);
+      if (!gender || !age || !goal_type) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields",
+        });
+      }
 
-      res.json({ message: "Profile updated" });
+      const validGoals = ["weight_loss", "weight_gain", "stay_healthy"];
+
+      if (!validGoals.includes(goal_type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid goal type",
+        });
+      }
+
+      await FitnessService.saveBasicProfile(userId, gender, age, goal_type);
+
+      res.json({
+        success: true,
+        message: "Profile updated",
+      });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
