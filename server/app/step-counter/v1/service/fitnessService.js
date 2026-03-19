@@ -34,7 +34,7 @@ class FitnessService {
       if (steps <= previousSteps) {
         return {
           message: "No new steps to process",
-          goalAchieved: previousSteps >= goal.daily_steps,
+          goalAchieved: Math.max(previousSteps, steps) >= goal.daily_steps,
           reward: 0,
         };
       }
