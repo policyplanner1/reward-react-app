@@ -122,6 +122,29 @@ class FitnessModel {
       [coins, customerId],
     );
   }
+
+  async hasReward(customerId, date, type, referenceId = null) {
+    const [rows] = await db.execute(
+      `SELECT id FROM fitness_rewards_log
+     WHERE user_id = ?
+     AND reward_date = ?
+     AND reward_type = ?
+     AND (reference_id <=> ?)`,
+      [customerId, date, type, referenceId],
+    );
+
+    return rows.length > 0;
+  }
+
+  async insertRewardLog(customerId, date, type, referenceId, coins, conn) {
+    const query = `
+    INSERT INTO fitness_rewards_log
+    (user_id, reward_date, reward_type, reference_id, coins)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+    await conn.execute(query, [customerId, date, type, referenceId, coins]);
+  }
 }
 
 module.exports = new FitnessModel();

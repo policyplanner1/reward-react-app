@@ -28,67 +28,136 @@ class FitnessService {
       return { message: "No goal set" };
     }
 
-    let reward = 0;
     let goalAchieved = false;
-    let streakUpdated = false;
-    let unlockedAchievements = [];
 
-    if (steps >= goal.daily_steps) {
-      goalAchieved = true;
+    if (steps < goal.daily_steps) {
+      return {
+        message: "Steps synced",
+        goalAchieved: false,
+        reward: 0,
+      };
+    }
 
-      // 3. STREAK LOGIC
-      const streakData = await FitnessModel.getStreak(customerId);
+    goalAchieved = true;
 
-      let currentStreak = 1;
-      let longestStreak = 1;
+    // -------------------------------
+    // 3. STREAK LOGIC
+    // -------------------------------
+    const streakData = await FitnessModel.getStreak(customerId);
 
-      const today = new Date(date);
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
+    let currentStreak = 1;
+    let longestStreak = 1;
 
-      if (streakData) {
-        const lastDate = new Date(streakData.last_goal_completed_date);
+    const today = new Date(date);
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
 
-        // Check if yesterday
-        if (
-          lastDate.toISOString().slice(0, 10) ===
-          yesterday.toISOString().slice(0, 10)
-        ) {
-          currentStreak = streakData.current_streak + 1;
-        } else if (
-          lastDate.toISOString().slice(0, 10) ===
-          today.toISOString().slice(0, 10)
-        ) {
-          // already counted today → avoid duplicate
-          currentStreak = streakData.current_streak;
-        } else {
-          currentStreak = 1;
-        }
+    if (streakData) {
+      const lastDate = new Date(streakData.last_goal_completed_date);
 
-        longestStreak = Math.max(streakData.longest_streak, currentStreak);
+      const lastDateStr = lastDate.toISOString().slice(0, 10);
+      const todayStr = today.toISOString().slice(0, 10);
+      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+      if (lastDateStr === yesterdayStr) {
+        currentStreak = streakData.current_streak + 1;
+      } else if (lastDateStr === todayStr) {
+        // already processed today → don't increase
+        currentStreak = streakData.current_streak;
+      } else {
+        currentStreak = 1;
       }
 
-      await FitnessModel.upsertStreak(
-        customerId,
-        currentStreak,
-        longestStreak,
-        date,
+      longestStreak = Math.max(streakData.longest_streak, currentStreak);
+    }
+
+    // -------------------------------
+    // 4. TRANSACTION START
+    // -------------------------------
+    const conn = await db.getConnection();
+    await conn.beginTransaction();
+
+    try {
+      let totalReward = 0;
+      let unlockedAchievements = [];
+
+      // -------------------------------
+      // Update streak INSIDE TX
+      // -------------------------------
+      await conn.execute(
+        `INSERT INTO fitness_streaks 
+       (user_id, current_streak, longest_streak, last_goal_completed_date)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         current_streak = ?,
+         longest_streak = ?,
+         last_goal_completed_date = ?`,
+        [
+          customerId,
+          currentStreak,
+          longestStreak,
+          date,
+          currentStreak,
+          longestStreak,
+          date,
+        ],
       );
 
-      streakUpdated = true;
+      // -------------------------------
+      // GOAL REWARD (once per day)
+      // -------------------------------
+      const alreadyGoalRewarded = await FitnessModel.hasReward(
+        customerId,
+        date,
+        "goal",
+        null,
+      );
 
-      // 4. BASE REWARD (Goal completion)
-      reward += 50;
+      if (!alreadyGoalRewarded) {
+        const goalCoins = 50;
 
-      // 5. STREAK BONUS
-      if (currentStreak === 7) {
-        reward += 100;
+        await FitnessModel.insertRewardLog(
+          customerId,
+          date,
+          "goal",
+          null,
+          goalCoins,
+          conn,
+        );
+
+        totalReward += goalCoins;
       }
-      if (currentStreak === 14) {
-        reward += 200;
+
+      // -------------------------------
+      // STREAK BONUS
+      // -------------------------------
+      if (currentStreak === 7 || currentStreak === 14) {
+        const alreadyStreakRewarded = await FitnessModel.hasReward(
+          customerId,
+          date,
+          "streak",
+          currentStreak,
+        );
+
+        if (!alreadyStreakRewarded) {
+          const streakCoins = currentStreak === 7 ? 100 : 200;
+
+          await FitnessModel.insertRewardLog(
+            customerId,
+            date,
+            "streak",
+            currentStreak,
+            streakCoins,
+            conn,
+          );
+
+          totalReward += streakCoins;
+        }
       }
 
-      // 6. ACHIEVEMENT CHECK
+      // -------------------------------
+      // ACHIEVEMENTS
+      // -------------------------------
       const allAchievements = await FitnessModel.getAllAchievements();
       const userAchievements =
         await FitnessModel.getUserAchievements(customerId);
@@ -98,56 +167,86 @@ class FitnessService {
 
         let unlock = false;
 
-        if (achievement.type === "steps") {
-          if (steps >= achievement.target_value) {
-            unlock = true;
-          }
+        if (achievement.type === "steps" && steps >= achievement.target_value) {
+          unlock = true;
         }
 
-        if (achievement.type === "streak") {
-          if (currentStreak >= achievement.target_value) {
-            unlock = true;
-          }
+        if (
+          achievement.type === "streak" &&
+          currentStreak >= achievement.target_value
+        ) {
+          unlock = true;
         }
 
         if (unlock) {
-          await FitnessModel.unlockAchievement(
+          const alreadyGiven = await FitnessModel.hasReward(
             customerId,
+            date,
+            "achievement",
             achievement.achievement_id,
           );
 
-          reward += achievement.reward_coins || 0;
+          if (!alreadyGiven) {
+            await FitnessModel.unlockAchievement(
+              customerId,
+              achievement.achievement_id,
+            );
 
-          unlockedAchievements.push({
-            id: achievement.achievement_id,
-            title: achievement.title,
-          });
+            await FitnessModel.insertRewardLog(
+              customerId,
+              date,
+              "achievement",
+              achievement.achievement_id,
+              achievement.reward_coins,
+              conn,
+            );
+
+            totalReward += achievement.reward_coins || 0;
+
+            unlockedAchievements.push({
+              id: achievement.achievement_id,
+              title: achievement.title,
+            });
+          }
         }
       }
 
-      // 7. CREDIT WALLET
-      if (reward > 0) {
-        await FitnessModel.addWalletTransaction(
-          customerId,
-          reward,
-          "Fitness Reward",
+      // -------------------------------
+      // WALLET UPDATE
+      // -------------------------------
+      if (totalReward > 0) {
+        await conn.execute(
+          `INSERT INTO wallet_transactions (user_id, coins, activity)
+         VALUES (?, ?, ?)`,
+          [customerId, totalReward, "Fitness Reward"],
+        );
+
+        await conn.execute(
+          `UPDATE customer_wallet
+         SET balance = balance + ?
+         WHERE user_id = ?`,
+          [totalReward, customerId],
         );
       }
+
+      // -------------------------------
+      // COMMIT
+      // -------------------------------
+      await conn.commit();
 
       return {
         message: "Steps synced",
         goalAchieved,
-        reward,
+        reward: totalReward,
         currentStreak,
         unlockedAchievements,
       };
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
     }
-
-    return {
-      message: "Steps synced",
-      goalAchieved: false,
-      reward: 0,
-    };
   }
 
   // Dashboard
