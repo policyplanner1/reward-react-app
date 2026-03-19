@@ -14,5 +14,8 @@ router.post("/body", auth, FitnessController.saveBodyProfile);
 // Get plan
 router.get("/plan", auth, FitnessController.getPlan);
 
+// goal Info
+router.get("/goal", auth, FitnessController.getGoal);
+
 
 module.exports = router;

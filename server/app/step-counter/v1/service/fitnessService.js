@@ -534,6 +534,19 @@ class FitnessService {
       }
     );
   }
+
+  async getGoal(customerId) {
+    const [rows] = await db.execute(
+      `SELECT daily_steps, daily_active_minutes
+     FROM fitness_goals
+     WHERE user_id = ?
+     ORDER BY goal_id DESC
+     LIMIT 1`,
+      [customerId],
+    );
+
+    return rows[0] || null;
+  }
 }
 
 module.exports = new FitnessService();
