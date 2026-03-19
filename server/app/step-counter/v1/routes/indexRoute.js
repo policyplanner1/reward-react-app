@@ -5,7 +5,7 @@ const v1AchievementRoutes = require("./achievementRoute");
 const v1DashboardRoutes = require("./dashboardRoute");
 const v1ProgressRoutes = require("./progressRoute");
 const v1StatsRoutes = require("./statsRoute");
-const v1StepRoutes = require("./stepsRoute");
+const v1StepRoutes = require("./stepRoute");
 const v1WalletRoutes = require("./walletRoute");
 
 router.use('/profile', v1OnboardingRoutes);
