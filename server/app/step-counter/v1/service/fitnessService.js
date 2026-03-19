@@ -29,6 +29,8 @@ class FitnessService {
     // -------------------------------
     // 2. STEP DELTA VALIDATION
     // -------------------------------
+    const streakData = await FitnessModel.getStreak(customerId);
+
     const existingSteps = await FitnessModel.getStepsByDate(customerId, date);
 
     if (existingSteps) {
@@ -38,7 +40,7 @@ class FitnessService {
       if (steps <= previousSteps) {
         return {
           message: "No new steps to process",
-          goalAchieved: previousSteps >= goal.daily_steps,
+          goalAchieved: Math.max(previousSteps, steps) >= goal.daily_steps,
           reward: 0,
           currentStreak: streakData?.current_streak || 0,
         };
@@ -86,8 +88,6 @@ class FitnessService {
     // -------------------------------
     // 5. STREAK LOGIC
     // -------------------------------
-    const streakData = await FitnessModel.getStreak(customerId);
-
     let currentStreak = 1;
     let longestStreak = 1;
 
