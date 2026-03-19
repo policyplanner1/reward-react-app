@@ -1,6 +1,4 @@
 const db = require("../../../../config/database");
-const fs = require("fs");
-const path = require("path");
 
 class FitnessModel {
   async upsertSteps(data) {
@@ -18,7 +16,7 @@ class FitnessModel {
       (user_id, step_date, steps, distance_km, calories, active_minutes)
       VALUES (?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
-        steps = VALUES(steps),
+        steps = GREATEST(steps, VALUES(steps)),
         distance_km = VALUES(distance_km),
         calories = VALUES(calories),
         active_minutes = VALUES(active_minutes)
@@ -99,20 +97,18 @@ class FitnessModel {
     return rows;
   }
 
-  async updateStreak(customerId, streak) {
-    await db.execute(
-      `INSERT INTO fitness_streaks (user_id, current_streak)
-       VALUES (?, ?)
-       ON DUPLICATE KEY UPDATE current_streak = ?`,
-      [customerId, streak, streak],
-    );
-  }
-
   async addWalletTransaction(customerId, coins, activity) {
     await db.execute(
       `INSERT INTO wallet_transactions (user_id, coins, activity)
        VALUES (?, ?, ?)`,
       [customerId, coins, activity],
+    );
+
+    await db.execute(
+      `INSERT INTO customer_wallet (user_id, balance)
+      VALUES (?, 0)
+      ON DUPLICATE KEY UPDATE user_id = user_id`,
+      [customerId],
     );
 
     await db.execute(
@@ -123,7 +119,10 @@ class FitnessModel {
     );
   }
 
-  async hasReward(customerId, date, type, referenceId = null,conn) {
+  async hasReward(customerId, date, type, referenceId = null, conn) {
+    if (!conn) {
+      throw new Error("Transaction connection required");
+    }
     const [rows] = await conn.execute(
       `SELECT id FROM fitness_rewards_log
      WHERE user_id = ?
