@@ -1,4 +1,4 @@
-const FitnessModel = require("../models/fitness.model");
+const FitnessModel = require("../models/fitnessModel");
 const db = require("../../../../config/database");
 
 class FitnessService {
@@ -33,7 +33,7 @@ class FitnessService {
       );
 
       // 4. Update streak
-      await FitnessModel.updateStreak(customerId, 1); // simplified
+      await FitnessModel.updateStreak(customerId, 1); 
     }
 
     return {
@@ -56,8 +56,6 @@ class FitnessService {
   }
 
   async selectGoal(customerId, daily_steps) {
-    const db = require("../../../config/db");
-
     await db.execute(
       `INSERT INTO fitness_goals (customer_id, daily_steps, start_date)
        VALUES (?, ?, CURDATE())`,
