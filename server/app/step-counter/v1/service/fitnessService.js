@@ -6,6 +6,11 @@ class FitnessService {
   async syncSteps(customerId, payload) {
     const { steps, distance_km, calories, active_minutes, date } = payload;
 
+    // Anti cheat
+    if (steps > 40000) {
+      throw new Error("Invalid step count");
+    }
+
     // 1. Save steps
     await FitnessModel.upsertSteps({
       customer_id: customerId,
@@ -19,28 +24,129 @@ class FitnessService {
     // 2. Get goal
     const goal = await FitnessModel.getGoal(customerId);
 
+    if (!goal) {
+      return { message: "No goal set" };
+    }
+
     let reward = 0;
     let goalAchieved = false;
+    let streakUpdated = false;
+    let unlockedAchievements = [];
 
-    if (goal && steps >= goal.daily_steps) {
-      reward = 50;
+    if (steps >= goal.daily_steps) {
       goalAchieved = true;
 
-      // 3. Reward coins
-      await FitnessModel.addWalletTransaction(
+      // 3. STREAK LOGIC
+      const streakData = await FitnessModel.getStreak(customerId);
+
+      let currentStreak = 1;
+      let longestStreak = 1;
+
+      const today = new Date(date);
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+
+      if (streakData) {
+        const lastDate = new Date(streakData.last_goal_completed_date);
+
+        // Check if yesterday
+        if (
+          lastDate.toISOString().slice(0, 10) ===
+          yesterday.toISOString().slice(0, 10)
+        ) {
+          currentStreak = streakData.current_streak + 1;
+        } else if (
+          lastDate.toISOString().slice(0, 10) ===
+          today.toISOString().slice(0, 10)
+        ) {
+          // already counted today → avoid duplicate
+          currentStreak = streakData.current_streak;
+        } else {
+          currentStreak = 1;
+        }
+
+        longestStreak = Math.max(streakData.longest_streak, currentStreak);
+      }
+
+      await FitnessModel.upsertStreak(
         customerId,
-        reward,
-        "Goal Achieved",
+        currentStreak,
+        longestStreak,
+        date,
       );
 
-      // 4. Update streak
-      await FitnessModel.updateStreak(customerId, 1);
+      streakUpdated = true;
+
+      // 4. BASE REWARD (Goal completion)
+      reward += 50;
+
+      // 5. STREAK BONUS
+      if (currentStreak === 7) {
+        reward += 100;
+      }
+      if (currentStreak === 14) {
+        reward += 200;
+      }
+
+      // 6. ACHIEVEMENT CHECK
+      const allAchievements = await FitnessModel.getAllAchievements();
+      const userAchievements =
+        await FitnessModel.getUserAchievements(customerId);
+
+      for (const achievement of allAchievements) {
+        if (userAchievements.includes(achievement.achievement_id)) continue;
+
+        let unlock = false;
+
+        if (achievement.type === "steps") {
+          if (steps >= achievement.target_value) {
+            unlock = true;
+          }
+        }
+
+        if (achievement.type === "streak") {
+          if (currentStreak >= achievement.target_value) {
+            unlock = true;
+          }
+        }
+
+        if (unlock) {
+          await FitnessModel.unlockAchievement(
+            customerId,
+            achievement.achievement_id,
+          );
+
+          reward += achievement.reward_coins || 0;
+
+          unlockedAchievements.push({
+            id: achievement.achievement_id,
+            title: achievement.title,
+          });
+        }
+      }
+
+      // 7. CREDIT WALLET
+      if (reward > 0) {
+        await FitnessModel.addWalletTransaction(
+          customerId,
+          reward,
+          "Fitness Reward",
+        );
+      }
+
+      return {
+        message: "Steps synced",
+        goalAchieved,
+        reward,
+        currentStreak,
+        unlockedAchievements,
+      };
     }
 
     return {
       message: "Steps synced",
-      goalAchieved,
-      reward,
+      goalAchieved: false,
+      reward: 0,
     };
   }
 
@@ -205,7 +311,7 @@ class FitnessService {
     const calendar = {};
 
     rows.forEach((row) => {
-     if (goal && row.steps >= goal.daily_steps) {
+      if (goal && row.steps >= goal.daily_steps) {
         calendar[row.step_date] = "completed";
       } else {
         calendar[row.step_date] = "missed";

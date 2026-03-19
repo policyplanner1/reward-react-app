@@ -50,6 +50,55 @@ class FitnessModel {
     return rows[0];
   }
 
+  async getStreak(customerId) {
+    const [rows] = await db.execute(
+      `SELECT * FROM fitness_streaks WHERE user_id = ?`,
+      [customerId],
+    );
+    return rows[0];
+  }
+
+  async upsertStreak(customerId, currentStreak, longestStreak, lastDate) {
+    await db.execute(
+      `INSERT INTO fitness_streaks (user_id, current_streak, longest_streak, last_goal_completed_date)
+     VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       current_streak = ?,
+       longest_streak = ?,
+       last_goal_completed_date = ?`,
+      [
+        customerId,
+        currentStreak,
+        longestStreak,
+        lastDate,
+        currentStreak,
+        longestStreak,
+        lastDate,
+      ],
+    );
+  }
+
+  async getUserAchievements(customerId) {
+    const [rows] = await db.execute(
+      `SELECT achievement_id FROM fitness_user_achievements WHERE user_id = ?`,
+      [customerId],
+    );
+    return rows.map((r) => r.achievement_id);
+  }
+
+  async unlockAchievement(customerId, achievementId) {
+    await db.execute(
+      `INSERT IGNORE INTO fitness_user_achievements (user_id, achievement_id)
+     VALUES (?, ?)`,
+      [customerId, achievementId],
+    );
+  }
+
+  async getAllAchievements() {
+    const [rows] = await db.execute(`SELECT * FROM fitness_achievements`);
+    return rows;
+  }
+
   async updateStreak(customerId, streak) {
     await db.execute(
       `INSERT INTO fitness_streaks (user_id, current_streak)
