@@ -147,19 +147,26 @@ class FitnessService {
         null,
       );
 
+      let showGoalPopup = false;
       if (!alreadyGoalRewarded) {
+        showGoalPopup = true;
+
         const goalCoins = 50;
 
-        await FitnessModel.insertRewardLog(
-          customerId,
-          date,
-          "goal",
-          null,
-          goalCoins,
-          conn,
-        );
+        try {
+          await FitnessModel.insertRewardLog(
+            customerId,
+            date,
+            "goal",
+            null,
+            goalCoins,
+            conn,
+          );
 
-        totalReward += goalCoins;
+          totalReward += goalCoins;
+        } catch (err) {
+          if (err.code !== "ER_DUP_ENTRY") throw err;
+        }
       }
 
       // -------------------------------
@@ -274,6 +281,7 @@ class FitnessService {
         reward: totalReward,
         currentStreak,
         unlockedAchievements,
+        showGoalPopup,
       };
     } catch (err) {
       await conn.rollback();
