@@ -481,6 +481,27 @@ class FitnessService {
 
     return rows;
   }
+
+  // Get todays summary (for dashboard)
+  async getTodaySummary(customerId) {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const stepsData = await FitnessModel.getStepsByDate(customerId, today);
+    const goal = await FitnessModel.getGoal(customerId);
+
+    const steps = stepsData?.steps || 0;
+
+    return {
+      steps,
+      goal_steps: goal?.daily_steps || 0,
+      progress_percent: goal
+        ? Math.min((steps / goal.daily_steps) * 100, 100)
+        : 0,
+      distance_km: stepsData?.distance_km || 0,
+      calories: stepsData?.calories || 0,
+      active_minutes: stepsData?.active_minutes || 0,
+    };
+  }
 }
 
 module.exports = new FitnessService();
