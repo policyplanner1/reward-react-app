@@ -518,6 +518,22 @@ class FitnessService {
 
     return rows;
   }
+
+  async getStreak(customerId) {
+    const [rows] = await db.execute(
+      `SELECT current_streak, longest_streak
+     FROM fitness_streaks
+     WHERE user_id = ?`,
+      [customerId],
+    );
+
+    return (
+      rows[0] || {
+        current_streak: 0,
+        longest_streak: 0,
+      }
+    );
+  }
 }
 
 module.exports = new FitnessService();
