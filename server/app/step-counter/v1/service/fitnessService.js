@@ -656,6 +656,17 @@ class FitnessService {
 
     return rows[0] || null;
   }
+
+  async getOnboardingStatus(customerId) {
+    const [rows] = await db.execute(
+      `SELECT fitness_onboarding_done 
+     FROM customer 
+     WHERE user_id = ?`,
+      [customerId],
+    );
+
+    return rows[0]?.fitness_onboarding_done === 1;
+  }
 }
 
 module.exports = new FitnessService();

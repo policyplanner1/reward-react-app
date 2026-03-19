@@ -3,6 +3,9 @@ const router = express.Router();
 const FitnessController = require("../controllers/fitnessController");
 const auth = require("../../../ecommerce/v1/middlewares/auth");
 
+// check user exists
+router.get("/status", auth, FitnessController.getOnboardingStatus);
+
 // select goals for user
 router.post("/select-goals", auth, FitnessController.selectGoal);
 

@@ -3,6 +3,28 @@ const FitnessService = require("../service/fitnessService");
 const db = require("../../../../config/database");
 
 class FitnessController {
+  async getOnboardingStatus(req, res) {
+    try {
+      const userId = req.user.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const status = await FitnessService.getOnboardingStatus(userId);
+
+      res.json({
+        success: true,
+        is_completed: status,
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+
   async selectGoal(req, res) {
     try {
       const userId = req.user.user_id;
