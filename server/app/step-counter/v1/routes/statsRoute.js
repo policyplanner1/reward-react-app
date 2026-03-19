@@ -1,8 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const bmiController = require("../controllers/bmiController");
+const StatsController = require("../controllers/statsController");
 const auth = require("../../../ecommerce/v1/middlewares/auth");
 
-router.post("/calculate-bmi", auth, bmiController.calculateBMI);
+// stats
+router.get("/", auth, StatsController.getStats);
 
 module.exports = router;
