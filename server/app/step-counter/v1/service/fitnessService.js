@@ -441,27 +441,50 @@ class FitnessService {
 
     const [rows] = await db.execute(
       `
-      SELECT 
-        step_date,
-        steps
-      FROM fitness_steps
-      WHERE user_id = ?
-      AND DATE_FORMAT(step_date, '%Y-%m') = ?
-      `,
+    SELECT step_date, steps
+    FROM fitness_steps
+    WHERE user_id = ?
+    AND DATE_FORMAT(step_date, '%Y-%m') = ?
+    `,
       [customerId, month],
     );
 
     const goal = await FitnessModel.getGoal(customerId);
 
-    const calendar = {};
+    // -------------------------------
+    // Map DB data
+    // -------------------------------
+    const dataMap = {};
 
     rows.forEach((row) => {
-      if (goal && row.steps >= goal.daily_steps) {
-        calendar[row.step_date] = "completed";
-      } else {
-        calendar[row.step_date] = "missed";
-      }
+      const dateStr = new Date(row.step_date).toLocaleDateString("en-CA");
+
+      dataMap[dateStr] = row.steps;
     });
+
+    // -------------------------------
+    // Get total days in month
+    // -------------------------------
+    const [year, mon] = month.split("-");
+    const daysInMonth = new Date(year, mon, 0).getDate();
+
+    const calendar = {};
+
+    // -------------------------------
+    // Fill ALL days
+    // -------------------------------
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(year, mon - 1, day);
+      const dateStr = d.toLocaleDateString("en-CA");
+
+      const steps = dataMap[dateStr] || 0;
+
+      if (goal && steps >= goal.daily_steps) {
+        calendar[dateStr] = "completed";
+      } else {
+        calendar[dateStr] = "missed";
+      }
+    }
 
     return calendar;
   }
