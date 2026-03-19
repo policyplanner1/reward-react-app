@@ -25,6 +25,29 @@ class FitnessController {
     }
   }
 
+  async completeOnboarding(req, res) {
+    try {
+      const userId = req.user.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      await FitnessService.completeOnboarding(userId);
+
+      res.json({
+        success: true,
+        message: "Onboarding completed",
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+
   async selectGoal(req, res) {
     try {
       const userId = req.user.user_id;

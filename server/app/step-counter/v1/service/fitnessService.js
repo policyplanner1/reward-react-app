@@ -667,6 +667,15 @@ class FitnessService {
 
     return rows[0]?.fitness_onboarding_done === 1;
   }
+
+  async completeOnboarding(customerId) {
+    await db.execute(
+      `UPDATE customer 
+     SET fitness_onboarding_done = 1
+     WHERE user_id = ?`,
+      [customerId],
+    );
+  }
 }
 
 module.exports = new FitnessService();
