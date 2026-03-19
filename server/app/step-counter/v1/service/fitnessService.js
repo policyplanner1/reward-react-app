@@ -57,7 +57,7 @@ class FitnessService {
 
   async selectGoal(customerId, daily_steps) {
     await db.execute(
-      `INSERT INTO fitness_goals (customer_id, daily_steps, start_date)
+      `INSERT INTO fitness_goals (user_id, daily_steps, start_date)
        VALUES (?, ?, CURDATE())`,
       [customerId, daily_steps],
     );
@@ -65,7 +65,7 @@ class FitnessService {
 
   async saveBasicProfile(customerId, gender, age) {
     await db.execute(
-      `INSERT INTO fitness_profiles (customer_id, gender, age)
+      `INSERT INTO fitness_profiles (user_id, gender, age)
        VALUES (?, ?, ?)
        ON DUPLICATE KEY UPDATE gender=?, age=?`,
       [customerId, gender, age, gender, age],
@@ -78,7 +78,7 @@ class FitnessService {
     await db.execute(
       `UPDATE fitness_profiles
        SET height_cm=?, weight_kg=?, bmi=?
-       WHERE customer_id=?`,
+       WHERE user_id=?`,
       [height, weight, bmi, customerId],
     );
   }
