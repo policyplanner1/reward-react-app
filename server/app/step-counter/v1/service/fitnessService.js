@@ -1,6 +1,10 @@
 const FitnessModel = require("../models/fitnessModel");
 const db = require("../../../../config/database");
 
+const formatDate = (date) => {
+  return new Date(date).toLocaleDateString("en-CA"); // YYYY-MM-DD
+};
+
 class FitnessService {
   // steps
   async syncSteps(customerId, payload) {
@@ -34,8 +38,9 @@ class FitnessService {
       if (steps <= previousSteps) {
         return {
           message: "No new steps to process",
-          goalAchieved: Math.max(previousSteps, steps) >= goal.daily_steps,
+          goalAchieved: previousSteps >= goal.daily_steps,
           reward: 0,
+          currentStreak: streakData?.current_streak || 0,
         };
       }
 
@@ -93,9 +98,9 @@ class FitnessService {
     if (streakData) {
       const lastDate = new Date(streakData.last_goal_completed_date);
 
-      const lastDateStr = lastDate.toISOString().slice(0, 10);
-      const todayStr = today.toISOString().slice(0, 10);
-      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+      const lastDateStr = formatDate(lastDate);
+      const todayStr = formatDate(today);
+      const yesterdayStr = formatDate(yesterday);
 
       if (lastDateStr === yesterdayStr) {
         currentStreak = streakData.current_streak + 1;
@@ -149,6 +154,7 @@ class FitnessService {
         date,
         "goal",
         null,
+        conn,
       );
 
       let showGoalPopup = false;
@@ -182,6 +188,7 @@ class FitnessService {
           date,
           "streak",
           currentStreak,
+          conn,
         );
 
         if (!alreadyStreakRewarded) {
@@ -229,6 +236,7 @@ class FitnessService {
             date,
             "achievement",
             achievement.achievement_id,
+            conn,
           );
 
           if (!alreadyGiven) {
@@ -267,6 +275,13 @@ class FitnessService {
         );
 
         await conn.execute(
+          `INSERT INTO customer_wallet (user_id, balance)
+            VALUES (?, 0)
+            ON DUPLICATE KEY UPDATE user_id = user_id`,
+          [customerId],
+        );
+
+        await conn.execute(
           `UPDATE customer_wallet
          SET balance = balance + ?
          WHERE user_id = ?`,
@@ -297,7 +312,7 @@ class FitnessService {
 
   // Dashboard
   async getDashboard(customerId) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = formatDate(new Date());
 
     const steps = await FitnessModel.getTodaySteps(customerId, today);
     const goal = await FitnessModel.getGoal(customerId);
@@ -548,7 +563,7 @@ class FitnessService {
 
   // Get todays summary (for dashboard)
   async getTodaySummary(customerId) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = formatDate(new Date());
 
     const stepsData = await FitnessModel.getStepsByDate(customerId, today);
     const goal = await FitnessModel.getGoal(customerId);
@@ -569,18 +584,48 @@ class FitnessService {
 
   // Weekly progress
   async getWeeklyProgress(customerId) {
+    const formatDate = (date) => new Date(date).toLocaleDateString("en-CA"); // YYYY-MM-DD
+
+    const days = 7;
+
     const [rows] = await db.execute(
       `
     SELECT step_date, steps
     FROM fitness_steps
     WHERE user_id = ?
-    AND step_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-    ORDER BY step_date ASC
+    AND step_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
     `,
-      [customerId],
+      [customerId, days],
     );
 
-    return rows;
+    // -------------------------------
+    // Convert DB rows → map
+    // -------------------------------
+    const dataMap = {};
+
+    rows.forEach((row) => {
+      const dateStr = formatDate(row.step_date);
+      dataMap[dateStr] = row.steps;
+    });
+
+    // -------------------------------
+    // Fill missing days
+    // -------------------------------
+    const result = [];
+
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+
+      const dateStr = formatDate(d);
+
+      result.push({
+        date: dateStr,
+        steps: dataMap[dateStr] || 0,
+      });
+    }
+
+    return result;
   }
 
   async getStreak(customerId) {

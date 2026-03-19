@@ -123,8 +123,8 @@ class FitnessModel {
     );
   }
 
-  async hasReward(customerId, date, type, referenceId = null) {
-    const [rows] = await db.execute(
+  async hasReward(customerId, date, type, referenceId = null,conn) {
+    const [rows] = await conn.execute(
       `SELECT id FROM fitness_rewards_log
      WHERE user_id = ?
      AND reward_date = ?
