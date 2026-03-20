@@ -511,6 +511,22 @@ class CheckoutModel {
         ? Math.round((productTotal * rewardPercent) / 100)
         : 0;
 
+      // =====================
+      //   Wallet validation (only if rewards applied)
+      // =====================
+      // if (useRewards && rewardDiscountAmount > 0) {
+      //   const [[wallet]] = await conn.execute(
+      //     `SELECT balance FROM customer_wallet WHERE user_id = ? LIMIT 1`,
+      //     [userId],
+      //   );
+
+      //   const balance = wallet?.balance || 0;
+
+      //   if (balance < rewardDiscountAmount) {
+      //     throw new Error("INSUFFICIENT_REWARDS");
+      //   }
+      // }
+
       const finalProductTotal = productTotal - rewardDiscountAmount;
 
       const weightGrams = Math.round(quantity * Number(variant.weight) * 1000);
@@ -548,10 +564,19 @@ class CheckoutModel {
 
       const [orderRes] = await conn.execute(
         `
-      INSERT INTO eorders (user_id, company_id, total_amount, order_ref,address_id)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO eorders (user_id, company_id, total_amount, order_ref,address_id, product_total, reward_discount, reward_used)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `,
-        [userId, companyId, finalTotal, orderRef, addressId],
+        [
+          userId,
+          companyId,
+          finalTotal,
+          orderRef,
+          addressId,
+          productTotal,
+          rewardDiscountAmount,
+          useRewards ? 1 : 0,
+        ],
       );
 
       const orderId = orderRes.insertId;
@@ -572,8 +597,8 @@ class CheckoutModel {
       await conn.execute(
         `
         INSERT INTO eorder_items
-        (order_id, vendor_order_id, product_id, variant_id, quantity, price)
-        VALUES (?, ?, ?, ?, ?, ?)
+        (order_id, vendor_order_id, product_id, variant_id, quantity, price, reward_discount)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         `,
         [
           orderId,
@@ -582,6 +607,7 @@ class CheckoutModel {
           variantId,
           quantity,
           variant.sale_price,
+          rewardDiscountAmount,
         ],
       );
 
@@ -609,6 +635,46 @@ class CheckoutModel {
           height,
         ],
       );
+
+      // =====================
+      // WALLET DEDUCTION
+      // =====================
+
+      // if (useRewards && rewardDiscountAmount > 0) {
+      //   // Deduct balance
+      //   await conn.execute(
+      //     `
+      //     UPDATE customer_wallet
+      //     SET balance = balance - ?
+      //     WHERE user_id = ?
+      //     `,
+      //     [rewardDiscountAmount, userId],
+      //   );
+
+      //   // Insert wallet transaction
+      //   await conn.execute(
+      //     `
+      //     INSERT INTO wallet_transactions
+      //     (
+      //       user_id,
+      //       title,
+      //       description,
+      //       transaction_type,
+      //       coins,
+      //       category,
+      //       reference_id
+      //     )
+      //     VALUES (?, ?, ?, 'debit', ?, 'order', ?)
+      //     `,
+      //     [
+      //       userId,
+      //       "Coins used for order",
+      //       `Used ${rewardDiscountAmount} coins for order #${orderId}`,
+      //       rewardDiscountAmount,
+      //       orderId,
+      //     ],
+      //   );
+      // }
 
       // 9 Invoice generation
       await generateInvoices(orderId, conn);
