@@ -627,7 +627,7 @@ class CheckoutModel {
   }
 
   // GET CHECKOUT CART DETAILS
-  async getCheckoutCart(userId) {
+  async getCheckoutCart(userId, useRewards = true) {
     const [rows] = await db.execute(
       `
       SELECT 
@@ -685,9 +685,9 @@ class CheckoutModel {
 
       const itemTotal = salePrice * quantity;
 
-      const rewardDiscountAmount = Math.round(
-        (itemTotal * rewardPercent) / 100,
-      );
+      const rewardDiscountAmount = useRewards
+        ? Math.round((itemTotal * rewardPercent) / 100)
+        : 0;
 
       const finalItemTotal = itemTotal - rewardDiscountAmount;
 

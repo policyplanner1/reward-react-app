@@ -157,7 +157,12 @@ class CheckoutController {
         });
       }
 
-      const checkoutData = await CheckoutModel.getCheckoutCart(userId);
+      const { use_rewards = "true" } = req.query;
+
+      const checkoutData = await CheckoutModel.getCheckoutCart(
+        userId,
+        use_rewards === "true",
+      );
 
       return res.json({
         success: true,
