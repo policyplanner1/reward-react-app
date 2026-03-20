@@ -32,7 +32,6 @@ class CheckoutController {
         addressId,
       );
 
-
       // await NotificationModel.create({
       //   userId,
       //   type: "order",
@@ -113,7 +112,6 @@ class CheckoutController {
         companyId: company_id || null,
         addressId: address_id,
       });
-
 
       // await NotificationModel.create({
       //   userId,
@@ -208,12 +206,13 @@ class CheckoutController {
         });
       }
 
-      const { product_id, variant_id, qty = 1 } = req.query;
+      const { product_id, variant_id, qty = 1, use_rewards = true } = req.query;
 
       const checkoutData = await CheckoutModel.getBuyNowCheckout({
         productId: Number(product_id),
         variantId: Number(variant_id),
         quantity: Number(qty),
+        useRewards: use_rewards === "true",
         userId,
       });
 
