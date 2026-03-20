@@ -12,7 +12,7 @@ async function sendNewEnquiryEmail(data) {
   });
 
   await sendMail({
-    to: "devashishpal15@gmail.com",
+    to: "info@rewardplanners.com",
     subject: "New Enquiry Received",
     html,
   });

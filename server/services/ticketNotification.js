@@ -11,7 +11,7 @@ async function sendNewTicketMail(data) {
   });
 
   await sendMail({
-    to: 'devashishpal15@gmail.com',
+    to: 'info@rewardplanners.com',
     subject: "New Support Ticket",
     html,
   });
