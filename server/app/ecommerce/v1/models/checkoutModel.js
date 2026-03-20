@@ -441,6 +441,7 @@ class CheckoutModel {
     quantity,
     companyId = null,
     addressId,
+    useRewards = true,
   }) {
     const conn = await db.getConnection();
 
@@ -452,11 +453,13 @@ class CheckoutModel {
         `
       SELECT 
         v.sale_price,
+        v.mrp,
         v.stock,
         v.weight,
         v.length,
         v.breadth,
         v.height,
+        v.reward_redemption_limit,
         p.vendor_id
       FROM product_variants v
       JOIN eproducts p ON v.product_id = p.product_id
@@ -499,7 +502,16 @@ class CheckoutModel {
         throw new Error("VENDOR_ADDRESS_MISSING");
       }
 
-      const productTotal = quantity * Number(variant.sale_price);
+      const salePrice = Number(variant.sale_price) || 0;
+      const rewardPercent = Number(variant.reward_redemption_limit) || 0;
+
+      const productTotal = quantity * salePrice;
+
+      const rewardDiscountAmount = useRewards
+        ? Math.round((productTotal * rewardPercent) / 100)
+        : 0;
+
+      const finalProductTotal = productTotal - rewardDiscountAmount;
 
       const weightGrams = Math.round(quantity * Number(variant.weight) * 1000);
       const length = Math.round(variant.length);
@@ -528,7 +540,7 @@ class CheckoutModel {
 
       const shippingCharge = Number(cheapest.total_charges);
 
-      const finalTotal = productTotal + shippingCharge;
+      const finalTotal = finalProductTotal + shippingCharge;
 
       // 5 Create order
 
@@ -831,7 +843,6 @@ class CheckoutModel {
       v.length,
       v.breadth,
       v.height,
-      v.reward_redemption_limit,
       GROUP_CONCAT(pi.image_url ORDER BY pi.sort_order ASC) AS images
     FROM product_variants v
     JOIN eproducts p ON v.product_id = p.product_id

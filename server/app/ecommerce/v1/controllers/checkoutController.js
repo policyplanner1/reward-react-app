@@ -88,6 +88,7 @@ class CheckoutController {
         quantity = 1,
         company_id,
         address_id,
+        use_rewards = true,
       } = req.body;
 
       if (!address_id) {
@@ -111,6 +112,7 @@ class CheckoutController {
         quantity,
         companyId: company_id || null,
         addressId: address_id,
+        useRewards: use_rewards,
       });
 
       // await NotificationModel.create({
