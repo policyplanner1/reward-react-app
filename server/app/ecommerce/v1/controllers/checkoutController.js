@@ -18,6 +18,7 @@ class CheckoutController {
 
       const companyId = req.body?.company_id ?? null;
       const addressId = req.body?.address_id;
+      const useRewards = req.body?.use_rewards ?? true;
 
       if (!addressId) {
         return res.status(400).json({
@@ -30,6 +31,7 @@ class CheckoutController {
         userId,
         companyId,
         addressId,
+        useRewards,
       );
 
       // await NotificationModel.create({
@@ -59,6 +61,27 @@ class CheckoutController {
         return res.status(400).json({
           success: false,
           message: "One or more items are out of stock",
+        });
+      }
+
+      if (error.message === "INSUFFICIENT_REWARDS") {
+        return res.status(400).json({
+          success: false,
+          message: "Not enough reward coins",
+        });
+      }
+
+      if (error.message === "INVALID_ADDRESS") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid address",
+        });
+      }
+
+      if (error.message === "NOT_SERVICEABLE") {
+        return res.status(400).json({
+          success: false,
+          message: "Delivery not available for this address",
         });
       }
 

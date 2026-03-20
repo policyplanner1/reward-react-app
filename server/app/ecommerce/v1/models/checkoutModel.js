@@ -180,7 +180,7 @@ async function generateInvoices(orderId, conn) {
 
 class CheckoutModel {
   // Buy cart items
-  async checkoutCart(userId, companyId = null, addressId) {
+  async checkoutCart(userId, companyId = null, addressId, useRewards = true) {
     const conn = await db.getConnection();
 
     try {
@@ -194,11 +194,13 @@ class CheckoutModel {
           ci.variant_id,
           ci.quantity,
           v.sale_price,
+          v.mrp,
           v.stock,
           v.weight,
           v.length,
           v.breadth,
           v.height,
+          v.reward_redemption_limit,
           p.vendor_id
         FROM cart_items ci
         JOIN product_variants v ON ci.variant_id = v.variant_id
@@ -227,6 +229,55 @@ class CheckoutModel {
       if (!customerAddress) {
         throw new Error("INVALID_ADDRESS");
       }
+
+      // =====================
+      //  PRICING CALCULATION
+      // =====================
+
+      let productTotal = 0;
+      let totalDiscount = 0;
+
+      const itemPricingMap = {};
+
+      for (const item of cartItems) {
+        const salePrice = Number(item.sale_price);
+        const quantity = Number(item.quantity);
+        const rewardPercent = Number(item.reward_redemption_limit) || 0;
+
+        const itemTotal = salePrice * quantity;
+
+        const rewardDiscount = useRewards
+          ? Math.round((itemTotal * rewardPercent) / 100)
+          : 0;
+
+        const finalItemTotal = itemTotal - rewardDiscount;
+
+        productTotal += itemTotal;
+        totalDiscount += rewardDiscount;
+
+        itemPricingMap[item.variant_id] = {
+          itemTotal,
+          rewardDiscount,
+          finalItemTotal,
+        };
+      }
+
+      // =====================
+      //  WALLET VALIDATION
+      // =====================
+
+      // if (useRewards && totalDiscount > 0) {
+      //   const [[wallet]] = await conn.execute(
+      //     `SELECT balance FROM customer_wallet WHERE user_id = ? LIMIT 1`,
+      //     [userId],
+      //   );
+
+      //   const balance = wallet?.balance || 0;
+
+      //   if (balance < totalDiscount) {
+      //     throw new Error("INSUFFICIENT_REWARDS");
+      //   }
+      // }
 
       // 4 Group Items by Vendor
       const vendorGroups = {};
@@ -311,27 +362,31 @@ class CheckoutModel {
       }
 
       // 6 Calculate Totals
-      const productTotal = cartItems.reduce(
-        (sum, i) => sum + i.quantity * Number(i.sale_price),
-        0,
-      );
-
       const shippingTotal = shippingResults.reduce(
         (sum, s) => sum + s.shipping_charges,
         0,
       );
 
-      const finalTotal = productTotal + shippingTotal;
+      const finalTotal = productTotal - totalDiscount + shippingTotal;
 
       // 7 Create order
       const orderRef = generateOrderRef();
 
       const [orderRes] = await conn.execute(
         `
-        INSERT INTO eorders (user_id, company_id, total_amount,order_ref,address_id)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO eorders (user_id, company_id, total_amount,order_ref,address_id, product_total, reward_discount, reward_used)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `,
-        [userId, companyId, finalTotal, orderRef, addressId],
+        [
+          userId,
+          companyId,
+          finalTotal,
+          orderRef,
+          addressId,
+          productTotal,
+          totalDiscount,
+          useRewards ? 1 : 0,
+        ],
       );
 
       const orderId = orderRes.insertId;
@@ -356,13 +411,14 @@ class CheckoutModel {
 
       // 9 Order items + stock deduction
       for (const item of cartItems) {
+        const pricing = itemPricingMap[item.variant_id];
         const vendorOrderId = vendorOrders[item.vendor_id];
 
         await conn.execute(
           `
         INSERT INTO eorder_items
-        (order_id, vendor_order_id, product_id, variant_id, quantity, price)
-        VALUES (?, ?, ?, ?, ?, ?)
+        (order_id, vendor_order_id, product_id, variant_id, quantity, price, reward_discount)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         `,
           [
             orderId,
@@ -371,6 +427,7 @@ class CheckoutModel {
             item.variant_id,
             item.quantity,
             item.sale_price,
+            pricing.rewardDiscount,
           ],
         );
 
@@ -416,6 +473,44 @@ class CheckoutModel {
           ],
         );
       }
+
+      // =====================
+      //  WALLET DEDUCTION
+      // =====================
+
+      // if (useRewards && totalDiscount > 0) {
+      //   await conn.execute(
+      //     `
+      //   UPDATE customer_wallet
+      //   SET balance = balance - ?
+      //   WHERE user_id = ?
+      //   `,
+      //     [totalDiscount, userId],
+      //   );
+
+      //   await conn.execute(
+      //     `
+      //   INSERT IGNORE INTO wallet_transactions
+      //   (
+      //     user_id,
+      //     title,
+      //     description,
+      //     transaction_type,
+      //     coins,
+      //     category,
+      //     reference_id
+      //   )
+      //   VALUES (?, ?, ?, 'debit', ?, 'order', ?)
+      //   `,
+      //     [
+      //       userId,
+      //       "Coins used for order",
+      //       `Used ${totalDiscount} coins for order #${orderId}`,
+      //       totalDiscount,
+      //       orderId,
+      //     ],
+      //   );
+      // }
 
       // 11 Invoice generation
       await generateInvoices(orderId, conn);
