@@ -171,6 +171,7 @@ class CheckoutController {
         mode: "cart",
         items: checkoutData.items,
         totalAmount: checkoutData.productTotal,
+        rewardUsed: checkoutData.rewardUsed,
         totalDiscount: checkoutData.totalDiscount,
         shippingTotal: checkoutData.shippingTotal,
         payableAmount: checkoutData.payableAmount,

@@ -753,7 +753,7 @@ class CheckoutModel {
     let payableAmount = 0;
 
     const items = rows.map((row) => {
-      if (row.quantity > row.stock) {
+      if (row.quantity > row.stock || row.stock <= 0) {
         throw new Error("OUT_OF_STOCK");
       }
 
@@ -789,6 +789,27 @@ class CheckoutModel {
         stock: row.stock,
       };
     });
+
+    // =====================
+    // WALLET VALIDATION (GLOBAL)
+    // =====================
+
+    // if (useRewards && totalDiscount > 0) {
+    //   const [walletRows] = await db.execute(
+    //     `SELECT balance FROM customer_wallet WHERE user_id = ? LIMIT 1`,
+    //     [userId],
+    //   );
+
+    //   const balance = walletRows?.[0]?.balance || 0;
+
+    //   if (balance < totalDiscount) {
+    //     throw new Error("INSUFFICIENT_REWARDS");
+    //   }
+    // }
+
+    // =====================
+    // ADDRESS
+    // =====================
 
     const [addressRows] = await db.execute(
       `SELECT zipcode FROM customer_addresses
@@ -830,6 +851,9 @@ class CheckoutModel {
       group.height += Number(row.height) * row.quantity;
     }
 
+    // =====================
+    // SHIPPING
+    // =====================
     let shippingTotal = 0;
     const shippingBreakdown = [];
 
@@ -879,6 +903,7 @@ class CheckoutModel {
     return {
       items,
       productTotal: totalAmount,
+      rewardUsed: useRewards,
       totalDiscount,
       shippingTotal,
       payableAmount: payableAmount + shippingTotal,
