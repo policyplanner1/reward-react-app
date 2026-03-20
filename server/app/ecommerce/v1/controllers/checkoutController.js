@@ -228,6 +228,8 @@ class CheckoutController {
         mode: "buy_now",
         item: checkoutData.item,
         totalAmount: checkoutData.totalAmount,
+        productTotal: checkoutData.productTotal,
+        rewardUsed: checkoutData.rewardUsed,
         totalDiscount: checkoutData.totalDiscount,
         payableAmount: checkoutData.payableAmount,
         shippingTotal: checkoutData.shippingTotal,

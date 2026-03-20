@@ -825,7 +825,7 @@ class CheckoutModel {
     productId,
     variantId,
     quantity,
-    useRewards,
+    useRewards = true,
     userId,
   }) {
     const [[row]] = await db.execute(
@@ -857,7 +857,7 @@ class CheckoutModel {
       throw new Error("INVALID_VARIANT");
     }
 
-    if (quantity > row.stock) {
+    if (quantity > row.stock || row.stock <= 0) {
       throw new Error("OUT_OF_STOCK");
     }
 
@@ -871,6 +871,23 @@ class CheckoutModel {
       : 0;
 
     const finalItemTotal = itemTotal - rewardDiscountAmount;
+
+    // =====================
+    //   Wallet validation (only if rewards applied)
+    // =====================
+
+    // if (useRewards && rewardDiscountAmount > 0) {
+    //   const [walletRows] = await db.execute(
+    //     `SELECT balance FROM customer_wallet WHERE user_id = ? LIMIT 1`,
+    //     [userId],
+    //   );
+
+    //   const walletBalance = walletRows?.[0]?.balance || 0;
+
+    //   if (walletBalance < rewardDiscountAmount) {
+    //     throw new Error("INSUFFICIENT_REWARDS");
+    //   }
+    // }
 
     // =====================
     // SHIPPING CALCULATION
@@ -944,13 +961,15 @@ class CheckoutModel {
         price: salePrice,
         quantity,
         perUnitDiscount: Number(row.mrp - salePrice),
-        item_total: itemTotal,
-        points: rewardDiscountAmount,
-        final_item_total: finalItemTotal,
+        item_total: itemTotal, //original
+        points: rewardDiscountAmount, //new
+        final_item_total: finalItemTotal, //after reward
         stock: row.stock,
       },
+      productTotal: itemTotal,
       totalAmount: itemTotal,
       totalDiscount: rewardDiscountAmount,
+      rewardUsed: useRewards,
       shippingTotal: shippingCharge,
       payableAmount: finalPayable,
       shippingBreakdown: [
