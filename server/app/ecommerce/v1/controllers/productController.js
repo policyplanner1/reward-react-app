@@ -3,6 +3,25 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 
+// Helper function
+function calculateReward(price, product) {
+  if (!product.can_earn_reward) return 0;
+
+  let reward = 0;
+
+  if (product.reward_type === "fixed") {
+    reward = product.reward_value;
+  } else {
+    reward = (price * product.reward_value) / 100;
+  }
+
+  if (product.max_reward) {
+    reward = Math.min(reward, product.max_reward);
+  }
+
+  return Math.floor(reward);
+}
+
 class ProductController {
   // all the products
   async getAllProducts(req, res) {
@@ -133,20 +152,23 @@ class ProductController {
             : null;
 
         const salePrice = product.sale_price ? Number(product.sale_price) : 0;
-
-        const discountPercent = product.reward_redemption_limit
-          ? Number(product.reward_redemption_limit)
-          : 0;
-
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
-
-        const finalPrice = salePrice - discountAmount;
-
-        // extra discount
         const mrp = product.mrp ? Number(product.mrp) : 0;
 
+        // const discountPercent = product.reward_redemption_limit
+        //   ? Number(product.reward_redemption_limit)
+        //   : 0;
+
+        // const discountAmount = Math.round((salePrice * discountPercent) / 100);
+
+        // const finalPrice = salePrice - rewardCoins;
+
+        // const mrpDiscountPercent =
+        //   mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        const rewardCoins = calculateReward(salePrice, product);
+
         const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+          mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
         return {
           id: product.product_id,
@@ -161,8 +183,10 @@ class ProductController {
           discount: `${mrpDiscountPercent}%`,
           rating: product.avg_rating,
           reviews: product.rating_count,
-          pointsPrice: salePrice ? `₹${finalPrice}` : null,
-          points: discountAmount,
+          // pointsPrice: salePrice ? `₹${finalPrice}` : null,
+          // points: discountAmount,
+          rewardCoins: rewardCoins,
+          rewardLabel: rewardCoins > 0 ? `${rewardCoins} coins` : null,
         };
       });
 
