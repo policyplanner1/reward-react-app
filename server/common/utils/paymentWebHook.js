@@ -145,15 +145,34 @@ async function processShipmentsAfterPayment(orderId) {
 
     for (const shipment of shipments) {
       try {
+        // 1 Skip if already booked
         if (shipment.shipment_id || shipment.awb_number) {
           continue;
         }
 
+        // 2 Lock the shipment row for booking
+        const [lock] = await conn.query(
+          `
+            UPDATE order_shipments
+            SET booking_in_progress = 1
+            WHERE id = ?
+            AND shipping_status = 'pending'
+            AND booking_in_progress = 0
+          `,
+          [shipment.id],
+        );
+
+        if (lock.affectedRows === 0) {
+          continue;
+        }
+
+        // 3 Build payload
         const payload = await buildXpressBookingPayload(
           orderId,
           shipment.vendor_id,
         );
 
+        // 4 Call booking API
         const xpResponse = await xpressService.bookShipment(payload);
 
         if (!xpResponse.status) {
@@ -162,15 +181,19 @@ async function processShipmentsAfterPayment(orderId) {
 
         const data = xpResponse.data;
 
-        const [updateResult] = await conn.query(
-          `UPDATE order_shipments
-           SET shipment_id = ?,
-               awb_number = ?,
-               label_url = ?,
-               manifest_url = ?,
-               shipping_status = 'booked'
-           WHERE id = ?
-             AND shipping_status = 'pending'`,
+        // update shipment row
+        await conn.query(
+          `
+          UPDATE order_shipments
+          SET shipment_id = ?,
+              awb_number = ?,
+              label_url = ?,
+              manifest_url = ?,
+              shipping_status = 'booked',
+              booking_in_progress = 0,
+              booked_at = NOW()
+          WHERE id = ?
+        `,
           [
             data.shipment_id,
             data.awb_number,
@@ -179,19 +202,20 @@ async function processShipmentsAfterPayment(orderId) {
             shipment.id,
           ],
         );
-
-        if (updateResult.affectedRows === 0) {
-          continue;
-        }
       } catch (err) {
         console.error(`Shipment booking failed for ${shipment.id}`, err);
-
-        // await conn.query(
-        //   `UPDATE order_shipments
-        //    SET shipping_status = 'pending'
-        //    WHERE id = ?`,
-        //   [shipment.id],
-        // );
+        //   HANDLE FAILURE + RELEASE LOCK
+        await conn.query(
+          `
+      UPDATE order_shipments
+      SET booking_in_progress = 0,
+          booking_attempts = booking_attempts + 1,
+          last_booking_error = ?,
+          booking_last_attempt_at = NOW()
+      WHERE id = ?
+    `,
+          [err.message, shipment.id],
+        );
       }
     }
   } finally {
@@ -383,4 +407,4 @@ async function handleWebhook(req, res) {
   }
 }
 
-module.exports = { handleWebhook };
+module.exports = { handleWebhook, processShipmentsAfterPayment };

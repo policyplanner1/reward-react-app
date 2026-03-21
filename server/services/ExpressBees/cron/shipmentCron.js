@@ -2,6 +2,9 @@ const cron = require("node-cron");
 const xpressService = require("../xpressbees_service");
 const db = require("../../../config/database");
 const NotificationModel = require("../../../app/ecommerce/v1/models/notificationModel");
+const {
+  processShipmentsAfterPayment,
+} = require("../../../common/utils/paymentWebHook");
 
 // =====================
 // STATUS MAPPING
@@ -123,6 +126,19 @@ async function updateShipmentTracking(shipment) {
     if (newStatus === shipment.shipping_status) return;
 
     await db.query(
+      `
+      INSERT INTO shipment_events (shipment_id, status, raw_status, description)
+      VALUES (?, ?, ?, ?)
+    `,
+      [
+        shipment.id,
+        newStatus,
+        response.data.current_status,
+        response.data.current_status,
+      ],
+    );
+
+    await db.query(
       `UPDATE order_shipments
        SET shipping_status = ?
        WHERE id = ?`,
@@ -159,7 +175,7 @@ async function updateShipmentTracking(shipment) {
 // =====================
 cron.schedule("*/10 * * * *", async () => {
   try {
-    console.log("cron running");
+    console.log("🚚 Tracking cron running...");
     const [shipments] = await db.query(
       `SELECT id, order_id, awb_number, shipping_status
        FROM order_shipments
@@ -172,5 +188,32 @@ cron.schedule("*/10 * * * *", async () => {
     );
   } catch (err) {
     console.error("Tracking cron error:", err);
+  }
+});
+
+// =====================
+// RETRY FAILED BOOKINGS
+// =====================
+cron.schedule("*/10 * * * *", async () => {
+  try {
+    console.log("🔁 Booking retry cron running...");
+
+    const [shipments] = await db.query(`
+      SELECT DISTINCT order_id
+      FROM order_shipments
+      WHERE shipping_status IN ('pending', 'booking_failed')
+      AND booking_attempts < 5
+      AND booking_in_progress = 0
+    `);
+
+    for (const row of shipments) {
+      try {
+        await processShipmentsAfterPayment(row.order_id);
+      } catch (err) {
+        console.error("Retry failed for order:", row.order_id, err);
+      }
+    }
+  } catch (err) {
+    console.error("Booking retry cron error:", err);
   }
 });
