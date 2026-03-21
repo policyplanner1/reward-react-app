@@ -732,7 +732,7 @@ class CheckoutModel {
           length,
           breadth,
           height,
-          JSON.stringify(cheapest.options || {}),
+          JSON.stringify(serviceResponse.data),
         ],
       );
 
