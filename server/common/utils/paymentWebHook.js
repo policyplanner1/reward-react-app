@@ -147,11 +147,15 @@ async function processShipmentsAfterPayment(orderId) {
       [orderId],
     );
 
+    if (!order) return;
+
     if (order?.shipment_sync_status === "completed") {
       return;
     }
 
-    // Fetch only shipments ready for booking
+    // ==========================
+    // FETCH SHIPMENTS (WITH RETRY + COOLDOWN)
+    // ==========================
     const [shipments] = await conn.query(
       `
         SELECT * FROM order_shipments
@@ -200,17 +204,52 @@ async function processShipmentsAfterPayment(orderId) {
           continue;
         }
 
+        // ==========================
+        // COURIER FALLBACK LOGIC
+        // ==========================
+        const allCouriers = JSON.parse(shipment.courier_options || "[]");
+        const attempted = JSON.parse(shipment.attempted_couriers || "[]");
+
+        const remainingCouriers = allCouriers.filter(
+          (c) => !attempted.includes(c.id),
+        );
+
+        if (remainingCouriers.length === 0) {
+          await conn.query(
+            `
+            UPDATE order_shipments
+            SET shipping_status = 'booking_failed',
+                booking_in_progress = 0
+            WHERE id = ?
+            `,
+            [shipment.id],
+          );
+          continue;
+        }
+
+        // Pick cheapest available courier
+        const nextCourier = remainingCouriers
+          .filter((c) => c.total_charges > 0)
+          .sort((a, b) => a.total_charges - b.total_charges)[0];
+
+        if (!nextCourier) {
+          throw new Error("No valid courier found");
+        }
+
         // 3 Build payload
         const payload = await buildXpressBookingPayload(
           orderId,
           shipment.vendor_id,
         );
 
+        // Override courier
+        payload.courier_id = nextCourier.id;
+
         // 4 Call booking API
         const xpResponse = await xpressService.bookShipment(payload);
 
         if (!xpResponse.status) {
-          throw new Error("Booking failed");
+          throw new Error(xpResponse.message || "Courier booking failed");
         }
 
         const data = xpResponse.data;
@@ -219,21 +258,31 @@ async function processShipmentsAfterPayment(orderId) {
         await conn.query(
           `
           UPDATE order_shipments
-          SET shipment_id = ?,
+          SET courier_id = ?,
+              courier_name = ?,
+              shipment_id = ?,
               awb_number = ?,
               label_url = ?,
               manifest_url = ?,
               shipping_status = 'booked',
               booking_attempts = booking_attempts + 1,
               booking_in_progress = 0,
-              booked_at = NOW()
+              booked_at = NOW(),
+              attempted_couriers = JSON_ARRAY_APPEND(
+                COALESCE(attempted_couriers, JSON_ARRAY()),
+                '$',
+                ?
+              )
           WHERE id = ?
-        `,
+          `,
           [
+            nextCourier.id,
+            nextCourier.name,
             data.shipment_id,
             data.awb_number,
             data.label,
             data.manifest,
+            nextCourier.id,
             shipment.id,
           ],
         );
@@ -242,18 +291,23 @@ async function processShipmentsAfterPayment(orderId) {
         //   HANDLE FAILURE + RELEASE LOCK
         await conn.query(
           `
-            UPDATE order_shipments
-            SET booking_in_progress = 0,
-                booking_attempts = booking_attempts + 1,
-                last_booking_error = ?,
-                booking_last_attempt_at = NOW(),
-                shipping_status = CASE
-                  WHEN booking_attempts + 1 >= 5 THEN 'booking_failed'
-                  ELSE 'pending'
-                END
-            WHERE id = ?
+          UPDATE order_shipments
+          SET booking_in_progress = 0,
+              booking_attempts = booking_attempts + 1,
+              last_booking_error = ?,
+              booking_last_attempt_at = NOW(),
+              attempted_couriers = JSON_ARRAY_APPEND(
+                COALESCE(attempted_couriers, JSON_ARRAY()),
+                '$',
+                ?
+              ),
+              shipping_status = CASE
+                WHEN booking_attempts + 1 >= 5 THEN 'booking_failed'
+                ELSE 'pending'
+              END
+          WHERE id = ?
           `,
-          [err.message, shipment.id],
+          [err.message, shipment.courier_id || null, shipment.id],
         );
       }
     }
