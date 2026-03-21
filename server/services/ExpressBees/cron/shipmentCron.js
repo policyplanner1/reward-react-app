@@ -125,6 +125,36 @@ async function updateShipmentTracking(shipment) {
 
     if (newStatus === shipment.shipping_status) return;
 
+    // =====================
+    // TIMESTAMP MAPPING
+    // =====================
+    const statusTimeMap = {
+      picked_up: "picked_up_at",
+      in_transit: "in_transit_at",
+      out_for_delivery: "out_for_delivery_at",
+      delivered: "delivered_at",
+      rto: "rto_at",
+    };
+
+    const timeColumn = statusTimeMap[newStatus];
+
+    // =====================
+    // UPDATE SHIPMENT FIRST
+    // =====================
+    await db.query(
+      `
+      UPDATE order_shipments
+      SET shipping_status = ?,
+          ${timeColumn ? `${timeColumn} = NOW(),` : ""}
+          last_tracking_payload = ?
+      WHERE id = ?
+    `,
+      [newStatus, JSON.stringify(response.data), shipment.id],
+    );
+
+    // =====================
+    // INSERT EVENT AFTER UPDATE
+    // =====================
     await db.query(
       `
       INSERT INTO shipment_events (shipment_id, status, raw_status, description)
@@ -138,13 +168,9 @@ async function updateShipmentTracking(shipment) {
       ],
     );
 
-    await db.query(
-      `UPDATE order_shipments
-       SET shipping_status = ?
-       WHERE id = ?`,
-      [newStatus, shipment.id],
-    );
-
+    // =====================
+    // NDR LOGIC
+    // =====================
     if (newStatus === "ndr") {
       const [existing] = await db.query(
         `SELECT id FROM shipment_ndr_logs
