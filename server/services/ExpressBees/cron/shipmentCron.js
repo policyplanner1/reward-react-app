@@ -59,48 +59,54 @@ async function syncOrderStatus(orderId) {
   const statuses = shipments.map((s) => s.shipping_status);
   const userId = shipments[0].user_id;
 
+  let finalStatus = null;
+
+  // =====================
+  // STATUS PRIORITY LOGIC
+  // =====================
   if (statuses.every((s) => s === "delivered")) {
-    const [result] = await db.query(
-      `UPDATE eorders
-       SET status = 'delivered'
-       WHERE order_id = ?
-       AND status != 'delivered'`,
-      [orderId],
-    );
-
-    // Create notification only if status was actually updated
-    if (result.affectedRows > 0) {
-      await NotificationModel.create({
-        user_id: userId,
-        type: "delivery",
-        title: "Order Successful 📦",
-        message: "Your package has been delivered successfully.",
-        reference_type: "order",
-        reference_id: orderId,
-      });
-    }
-
-    return;
+    finalStatus = "delivered";
+  } else if (statuses.some((s) => s === "ndr")) {
+    finalStatus = "delivery_failed";
+  } else if (statuses.every((s) => s === "rto")) {
+    finalStatus = "rto";
+  } else if (
+    statuses.some((s) =>
+      ["in_transit", "picked_up", "out_for_delivery"].includes(s),
+    )
+  ) {
+    finalStatus = "shipped";
+  } else if (statuses.some((s) => s === "booked")) {
+    finalStatus = "processing";
   }
 
-  if (statuses.every((s) => s === "rto")) {
-    await db.query(
-      `UPDATE eorders
-       SET status = 'rto'
-       WHERE order_id = ?`,
-      [orderId],
-    );
-    return;
-  }
+  if (!finalStatus) return;
 
-  if (statuses.includes("ndr")) {
-    await db.query(
-      `UPDATE eorders
-       SET status = 'delivery_failed'
-       WHERE order_id = ?`,
-      [orderId],
-    );
-    return;
+  // =====================
+  // UPDATE ONLY IF CHANGED
+  // =====================
+  const [result] = await db.query(
+    `
+    UPDATE eorders
+    SET status = ?
+    WHERE order_id = ?
+    AND status != ?
+    `,
+    [finalStatus, orderId, finalStatus],
+  );
+
+  // =====================
+  // NOTIFICATION (ONLY ON DELIVERY)
+  // =====================
+  if (finalStatus === "delivered" && result.affectedRows > 0) {
+    await NotificationModel.create({
+      user_id: userId,
+      type: "delivery",
+      title: "Order Successful 📦",
+      message: "Your package has been delivered successfully.",
+      reference_type: "order",
+      reference_id: orderId,
+    });
   }
 }
 
