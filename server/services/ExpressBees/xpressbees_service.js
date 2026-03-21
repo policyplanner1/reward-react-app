@@ -96,6 +96,36 @@ async function checkServiceability(payload) {
 }
 
 // ==========================
+// CREATE NDR EXCEPTIONS
+// ==========================
+
+async function createNDRException(actions) {
+  try {
+    const token = await getXpressToken();
+
+    const response = await axios.post(
+      "https://shipment.xpressbees.com/api/ndr/create",
+      actions,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "XpressBees NDR Create Error:",
+      error.response?.data || error.message,
+    );
+
+    throw new Error("NDR action failed");
+  }
+}
+
+// ==========================
 // Resolve NDR
 // ==========================
 async function resolveNDR({ shipmentId, action, new_address_id, notes }) {
@@ -115,29 +145,72 @@ async function resolveNDR({ shipmentId, action, new_address_id, notes }) {
   }
 
   // ==========================
-  // ACTION HANDLING
+  // FETCH ADDRESS IF NEEDED
   // ==========================
+  let address = null;
 
-  // 1. RETRY DELIVERY
-  if (action === "retry") {
-    // await xpressService.reattemptDelivery(shipment.awb_number);
-  }
-
-  // 2. ADDRESS UPDATE + RETRY
   if (action === "address_update") {
     if (!new_address_id) {
       throw new Error("Address required");
     }
 
-    await db.query(
-      `
-      UPDATE shipment_ndr_logs
-      SET updated_address_id = ?
-      WHERE shipment_id = ?
-      AND resolved = 0
-    `,
-      [new_address_id, shipmentId],
+    const [addrRows] = await db.query(
+      `SELECT * FROM customer_addresses WHERE address_id = ?`,
+      [new_address_id],
     );
+
+    address = addrRows[0];
+
+    if (!address) throw new Error("Invalid address");
+  }
+
+  // ==========================
+  // PREPARE NDR PAYLOAD
+  // ==========================
+  let ndrPayload = null;
+
+  if (action === "retry") {
+    ndrPayload = [
+      {
+        awb: shipment.awb_number,
+        action: "re-attempt",
+        action_data: {
+          re_attempt_date: new Date(Date.now() + 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0], // tomorrow
+        },
+      },
+    ];
+  }
+
+  if (action === "address_update") {
+    ndrPayload = [
+      {
+        awb: shipment.awb_number,
+        action: "change_address",
+        action_data: {
+          name: address.contact_name,
+          address_1: address.address1,
+          address_2: address.address2 || "",
+        },
+      },
+    ];
+  }
+
+  // ==========================
+  // CALL COURIER API
+  // ==========================
+  if (ndrPayload) {
+    try {
+      const result = await createNDRException(ndrPayload);
+
+      if (!Array.isArray(result) || !result[0]?.status) {
+        throw new Error(result?.[0]?.message || "NDR API failed");
+      }
+    } catch (err) {
+      console.error("NDR API failed:", err);
+      throw new Error("Failed to submit NDR action to courier");
+    }
   }
 
   // 3. CANCEL SHIPMENT
@@ -332,4 +405,5 @@ module.exports = {
   cancelShipmentExpressBees,
   cancelShipment,
   resolveNDR,
+  createNDRException,
 };
