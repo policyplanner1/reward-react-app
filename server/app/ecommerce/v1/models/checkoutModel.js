@@ -716,8 +716,9 @@ class CheckoutModel {
         (order_id, vendor_order_id, vendor_id, courier_id, courier_name,
         shipping_charges, chargeable_weight,
         weight, length, breadth, height,
+        courier_options,
         shipping_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
         `,
         [
           orderId,
@@ -731,6 +732,7 @@ class CheckoutModel {
           length,
           breadth,
           height,
+          JSON.stringify(cheapest.options || {}),
         ],
       );
 
