@@ -243,6 +243,54 @@ async function updateShipmentTracking(shipment) {
       }
     }
 
+    // =====================
+    // RTO Logic
+    // =====================
+    if (newStatus === "rto" && shipment.shipping_status !== "rto") {
+      // 1 Restore stock
+      const [items] = await db.query(
+        `
+          SELECT variant_id, quantity
+          FROM eorder_items
+          WHERE vendor_order_id = ?
+        `,
+        [shipment.vendor_order_id],
+      );
+
+      for (const item of items) {
+        await db.query(
+          `
+            UPDATE product_variants
+            SET stock = stock + ?
+            WHERE variant_id = ?
+          `,
+          [item.quantity, item.variant_id],
+        );
+      }
+
+      // 2 Notify user
+      if (userId) {
+        await NotificationModel.create({
+          user_id: userId,
+          type: "rto",
+          title: "Order Returned 🚚",
+          message: "Your order could not be delivered and is being returned.",
+          reference_type: "order",
+          reference_id: shipment.order_id,
+        });
+      }
+
+      // // 3 Optional: mark refund
+      // await db.query(
+      //   `
+      //     UPDATE eorders
+      //     SET refund_status = 'pending'
+      //     WHERE order_id = ?
+      //   `,
+      //   [shipment.order_id],
+      // );
+    }
+
     await syncOrderStatus(shipment.order_id);
   } catch (err) {
     console.error("Tracking update failed:", err);
@@ -256,7 +304,7 @@ cron.schedule("*/10 * * * *", async () => {
   try {
     console.log("🚚 Tracking cron running...");
     const [shipments] = await db.query(
-      `SELECT id, order_id, awb_number, shipping_status
+      `SELECT id, order_id,vendor_order_id, awb_number, shipping_status
        FROM order_shipments
        WHERE awb_number IS NOT NULL
          AND shipping_status NOT IN ('delivered','cancelled','rto')`,
