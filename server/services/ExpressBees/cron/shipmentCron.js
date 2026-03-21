@@ -134,6 +134,18 @@ async function updateShipmentTracking(shipment) {
     if (newStatus === shipment.shipping_status) return;
 
     // =====================
+    // FETCH USER
+    // =====================
+    const [[orderRow]] = await db.query(
+      `
+      SELECT user_id FROM eorders WHERE order_id = ?
+    `,
+      [shipment.order_id],
+    );
+
+    const userId = orderRow?.user_id;
+
+    // =====================
     // TIMESTAMP MAPPING
     // =====================
     const statusTimeMap = {
@@ -149,12 +161,16 @@ async function updateShipmentTracking(shipment) {
     // =====================
     // UPDATE SHIPMENT FIRST
     // =====================
+    const updateFields = ["shipping_status = ?", "last_tracking_payload = ?"];
+
+    if (timeColumn) {
+      updateFields.splice(1, 0, `${timeColumn} = NOW()`);
+    }
+
     await db.query(
       `
       UPDATE order_shipments
-      SET shipping_status = ?,
-          ${timeColumn ? `${timeColumn} = NOW(),` : ""}
-          last_tracking_payload = ?
+      SET ${updateFields.join(", ")}
       WHERE id = ?
     `,
       [newStatus, JSON.stringify(response.data), shipment.id],
@@ -190,11 +206,40 @@ async function updateShipmentTracking(shipment) {
 
       if (!existing.length) {
         await db.query(
-          `INSERT INTO shipment_ndr_logs
-       (shipment_id, reason)
-       VALUES (?, ?)`,
-          [shipment.id, response.data.current_status],
+          `
+          UPDATE order_shipments
+          SET is_ndr_active = 1,
+              ndr_reason = ?,
+              ndr_count = ndr_count + 1
+          WHERE id = ?
+        `,
+          [response.data.current_status, shipment.id],
         );
+
+        await db.query(
+          `
+          INSERT INTO shipment_ndr_logs
+          (shipment_id, reason, courier_status)
+          VALUES (?, ?, ?)
+        `,
+          [
+            shipment.id,
+            response.data.current_status,
+            response.data.current_status,
+          ],
+        );
+
+        if (userId) {
+          await NotificationModel.create({
+            user_id: userId,
+            type: "ndr",
+            title: "Delivery Failed 🚫",
+            message:
+              "We couldn't deliver your order. Please update your details.",
+            reference_type: "order",
+            reference_id: shipment.order_id,
+          });
+        }
       }
     }
 
