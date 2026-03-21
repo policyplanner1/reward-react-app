@@ -68,6 +68,8 @@ async function syncOrderStatus(orderId) {
     finalStatus = "delivered";
   } else if (statuses.some((s) => s === "ndr")) {
     finalStatus = "delivery_failed";
+  } else if (statuses.some((s) => s === "pending")) {
+    finalStatus = "processing";
   } else if (statuses.every((s) => s === "rto")) {
     finalStatus = "rto";
   } else if (
