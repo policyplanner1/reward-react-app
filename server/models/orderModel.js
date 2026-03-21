@@ -1,5 +1,6 @@
 const db = require("../config/database");
 const Razorpay = require("razorpay");
+const xpressService = require("../services/ExpressBees/xpressbees_service");
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZOR_API_KEY,
@@ -804,17 +805,38 @@ class OrderModel {
       [orderId],
     );
 
-    // 6 Cancel shipments
-    await conn.execute(
+    // 6. Cancel shipments
+    const [shipments] = await conn.execute(
       `
-    UPDATE order_shipments
-    SET shipping_status = 'cancelled'
-    WHERE order_id = ?
+      SELECT id, awb_number, shipping_status
+      FROM order_shipments
+      WHERE order_id = ?
     `,
       [orderId],
     );
 
-    // 7 Timeline event
+    for (const s of shipments) {
+      if (s.awb_number && ["booked", "picked_up"].includes(s.shipping_status)) {
+        try {
+          await xpressService.cancelShipmentExpressBees(s.awb_number);
+        } catch (e) {
+          console.error("Courier cancel failed", e);
+        }
+      }
+    }
+
+    // 7 Cancel shipments
+    await conn.execute(
+      `
+    UPDATE order_shipments
+  SET shipping_status = 'cancelled',
+      cancelled_at = NOW()
+  WHERE order_id = ?
+    `,
+      [orderId],
+    );
+
+    // 8 Timeline event
     await conn.execute(
       `
     INSERT INTO order_cancellation_timeline
@@ -824,7 +846,7 @@ class OrderModel {
       [orderId],
     );
 
-    // 8 Create refund record
+    // 9 Create refund record
     let refundId = null;
     if (payment) {
       const [result] = await conn.execute(
