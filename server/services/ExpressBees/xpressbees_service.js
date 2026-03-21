@@ -217,7 +217,7 @@ async function resolveNDR({ shipmentId, action, new_address_id, notes }) {
   if (action === "cancel") {
     if (shipment.awb_number) {
       try {
-        await xpressService.cancelShipmentExpressBees(shipment.awb_number);
+        await cancelShipmentExpressBees(shipment.awb_number);
       } catch (err) {
         console.error("Courier cancel failed", err);
       }
