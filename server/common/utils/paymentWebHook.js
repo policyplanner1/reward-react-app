@@ -135,13 +135,47 @@ async function processShipmentsAfterPayment(orderId) {
   const conn = await db.getConnection();
 
   try {
-    // Fetch only shipments ready for booking
-    const [shipments] = await conn.query(
-      `SELECT * FROM order_shipments
-       WHERE order_id = ?
-       AND shipping_status = 'pending'`,
+    // ==========================
+    // GUARD: CHECK IF SHIPMENT SYNC ALREADY COMPLETED
+    // ==========================
+    const [[order]] = await conn.query(
+      `
+      SELECT shipment_sync_status 
+      FROM eorders 
+      WHERE order_id = ?
+    `,
       [orderId],
     );
+
+    if (order?.shipment_sync_status === "completed") {
+      return;
+    }
+
+    // Fetch only shipments ready for booking
+    const [shipments] = await conn.query(
+      `
+        SELECT * FROM order_shipments
+        WHERE order_id = ?
+        AND shipping_status IN ('pending', 'booking_failed')
+        AND booking_in_progress = 0
+        AND (
+          booking_last_attempt_at IS NULL
+          OR booking_last_attempt_at < NOW() - INTERVAL 5 MINUTE
+        )
+      `,
+      [orderId],
+    );
+
+    if (shipments.length > 0) {
+      await conn.query(
+        `
+          UPDATE eorders
+          SET shipment_sync_status = 'in_progress'
+          WHERE order_id = ?
+        `,
+        [orderId],
+      );
+    }
 
     for (const shipment of shipments) {
       try {
@@ -156,7 +190,7 @@ async function processShipmentsAfterPayment(orderId) {
             UPDATE order_shipments
             SET booking_in_progress = 1
             WHERE id = ?
-            AND shipping_status = 'pending'
+            AND shipping_status IN ('pending', 'booking_failed')
             AND booking_in_progress = 0
           `,
           [shipment.id],
@@ -190,6 +224,7 @@ async function processShipmentsAfterPayment(orderId) {
               label_url = ?,
               manifest_url = ?,
               shipping_status = 'booked',
+              booking_attempts = booking_attempts + 1,
               booking_in_progress = 0,
               booked_at = NOW()
           WHERE id = ?
@@ -207,16 +242,67 @@ async function processShipmentsAfterPayment(orderId) {
         //   HANDLE FAILURE + RELEASE LOCK
         await conn.query(
           `
-      UPDATE order_shipments
-      SET booking_in_progress = 0,
-          booking_attempts = booking_attempts + 1,
-          last_booking_error = ?,
-          booking_last_attempt_at = NOW()
-      WHERE id = ?
-    `,
+            UPDATE order_shipments
+            SET booking_in_progress = 0,
+                booking_attempts = booking_attempts + 1,
+                last_booking_error = ?,
+                booking_last_attempt_at = NOW(),
+                shipping_status = CASE
+                  WHEN booking_attempts + 1 >= 5 THEN 'booking_failed'
+                  ELSE 'pending'
+                END
+            WHERE id = ?
+          `,
           [err.message, shipment.id],
         );
       }
+    }
+
+    // ==========================
+    // CHECK PARTIAL FAILURE
+    // ==========================
+    const [[counts]] = await conn.query(
+      `
+        SELECT 
+        COUNT(*) AS total,
+        SUM(CASE WHEN shipping_status = 'booked' THEN 1 ELSE 0 END) AS booked
+        FROM order_shipments
+        WHERE order_id = ?
+        AND shipping_status NOT IN ('cancelled')
+      `,
+      [orderId],
+    );
+
+    if (counts.booked === counts.total) {
+      //  All shipments booked
+      await conn.query(
+        `
+        UPDATE eorders
+        SET shipment_sync_status = 'completed'
+        WHERE order_id = ?
+      `,
+        [orderId],
+      );
+    } else if (counts.booked > 0) {
+      // Partial success
+      await conn.query(
+        `
+        UPDATE eorders
+        SET shipment_sync_status = 'partial'
+        WHERE order_id = ?
+      `,
+        [orderId],
+      );
+    } else {
+      // All failed
+      await conn.query(
+        `
+        UPDATE eorders
+        SET shipment_sync_status = 'failed'
+        WHERE order_id = ?
+      `,
+        [orderId],
+      );
     }
   } finally {
     conn.release();
