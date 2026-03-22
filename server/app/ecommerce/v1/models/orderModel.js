@@ -2,6 +2,49 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 
+const TRACKING_STEPS = [
+  { key: "processing", label: "Processing" },
+  { key: "shipped", label: "Shipped" },
+  { key: "out_for_delivery", label: "Out for Delivery" },
+  { key: "delivered", label: "Delivered" },
+];
+
+function mapStatusToStep(status) {
+  if (["pending", "booking_in_progress", "booked"].includes(status)) return 0;
+  if (["picked_up", "in_transit"].includes(status)) return 1;
+  if (status === "out_for_delivery") return 2;
+  if (status === "delivered") return 3;
+
+  if (["ndr", "rto", "cancelled"].includes(status)) return 1;
+
+  return 0;
+}
+
+function getSpecialState(shipment) {
+  if (shipment.shipping_status === "ndr") {
+    return {
+      type: "ndr",
+      message: shipment.ndr_reason || "Delivery attempt failed",
+    };
+  }
+
+  if (shipment.shipping_status === "rto") {
+    return {
+      type: "rto",
+      message: "Order is being returned",
+    };
+  }
+
+  if (shipment.shipping_status === "cancelled") {
+    return {
+      type: "cancelled",
+      message: "Shipment cancelled",
+    };
+  }
+
+  return null;
+}
+
 class orderModel {
   async getOrderHistory({
     userId,
@@ -255,26 +298,92 @@ class orderModel {
         os.shipping_charges,
         os.shipping_status,
         os.label_url,
-        os.manifest_url
+        os.manifest_url,
+        os.booked_at,
+        os.picked_up_at,
+        os.in_transit_at,
+        os.out_for_delivery_at,
+        os.delivered_at,
+        os.expected_delivery_date,
+        os.ndr_reason,
+        os.is_ndr_active
         FROM order_shipments os
         WHERE os.order_id = ?
         `,
       [orderId],
     );
 
+    let overallStep = 0;
+
+    if (shipments.length) {
+      overallStep = Math.max(
+        ...shipments.map((s) => mapStatusToStep(s.shipping_status)),
+      );
+    }
+
+    const hasNdr = shipments.some((s) => s.shipping_status === "ndr");
+    const hasRto = shipments.some((s) => s.shipping_status === "rto");
+
+    if (hasNdr) {
+      overallStep = 1; // stuck in transit
+    }
+
+    // optional
+    if (hasRto) {
+      overallStep = 1;
+    }
+
+    const orderSteps = TRACKING_STEPS.map((step, index) => ({
+      ...step,
+      completed: index < overallStep,
+      current: index === overallStep,
+    }));
+
+    // Final object
+    const orderProgress = {
+      current_step: overallStep,
+      steps: orderSteps,
+    };
+
     const shippingTotal = shipments.reduce(
       (sum, s) => sum + Number(s.shipping_charges ?? 0),
       0,
     );
 
-    const shipmentDetails = shipments.map((s) => ({
-      vendor_id: s.vendor_id,
-      courier_name: s.courier_name,
-      awb_number: s.awb_number,
-      shipping_status: s.shipping_status,
-      shipping_charges: Number(s.shipping_charges ?? 0),
-      label_url: s.label_url,
-    }));
+    const shipmentDetails = shipments.map((s) => {
+      const currentStep = mapStatusToStep(s.shipping_status);
+
+      const steps = TRACKING_STEPS.map((step, index) => ({
+        ...step,
+        completed: index < currentStep,
+        current: index === currentStep,
+      }));
+
+      const timeline = [
+        { label: "Order Processed", time: s.booked_at },
+        { label: "Picked Up", time: s.picked_up_at },
+        { label: "In Transit", time: s.in_transit_at },
+        { label: "Out for Delivery", time: s.out_for_delivery_at },
+        { label: "Delivered", time: s.delivered_at },
+      ].filter((t) => t.time);
+
+      return {
+        vendor_id: s.vendor_id,
+        courier_name: s.courier_name,
+        awb_number: s.awb_number,
+        shipping_status: s.shipping_status,
+        shipping_charges: Number(s.shipping_charges ?? 0),
+        label_url: s.label_url,
+        current_step: currentStep,
+        steps,
+        timeline,
+        expected_delivery_date: s.expected_delivery_date
+          ? new Date(s.expected_delivery_date).toISOString().split("T")[0]
+          : null,
+
+        special_state: getSpecialState(s),
+      };
+    });
 
     return {
       order: {
@@ -301,7 +410,7 @@ class orderModel {
       items: processedItems,
 
       shipments: shipmentDetails,
-
+      order_progress: orderProgress,
       summary: {
         item_total: itemTotal,
         shipping_total: shippingTotal,
@@ -320,7 +429,11 @@ class orderModel {
   }) {
     const offset = (page - 1) * limit;
 
-    const conditions = ["o.user_id = ?", "p.is_visible = 1", "v.is_visible = 1"];
+    const conditions = [
+      "o.user_id = ?",
+      "p.is_visible = 1",
+      "v.is_visible = 1",
+    ];
     const params = [userId];
 
     if (search) {
