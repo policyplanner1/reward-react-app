@@ -11,6 +11,15 @@ function generateOrderRef() {
   return `ORD-${ymd}-${rand}`;
 }
 
+function formatDate(date) {
+  if (!date) return null;
+  return date.toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 async function generateInvoices(orderId, conn) {
   try {
     // 1 Fetch order items with vendor
@@ -1420,6 +1429,50 @@ class CheckoutModel {
 
     const itemTotal = items.reduce((sum, i) => sum + i.quantity * i.price, 0);
 
+    // 3 Fetch shipment dates
+    const [shipments] = await db.execute(
+      `
+      SELECT 
+        expected_delivery_date,
+        delivered_at
+      FROM order_shipments
+      WHERE order_id = ?
+      `,
+      [orderId],
+    );
+
+    let expectedDeliveryDate = null;
+    let actualDeliveryDate = null;
+
+    if (shipments.length) {
+      const expectedDates = shipments
+        .map((s) => s.expected_delivery_date)
+        .filter(Boolean)
+        .map((d) => new Date(d));
+
+      if (expectedDates.length) {
+        expectedDeliveryDate = expectedDates.sort((a, b) => b - a)[0];
+      }
+
+      if (!expectedDeliveryDate) {
+        const baseDate = new Date(order.created_at);
+
+        const fallback = new Date(baseDate);
+        fallback.setDate(baseDate.getDate() + 5);
+
+        expectedDeliveryDate = fallback;
+      }
+
+      const deliveredDates = shipments
+        .map((s) => s.delivered_at)
+        .filter(Boolean)
+        .map((d) => new Date(d));
+
+      if (deliveredDates.length) {
+        actualDeliveryDate = deliveredDates.sort((a, b) => b - a)[0];
+      }
+    }
+
     // static for Now
     const deliveryFee = 50;
     const bagDiscount = 1032;
@@ -1427,10 +1480,9 @@ class CheckoutModel {
 
     return {
       orderId: order.order_id,
-      orderDate: order.created_at,
+      orderDate: formatDate(new Date(order.created_at)),
       status: order.status,
       username: order.customer_name,
-      deliveryDate: "Saturday, Nov 29",
       address: {
         type: order.address_type,
         line1: order.address1,
@@ -1457,6 +1509,12 @@ class CheckoutModel {
         order_total: order.total_amount,
       },
 
+      deliveryDate: actualDeliveryDate
+        ? formatDate(actualDeliveryDate)
+        : formatDate(expectedDeliveryDate),
+
+      expectedDeliveryDate: formatDate(expectedDeliveryDate),
+      actualDeliveryDate: formatDate(actualDeliveryDate),
       rewardsEarned: 462,
     };
   }
