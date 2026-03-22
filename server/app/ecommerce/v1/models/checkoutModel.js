@@ -956,6 +956,7 @@ class CheckoutModel {
     // =====================
     let shippingTotal = 0;
     const shippingBreakdown = [];
+    const eddList = [];
 
     for (const vendorId in vendorGroups) {
       const vendor = vendorGroups[vendorId];
@@ -985,19 +986,72 @@ class CheckoutModel {
 
       if (!serviceResponse.status || !serviceResponse.data.length) continue;
 
-      const cheapest = serviceResponse.data
-        .filter((o) => o.total_charges > 0)
-        .sort((a, b) => a.total_charges - b.total_charges)[0];
+      // Updated code
+      const validOptions = serviceResponse.data.filter(
+        (o) => o.total_charges > 0,
+      );
 
-      const shippingCharge = Number(cheapest.total_charges);
+      if (!validOptions.length) continue;
 
+      // // Option 1: Cheapest
+      // const cheapest = validOptions.sort(
+      //   (a, b) => a.total_charges - b.total_charges,
+      // )[0];
+
+      // // Option 2: Fastest
+      // const fastest = validOptions.sort(
+      //   (a, b) =>
+      //     (a.estimated_delivery_days || 999) -
+      //     (b.estimated_delivery_days || 999),
+      // )[0];
+
+      // // strategy
+      // const selectedCourier = cheapest; // or fastest
+      // const shippingCharge = Number(selectedCourier.total_charges);
+      // shippingTotal += shippingCharge;
+
+      const selectedCourier = validOptions.sort(
+        (a, b) => a.total_charges - b.total_charges,
+      )[0];
+
+      const shippingCharge = Number(selectedCourier.total_charges);
       shippingTotal += shippingCharge;
+
+      // =====================
+      // DELIVERY DATE
+      // =====================
+
+      let expectedDeliveryDate = null;
+
+      if (selectedCourier.estimated_delivery_date) {
+        expectedDeliveryDate = selectedCourier.estimated_delivery_date;
+      } else if (selectedCourier.estimated_delivery_days) {
+        const date = new Date();
+        date.setDate(
+          date.getDate() + Number(selectedCourier.estimated_delivery_days),
+        );
+        expectedDeliveryDate = date.toISOString();
+      }
+
+      if (expectedDeliveryDate) {
+        eddList.push(new Date(expectedDeliveryDate));
+      }
 
       shippingBreakdown.push({
         vendor_id: Number(vendorId),
-        courier_name: cheapest.name,
+        courier_name: selectedCourier.name,
         shipping_charges: shippingCharge,
+        estimated_delivery_date: expectedDeliveryDate,
       });
+    }
+
+    // =====================
+    // FINAL EDD (latest)
+    // =====================
+    let overallEDD = null;
+
+    if (eddList.length) {
+      overallEDD = eddList.sort((a, b) => b - a)[0];
     }
 
     return {
@@ -1008,6 +1062,7 @@ class CheckoutModel {
       shippingTotal,
       payableAmount: payableAmount + shippingTotal,
       shippingBreakdown,
+      estimated_delivery_date: overallEDD,
     };
   }
 
