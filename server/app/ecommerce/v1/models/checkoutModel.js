@@ -376,7 +376,7 @@ class CheckoutModel {
           );
           expectedDeliveryDate = date;
         }
-        
+
         // fallback
         if (!expectedDeliveryDate) {
           const fallback = new Date();
@@ -687,12 +687,56 @@ class CheckoutModel {
         throw new Error("NOT_SERVICEABLE");
       }
 
-      const cheapest = serviceResponse.data
-        .filter((o) => o.total_charges > 0)
-        .sort((a, b) => a.total_charges - b.total_charges)[0];
+      // const cheapest = serviceResponse.data
+      //   .filter((o) => o.total_charges > 0)
+      //   .sort((a, b) => a.total_charges - b.total_charges)[0];
 
-      const shippingCharge = Number(cheapest.total_charges);
+      // const shippingCharge = Number(cheapest.total_charges);
 
+      // =====================
+      // SERVICEABILITY
+      // =====================
+      const validOptions = serviceResponse.data.filter(
+        (o) => o.total_charges > 0,
+      );
+
+      if (!validOptions.length) {
+        throw new Error("NOT_SERVICEABLE");
+      }
+
+      const selectedCourier = [...validOptions].sort(
+        (a, b) => a.total_charges - b.total_charges,
+      )[0];
+
+      const shippingCharge = Number(selectedCourier.total_charges);
+
+      // =====================
+      // DELIVERY DATE (FIXED)
+      // =====================
+      let expectedDeliveryDate = null;
+
+      if (selectedCourier.estimated_delivery_date) {
+        expectedDeliveryDate = new Date(
+          selectedCourier.estimated_delivery_date,
+        );
+      } else if (selectedCourier.estimated_delivery_days) {
+        const date = new Date();
+        date.setDate(
+          date.getDate() + Number(selectedCourier.estimated_delivery_days),
+        );
+        expectedDeliveryDate = date;
+      }
+
+      // fallback
+      if (!expectedDeliveryDate) {
+        const fallback = new Date();
+        fallback.setDate(fallback.getDate() + 5);
+        expectedDeliveryDate = fallback;
+      }
+
+      // =====================
+      // FINAL TOTAL
+      // =====================
       const finalTotal = finalProductTotal + shippingCharge;
 
       // 5 Create order
@@ -756,8 +800,9 @@ class CheckoutModel {
         shipping_charges, chargeable_weight,
         weight, length, breadth, height,
         courier_options,
+        expected_delivery_date,
         shipping_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
         `,
         [
           orderId,
@@ -772,6 +817,7 @@ class CheckoutModel {
           breadth,
           height,
           JSON.stringify(serviceResponse.data),
+          expectedDeliveryDate,
         ],
       );
 
