@@ -5,6 +5,7 @@ const NotificationModel = require("../../../app/ecommerce/v1/models/notification
 const {
   processShipmentsAfterPayment,
 } = require("../../../common/utils/paymentWebHook");
+const RefundService = require("../../../common/controllers/paymentController");
 
 // =====================
 // STATUS MAPPING
@@ -247,48 +248,101 @@ async function updateShipmentTracking(shipment) {
     // RTO Logic
     // =====================
     if (newStatus === "rto" && shipment.shipping_status !== "rto") {
-      // 1 Restore stock
-      const [items] = await db.query(
+      // ==========================
+      // PREVENT DUPLICATE REFUND
+      // ==========================
+      const [existingRefund] = await db.query(
         `
+        SELECT refund_id FROM order_refunds
+        WHERE shipment_id = ?
+        AND status IN ('initiated','completed')
+        `,
+        [shipment.id],
+      );
+
+      if (!existingRefund.length) {
+        // ==========================
+        // RESTORE STOCK
+        // ==========================
+        const [items] = await db.query(
+          `
           SELECT variant_id, quantity
           FROM eorder_items
           WHERE vendor_order_id = ?
         `,
-        [shipment.vendor_order_id],
-      );
+          [shipment.vendor_order_id],
+        );
 
-      for (const item of items) {
-        await db.query(
-          `
+        for (const item of items) {
+          await db.query(
+            `
             UPDATE product_variants
             SET stock = stock + ?
             WHERE variant_id = ?
           `,
-          [item.quantity, item.variant_id],
+            [item.quantity, item.variant_id],
+          );
+        }
+
+        // ==========================
+        // CALCULATE REFUND AMOUNT
+        // ==========================
+        const [[amountRow]] = await db.query(
+          `
+          SELECT SUM((price * quantity) - reward_discount) AS amount
+          FROM eorder_items
+          WHERE vendor_order_id = ?
+        `,
+          [shipment.vendor_order_id],
+        );
+
+        const refundAmount = amountRow.amount || 0;
+
+        if (refundAmount > 0) {
+          await RefundService.processRefund({
+            orderId: shipment.order_id,
+            shipmentId: shipment.id,
+            vendorOrderId: shipment.vendor_order_id,
+            amount: refundAmount,
+          });
+        }
+
+        // ==========================
+        // NOTIFY USER (ONCE)
+        // ==========================
+        const [existingNotif] = await db.query(
+          `
+          SELECT notification_id FROM notifications
+          WHERE reference_type = 'order'
+          AND reference_id = ?
+          AND type = 'rto'
+          LIMIT 1
+        `,
+          [shipment.order_id],
+        );
+
+        if (!existingNotif.length && userId) {
+          await NotificationModel.create({
+            user_id: userId,
+            type: "rto",
+            title: "Order Returned 🚚",
+            message: "Your order could not be delivered and is being returned.",
+            reference_type: "order",
+            reference_id: shipment.order_id,
+          });
+        }
+
+        // ==========================
+        // EVENT LOG
+        // ==========================
+        await db.query(
+          `
+          INSERT INTO shipment_events (shipment_id, status, description)
+          VALUES (?, 'rto_processed', 'Stock restored + refund triggered')
+        `,
+          [shipment.id],
         );
       }
-
-      // 2 Notify user
-      if (userId) {
-        await NotificationModel.create({
-          user_id: userId,
-          type: "rto",
-          title: "Order Returned 🚚",
-          message: "Your order could not be delivered and is being returned.",
-          reference_type: "order",
-          reference_id: shipment.order_id,
-        });
-      }
-
-      // // 3 Optional: mark refund
-      // await db.query(
-      //   `
-      //     UPDATE eorders
-      //     SET refund_status = 'pending'
-      //     WHERE order_id = ?
-      //   `,
-      //   [shipment.order_id],
-      // );
     }
 
     await syncOrderStatus(shipment.order_id);
