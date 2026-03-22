@@ -199,6 +199,7 @@ class CheckoutController {
         shippingTotal: checkoutData.shippingTotal,
         payableAmount: checkoutData.payableAmount,
         shippingBreakdown: checkoutData.shippingBreakdown,
+        estimated_delivery_date: checkoutData.estimated_delivery_date,
       });
     } catch (error) {
       console.error("Checkout cart fetch error:", error);
