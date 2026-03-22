@@ -886,6 +886,25 @@ class OrderModel {
 
   async processRefund(payment, orderId) {
     try {
+
+      // Idempotency check again
+      const [existing] = await db.execute(
+        `
+      SELECT refund_id
+      FROM order_refunds
+      WHERE order_id = ?
+      AND status = 'completed'
+      LIMIT 1
+      `,
+        [orderId],
+      );
+
+      if (existing.length) {
+        console.log("Refund already completed, skipping");
+        return;
+      }
+
+      //  Call Razorpay
       const refund = await razorpay.payments.refund(
         payment.razorpay_payment_id,
         {
@@ -893,6 +912,7 @@ class OrderModel {
         },
       );
 
+      //  Update refund table
       await db.execute(
         `
       UPDATE order_refunds
@@ -905,6 +925,18 @@ class OrderModel {
         [orderId],
       );
 
+      // update payment status
+      await db.execute(
+        `
+      UPDATE order_payments
+      SET status = 'refunded'
+      WHERE order_id = ?
+      AND status = 'success'
+      `,
+        [orderId],
+      );
+
+      // Insert refund transaction log
       await db.execute(
         `
       INSERT INTO order_payments
@@ -932,6 +964,7 @@ class OrderModel {
     } catch (error) {
       console.error("Refund failed:", error);
 
+      // mark failed
       await db.execute(
         `
       UPDATE order_refunds
