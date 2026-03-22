@@ -9,18 +9,6 @@ const classifyService = (name) => {
   return "economy";
 };
 
-const statusLabelMap = {
-  booked: "Shipment Booked",
-  picked_up: "Picked Up",
-  in_transit: "In Transit",
-  out_for_delivery: "Out for Delivery",
-  delivered: "Delivered",
-  rto: "Returned to Origin",
-  ndr: "Delivery Attempt Failed",
-  cancelled: "Cancelled",
-  pending: "Preparing Shipment",
-};
-
 class LogisticsController {
   // check serviceAbility
   async checkServiceAbility(req, res) {
@@ -233,25 +221,70 @@ class LogisticsController {
         return res.status(404).json({ message: "Order not found" });
       }
 
+      // ==========================
+      // FETCH SHIPMENTS
+      // ==========================
       const [shipments] = await db.query(
         `SELECT
+         id,
          vendor_id,
          courier_name,
          awb_number,
          shipping_status,
-         label_url,
-         manifest_url
+         booked_at,
+         picked_up_at,
+         in_transit_at,
+         out_for_delivery_at,
+         delivered_at
        FROM order_shipments
        WHERE order_id = ?`,
         [orderId],
       );
 
+      const TRACKING_STEPS = [
+        { key: "processing", label: "Processing" },
+        { key: "shipped", label: "Shipped" },
+        { key: "out_for_delivery", label: "Out for Delivery" },
+        { key: "delivered", label: "Delivered" },
+      ];
+
+      function mapStatusToStep(status) {
+        if (["pending", "booking_in_progress", "booked"].includes(status))
+          return 0;
+        if (["picked_up", "in_transit"].includes(status)) return 1;
+        if (status === "out_for_delivery") return 2;
+        if (status === "delivered") return 3;
+        return 0;
+      }
+
       //  Add label to each shipment
-      const formattedShipments = shipments.map((shipment) => ({
-        ...shipment,
-        status_label:
-          statusLabelMap[shipment.shipping_status] || shipment.shipping_status,
-      }));
+      const formattedShipments = shipments.map((s) => {
+        const currentStep = mapStatusToStep(s.shipping_status);
+
+        const steps = TRACKING_STEPS.map((step, index) => ({
+          ...step,
+          completed: index <= currentStep,
+          current: index === currentStep,
+        }));
+
+        return {
+          shipment_id: s.id,
+          courier: s.courier_name,
+          awb: s.awb_number,
+          status: s.shipping_status,
+          current_step: currentStep,
+          steps,
+
+          // timeline timestamps
+          timeline: {
+            booked: s.booked_at,
+            picked_up: s.picked_up_at,
+            in_transit: s.in_transit_at,
+            out_for_delivery: s.out_for_delivery_at,
+            delivered: s.delivered_at,
+          },
+        };
+      });
 
       return res.json({
         order_id: orderId,
