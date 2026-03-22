@@ -7,6 +7,22 @@ class LogisticsController {
     try {
       const { shipmentId } = req.params;
       const { action, new_address_id, notes } = req.body;
+
+      const allowedActions = ["retry", "address_update", "cancel", "rto"];
+
+      if (!allowedActions.includes(action)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid action",
+        });
+      }
+
+      if (action === "address_update" && !new_address_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Address is required for address_update",
+        });
+      }
       // {
       //   "action": "retry",
       //   "new_address_id": 12,
