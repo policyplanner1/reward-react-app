@@ -14,10 +14,51 @@ router.post(
 
 // logistics dashboard
 router.get(
-  "/logistics/summary",
+  "/summary",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
-  LogisticsController.getLogisticsSummary,
+  LogisticsController.getSummary,
+);
+
+
+// Status breakdown
+router.get(
+  "/status-breakdown",
+  authenticateToken,
+  authorizeRoles("admin", "vendor_manager"),
+  LogisticsController.getStatusBreakdown
+);
+
+// NDR list
+router.get(
+  "/ndr",
+  authenticateToken,
+  authorizeRoles("admin", "vendor_manager"),
+  LogisticsController.getNDRList
+);
+
+// SLA metrics
+router.get(
+  "/sla",
+  authenticateToken,
+  authorizeRoles("admin", "vendor_manager"),
+  LogisticsController.getSLAMetrics
+);
+
+// Courier performance
+router.get(
+  "/couriers",
+  authenticateToken,
+  authorizeRoles("admin", "vendor_manager"),
+  LogisticsController.getCourierPerformance
+);
+
+// Recent shipment events
+router.get(
+  "/events",
+  authenticateToken,
+  authorizeRoles("admin", "vendor_manager"),
+  LogisticsController.getRecentEvents
 );
 
 module.exports = router;
