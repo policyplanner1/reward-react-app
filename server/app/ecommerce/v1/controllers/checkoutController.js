@@ -259,6 +259,7 @@ class CheckoutController {
         payableAmount: checkoutData.payableAmount,
         shippingTotal: checkoutData.shippingTotal,
         shippingBreakdown: checkoutData.shippingBreakdown,
+        estimated_delivery_date: checkoutData.estimated_delivery_date,
       });
     } catch (error) {
       console.error("Buy now checkout fetch error:", error);

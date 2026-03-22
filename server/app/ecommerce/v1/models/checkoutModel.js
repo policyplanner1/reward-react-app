@@ -1190,12 +1190,47 @@ class CheckoutModel {
       throw new Error("NOT_SERVICEABLE");
     }
 
-    const cheapest = serviceResponse.data
-      .filter((o) => o.total_charges > 0)
-      .sort((a, b) => a.total_charges - b.total_charges)[0];
+    // const cheapest = serviceResponse.data
+    //   .filter((o) => o.total_charges > 0)
+    //   .sort((a, b) => a.total_charges - b.total_charges)[0];
+    // const shippingCharge = Number(cheapest.total_charges);
 
-    const shippingCharge = Number(cheapest.total_charges);
+    // =====================
+    // SHIPPING + EDD
+    // =====================
+    const validOptions = serviceResponse.data.filter(
+      (o) => o.total_charges > 0,
+    );
 
+    if (!validOptions.length) {
+      throw new Error("NOT_SERVICEABLE");
+    }
+
+    // choose cheapest (can switch to fastest later)
+    const selectedCourier = validOptions.sort(
+      (a, b) => a.total_charges - b.total_charges,
+    )[0];
+
+    const shippingCharge = Number(selectedCourier.total_charges);
+
+    // =====================
+    // DELIVERY DATE
+    // =====================
+    let expectedDeliveryDate = null;
+
+    if (selectedCourier.estimated_delivery_date) {
+      expectedDeliveryDate = selectedCourier.estimated_delivery_date;
+    } else if (selectedCourier.estimated_delivery_days) {
+      const date = new Date();
+      date.setDate(
+        date.getDate() + Number(selectedCourier.estimated_delivery_days),
+      );
+      expectedDeliveryDate = date.toISOString().split("T")[0];
+    }
+
+    // =====================
+    // FINAL PAYABLE
+    // =====================
     const finalPayable = finalItemTotal + shippingCharge;
 
     return {
@@ -1221,10 +1256,12 @@ class CheckoutModel {
       shippingBreakdown: [
         {
           vendor_id: row.vendor_id,
-          courier_name: cheapest.name,
+          courier_name: selectedCourier.name,
           shipping_charges: shippingCharge,
+          estimated_delivery_date: expectedDeliveryDate,
         },
       ],
+      estimated_delivery_date: expectedDeliveryDate,
     };
   }
 
