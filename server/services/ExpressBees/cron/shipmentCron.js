@@ -194,6 +194,44 @@ async function updateShipmentTracking(shipment) {
     );
 
     // =====================
+    // SLA TRACKING
+    // =====================
+    if (newStatus === "delivered") {
+      const [[row]] = await db.query(
+        `
+          SELECT delivered_at, expected_delivery_date
+          FROM order_shipments
+          WHERE id = ?
+        `,
+        [shipment.id],
+      );
+
+      const deliveredAt = new Date(row.delivered_at);
+      const expectedDate = row.expected_delivery_date;
+
+      if (expectedDate) {
+        const expected = new Date(expectedDate);
+
+        const isBreached = deliveredAt > expected;
+
+        const delayHours = Math.max(
+          0,
+          Math.floor((deliveredAt - expected) / (1000 * 60 * 60)),
+        );
+
+        await db.query(
+          `
+            UPDATE order_shipments
+            SET sla_status = ?,
+                delivery_delay_hours = ?
+            WHERE id = ?
+          `,
+          [isBreached ? "breached" : "met", delayHours, shipment.id],
+        );
+      }
+    }
+
+    // =====================
     // NDR LOGIC
     // =====================
     if (newStatus === "ndr") {
