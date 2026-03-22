@@ -69,12 +69,4 @@ router.post(
   orderController.rejectCancellation,
 );
 
-// NDR resolution
-router.post(
-  "/shipments/:shipmentId/resolve-ndr",
-  authenticateToken,
-  authorizeRoles("vendor_manager", "admin"),
-  orderController.resolveNdr,
-);
-
 module.exports = router;
