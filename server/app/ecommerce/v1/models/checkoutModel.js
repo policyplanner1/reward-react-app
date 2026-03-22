@@ -1410,6 +1410,7 @@ class CheckoutModel {
       oi.variant_id,
       oi.quantity,
       oi.price,
+      oi.reward_discount,
       p.product_name,
 
       (
@@ -1434,7 +1435,8 @@ class CheckoutModel {
       `
       SELECT 
         expected_delivery_date,
-        delivered_at
+        delivered_at,
+        shipping_charges
       FROM order_shipments
       WHERE order_id = ?
       `,
@@ -1443,6 +1445,8 @@ class CheckoutModel {
 
     let expectedDeliveryDate = null;
     let actualDeliveryDate = null;
+    let deliveryFee = 0;
+    let rewardDiscount = 0;
 
     if (shipments.length) {
       const expectedDates = shipments
@@ -1451,16 +1455,9 @@ class CheckoutModel {
         .map((d) => new Date(d));
 
       if (expectedDates.length) {
-        expectedDeliveryDate = expectedDates.sort((a, b) => b - a)[0];
-      }
-
-      if (!expectedDeliveryDate) {
-        const baseDate = new Date(order.created_at);
-
-        const fallback = new Date(baseDate);
-        fallback.setDate(baseDate.getDate() + 5);
-
-        expectedDeliveryDate = fallback;
+        expectedDeliveryDate = new Date(
+          Math.max(...expectedDates.map((d) => d.getTime())),
+        );
       }
 
       const deliveredDates = shipments
@@ -1469,14 +1466,34 @@ class CheckoutModel {
         .map((d) => new Date(d));
 
       if (deliveredDates.length) {
-        actualDeliveryDate = deliveredDates.sort((a, b) => b - a)[0];
+        actualDeliveryDate = new Date(
+          Math.max(...deliveredDates.map((d) => d.getTime())),
+        );
       }
+
+      // Shipping Fee
+      deliveryFee = shipments.reduce(
+        (sum, s) => sum + Number(s.shipping_charges || 0),
+        0,
+      );
+
+      // rewardDiscount = items.reduce(
+      //   (sum, i) => sum + Number(i.reward_discount || 0),
+      //   0,
+      // );
+    }
+
+    if (!expectedDeliveryDate) {
+      const baseDate = new Date(order.created_at);
+
+      const fallback = new Date(baseDate);
+      fallback.setDate(baseDate.getDate() + 5);
+
+      expectedDeliveryDate = fallback;
     }
 
     // static for Now
-    const deliveryFee = 50;
     const bagDiscount = 1032;
-    const rewardDiscount = 500;
 
     return {
       orderId: order.order_id,
