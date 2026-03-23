@@ -223,6 +223,26 @@ class RewardController {
     }
   }
 
+  // Delete product mapping
+  async deleteProductRewardMapping(req, res) {
+    try {
+      const { id } = req.params;
+
+      await RewardModel.deleteMapping(id);
+
+      return res.json({
+        success: true,
+        message: "Mapping removed",
+      });
+    } catch (err) {
+      console.error("Delete Mapping Error:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
   // APPLY REWARD (CALL THIS IN ORDER FLOW)
   async applyReward(req, res) {
     try {

@@ -125,6 +125,16 @@ class RewardModel {
 
     return rows;
   }
+
+  // Delete product mapping
+  async deleteMapping(id) {
+    await db.execute(
+      `UPDATE product_reward_settings
+     SET is_active = 0
+     WHERE id = ?`,
+      [id],
+    );
+  }
 }
 
 module.exports = new RewardModel();

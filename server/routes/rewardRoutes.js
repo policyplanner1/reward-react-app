@@ -59,6 +59,14 @@ router.get(
   RewardController.getProductRewardMappings
 );
 
+// Delete product Mapping
+router.delete(
+  "/product-reward-settings/:id",
+  authenticateToken,
+  authorizeRoles("admin"),
+  RewardController.deleteProductRewardMapping
+);
+
 // APPLY (test / debug / can be internal)
 router.post(
   "/apply",
