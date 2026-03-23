@@ -225,7 +225,7 @@ const ProductRewardMapping = () => {
             <div className="md:col-span-2 flex gap-3 mt-4">
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition"
+                className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer"
               >
                 {editingId ? "Update Mapping" : "Create Mapping"}
               </button>
@@ -234,7 +234,7 @@ const ProductRewardMapping = () => {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="bg-gray-400 text-white px-5 py-2 rounded-lg hover:bg-gray-500 transition"
+                  className="bg-gray-400 text-white px-5 py-2 rounded-lg hover:bg-gray-500 transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -303,14 +303,14 @@ const ProductRewardMapping = () => {
                     <td className="p-3 flex gap-2">
                       <button
                         onClick={() => handleEdit(m)}
-                        className="px-3 py-1 text-sm bg-yellow-400 text-white rounded hover:bg-yellow-500"
+                        className="px-3 py-1 text-sm bg-yellow-400 text-white rounded hover:bg-yellow-500 cursor-pointer"
                       >
                         Edit
                       </button>
 
                       <button
                         onClick={() => handleDelete(m.id)}
-                        className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                        className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 cursor-pointer"
                       >
                         Delete
                       </button>
