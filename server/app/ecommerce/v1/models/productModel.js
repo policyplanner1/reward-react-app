@@ -381,9 +381,20 @@ class ProductModel {
       /* ---- Images ---- */
       LEFT JOIN product_images pi ON p.product_id = pi.product_id
 
-      LEFT JOIN product_reward_settings prs 
-        ON (prs.variant_id = v.variant_id OR prs.product_id = p.product_id)
-        AND prs.is_active = 1
+     LEFT JOIN product_reward_settings prs 
+      ON prs.id = (
+        SELECT prs2.id
+        FROM product_reward_settings prs2
+        WHERE prs2.product_id = p.product_id
+          AND prs2.is_active = 1
+          AND (
+            prs2.variant_id = v.variant_id
+            OR prs2.variant_id IS NULL
+          )
+        ORDER BY 
+          CASE WHEN prs2.variant_id = v.variant_id THEN 1 ELSE 2 END
+        LIMIT 1
+      )
 
       LEFT JOIN reward_rules rr 
         ON rr.reward_rule_id = prs.reward_rule_id
@@ -430,7 +441,7 @@ class ProductModel {
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,
-          can_earn_reward: row.can_earn_reward,
+          can_earn_reward: row.can_earn_reward ?? 0,
           reward_type: row.reward_type,
           reward_value: row.reward_value,
           max_reward: row.max_reward,

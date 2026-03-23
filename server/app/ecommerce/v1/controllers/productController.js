@@ -7,16 +7,20 @@ const path = require("path");
 function calculateReward(price, product) {
   if (!product.can_earn_reward) return 0;
 
+  if (!product.reward_type) return 0;
+
   let reward = 0;
+
+  if (product.reward_type === "percentage") {
+    reward = (price * product.reward_value) / 100;
+
+    if (product.max_reward) {
+      reward = Math.min(reward, product.max_reward);
+    }
+  }
 
   if (product.reward_type === "fixed") {
     reward = product.reward_value;
-  } else {
-    reward = (price * product.reward_value) / 100;
-  }
-
-  if (product.max_reward) {
-    reward = Math.min(reward, product.max_reward);
   }
 
   return Math.floor(reward);
