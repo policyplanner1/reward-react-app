@@ -47,6 +47,9 @@ import OrderDetail from "./components/feature/vendor/orders/OrderDetail";
 import OrderList from "./components/feature/manager/order/OrderList";
 import OrderView from "./components/feature/manager/order/OrderView";
 
+// Manage Rewards
+import RewardRule from "./components/feature/manager/reward/RewardRule";
+
 /* Attribute */
 import AttributeManagement from "./components/feature/manager/attribute/attributes";
 
@@ -220,10 +223,18 @@ export default function App() {
 
         <Route path={routes.manager.orders.details} element={<OrderView />} />
 
-        <Route path={routes.manager.orders.cancellationRequest} element={<CancellationRequest />} />
-        
-        <Route path={routes.manager.orders.cancellationDetail} element={<CancellationDetail />} />
+        <Route
+          path={routes.manager.orders.cancellationRequest}
+          element={<CancellationRequest />}
+        />
 
+        <Route
+          path={routes.manager.orders.cancellationDetail}
+          element={<CancellationDetail />}
+        />
+
+        {/* Rewards */}
+        <Route path={routes.manager.rewards.rewardRule} element={<RewardRule />} />
       </Route>
 
       {/* ========== FALLBACK ========== */}

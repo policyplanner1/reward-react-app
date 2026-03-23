@@ -11,6 +11,7 @@ import {
   FiLogOut,
   FiSliders,
   FiShoppingCart,
+  FiGift 
 } from "react-icons/fi";
 
 import { FaFileAlt, FaBolt } from "react-icons/fa";
@@ -103,7 +104,22 @@ export default function ManagerNavbar() {
       type: "dropdown",
       children: [
         { label: "Order List", to: routes.manager.orders.orderList },
-        { label: "Cancellation Request", to: routes.manager.orders.cancellationRequest },
+        {
+          label: "Cancellation Request",
+          to: routes.manager.orders.cancellationRequest,
+        },
+      ],
+    },
+    {
+      label: "Rewards",
+      icon: <FiGift />,
+      type: "dropdown", 
+      children: [
+        { label: "Reward Rule", to: routes.manager.rewards.rewardRule },
+        // {
+        //   label: "Cancellation Request",
+        //   to: routes.manager.orders.cancellationRequest,
+        // },
       ],
     },
   ];

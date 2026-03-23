@@ -41,5 +41,8 @@ export const routes = {
       cancellationRequest: "/manager/cancellation-request",
       cancellationDetail: "/manager/cancellation-detail/:orderId",
     },
+    rewards:{
+      rewardRule:"/manager/rewards-rule",
+    }
   },
 };
