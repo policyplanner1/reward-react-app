@@ -222,12 +222,12 @@ const RewardForm: React.FC = () => {
                       is_active: prev.is_active ? 0 : 1,
                     }))
                   }
-                  className={`w-14 h-7 flex items-center rounded-full p-1 transition ${
+                  className={`w-14 h-7 flex items-center rounded-full p-1 transition cursor-pointer ${
                     form.is_active ? "bg-green-500" : "bg-gray-300"
                   }`}
                 >
                   <div
-                    className={`bg-white w-5 h-5 rounded-full shadow-md transform transition ${
+                    className={`bg-white w-5 h-5 rounded-full shadow-md transform transition cursor-pointer ${
                       form.is_active ? "translate-x-7" : ""
                     }`}
                   />
