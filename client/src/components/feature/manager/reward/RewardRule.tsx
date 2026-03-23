@@ -47,7 +47,7 @@ const RewardRule: React.FC = () => {
     if (!window.confirm("Deactivate this rule?")) return;
 
     try {
-      const res = await api.delete(`/reward-rules/${id}`);
+      const res = await api.delete(`/reward/delete-rule/${id}`);
 
       if (!res.data.success) {
         throw new Error("Delete failed");

@@ -68,7 +68,7 @@ class RewardController {
       const { id } = req.params;
 
       const query = `SELECT * FROM reward_rules WHERE reward_rule_id = ?`;
-      const rows = await executeQry(query, [id]);
+      const [rows] = await db.execute(query, [id]);
 
       if (!rows.length) {
         return res.status(404).json({
@@ -95,6 +95,13 @@ class RewardController {
     try {
       const { id } = req.params;
 
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "Reward rule ID is required",
+        });
+      }
+
       const {
         name,
         reward_type,
@@ -118,7 +125,7 @@ class RewardController {
       WHERE reward_rule_id = ?
     `;
 
-      await executeQry(query, [
+      const [result] = await db.execute(query, [
         name,
         reward_type,
         reward_value,
@@ -128,6 +135,13 @@ class RewardController {
         source_type,
         id,
       ]);
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Reward rule not found",
+        });
+      }
 
       return res.json({
         success: true,
@@ -153,7 +167,14 @@ class RewardController {
       WHERE reward_rule_id = ?
     `;
 
-      await executeQry(query, [id]);
+      const [result] = await db.execute(query, [id]);
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Reward rule not found",
+        });
+      }
 
       return res.json({
         success: true,
