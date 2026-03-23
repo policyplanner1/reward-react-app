@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
 import { FiGift, FiPlus } from "react-icons/fi";
 
@@ -15,6 +16,7 @@ interface RewardRule {
 }
 
 const RewardRule: React.FC = () => {
+  const navigate = useNavigate();
   const [rules, setRules] = useState<RewardRule[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +24,7 @@ const RewardRule: React.FC = () => {
   const fetchRules = async () => {
     try {
       setLoading(true);
-      setError(null); 
+      setError(null);
 
       const res = await api.get("/reward/get-rule");
 
@@ -76,7 +78,10 @@ const RewardRule: React.FC = () => {
         </div>
 
         {/* Create Button */}
-        <button className="create-btn">
+        <button
+          className="create-btn"
+          onClick={() => navigate(`/manager/reward-create`)}
+        >
           <FiPlus /> Create Rule
         </button>
       </div>
@@ -138,7 +143,16 @@ const RewardRule: React.FC = () => {
                     </td>
 
                     <td className="flex gap-2">
-                      <button className="view-btn">Edit</button>
+                      <button
+                        className="view-btn"
+                        onClick={() =>
+                          navigate(
+                            `/manager/reward-edit/${rule.reward_rule_id} `,
+                          )
+                        }
+                      >
+                        Edit
+                      </button>
 
                       <button
                         className="delete-btn"
