@@ -110,157 +110,216 @@ const ProductRewardMapping = () => {
   };
 
   return (
-    <div className="order-page">
-      <h2 className="text-2xl font-semibold mb-6">
-        Product Reward Mapping
-      </h2>
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <div className="max-w-6xl mx-auto">
+        {/* HEADER */}
+        <h2 className="text-3xl font-bold mb-6 text-gray-800">
+          Product Reward Mapping
+        </h2>
 
-      {/* ================= FORM ================= */}
-      <form onSubmit={handleSubmit} className="form-container">
+        {/* ================= FORM CARD ================= */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+          <form
+            onSubmit={handleSubmit}
+            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
+            {/* Product */}
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Product
+              </label>
+              <select
+                className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-400"
+                value={form.product_id}
+                onChange={(e) => handleProductChange(e.target.value)}
+                required
+                disabled={!!editingId}
+              >
+                <option value="">Select Product</option>
+                {products.map((p) => (
+                  <option key={p.product_id} value={p.product_id}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        {/* Product */}
-        <select
-          value={form.product_id}
-          onChange={(e) => handleProductChange(e.target.value)}
-          required
-          disabled={!!editingId}
-        >
-          <option value="">Select Product</option>
-          {products.map((p: any) => (
-            <option key={p.product_id} value={p.product_id}>
-              {p.title}
-            </option>
-          ))}
-        </select>
+            {/* Variant */}
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Variant
+              </label>
+              <select
+                className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-400"
+                value={form.variant_id}
+                onChange={(e) =>
+                  setForm({ ...form, variant_id: e.target.value })
+                }
+              >
+                <option value="">All Variants</option>
+                {variants.map((v) => (
+                  <option key={v.variant_id} value={v.variant_id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        {/* Variant */}
-        <select
-          value={form.variant_id}
-          onChange={(e) =>
-            setForm({ ...form, variant_id: e.target.value })
-          }
-        >
-          <option value="">All Variants</option>
-          {variants.map((v: any) => (
-            <option key={v.variant_id} value={v.variant_id}>
-              {v.name}
-            </option>
-          ))}
-        </select>
+            {/* Rule */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Reward Rule
+              </label>
+              <select
+                className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-400"
+                value={form.reward_rule_id}
+                onChange={(e) =>
+                  setForm({ ...form, reward_rule_id: e.target.value })
+                }
+                required
+              >
+                <option value="">Select Reward Rule</option>
+                {rules.map((r) => (
+                  <option key={r.reward_rule_id} value={r.reward_rule_id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        {/* Reward Rule */}
-        <select
-          value={form.reward_rule_id}
-          onChange={(e) =>
-            setForm({ ...form, reward_rule_id: e.target.value })
-          }
-          required
-        >
-          <option value="">Select Reward Rule</option>
-          {rules.map((r: any) => (
-            <option key={r.reward_rule_id} value={r.reward_rule_id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
+            {/* Toggles */}
+            <div className="flex items-center gap-6 md:col-span-2 mt-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="toggle toggle-primary"
+                  checked={form.can_earn_reward === 1}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      can_earn_reward: e.target.checked ? 1 : 0,
+                    })
+                  }
+                />
+                <span className="text-sm text-gray-700">Can Earn</span>
+              </label>
 
-        {/* Toggles */}
-        <label>
-          <input
-            type="checkbox"
-            checked={form.can_earn_reward === 1}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                can_earn_reward: e.target.checked ? 1 : 0,
-              })
-            }
-          />
-          Can Earn
-        </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="toggle toggle-green"
+                  checked={form.can_redeem_reward === 1}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      can_redeem_reward: e.target.checked ? 1 : 0,
+                    })
+                  }
+                />
+                <span className="text-sm text-gray-700">Can Redeem</span>
+              </label>
+            </div>
 
-        <label>
-          <input
-            type="checkbox"
-            checked={form.can_redeem_reward === 1}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                can_redeem_reward: e.target.checked ? 1 : 0,
-              })
-            }
-          />
-          Can Redeem
-        </label>
+            {/* Buttons */}
+            <div className="md:col-span-2 flex gap-3 mt-4">
+              <button
+                type="submit"
+                className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition"
+              >
+                {editingId ? "Update Mapping" : "Create Mapping"}
+              </button>
 
-        {/* Buttons */}
-        <div className="flex gap-3 mt-4">
-          <button type="submit" className="save-btn">
-            {editingId ? "Update Mapping" : "Create Mapping"}
-          </button>
-
-          {editingId && (
-            <button
-              type="button"
-              className="cancel-btn"
-              onClick={resetForm}
-            >
-              Cancel
-            </button>
-          )}
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="bg-gray-400 text-white px-5 py-2 rounded-lg hover:bg-gray-500 transition"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
         </div>
-      </form>
 
-      {/* ================= TABLE ================= */}
-      <div className="table-wrapper mt-6">
-        <table className="order-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Variant</th>
-              <th>Rule</th>
-              <th>Earn</th>
-              <th>Redeem</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {mappings.length === 0 ? (
+        {/* ================= TABLE ================= */}
+        <div className="bg-white rounded-xl shadow-md overflow-hidden">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-200 text-gray-700">
               <tr>
-                <td colSpan={6} className="no-data">
-                  No mappings found
-                </td>
+                <th className="p-3">Product</th>
+                <th className="p-3">Variant</th>
+                <th className="p-3">Rule</th>
+                <th className="p-3">Earn</th>
+                <th className="p-3">Redeem</th>
+                <th className="p-3">Action</th>
               </tr>
-            ) : (
-              mappings.map((m: any) => (
-                <tr key={m.id}>
-                  <td>{m.product_name}</td>
-                  <td>{m.variant_name || "All"}</td>
-                  <td>{m.rule_name}</td>
-                  <td>{m.can_earn_reward ? "Yes" : "No"}</td>
-                  <td>{m.can_redeem_reward ? "Yes" : "No"}</td>
+            </thead>
 
-                  <td className="flex gap-2">
-                    <button
-                      className="view-btn"
-                      onClick={() => handleEdit(m)}
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      className="delete-btn"
-                      onClick={() => handleDelete(m.id)}
-                    >
-                      Delete
-                    </button>
+            <tbody>
+              {mappings.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center p-4 text-gray-500">
+                    No mappings found
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                mappings.map((m, index) => (
+                  <tr
+                    key={m.id}
+                    className={`border-t ${
+                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    } hover:bg-blue-50`}
+                  >
+                    <td className="p-3">{m.product_name}</td>
+                    <td className="p-3">{m.variant_name || "All"}</td>
+                    <td className="p-3">{m.rule_name}</td>
+
+                    <td className="p-3">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-medium ${
+                          m.can_earn_reward
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-600"
+                        }`}
+                      >
+                        {m.can_earn_reward ? "Yes" : "No"}
+                      </span>
+                    </td>
+
+                    <td className="p-3">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-medium ${
+                          m.can_redeem_reward
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-600"
+                        }`}
+                      >
+                        {m.can_redeem_reward ? "Yes" : "No"}
+                      </span>
+                    </td>
+
+                    <td className="p-3 flex gap-2">
+                      <button
+                        onClick={() => handleEdit(m)}
+                        className="px-3 py-1 text-sm bg-yellow-400 text-white rounded hover:bg-yellow-500"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => handleDelete(m.id)}
+                        className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
