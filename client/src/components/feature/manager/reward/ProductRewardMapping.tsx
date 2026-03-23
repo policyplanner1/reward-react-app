@@ -265,7 +265,7 @@ const ProductRewardMapping = () => {
                   </td>
                 </tr>
               ) : (
-                mappings.map((m, index) => (
+                mappings.map((m: any, index) => (
                   <tr
                     key={m.id}
                     className={`border-t ${
