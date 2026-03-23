@@ -1,5 +1,6 @@
 const RewardModel = require("../models/rewardModel");
 const RewardService = require("../services/Reward/reward-service");
+const db = require("../config/database");
 
 class RewardController {
   // CREATE RULE
