@@ -55,19 +55,20 @@ class ProductController {
 
         const salePrice = product.sale_price ? Number(product.sale_price) : 0;
 
-        const discountPercent = product.reward_redemption_limit
-          ? Number(product.reward_redemption_limit)
-          : 0;
-
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
-
-        const finalPrice = salePrice - discountAmount;
-
-        // extra discount
         const mrp = product.mrp ? Number(product.mrp) : 0;
 
+        // const discountPercent = product.reward_redemption_limit
+        //   ? Number(product.reward_redemption_limit)
+        //   : 0;
+
+        // const discountAmount = Math.round((salePrice * discountPercent) / 100);
+
+        // const finalPrice = salePrice - discountAmount;
+
+        const rewardCoins = calculateReward(salePrice, product);
+
         const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+          mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
         return {
           id: product.product_id,
@@ -83,8 +84,17 @@ class ProductController {
           discount: `${mrpDiscountPercent}%`,
           rating: 4.6,
           reviews: "18.9K",
-          pointsPrice: salePrice ? `₹${finalPrice}` : null,
-          points: discountAmount,
+          // pointsPrice: salePrice ? `₹${finalPrice}` : null,
+          // points: discountAmount,
+          rewardCoins: rewardCoins,
+          rewardLabel: rewardCoins > 0 ? `${rewardCoins} coins` : null,
+
+          reward: {
+            enabled: product.can_earn_reward === 1,
+            type: product.reward_type,
+            value: product.reward_value,
+            max: product.max_reward,
+          },
         };
       });
 
