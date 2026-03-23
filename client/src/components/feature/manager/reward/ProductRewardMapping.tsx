@@ -25,8 +25,8 @@ const ProductRewardMapping = () => {
   }, []);
 
   const fetchProducts = async () => {
-    const res = await api.get("/products");
-    setProducts(res.data.data);
+    const res = await api.get("/product/all-products");
+    setProducts(res.data?.products || []);
   };
 
   const fetchRules = async () => {
@@ -35,8 +35,8 @@ const ProductRewardMapping = () => {
   };
 
   const fetchMappings = async () => {
-    const res = await api.get("/product-reward-settings");
-    setMappings(res.data.data);
+    const res = await api.get("/reward/product-reward-settings");
+    setMappings(res.data?.data || []);
   };
 
   // 🔹 Load variants
@@ -136,9 +136,10 @@ const ProductRewardMapping = () => {
                 disabled={!!editingId}
               >
                 <option value="">Select Product</option>
-                {products.map((p) => (
+
+                {products.map((p: any) => (
                   <option key={p.product_id} value={p.product_id}>
-                    {p.title}
+                    {p.product_name} ({p.brand_name})
                   </option>
                 ))}
               </select>
