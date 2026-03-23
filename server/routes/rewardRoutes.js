@@ -45,7 +45,7 @@ router.delete(
 
 // PRODUCT MAPPING
 router.post(
-  "/map",
+  "/product-reward-settings",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
   RewardController.mapProductReward,
