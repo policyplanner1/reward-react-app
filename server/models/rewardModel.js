@@ -3,23 +3,41 @@ const db = require("../config/database");
 class RewardModel {
   // CREATE RULE
   async createRewardRule(data) {
-    const { name, reward_type, reward_value, max_reward, min_order_amount } =
-      data;
+    const {
+      name,
+      reward_type,
+      reward_value,
+      max_reward,
+      min_order_amount,
+      source_type,
+    } = data;
+
+    if (!reward_type || !reward_value || !source_type) {
+      return res.status(400).json({
+        success: false,
+        message: "Required fields missing",
+      });
+    }
 
     const [result] = await db.execute(
       `INSERT INTO reward_rules 
-      (name, reward_type, reward_value, max_reward, min_order_amount)
-      VALUES (?, ?, ?, ?, ?)`,
+      (name, reward_type, reward_value, max_reward, min_order_amount, source_type)
+      VALUES (?, ?, ?, ?, ?, ?)`,
       [
         name,
         reward_type,
         reward_value,
         max_reward || null,
         min_order_amount || 0,
+        source_type,
       ],
     );
 
-    return result.insertId;
+    return res.json({
+      success: true,
+      message: "Reward rule created",
+      data: { reward_rule_id: result.insertId },
+    });
   }
 
   // GET RULES
