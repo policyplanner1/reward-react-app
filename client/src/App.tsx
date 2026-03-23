@@ -50,6 +50,7 @@ import OrderView from "./components/feature/manager/order/OrderView";
 // Manage Rewards
 import RewardRule from "./components/feature/manager/reward/RewardRule";
 import RewardForm from "./components/feature/manager/reward/RewardForm";
+import ProductRewardMapping from "./components/feature/manager/reward/ProductRewardMapping";
 
 /* Attribute */
 import AttributeManagement from "./components/feature/manager/attribute/attributes";
@@ -248,6 +249,8 @@ export default function App() {
         <Route path={routes.manager.rewards.create} element={<RewardForm />} />
 
         <Route path={routes.manager.rewards.edit} element={<RewardForm />} />
+
+        <Route path={routes.manager.rewards.mapping} element={<ProductRewardMapping />} />
       </Route>
 
       {/* ========== FALLBACK ========== */}

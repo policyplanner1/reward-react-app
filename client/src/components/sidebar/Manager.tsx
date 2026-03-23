@@ -116,10 +116,10 @@ export default function ManagerNavbar() {
       type: "dropdown", 
       children: [
         { label: "Reward Rule", to: routes.manager.rewards.rewardRule },
-        // {
-        //   label: "Cancellation Request",
-        //   to: routes.manager.orders.cancellationRequest,
-        // },
+        {
+          label: "Reward Mapping",
+          to: routes.manager.rewards.mapping,
+        },
       ],
     },
   ];

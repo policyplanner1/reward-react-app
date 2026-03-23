@@ -44,7 +44,8 @@ export const routes = {
     rewards:{
       rewardRule:"/manager/rewards-rule",
       create:"/manager/reward-create",
-      edit:"/manager/reward-edit/:id"
+      edit:"/manager/reward-edit/:id",
+      mapping:"/manager/reward-mapping",
     }
   },
 };
