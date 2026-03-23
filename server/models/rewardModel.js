@@ -98,6 +98,33 @@ class RewardModel {
       [user_id, title, description, type, coins, category, reference_id],
     );
   }
+
+  // Get product reward mappings
+  async getProductRewardMappings() {
+    const [rows] = await db.execute(`
+      SELECT 
+        prs.id,
+        prs.product_id,
+        prs.variant_id,
+        prs.reward_rule_id,
+        prs.can_earn_reward,
+        prs.can_redeem_reward,
+
+        p.product_name AS product_name,
+        v.sku AS variant_name,
+        rr.name AS rule_name
+
+      FROM product_reward_settings prs
+      JOIN eproducts p ON p.product_id = prs.product_id
+      LEFT JOIN product_variants v ON v.variant_id = prs.variant_id
+      JOIN reward_rules rr ON rr.reward_rule_id = prs.reward_rule_id
+
+      WHERE prs.is_active = 1
+      ORDER BY prs.id DESC
+    `);
+
+    return rows;
+  }
 }
 
 module.exports = new RewardModel();

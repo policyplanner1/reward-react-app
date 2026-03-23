@@ -51,6 +51,14 @@ router.post(
   RewardController.mapProductReward,
 );
 
+// Get product Mapping
+router.get(
+  "/product-reward-settings",
+  authenticateToken,
+  authorizeRoles("admin", "vendor_manager"),
+  RewardController.getProductRewardMappings
+);
+
 // APPLY (test / debug / can be internal)
 router.post(
   "/apply",

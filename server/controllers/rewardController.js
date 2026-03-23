@@ -205,6 +205,24 @@ class RewardController {
     }
   }
 
+  // Get product mapping
+  async getProductRewardMappings(req, res) {
+    try {
+      const data = await RewardModel.getProductRewardMappings();
+
+      return res.json({
+        success: true,
+        data,
+      });
+    } catch (err) {
+      console.error("Fetch Mapping Error:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
   // APPLY REWARD (CALL THIS IN ORDER FLOW)
   async applyReward(req, res) {
     try {
