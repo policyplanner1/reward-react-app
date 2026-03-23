@@ -31,7 +31,7 @@ const ProductRewardMapping = () => {
 
   const fetchRules = async () => {
     const res = await api.get("/reward/get-rule");
-    setRules(res.data.data);
+     setRules(res.data?.data || res.data || []);
   };
 
   const fetchMappings = async () => {
@@ -180,7 +180,7 @@ const ProductRewardMapping = () => {
                 required
               >
                 <option value="">Select Reward Rule</option>
-                {rules.map((r) => (
+                {rules.map((r:any) => (
                   <option key={r.reward_rule_id} value={r.reward_rule_id}>
                     {r.name}
                   </option>
