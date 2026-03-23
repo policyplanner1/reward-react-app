@@ -3,7 +3,7 @@ const router = express.Router();
 const RewardController = require("../controllers/rewardController");
 const { authenticateToken, authorizeRoles } = require("../middleware/auth");
 
-// RULES
+// CREATE RULES
 router.post(
   "/create-rule",
   authenticateToken,
@@ -11,12 +11,36 @@ router.post(
   RewardController.createRule,
 );
 
-
+// Get Rules
 router.get(
   "/get-rule",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
   RewardController.getRules,
+);
+
+// Get Rule by ID
+router.get(
+  "/get-rule/:id",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  RewardController.getRewardRuleById,
+);
+
+// UPDATE RULES
+router.put(
+  "/update-rule/:id",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  RewardController.updateRewardRule,
+);
+
+// DELETE RULE
+router.delete(
+  "/delete-rule/:id",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  RewardController.deleteRewardRule,
 );
 
 // PRODUCT MAPPING
