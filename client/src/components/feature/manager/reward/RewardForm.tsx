@@ -240,7 +240,7 @@ const RewardForm: React.FC = () => {
           <div className="flex justify-end gap-4 pt-4 border-t">
             <button
               type="button"
-              onClick={() => navigate("/manager/reward-list")}
+              onClick={() => navigate("/manager/rewards-rule")}
               className="px-5 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer"
             >
               Cancel
