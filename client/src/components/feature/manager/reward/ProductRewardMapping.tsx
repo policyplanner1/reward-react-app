@@ -30,7 +30,7 @@ const ProductRewardMapping = () => {
   };
 
   const fetchRules = async () => {
-    const res = await api.get("/reward-rules");
+    const res = await api.get("/reward/get-rule");
     setRules(res.data.data);
   };
 
