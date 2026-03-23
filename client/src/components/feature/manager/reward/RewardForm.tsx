@@ -21,7 +21,7 @@ const RewardForm: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
 
-  // 🔹 Fetch existing rule (Edit mode)
+  //  Fetch existing rule (Edit mode)
   useEffect(() => {
     if (isEdit) fetchRule();
   }, [id]);
@@ -29,7 +29,7 @@ const RewardForm: React.FC = () => {
   const fetchRule = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/reward-rules/${id}`);
+      const res = await api.get(`/reward/get-rule/${id}`);
 
       if (res.data.success) {
         const data = res.data.data;
@@ -52,7 +52,7 @@ const RewardForm: React.FC = () => {
     }
   };
 
-  // 🔹 Handle Input Change
+  //  Handle Input Change
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
@@ -64,7 +64,7 @@ const RewardForm: React.FC = () => {
     }));
   };
 
-  // 🔹 Submit
+  //  Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -79,12 +79,12 @@ const RewardForm: React.FC = () => {
       };
 
       if (isEdit) {
-        await api.put(`/reward-rules/${id}`, payload);
+        await api.put(`/reward/update-rule/${id}`, payload);
       } else {
-        await api.post(`/reward-rules`, payload);
+        await api.post(`/reward/create-rule`, payload);
       }
 
-      navigate("/manager/reward-list");
+      navigate("/manager/rewards-rule");
     } catch (err) {
       console.error(err);
       alert("Failed to save rule");
