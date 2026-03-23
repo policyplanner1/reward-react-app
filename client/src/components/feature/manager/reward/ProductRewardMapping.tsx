@@ -58,7 +58,7 @@ const ProductRewardMapping = () => {
     e.preventDefault();
 
     try {
-      await api.post("/map", form);
+      await api.post("/reward/product-reward-settings", form);
 
       alert(editingId ? "Updated successfully" : "Created successfully");
 
@@ -93,7 +93,7 @@ const ProductRewardMapping = () => {
   const handleDelete = async (id: number) => {
     if (!window.confirm("Delete this mapping?")) return;
 
-    await api.delete(`/product-reward-settings/${id}`);
+    await api.delete(`/reward/product-reward-settings/${id}`);
     fetchMappings();
   };
 
