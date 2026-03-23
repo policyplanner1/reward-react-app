@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../../api/api";
+import "./Css/rewardForm.css"
 
 const RewardForm: React.FC = () => {
   const navigate = useNavigate();
@@ -52,7 +53,9 @@ const RewardForm: React.FC = () => {
   };
 
   // 🔹 Handle Input Change
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
 
     setForm((prev) => ({
@@ -82,7 +85,6 @@ const RewardForm: React.FC = () => {
       }
 
       navigate("/manager/reward-list");
-
     } catch (err) {
       console.error(err);
       alert("Failed to save rule");
@@ -92,118 +94,167 @@ const RewardForm: React.FC = () => {
   };
 
   return (
-    <div className="order-page">
-      <h2 className="text-2xl font-semibold mb-6">
-        {isEdit ? "Edit Reward Rule" : "Create Reward Rule"}
-      </h2>
+    <div className="min-h-screen bg-gray-50 flex justify-center items-start py-10 px-4">
+      <div className="w-full max-w-3xl bg-white rounded-2xl shadow-lg p-8">
+        {/* Header */}
+        <h2 className="text-2xl font-bold mb-6 text-gray-800">
+          {isEdit ? "Edit Reward Rule" : "Create Reward Rule"}
+        </h2>
 
-      <form onSubmit={handleSubmit} className="form-container">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Info */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-gray-700">
+              Basic Details
+            </h3>
 
-        {/* Name */}
-        <div className="form-group">
-          <label>Rule Name</label>
-          <input
-            type="text"
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            required
-          />
-        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Name */}
+              <div>
+                <label className="label">Rule Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  className="input"
+                  required
+                />
+              </div>
 
-        {/* Reward Type */}
-        <div className="form-group">
-          <label>Reward Type</label>
-          <select
-            name="reward_type"
-            value={form.reward_type}
-            onChange={handleChange}
-          >
-            <option value="percentage">Percentage (%)</option>
-            <option value="fixed">Fixed (₹)</option>
-          </select>
-        </div>
+              {/* Reward Type */}
+              <div>
+                <label className="label">Reward Type</label>
+                <select
+                  name="reward_type"
+                  value={form.reward_type}
+                  onChange={handleChange}
+                  className="input"
+                >
+                  <option value="percentage">Percentage (%)</option>
+                  <option value="fixed">Fixed (₹)</option>
+                </select>
+              </div>
+            </div>
+          </div>
 
-        {/* Reward Value */}
-        <div className="form-group">
-          <label>Reward Value</label>
-          <input
-            type="number"
-            name="reward_value"
-            value={form.reward_value}
-            onChange={handleChange}
-            required
-          />
-        </div>
+          {/* Reward Config */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-gray-700">
+              Reward Configuration
+            </h3>
 
-        {/* Max Reward */}
-        <div className="form-group">
-          <label>Max Reward</label>
-          <input
-            type="number"
-            name="max_reward"
-            value={form.max_reward}
-            onChange={handleChange}
-          />
-        </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Reward Value */}
+              <div>
+                <label className="label">Reward Value</label>
+                <input
+                  type="number"
+                  name="reward_value"
+                  value={form.reward_value}
+                  onChange={handleChange}
+                  className="input"
+                  required
+                />
+              </div>
 
-        {/* Min Order */}
-        <div className="form-group">
-          <label>Minimum Order Amount</label>
-          <input
-            type="number"
-            name="min_order_amount"
-            value={form.min_order_amount}
-            onChange={handleChange}
-          />
-        </div>
+              {/* Max Reward */}
+              <div>
+                <label className="label">Max Reward</label>
+                <input
+                  type="number"
+                  name="max_reward"
+                  value={form.max_reward}
+                  onChange={handleChange}
+                  className="input"
+                />
+              </div>
 
-        {/* Source Type */}
-        <div className="form-group">
-          <label>Source Type</label>
-          <select
-            name="source_type"
-            value={form.source_type}
-            onChange={handleChange}
-          >
-            <option value="product">Product</option>
-            <option value="service">Service</option>
-            <option value="steps">Steps</option>
-            <option value="referral">Referral</option>
-            <option value="payment">Payment</option>
-            <option value="onboarding">Onboarding</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
+              {/* Min Order */}
+              <div>
+                <label className="label">Minimum Order</label>
+                <input
+                  type="number"
+                  name="min_order_amount"
+                  value={form.min_order_amount}
+                  onChange={handleChange}
+                  className="input"
+                />
+              </div>
+            </div>
+          </div>
 
-        {/* Status */}
-        <div className="form-group">
-          <label>Status</label>
-          <select
-            name="is_active"
-            value={form.is_active}
-            onChange={handleChange}
-          >
-            <option value={1}>Active</option>
-            <option value={0}>Inactive</option>
-          </select>
-        </div>
+          {/* Source + Status */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-gray-700">
+              Additional Settings
+            </h3>
 
-        {/* Submit */}
-        <div className="flex gap-4 mt-6">
-          <button type="submit" className="save-btn">
-            {isEdit ? "Update Rule" : "Create Rule"}
-          </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Source Type */}
+              <div>
+                <label className="label">Source Type</label>
+                <select
+                  name="source_type"
+                  value={form.source_type}
+                  onChange={handleChange}
+                  className="input"
+                >
+                  <option value="product">Product</option>
+                  <option value="service">Service</option>
+                  <option value="steps">Steps</option>
+                  <option value="referral">Referral</option>
+                  <option value="payment">Payment</option>
+                  <option value="onboarding">Onboarding</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
 
-          <button
-            type="button"
-            className="cancel-btn"
-            onClick={() => navigate("/manager/reward-list")}
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
+              {/* Status Toggle */}
+              <div className="flex items-center justify-between mt-6 md:mt-0">
+                <span className="text-gray-700 font-medium">Active Status</span>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      is_active: prev.is_active ? 0 : 1,
+                    }))
+                  }
+                  className={`w-14 h-7 flex items-center rounded-full p-1 transition ${
+                    form.is_active ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                >
+                  <div
+                    className={`bg-white w-5 h-5 rounded-full shadow-md transform transition ${
+                      form.is_active ? "translate-x-7" : ""
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex justify-end gap-4 pt-4 border-t">
+            <button
+              type="button"
+              onClick={() => navigate("/manager/reward-list")}
+              className="px-5 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="px-6 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 shadow cursor-pointer"
+            >
+              {isEdit ? "Update Rule" : "Create Rule"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
