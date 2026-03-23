@@ -49,8 +49,8 @@ const ProductRewardMapping = () => {
 
     if (!productId) return;
 
-    const res = await api.get(`/products/${productId}/variants`);
-    setVariants(res.data.data);
+    const res = await api.get(`/variant/product/${productId}`);
+    setVariants(res.data.data || []);
   };
 
   // 🔹 Submit (Create / Update)
@@ -158,9 +158,9 @@ const ProductRewardMapping = () => {
                 }
               >
                 <option value="">All Variants</option>
-                {variants.map((v) => (
+                {variants.map((v: any) => (
                   <option key={v.variant_id} value={v.variant_id}>
-                    {v.name}
+                    {"Variant"} ({v.sku})
                   </option>
                 ))}
               </select>
