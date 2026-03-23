@@ -7,10 +7,42 @@ class RewardModel {
       product_id,
       variant_id,
       reward_rule_id,
-      can_earn_reward,
-      can_redeem_reward,
+      can_earn_reward = 1,
+      can_redeem_reward = 1,
     } = data;
 
+    if (!product_id || !reward_rule_id) {
+      throw new Error("product_id and reward_rule_id are required");
+    }
+
+    //  Step 1: Check if mapping exists
+    const [existing] = await db.execute(
+      `SELECT id FROM product_reward_settings
+     WHERE product_id = ?
+     AND (
+       (variant_id IS NULL AND ? IS NULL)
+       OR variant_id = ?
+     )`,
+      [product_id, variant_id || null, variant_id || null],
+    );
+
+    //  Step 2: If exists → UPDATE
+    if (existing.length > 0) {
+      const mappingId = existing[0].id;
+
+      await db.execute(
+        `UPDATE product_reward_settings
+       SET reward_rule_id = ?,
+           can_earn_reward = ?,
+           can_redeem_reward = ?
+       WHERE id = ?`,
+        [reward_rule_id, can_earn_reward, can_redeem_reward, mappingId],
+      );
+
+      return mappingId;
+    }
+
+    // Step 3: Else → INSERT
     const [result] = await db.execute(
       `INSERT INTO product_reward_settings 
       (product_id, variant_id, reward_rule_id, can_earn_reward, can_redeem_reward)

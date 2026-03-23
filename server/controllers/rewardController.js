@@ -200,6 +200,7 @@ class RewardController {
         data: { id },
       });
     } catch (err) {
+      console.error("Mapping Error:", err);
       return res.status(500).json({ success: false, message: err.message });
     }
   }
