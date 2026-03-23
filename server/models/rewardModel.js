@@ -45,7 +45,117 @@ class RewardModel {
     const [rows] = await db.execute(
       `SELECT * FROM reward_rules WHERE is_active = 1`,
     );
-    return rows;
+
+    return res.json({
+      success: true,
+      data: rows,
+    });
+  }
+
+  // GET RULE BY ID
+  async getRewardRuleById(req, res) {
+    try {
+      const { id } = req.params;
+
+      const query = `SELECT * FROM reward_rules WHERE reward_rule_id = ?`;
+      const rows = await executeQry(query, [id]);
+
+      if (!rows.length) {
+        return res.status(404).json({
+          success: false,
+          message: "Reward rule not found",
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: rows[0],
+      });
+    } catch (err) {
+      console.error("Get Rule Error:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // UPDATE RULE
+  async updateRewardRule(req, res) {
+    try {
+      const { id } = req.params;
+
+      const {
+        name,
+        reward_type,
+        reward_value,
+        max_reward,
+        min_order_amount,
+        is_active,
+        source_type,
+      } = req.body;
+
+      const query = `
+      UPDATE reward_rules
+      SET 
+        name = ?,
+        reward_type = ?,
+        reward_value = ?,
+        max_reward = ?,
+        min_order_amount = ?,
+        is_active = ?,
+        source_type = ?
+      WHERE reward_rule_id = ?
+    `;
+
+      await executeQry(query, [
+        name,
+        reward_type,
+        reward_value,
+        max_reward,
+        min_order_amount,
+        is_active,
+        source_type,
+        id,
+      ]);
+
+      return res.json({
+        success: true,
+        message: "Reward rule updated",
+      });
+    } catch (err) {
+      console.error("Update Rule Error:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // DEACTIVATE RULE
+  async deleteRewardRule(req, res) {
+    try {
+      const { id } = req.params;
+
+      const query = `
+      UPDATE reward_rules
+      SET is_active = 0
+      WHERE reward_rule_id = ?
+    `;
+
+      await executeQry(query, [id]);
+
+      return res.json({
+        success: true,
+        message: "Reward rule deactivated",
+      });
+    } catch (err) {
+      console.error("Delete Rule Error:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
   }
 
   // MAP PRODUCT / VARIANT
