@@ -84,7 +84,7 @@ const ProductRewardMapping = () => {
 
     // load variants
     if (m.product_id) {
-      const res = await api.get(`/products/${m.product_id}/variants`);
+      const res = await api.get(`/variant/product/${m.product_id}`);
       setVariants(res.data.data);
     }
   };
