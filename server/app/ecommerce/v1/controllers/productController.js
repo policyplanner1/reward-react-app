@@ -358,27 +358,49 @@ class ProductController {
           // Numbers only
           const salePrice = Number(variant.sale_price) || 0;
           const mrp = Number(variant.mrp) || 0;
-          const rewardDiscountPercent =
-            Number(variant.reward_redemption_limit) || 0;
 
-          // Reward discount on sale price
-          const rewardDiscountAmount = Math.round(
-            (salePrice * rewardDiscountPercent) / 100,
-          );
+          // const rewardDiscountPercent =
+          //   Number(variant.reward_redemption_limit) || 0;
 
-          const finalPrice = salePrice - rewardDiscountAmount;
+          // // Reward discount on sale price
+          // const rewardDiscountAmount = Math.round(
+          //   (salePrice * rewardDiscountPercent) / 100,
+          // );
+          // const finalPrice = salePrice - rewardDiscountAmount;
+
+          /* ===============================
+              REDEMPTION (DISCOUNT)
+            =============================== */
+          const redeemPercent = Number(variant.reward_redemption_limit) || 0;
+
+          const redeemAmount = Math.round((salePrice * redeemPercent) / 100);
+
+          const finalPrice = salePrice - redeemAmount;
 
           // Effective discount from MRP
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
 
+          const rewardCoins = calculateReward(salePrice, variant);
+
           return {
             ...variant,
+            price: `₹${salePrice}`,
+            finalPrice: `₹${finalPrice}`,
             discount: `${mrpDiscountPercent}%`,
+            redemption: {
+              percent: redeemPercent,
+              amount: redeemAmount,
+            },
             rating: 4.6,
             reviews: "18.9K",
-            pointsPrice: finalPrice ? `₹${finalPrice}` : null,
-            points: rewardDiscountAmount,
+            // pointsPrice: finalPrice ? `₹${finalPrice}` : null,
+            // points: rewardDiscountAmount,
+            reward: {
+              enabled: variant.can_earn_reward === 1,
+              coins: rewardCoins,
+              label: rewardCoins > 0 ? `${rewardCoins} coins` : null,
+            },
           };
         }),
       };

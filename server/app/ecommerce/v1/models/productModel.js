@@ -234,7 +234,35 @@ class ProductModel {
 
       // 3 Get product variants
       const [variants] = await db.execute(
-        `SELECT * FROM product_variants WHERE product_id = ? AND is_visible = 1`,
+        `SELECT 
+          v.*,
+          prs.can_earn_reward,
+          rr.reward_type,
+          rr.reward_value,
+          rr.max_reward
+        FROM product_variants v
+
+        LEFT JOIN product_reward_settings prs 
+          ON prs.id = (
+            SELECT prs2.id
+            FROM product_reward_settings prs2
+            WHERE prs2.product_id = v.product_id
+              AND prs2.is_active = 1
+              AND (
+                prs2.variant_id = v.variant_id
+                OR prs2.variant_id IS NULL
+              )
+            ORDER BY 
+              CASE WHEN prs2.variant_id = v.variant_id THEN 1 ELSE 2 END
+            LIMIT 1
+          )
+
+        LEFT JOIN reward_rules rr 
+          ON rr.reward_rule_id = prs.reward_rule_id
+          AND rr.is_active = 1
+
+        WHERE v.product_id = ? 
+        AND v.is_visible = 1`,
         [productId],
       );
 
