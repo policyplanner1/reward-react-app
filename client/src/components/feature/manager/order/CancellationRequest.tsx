@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
-import "./css/orderList.css";
+import "./css/OrderCancellation.css";
 import { FiXCircle } from "react-icons/fi";
 
 interface CancellationRequest {
@@ -68,14 +68,15 @@ const CancellationRequests: React.FC = () => {
 
   return (
     <div className="order-page">
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 bg-gradient-to-r from-[#FC3F78] to-[#852BAF] rounded-full flex items-center justify-center">
-          <FiXCircle className="text-white text-xl" />
+      <div className="order-container">
+      <div className="order-header">
+        <div className="icon-box">
+          <FiXCircle />
         </div>
 
         <div>
-          <h2 className="text-2xl font-semibold">Cancellation Requests</h2>
-          <p className="text-gray-500">
+          <h2 className="order-title">Cancellation Requests</h2>
+          <p className="order-subtitle">
             Review and manage customer cancellation requests
           </p>
         </div>
@@ -118,7 +119,7 @@ const CancellationRequests: React.FC = () => {
                     </td>
 
                     <td>
-                      # {req.reason_id} ({req.reason}) 
+                      # {req.reason_id} ({req.reason})
                     </td>
 
                     <td>{req.comment ?? "-"}</td>
@@ -129,7 +130,9 @@ const CancellationRequests: React.FC = () => {
                       <button
                         className="view-btn"
                         onClick={() =>
-                          navigate(`/manager/cancellation-detail/${req.order_id}`)
+                          navigate(
+                            `/manager/cancellation-detail/${req.order_id}`,
+                          )
                         }
                       >
                         View
@@ -142,6 +145,7 @@ const CancellationRequests: React.FC = () => {
           </table>
         </div>
       )}
+      </div>
     </div>
   );
 };
