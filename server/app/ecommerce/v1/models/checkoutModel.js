@@ -195,6 +195,16 @@ class CheckoutModel {
     try {
       await conn.beginTransaction();
 
+      // ===============================
+      // 0. WALLET (LOCK)
+      // ===============================
+      const [[wallet]] = await conn.execute(
+        `SELECT balance FROM customer_wallet WHERE user_id = ? FOR UPDATE`,
+        [userId],
+      );
+
+      let walletBalance = Number(wallet?.balance || 0);
+
       // 1 Fetch cart items
       const [cartItems] = await conn.execute(
         `
@@ -210,10 +220,37 @@ class CheckoutModel {
           v.breadth,
           v.height,
           v.reward_redemption_limit,
-          p.vendor_id
+          p.vendor_id,
+          prs.can_earn_reward,
+          prs.can_redeem_reward,
+
+          rr.reward_type,
+          rr.reward_value,
+          rr.max_reward
+
         FROM cart_items ci
         JOIN product_variants v ON ci.variant_id = v.variant_id
         JOIN eproducts p ON v.product_id = p.product_id
+
+        LEFT JOIN product_reward_settings prs 
+        ON prs.id = (
+          SELECT prs2.id
+          FROM product_reward_settings prs2
+          WHERE prs2.product_id = ci.product_id
+            AND prs2.is_active = 1
+            AND (
+              prs2.variant_id = ci.variant_id
+              OR prs2.variant_id IS NULL
+            )
+          ORDER BY 
+            CASE WHEN prs2.variant_id = ci.variant_id THEN 1 ELSE 2 END
+          LIMIT 1
+        )
+
+        LEFT JOIN reward_rules rr 
+        ON rr.reward_rule_id = prs.reward_rule_id
+        AND rr.is_active = 1
+
         WHERE ci.user_id = ?  
         FOR UPDATE
         `,
