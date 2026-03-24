@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../../api/api";
-import "./Css/rewardForm.css"
+import "./Css/rewardForm.css";
 
 const RewardForm: React.FC = () => {
   const navigate = useNavigate();
@@ -248,9 +248,20 @@ const RewardForm: React.FC = () => {
 
             <button
               type="submit"
-              className="px-6 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 shadow cursor-pointer"
+              disabled={loading}
+              className={`px-6 py-2 rounded-lg text-white font-medium shadow cursor-pointer ${
+                loading
+                  ? "bg-blue-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }`}
             >
-              {isEdit ? "Update Rule" : "Create Rule"}
+              {loading
+                ? isEdit
+                  ? "Updating..."
+                  : "Creating..."
+                : isEdit
+                  ? "Update Rule"
+                  : "Create Rule"}
             </button>
           </div>
         </form>
