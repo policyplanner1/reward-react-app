@@ -63,7 +63,7 @@ router.get(
 router.delete(
   "/product-reward-settings/:id",
   authenticateToken,
-  authorizeRoles("admin"),
+  authorizeRoles("admin","vendor_manager"),
   RewardController.deleteProductRewardMapping
 );
 
