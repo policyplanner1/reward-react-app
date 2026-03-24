@@ -29,8 +29,7 @@ class ServiceDocumentModel {
     const [rows] = await db.execute(
       `SELECT id, document_name, is_mandatory
      FROM service_documents
-     WHERE service_id = ? AND status = 1
-     ORDER BY sort_order`,
+     WHERE service_id = ?`,
       [serviceId],
     );
     return rows;
