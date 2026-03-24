@@ -244,15 +244,7 @@ class CheckoutController {
       return res.json({
         success: true,
         mode: "buy_now",
-        item: checkoutData.item,
-        totalAmount: checkoutData.totalAmount,
-        productTotal: checkoutData.productTotal,
-        rewardUsed: checkoutData.rewardUsed,
-        totalDiscount: checkoutData.totalDiscount,
-        payableAmount: checkoutData.payableAmount,
-        shippingTotal: checkoutData.shippingTotal,
-        shippingBreakdown: checkoutData.shippingBreakdown,
-        estimated_delivery_date: checkoutData.estimated_delivery_date,
+        ...checkoutData,
       });
     } catch (error) {
       console.error("Buy now checkout fetch error:", error);
