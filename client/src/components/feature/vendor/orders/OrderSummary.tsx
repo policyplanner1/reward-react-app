@@ -68,124 +68,132 @@ const OrderSummary: React.FC = () => {
 
   return (
     <div className="order-page">
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 bg-gradient-to-r from-[#852BAF] to-[#FC3F78] rounded-full flex items-center justify-center shrink-0">
-          <FiShoppingCart className="text-white text-xl mr-0.75" />
-        </div>
-
-        <div>
-          <h2 className="text-2xl font-semibold">Orders</h2>
-          <p className="text-gray-500">
-            Manage and monitor all customer orders
-          </p>
-        </div>
-      </div>
-
-      {loading && <div className="loader"></div>}
-      {error && <p className="error">{error}</p>}
-
-      {!loading && !error && (
-        <>
-          <div className="table-wrapper">
-            <table className="order-table">
-              <thead>
-                <tr>
-                  <th>Order Ref</th>
-                  <th>Total</th>
-                  <th>Shipment Status</th>
-                  <th>Date</th>
-                  <th>Items</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {orders.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="no-data">
-                      No orders found
-                    </td>
-                  </tr>
-                ) : (
-                  orders.map((order) => (
-                    <tr key={order.vendor_order_id}>
-                      <td className="order-ref">
-                        {order.order_ref}
-
-                        {order.awb_number && (
-                          <div className="awb-text">
-                            AWB: {order.awb_number}
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="amount">
-                        {formatCurrency(order.vendor_total)}
-                      </td>
-
-                      <td>
-                        <span
-                          className={`status-badge status-${order.shipping_status}`}
-                        >
-                          {order.shipping_status}
-                        </span>
-                      </td>
-
-                      <td>
-                        {new Date(order.created_at).toLocaleDateString(
-                          "en-IN",
-                          {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          },
-                        )}
-                      </td>
-
-                      <td>{order.item_count}</td>
-
-                      <td>
-                        <button
-                          className="view-btn"
-                          onClick={() =>
-                            navigate(
-                              `/vendor/orders/details/${order.vendor_order_id}`,
-                            )
-                          }
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+      <div className="order-container">
+        {/*  Header */}
+        <div className="order-header">
+          <div className="icon-box">
+            <FiShoppingCart />
           </div>
 
-          {orders.length > 0 && (
-            <div className="pagination">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((prev) => prev - 1)}
-              >
-                ← Prev
-              </button>
+          <div>
+            <h2 className="order-title">Orders</h2>
+            <p className="order-subtitle">
+              Manage and monitor all customer orders
+            </p>
+          </div>
+        </div>
 
-              <span>
-                Page {page} of {totalPages}
-              </span>
+        {/* Loader */}
+        {loading && <div className="loader"></div>}
 
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage((prev) => prev + 1)}
-              >
-                Next →
-              </button>
+        {/* Error */}
+        {error && <p className="error">{error}</p>}
+
+        {/* Table */}
+        {!loading && !error && (
+          <>
+            <div className="table-wrapper">
+              <table className="order-table">
+                <thead>
+                  <tr>
+                    <th>Order Ref</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Items</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {orders.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="no-data">
+                        No orders found
+                      </td>
+                    </tr>
+                  ) : (
+                    orders.map((order) => (
+                      <tr key={order.vendor_order_id}>
+                        <td className="order-ref" data-label="Order Ref">
+                          {order.order_ref}
+
+                          {order.awb_number && (
+                            <div className="awb-text">
+                              AWB: {order.awb_number}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="amount" data-label="Total">
+                          {formatCurrency(order.vendor_total)}
+                        </td>
+
+                        <td data-label="Status">
+                          <span
+                            className={`status-badge status-${order.shipping_status}`}
+                          >
+                            {order.shipping_status}
+                          </span>
+                        </td>
+
+                        <td data-label="Date">
+                          {new Date(order.created_at).toLocaleDateString(
+                            "en-IN",
+                            {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            },
+                          )}
+                        </td>
+
+                        <td data-label="Items">{order.item_count}</td>
+
+                        <td data-label="Action">
+                          <button
+                            className="view-btn"
+                            onClick={() =>
+                              navigate(
+                                `/vendor/orders/details/${order.vendor_order_id}`,
+                              )
+                            }
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-          )}
-        </>
-      )}
+
+            {/* Pagination */}
+            {orders.length > 0 && (
+              <div className="pagination">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage((prev) => prev - 1)}
+                >
+                  ← Prev
+                </button>
+
+                <span>
+                  Page {page} of {totalPages}
+                </span>
+
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((prev) => prev + 1)}
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };
