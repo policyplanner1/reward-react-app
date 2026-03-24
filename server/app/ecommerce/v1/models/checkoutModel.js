@@ -308,23 +308,6 @@ class CheckoutModel {
         };
       }
 
-      // =====================
-      //  WALLET VALIDATION
-      // =====================
-
-      // if (useRewards && totalDiscount > 0) {
-      //   const [[wallet]] = await conn.execute(
-      //     `SELECT balance FROM customer_wallet WHERE user_id = ? LIMIT 1`,
-      //     [userId],
-      //   );
-
-      //   const balance = wallet?.balance || 0;
-
-      //   if (balance < totalDiscount) {
-      //     throw new Error("INSUFFICIENT_REWARDS");
-      //   }
-      // }
-
       // 4 Group Items by Vendor
       const vendorGroups = {};
 
