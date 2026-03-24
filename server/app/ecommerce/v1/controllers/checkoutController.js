@@ -192,14 +192,7 @@ class CheckoutController {
       return res.json({
         success: true,
         mode: "cart",
-        items: checkoutData.items,
-        totalAmount: checkoutData.productTotal,
-        rewardUsed: checkoutData.rewardUsed,
-        totalDiscount: checkoutData.totalDiscount,
-        shippingTotal: checkoutData.shippingTotal,
-        payableAmount: checkoutData.payableAmount,
-        shippingBreakdown: checkoutData.shippingBreakdown,
-        estimated_delivery_date: checkoutData.estimated_delivery_date,
+        ...checkoutData,
       });
     } catch (error) {
       console.error("Checkout cart fetch error:", error);
