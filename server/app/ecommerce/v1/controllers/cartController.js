@@ -46,7 +46,9 @@ class CartController {
         });
       }
 
-      const summary = await CartModel.getCartSummary(userId);
+      const useRewards = req.query.use_rewards === "true";
+
+      const summary = await CartModel.getCartSummary(userId, useRewards);
 
       return res.json({
         success: true,

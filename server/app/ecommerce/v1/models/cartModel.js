@@ -111,7 +111,7 @@ class cartModel {
   }
 
   //cart summary
-  async getCartSummary(user_id) {
+  async getCartSummary(user_id, useRewards = true) {
     // 1. Get wallet
     const [[wallet]] = await db.execute(
       `SELECT balance FROM customer_wallet WHERE user_id = ?`,
@@ -207,10 +207,12 @@ class cartModel {
     }
 
     // 5. Wallet redemption
-    let remainingWallet = walletBalance;
+    let remainingWallet = useRewards ? walletBalance : 0;
     let totalRedeemed = 0;
 
     for (let item of items) {
+      if (!useRewards) break;
+      
       if (!item.can_redeem_reward || !item.reward_redemption_limit) continue;
       if (remainingWallet <= 0) break;
 
