@@ -196,6 +196,17 @@ class CheckoutModel {
       await conn.beginTransaction();
 
       // ===============================
+      // ENSURE WALLET EXISTS
+      // ===============================
+
+      await conn.execute(
+        `INSERT INTO customer_wallet (user_id, balance)
+   VALUES (?, 0)
+   ON DUPLICATE KEY UPDATE user_id = user_id`,
+        [userId],
+      );
+
+      // ===============================
       // 0. WALLET (LOCK)
       // ===============================
       const [[wallet]] = await conn.execute(
@@ -472,8 +483,8 @@ class CheckoutModel {
 
       const [orderRes] = await conn.execute(
         `
-        INSERT INTO eorders (user_id, company_id, total_amount,order_ref,address_id, product_total, reward_discount, reward_used,reward_earned)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO eorders (user_id, company_id, total_amount,order_ref,address_id, product_total, reward_discount, reward_used,reward_earned, shipping_total)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           userId,
@@ -485,6 +496,7 @@ class CheckoutModel {
           totalRedeemed,
           useRewards ? 1 : 0,
           totalRewardEarn,
+          shippingTotal,
         ],
       );
 
@@ -583,7 +595,6 @@ class CheckoutModel {
       // =====================
       //  WALLET DEDUCTION
       // =====================
-
       if (useRewards && totalRedeemed > 0) {
         if (walletBalance < totalRedeemed) {
           throw new Error("INSUFFICIENT_REWARDS");
@@ -609,38 +620,26 @@ class CheckoutModel {
           ],
         );
       }
-
       if (totalRewardEarn > 0) {
-        const [[existingReward]] = await conn.execute(
-          `SELECT transaction_id FROM wallet_transactions 
-              WHERE user_id = ? 
-              AND reference_id = ? 
-              AND category = 'order'
-              AND transaction_type = 'credit'
-              LIMIT 1`,
-          [userId, orderId],
+        const [insertResult] = await conn.execute(
+          `INSERT IGNORE INTO wallet_transactions
+     (user_id, title, transaction_type, coins, category, reference_id, description)
+     VALUES (?, ?, 'credit', ?, 'order', ?, ?)`,
+          [
+            userId,
+            "Coins earned from order",
+            totalRewardEarn,
+            orderId,
+            `Earned ${totalRewardEarn} coins from order`,
+          ],
         );
 
-        if (!existingReward) {
-          // credit wallet
+        if (insertResult.affectedRows > 0) {
           await conn.execute(
             `UPDATE customer_wallet 
-              SET balance = balance + ? 
-              WHERE user_id = ?`,
+       SET balance = balance + ? 
+       WHERE user_id = ?`,
             [totalRewardEarn, userId],
-          );
-
-          await conn.execute(
-            `INSERT IGNORE INTO wallet_transactions
-            (user_id, title, transaction_type, coins, category, reference_id, description)
-            VALUES (?, ?, 'credit', ?, 'order', ?, ?)`,
-            [
-              userId,
-              "Coins earned from order",
-              totalRewardEarn,
-              orderId,
-              `Earned ${totalRewardEarn} coins from order`,
-            ],
           );
         }
       }
