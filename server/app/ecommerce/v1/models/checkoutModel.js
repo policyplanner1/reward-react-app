@@ -281,34 +281,65 @@ class CheckoutModel {
       // =====================
 
       let productTotal = 0;
-      let totalDiscount = 0;
+      let totalRedeemed = 0;
+      let totalRewardEarn = 0;
 
       const itemPricingMap = {};
 
+      let remainingWallet = useRewards ? walletBalance : 0;
+
       for (const item of cartItems) {
-        const salePrice = Number(item.sale_price);
-        const quantity = Number(item.quantity);
-        const rewardPercent = Number(item.reward_redemption_limit) || 0;
-
-        const itemTotal = salePrice * quantity;
-
-        const rewardDiscount = useRewards
-          ? Math.round((itemTotal * rewardPercent) / 100)
-          : 0;
-
-        const finalItemTotal = itemTotal - rewardDiscount;
-
+        const itemTotal = Number(item.sale_price) * Number(item.quantity);
         productTotal += itemTotal;
-        totalDiscount += rewardDiscount;
+
+        let redeemable = 0;
+
+        //  REDEEM
+        if (
+          useRewards &&
+          item.can_redeem_reward &&
+          item.reward_redemption_limit &&
+          remainingWallet > 0
+        ) {
+          const maxAllowed = Math.floor(
+            (itemTotal * item.reward_redemption_limit) / 100,
+          );
+
+          redeemable = Math.min(remainingWallet, maxAllowed, itemTotal);
+
+          remainingWallet -= redeemable;
+          totalRedeemed += redeemable;
+        }
+
+        const finalItemTotal = itemTotal - redeemable;
+
+        //  EARN
+        let rewardEarn = 0;
+
+        if (item.can_earn_reward && item.reward_type) {
+          if (item.reward_type === "fixed") {
+            rewardEarn = item.reward_value;
+          } else {
+            rewardEarn = (finalItemTotal * item.reward_value) / 100;
+          }
+
+          if (item.max_reward) {
+            rewardEarn = Math.min(rewardEarn, item.max_reward);
+          }
+
+          rewardEarn = Math.floor(rewardEarn);
+          totalRewardEarn += rewardEarn;
+        }
 
         itemPricingMap[item.variant_id] = {
           itemTotal,
-          rewardDiscount,
+          redeemable,
           finalItemTotal,
+          rewardEarn,
         };
       }
 
-      // 4 Group Items by Vendor
+      // 4 Group Items by Vendor(Shipping)
       const vendorGroups = {};
 
       for (const item of cartItems) {
@@ -330,7 +361,7 @@ class CheckoutModel {
         group.items.push(item);
 
         group.totalWeightKg += item.quantity * Number(item.weight);
-        group.totalAmount += item.quantity * Number(item.sale_price);
+        group.totalAmount += itemPricingMap[item.variant_id].finalItemTotal;
 
         group.length = Math.max(group.length, Number(item.length));
         group.breadth = Math.max(group.breadth, Number(item.breadth));
@@ -434,15 +465,15 @@ class CheckoutModel {
         0,
       );
 
-      const finalTotal = productTotal - totalDiscount + shippingTotal;
+      const finalTotal = productTotal - totalRedeemed + shippingTotal;
 
       // 7 Create order
       const orderRef = generateOrderRef();
 
       const [orderRes] = await conn.execute(
         `
-        INSERT INTO eorders (user_id, company_id, total_amount,order_ref,address_id, product_total, reward_discount, reward_used)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO eorders (user_id, company_id, total_amount,order_ref,address_id, product_total, reward_discount, reward_used,reward_earned)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           userId,
@@ -451,8 +482,9 @@ class CheckoutModel {
           orderRef,
           addressId,
           productTotal,
-          totalDiscount,
+          totalRedeemed,
           useRewards ? 1 : 0,
+          totalRewardEarn,
         ],
       );
 
@@ -484,8 +516,8 @@ class CheckoutModel {
         await conn.execute(
           `
         INSERT INTO eorder_items
-        (order_id, vendor_order_id, product_id, variant_id, quantity, price, reward_discount)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        (order_id, vendor_order_id, product_id, variant_id, quantity, price, reward_discount,reward_used,reward_earned, final_price)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
           [
             orderId,
@@ -494,7 +526,10 @@ class CheckoutModel {
             item.variant_id,
             item.quantity,
             item.sale_price,
-            pricing.rewardDiscount,
+            pricing.redeemable,
+            pricing.redeemable > 0 ? 1 : 0,
+            pricing.rewardEarn,
+            pricing.finalItemTotal,
           ],
         );
 
@@ -549,39 +584,66 @@ class CheckoutModel {
       //  WALLET DEDUCTION
       // =====================
 
-      // if (useRewards && totalDiscount > 0) {
-      //   await conn.execute(
-      //     `
-      //   UPDATE customer_wallet
-      //   SET balance = balance - ?
-      //   WHERE user_id = ?
-      //   `,
-      //     [totalDiscount, userId],
-      //   );
+      if (useRewards && totalRedeemed > 0) {
+        if (walletBalance < totalRedeemed) {
+          throw new Error("INSUFFICIENT_REWARDS");
+        }
 
-      //   await conn.execute(
-      //     `
-      //   INSERT IGNORE INTO wallet_transactions
-      //   (
-      //     user_id,
-      //     title,
-      //     description,
-      //     transaction_type,
-      //     coins,
-      //     category,
-      //     reference_id
-      //   )
-      //   VALUES (?, ?, ?, 'debit', ?, 'order', ?)
-      //   `,
-      //     [
-      //       userId,
-      //       "Coins used for order",
-      //       `Used ${totalDiscount} coins for order #${orderId}`,
-      //       totalDiscount,
-      //       orderId,
-      //     ],
-      //   );
-      // }
+        await conn.execute(
+          `UPDATE customer_wallet 
+         SET balance = balance - ? 
+         WHERE user_id = ?`,
+          [totalRedeemed, userId],
+        );
+
+        await conn.execute(
+          `INSERT INTO wallet_transactions
+         (user_id, title, transaction_type, coins, category, reference_id, description)
+         VALUES (?, ?, 'debit', ?, 'order', ?, ?)`,
+          [
+            userId,
+            "Coins used for order",
+            totalRedeemed,
+            orderId,
+            `Used ${totalRedeemed} coins for order`,
+          ],
+        );
+      }
+
+      if (totalRewardEarn > 0) {
+        const [[existingReward]] = await conn.execute(
+          `SELECT transaction_id FROM wallet_transactions 
+              WHERE user_id = ? 
+              AND reference_id = ? 
+              AND category = 'order'
+              AND transaction_type = 'credit'
+              LIMIT 1`,
+          [userId, orderId],
+        );
+
+        if (!existingReward) {
+          // credit wallet
+          await conn.execute(
+            `UPDATE customer_wallet 
+              SET balance = balance + ? 
+              WHERE user_id = ?`,
+            [totalRewardEarn, userId],
+          );
+
+          await conn.execute(
+            `INSERT IGNORE INTO wallet_transactions
+            (user_id, title, transaction_type, coins, category, reference_id, description)
+            VALUES (?, ?, 'credit', ?, 'order', ?, ?)`,
+            [
+              userId,
+              "Coins earned from order",
+              totalRewardEarn,
+              orderId,
+              `Earned ${totalRewardEarn} coins from order`,
+            ],
+          );
+        }
+      }
 
       // 11 Invoice generation
       await generateInvoices(orderId, conn);
