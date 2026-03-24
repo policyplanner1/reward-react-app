@@ -201,8 +201,8 @@ class CheckoutModel {
 
       await conn.execute(
         `INSERT INTO customer_wallet (user_id, balance)
-   VALUES (?, 0)
-   ON DUPLICATE KEY UPDATE user_id = user_id`,
+          VALUES (?, 0)
+          ON DUPLICATE KEY UPDATE balance = balance`,
         [userId],
       );
 
