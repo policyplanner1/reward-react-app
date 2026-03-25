@@ -105,6 +105,24 @@ class ServiceVariantModel {
     return variants;
   }
 
+  // Get variants by service Id
+  async getVariantsByService(serviceId) {
+    const [rows] = await db.execute(
+      `SELECT 
+        id,
+        variant_name,
+        title,
+        short_description,
+        price
+       FROM service_variants
+       WHERE service_id = ? AND status = 1
+       ORDER BY id`,
+      [serviceId],
+    );
+
+    return rows;
+  }
+
   // Get sections by variant Id
   async getSectionsByVariant(variantId) {
     const [rows] = await db.execute(

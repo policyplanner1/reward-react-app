@@ -6,7 +6,50 @@ const ServiceCategoryModel = require("../models/serviceCategoryModel");
 const ServiceVariantModel = require("../models/serviceVariantModel");
 const ServiceDocumentModel = require("../models/serviceDocumentModel");
 const ServiceFormModel = require("../models/serviceFormModel");
+const ServiceSectionModel = require("../models/serviceSectionModel");
 const { UPLOAD_BASE } = require("../../../../config/path");
+
+// =======================
+// HELPER FUNCTION
+// ====================
+function formatVariantSections(sections) {
+  const formatted = {
+    features: [],
+    details: [],
+    journey: [],
+    trust_stats: [],
+    paragraphs: [],
+  };
+
+  sections.forEach((s) => {
+    switch (s.section_type) {
+      case "features":
+        formatted.features = s.content;
+        break;
+
+      case "details":
+        formatted.details = s.content;
+        break;
+
+      case "journey":
+        formatted.journey = s.content;
+        break;
+
+      case "trust_stats":
+        formatted.trust_stats = s.content;
+        break;
+
+      case "paragraph":
+        formatted.paragraphs.push({
+          title: s.title,
+          content: s.content,
+        });
+        break;
+    }
+  });
+
+  return formatted;
+}
 
 class ServiceController {
   // Find all services
@@ -207,17 +250,29 @@ class ServiceController {
   }
 
   // Get all the service details in one api call
+
   async getServiceDetails(req, res) {
     try {
       const { id } = req.params;
 
       const service = await ServiceModel.findById(id);
 
-      const variants = await ServiceVariantModel.getVariantsWithSections(id);
+      const variants = await ServiceVariantModel.getVariantsByService(id);
 
-      // attach sections to each variant
       for (let v of variants) {
-        v.sections = await ServiceVariantModel.getSectionsByVariant(v.id);
+        const sections = await ServiceVariantModel.getSectionsByVariant(
+          v.id,
+        );
+
+        const formatted = formatVariantSections(sections);
+
+        v.features = formatted.features;
+        v.details = formatted.details;
+        v.journey = formatted.journey;
+        v.trust_stats = formatted.trust_stats;
+        v.paragraphs = formatted.paragraphs;
+
+        delete v.sections;
       }
 
       const documents = await ServiceDocumentModel.findActiveByServiceId(
@@ -226,6 +281,8 @@ class ServiceController {
 
       const enquiryFields = await ServiceFormModel.findFormByServiceId(id);
 
+      const serviceSections = await ServiceSectionModel.findByServiceId(id);
+
       res.json({
         success: true,
         data: {
@@ -233,10 +290,15 @@ class ServiceController {
           variants,
           documents,
           enquiry_fields: enquiryFields,
+          service_sections: serviceSections, // includes FAQ
         },
       });
     } catch (err) {
-      res.status(500).json({ success: false, message: err.message });
+      console.log(err.message);
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     }
   }
 
