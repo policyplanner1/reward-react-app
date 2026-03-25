@@ -105,14 +105,14 @@ class ServiceVariantModel {
     return variants;
   }
 
-  // Get sections by service Id
-  async getSectionsByService(serviceId) {
+  // Get sections by variant Id
+  async getSectionsByVariant(variantId) {
     const [rows] = await db.execute(
       `SELECT section_type, title, content
      FROM service_variant_sections
-     WHERE service_id = ?
+     WHERE variant_id = ?
      ORDER BY sort_order`,
-      [serviceId],
+      [variantId],
     );
 
     return rows.map((r) => ({

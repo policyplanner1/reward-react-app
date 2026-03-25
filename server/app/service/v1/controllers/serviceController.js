@@ -156,16 +156,16 @@ class ServiceController {
           });
         }
 
-        const variants = await ServiceVariantModel.getVariantsWithSections(
-          service.id,
-        );
+        // const variants = await ServiceVariantModel.getVariantsWithSections(
+        //   service.id,
+        // );
 
-        const hasVariants = variants && variants.length > 0;
+        // const hasVariants = variants && variants.length > 0;
 
-        let sections = [];
-        if (!hasVariants) {
-          sections = await ServiceVariantModel.getSectionsByService(service.id);
-        }
+        // let sections = [];
+        // if (!hasVariants) {
+        //   sections = await ServiceVariantModel.getSectionsByVariant(service.id);
+        // }
 
         const documents = await ServiceDocumentModel.findActiveByServiceId(
           service.id,
@@ -179,9 +179,9 @@ class ServiceController {
           data: {
             category,
             service,
-            has_variants: hasVariants,
-            variants: hasVariants ? variants : [],
-            sections: !hasVariants ? sections : [],
+            // has_variants: hasVariants,
+            // variants: hasVariants ? variants : [],
+            // sections: !hasVariants ? sections : [],
             documents,
             form_fields: form,
           },
@@ -218,7 +218,7 @@ class ServiceController {
 
       // attach sections to each variant
       for (let v of variants) {
-        v.sections = await ServiceVariantModel.getSectionsByService(v.id);
+        v.sections = await ServiceVariantModel.getSectionsByVariant(v.id);
       }
 
       const documents = await ServiceDocumentModel.findActiveByServiceId(
