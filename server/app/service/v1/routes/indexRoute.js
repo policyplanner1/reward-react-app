@@ -9,11 +9,13 @@ const serviceVariantRoute = require("./serviceVariantRoute");
 const serviceFormRoute = require("./serviceFormRoute");
 const serviceOrderRoute = require("./serviceOrderRoute");
 const serviceOrderDocumentRoute = require("./serviceOrderDocument");
+const insuranceRoute = require("./insuranceRoute");
 
 router.use("/category", serviceCategoryRoute);
 router.use("/service", serviceRoute);
 router.use("/service-document",serviceDocumentRoute)
 router.use("/service-enquiry",serviceEnquiryRoute)
+router.use("/insurance",insuranceRoute)
 router.use("/service-variant",serviceVariantRoute)
 router.use("/service-form",serviceFormRoute)
 router.use("/service-orders",serviceOrderRoute)
