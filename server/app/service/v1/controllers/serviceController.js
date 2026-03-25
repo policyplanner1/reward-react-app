@@ -207,6 +207,40 @@ class ServiceController {
     }
   }
 
+  // Get all the service details in one api call
+  async getServiceDetails(req, res) {
+    try {
+      const { id } = req.params;
+
+      const service = await ServiceModel.findById(id);
+
+      const variants = await ServiceVariantModel.getVariantsWithSections(id);
+
+      // attach sections to each variant
+      for (let v of variants) {
+        v.sections = await ServiceVariantModel.getSectionsByService(v.id);
+      }
+
+      const documents = await ServiceDocumentModel.findActiveByServiceId(
+        service.id,
+      );
+
+      const enquiryFields = await ServiceFormModel.findFormByServiceId(id);
+
+      res.json({
+        success: true,
+        data: {
+          service,
+          variants,
+          documents,
+          enquiry_fields: enquiryFields,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
   // Update services
   async updateService(req, res) {
     try {
