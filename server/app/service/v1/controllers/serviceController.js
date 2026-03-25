@@ -183,7 +183,7 @@ class ServiceController {
             // variants: hasVariants ? variants : [],
             // sections: !hasVariants ? sections : [],
             documents,
-            form_fields: form,
+            enquiry_fields: form,
           },
         });
       }
