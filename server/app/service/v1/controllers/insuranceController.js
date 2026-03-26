@@ -1,6 +1,4 @@
 const db = require("../../../../config/database");
-const fs = require("fs");
-const path = require("path");
 
 class InsuranceController {
   // start enquiry
@@ -84,7 +82,17 @@ class InsuranceController {
     // 2. Merge new section
     formData[section] = data;
 
-    // 3. Update DB
+    // 3. invalidate plan if core data changes
+    if (section === "members" || section === "health") {
+      await db.execute(
+        `UPDATE insurance_enquiries 
+       SET selected_plan = NULL 
+       WHERE id = ? AND user_id = ?`,
+        [enquiry_id, userId],
+      );
+    }
+
+    // 4. Update DB
     await db.execute(
       `UPDATE insurance_enquiries
      SET form_data = ?, step_completed = ?
@@ -132,12 +140,68 @@ class InsuranceController {
       });
     }
 
-    const userId = req.user.user_id;
+    const userId = req.user?.user_id;
 
     if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized user",
+      });
+    }
+
+    const [rows] = await db.execute(
+      `SELECT form_data, selected_plan 
+     FROM insurance_enquiries 
+     WHERE id = ? AND user_id = ?`,
+      [enquiry_id, userId],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Enquiry not found",
+      });
+    }
+
+    let formData = rows[0].form_data;
+
+    try {
+      if (typeof formData === "string") {
+        formData = JSON.parse(formData);
+      }
+    } catch (e) {
+      return res.status(500).json({
+        success: false,
+        message: "Invalid form data",
+      });
+    }
+
+    // Validation
+    if (!formData.members) {
+      return res.status(400).json({
+        success: false,
+        message: "Members missing",
+      });
+    }
+
+    if (!formData.basic) {
+      return res.status(400).json({
+        success: false,
+        message: "Basic details missing",
+      });
+    }
+
+    if (!formData.health) {
+      return res.status(400).json({
+        success: false,
+        message: "Coverage details missing",
+      });
+    }
+
+    if (!rows[0].selected_plan) {
+      return res.status(400).json({
+        success: false,
+        message: "Plan not selected",
       });
     }
 
@@ -147,8 +211,10 @@ class InsuranceController {
      WHERE id = ? AND user_id = ?`,
       [enquiry_id, userId],
     );
-
-    res.json({ success: true });
+    res.json({
+      success: true,
+      message: "Enquiry completed",
+    });
   }
 
   // plan selection
@@ -159,6 +225,13 @@ class InsuranceController {
       return res.status(400).json({
         success: false,
         message: "enquiry_id and plan are required",
+      });
+    }
+
+    if (!plan.planId || !plan.selectedPremium) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid plan data",
       });
     }
 
