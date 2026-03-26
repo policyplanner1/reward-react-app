@@ -38,8 +38,19 @@ import ReviewProductPage from "./components/feature/vendor/products/ProductView"
 import VendorApprovalList from "./components/feature/manager/vendor/VendorApprovalList";
 import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprovalForm";
 import NotFoundPage from "./pages/NotFound";
+
+// Vendor Orders
+import OrderSummary from "./components/feature/vendor/orders/OrderSummary";
+import OrderDetail from "./components/feature/vendor/orders/OrderDetail";
+
+// Manager Order
 import OrderList from "./components/feature/manager/order/OrderList";
 import OrderView from "./components/feature/manager/order/OrderView";
+
+// Manage Rewards
+import RewardRule from "./components/feature/manager/reward/RewardRule";
+import RewardForm from "./components/feature/manager/reward/RewardForm";
+import ProductRewardMapping from "./components/feature/manager/reward/ProductRewardMapping";
 
 /* Attribute */
 import AttributeManagement from "./components/feature/manager/attribute/attributes";
@@ -48,12 +59,28 @@ import AttributeManagement from "./components/feature/manager/attribute/attribut
 import FlashSaleCreate from "./components/feature/manager/flashSale/FlashSaleCreate";
 import FlashSaleList from "./components/feature/manager/flashSale/FlashSaleList";
 import FlashSaleVariant from "./components/feature/manager/flashSale/FlashSaleVariant";
+import CancellationRequest from "./components/feature/manager/order/CancellationRequest";
+import CancellationDetail from "./components/feature/manager/order/CancellationDetail";
 
 export default function App() {
-  const { user, loading } = useAuth();
+  // const { user, loading } = useAuth();
+  const { user, initializing } = useAuth();
 
-  if (loading) {
-    return null;
+  // if (loading ) {
+  //   return null;
+  // }
+
+  if (initializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-[#38bdf8] via-[#a855f7] to-[#ec4899]">
+        <div className="bg-white px-8 py-6 rounded-2xl shadow-xl text-center">
+          <div className="animate-spin h-8 w-8 mx-auto mb-3 rounded-full border-4 border-[#852BAF] border-t-transparent" />
+          <p className="text-sm font-semibold text-gray-600">
+            Preparing application...
+          </p>
+        </div>
+      </div>
+    );
   }
   return (
     <Routes>
@@ -119,6 +146,11 @@ export default function App() {
           path={routes.vendor.productManagerList}
           element={<ProductManagerList />}
         />
+
+        {/* Orders */}
+        <Route path={routes.vendor.orders.summary} element={<OrderSummary />} />
+
+        <Route path={routes.vendor.orders.details} element={<OrderDetail />} />
       </Route>
 
       {/* ========== MANAGER ========== */}
@@ -189,12 +221,36 @@ export default function App() {
         />
 
         {/* Orders */}
-        <Route path={routes.manager.orders} element={<OrderList />} />
+        <Route path={routes.manager.orders.orderList} element={<OrderList />} />
+
+        <Route path={routes.manager.orders.details} element={<OrderView />} />
 
         <Route
-          path="/manager/order-view/:orderId"
-          element={<OrderView />}
+          path={routes.manager.orders.cancellationRequest}
+          element={<CancellationRequest />}
         />
+
+        <Route
+          path={routes.manager.orders.cancellationDetail}
+          element={<CancellationDetail />}
+        />
+
+        {/* Rewards */}
+        <Route
+          path={routes.manager.rewards.rewardRule}
+          element={<RewardRule />}
+        />
+
+        <Route
+          path={routes.manager.rewards.rewardRule}
+          element={<RewardRule />}
+        />
+
+        <Route path={routes.manager.rewards.create} element={<RewardForm />} />
+
+        <Route path={routes.manager.rewards.edit} element={<RewardForm />} />
+
+        <Route path={routes.manager.rewards.mapping} element={<ProductRewardMapping />} />
       </Route>
 
       {/* ========== FALLBACK ========== */}

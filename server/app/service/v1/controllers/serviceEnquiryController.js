@@ -1,5 +1,6 @@
 const db = require("../../../../config/database");
 const ServiceEnquiryModel = require("../models/serviceEnquiryModel");
+const {sendNewEnquiryEmail} =require('../../../../services/enquiryNotification')
 
 class ServiceEnquiryController {
   // create user Enquiry
@@ -32,7 +33,6 @@ class ServiceEnquiryController {
         city,
         mobile,
         email,
-        enquiry_data,
         enquiry_data: safeEnquiryData,
       });
 
@@ -88,6 +88,37 @@ class ServiceEnquiryController {
       });
     }
   }
+
+  // send enquiry notification
+    async sendEnquiryNotification(req, res) {
+    try {
+      const { name, email, contact, subject, description } = req.body;
+
+      // 1. Basic validation
+      if (!name || !email || !contact || !subject || !description) {
+        return res.status(400).json({
+          success: false,
+          message: "All fields are required",
+        });
+      }
+
+      // send mail
+      await sendNewEnquiryEmail({ name, email, contact, subject, description });
+
+      return res.status(200).json({
+        success: true,
+        message: "Enquiry sent successfully",
+      });
+    } catch (error) {
+      console.error("Enquiry Error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send enquiry",
+      });
+    }
+  }
+
 }
 
 module.exports = new ServiceEnquiryController();

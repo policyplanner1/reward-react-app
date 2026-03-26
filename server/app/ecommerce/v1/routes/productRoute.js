@@ -98,4 +98,10 @@ router.post(
 //fetch search history
 router.get("/search/history", optionalAuth, ProductController.getSearchHistory);
 
+// clear search History
+router.delete(
+  "/search/history",
+  optionalAuth,
+  ProductController.clearSearchHistory,
+);
 module.exports = router;

@@ -1,3 +1,5 @@
+// import { list } from "postcss";
+
 export const routes = {
   vendor: {
     dashboard: "/vendor/dashboard",
@@ -11,6 +13,10 @@ export const routes = {
     variantEdit:"/vendor/products/variant-edit/:variantId",
     variantImage:"/vendor/products/variant-image/:variantId",
     review: "/vendor/products/review/:productId", 
+    },
+    orders:{
+      summary: "/vendor/orders/summary",
+      details: "/vendor/orders/details/:orderId",
     },
     productManagerList: "/vendor/product-managers",
   },
@@ -29,7 +35,17 @@ export const routes = {
     attributes: "/manager/attributes",
     flashlist: "/manager/flashlist",
     flashCreate: "/manager/flash-sale",
-    orders: "/manager/orders",
-    orderView: "/manager/order-view/:orderId",
+    orders:{
+      orderList: "/manager/orders",
+      details: "/manager/order-view/:orderId",
+      cancellationRequest: "/manager/cancellation-request",
+      cancellationDetail: "/manager/cancellation-detail/:orderId",
+    },
+    rewards:{
+      rewardRule:"/manager/rewards-rule",
+      create:"/manager/reward-create",
+      edit:"/manager/reward-edit/:id",
+      mapping:"/manager/reward-mapping",
+    }
   },
 };

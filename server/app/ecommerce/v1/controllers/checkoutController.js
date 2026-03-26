@@ -1,9 +1,6 @@
 const CheckoutModel = require("../models/checkoutModel");
 const NotificationModel = require("../models/notificationModel");
 const db = require("../../../../config/database");
-// const {
-//   enqueueWhatsApp,
-// } = require("../../../../services/whatsapp/waEnqueueService");
 
 class CheckoutController {
   // checkout cart Items
@@ -21,6 +18,7 @@ class CheckoutController {
 
       const companyId = req.body?.company_id ?? null;
       const addressId = req.body?.address_id;
+      const useRewards = req.body?.use_rewards ?? true;
 
       if (!addressId) {
         return res.status(400).json({
@@ -33,25 +31,8 @@ class CheckoutController {
         userId,
         companyId,
         addressId,
+        useRewards,
       );
-
-      // WhatsApp notification
-      // const orderCtx = await getOrderWhatsAppContext(orderId);
-
-      // if (orderCtx?.phone) {
-      //   enqueueWhatsApp({
-      //     eventName: "order_place_confirm",
-      //     ctx: {
-      //       phone: orderCtx.phone,
-      //       company_id: orderCtx.company_id ?? companyId ?? null,
-      //       customer_name: orderCtx.customer_name || "User",
-      //       order_id: orderCtx.order_ref || orderCtx.order_id,
-      //       total_amount: orderCtx.total_amount,
-      //     },
-      //   }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
-      // } else {
-      //   console.warn("WA not enqueued: missing customer phone for order:", orderId);
-      // }
 
       // await NotificationModel.create({
       //   userId,
@@ -83,6 +64,27 @@ class CheckoutController {
         });
       }
 
+      if (error.message === "INSUFFICIENT_REWARDS") {
+        return res.status(400).json({
+          success: false,
+          message: "Not enough reward coins",
+        });
+      }
+
+      if (error.message === "INVALID_ADDRESS") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid address",
+        });
+      }
+
+      if (error.message === "NOT_SERVICEABLE") {
+        return res.status(400).json({
+          success: false,
+          message: "Delivery not available for this address",
+        });
+      }
+
       return res.status(500).json({
         success: false,
         message: "Checkout failed",
@@ -109,6 +111,7 @@ class CheckoutController {
         quantity = 1,
         company_id,
         address_id,
+        use_rewards = true,
       } = req.body;
 
       if (!address_id) {
@@ -132,34 +135,17 @@ class CheckoutController {
         quantity,
         companyId: company_id || null,
         addressId: address_id,
+        useRewards: use_rewards,
       });
 
-      // WhatsApp Notification
-      // const orderCtx = await getOrderWhatsAppContext(orderId);
-
-      // if (orderCtx?.phone) {
-      //   enqueueWhatsApp({
-      //     eventName: "order_place_confirm",
-      //     ctx: {
-      //       phone: orderCtx.phone,
-      //       company_id: orderCtx.company_id ?? company_id ?? null,
-      //       customer_name: orderCtx.customer_name || "User",
-      //       order_id: orderCtx.order_ref || orderCtx.order_id,
-      //       total_amount: orderCtx.total_amount,
-      //     },
-      //   }).catch((e) => console.error("WA enqueue failed:", e?.message || e));
-      // } else {
-      //   console.warn("WA not enqueued: missing customer phone for order:", orderId);
-      // }
-
-      await NotificationModel.create({
-        userId,
-        type: "order",
-        title: "Order placed ✅",
-        message: "Your order is confirmed and being processed.",
-        reference_type: "order",
-        reference_id: orderId,
-      });
+      // await NotificationModel.create({
+      //   userId,
+      //   type: "order",
+      //   title: "Order placed ✅",
+      //   message: "Your order is confirmed and being processed.",
+      //   reference_type: "order",
+      //   reference_id: orderId,
+      // });
 
       return res.json({
         success: true,
@@ -196,17 +182,17 @@ class CheckoutController {
         });
       }
 
-      const checkoutData = await CheckoutModel.getCheckoutCart(userId);
+      const { use_rewards = "true" } = req.query;
+
+      const checkoutData = await CheckoutModel.getCheckoutCart(
+        userId,
+        use_rewards === "true",
+      );
 
       return res.json({
         success: true,
         mode: "cart",
-        items: checkoutData.items,
-        totalAmount: checkoutData.productTotal,
-        totalDiscount: checkoutData.totalDiscount,
-        shippingTotal: checkoutData.shippingTotal,
-        payableAmount: checkoutData.payableAmount,
-        shippingBreakdown: checkoutData.shippingBreakdown,
+        ...checkoutData,
       });
     } catch (error) {
       console.error("Checkout cart fetch error:", error);
@@ -245,24 +231,20 @@ class CheckoutController {
         });
       }
 
-      const { product_id, variant_id, qty = 1 } = req.query;
+      const { product_id, variant_id, qty = 1, use_rewards = true } = req.query;
 
       const checkoutData = await CheckoutModel.getBuyNowCheckout({
         productId: Number(product_id),
         variantId: Number(variant_id),
         quantity: Number(qty),
+        useRewards: use_rewards === "true",
         userId,
       });
 
       return res.json({
         success: true,
         mode: "buy_now",
-        item: checkoutData.item,
-        totalAmount: checkoutData.totalAmount,
-        totalDiscount: checkoutData.totalDiscount,
-        payableAmount: checkoutData.payableAmount,
-        shippingTotal: checkoutData.shippingTotal,
-        shippingBreakdown: checkoutData.shippingBreakdown,
+        ...checkoutData,
       });
     } catch (error) {
       console.error("Buy now checkout fetch error:", error);
@@ -322,27 +304,5 @@ class CheckoutController {
     }
   }
 }
-
-// async function getOrderWhatsAppContext(orderId) {
-//   const [rows] = await db.execute(
-//     `
-//     SELECT
-//       o.order_id,
-//       o.order_ref,
-//       o.company_id,
-//       o.total_amount,
-//       o.user_id,
-//       cu.name AS customer_name,
-//       cu.phone AS phone
-//     FROM eorders o
-//     JOIN customer cu ON cu.user_id = o.user_id
-//     WHERE o.order_id = ?
-//     LIMIT 1
-//     `,
-//     [orderId]
-//   );
-
-//   return rows[0] || null;
-// }
 
 module.exports = new CheckoutController();

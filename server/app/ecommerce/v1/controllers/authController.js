@@ -1,5 +1,6 @@
 const AuthModel = require("../models/authModel");
 const AddressModel = require("../models/addressModel");
+const WalletModel = require("../models/walletModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -7,89 +8,24 @@ const {
   sendVerificationMail,
 } = require("../../../../services/userVerification");
 
+const {
+  sendNewDeviceLoginEmail,
+} = require("../../../../services/deviceNotification");
+
+const {
+  accountCreationSuccessMail,
+} = require("../../../../services/accountCreation");
+
+const { sendOtpMail } = require("../../../../services/sendOtp");
+
 const ACCESS_EXPIRES = "15m";
 const REFRESH_EXPIRES_DAYS = 7;
 
+function generateOTP() {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
 class AuthController {
-  // Basic Registration and Login
-  // async registerUser(req, res) {
-  //   try {
-  //     const { name, email, phone, password, cpassword } = req.body;
-
-  //     if (!name || !email || !phone || !password || !cpassword)
-  //       return res.status(400).json({ message: "All fields required" });
-
-  //     if (password !== cpassword) {
-  //       return res.status(400).json({ message: "Passwords do not match" });
-  //     }
-
-  //     const normalizedEmail = email.trim().toLowerCase();
-
-  //     const existing = await AuthModel.findByEmail(normalizedEmail);
-  //     if (existing)
-  //       return res.status(409).json({ message: "Email already registered" });
-
-  //     if (password.length < 6)
-  //       return res.status(400).json({ message: "Password too short" });
-
-  //     const hashedPassword = await bcrypt.hash(password, 10);
-
-  //     await AuthModel.createCustomer({
-  //       name,
-  //       email: normalizedEmail,
-  //       phone: phone,
-  //       password: hashedPassword,
-  //     });
-
-  //     return res.status(201).json({
-  //       success: true,
-  //       message: "Registration successful",
-  //     });
-  //   } catch (err) {
-  //     return res.status(500).json({ success: false });
-  //   }
-  // }
-
-  // async loginUser(req, res) {
-  //   try {
-  //     const { email, password } = req.body;
-
-  //     if (!email || !password)
-  //       return res.status(400).json({ message: "Email and password required" });
-
-  //     const normalizedEmail = email.trim().toLowerCase();
-
-  //     const user = await AuthModel.findByEmail(normalizedEmail);
-  //     if (!user)
-  //       return res.status(401).json({ message: "Invalid credentials" });
-
-  //     if (Number(user.status) !== 1)
-  //       return res.status(403).json({ message: "Account inactive" });
-
-  //     const match = await bcrypt.compare(password, user.password);
-  //     if (!match)
-  //       return res.status(401).json({ message: "Invalid credentials" });
-
-  //     const accessToken = jwt.sign(
-  //       { user_id: user.user_id },
-  //       process.env.ACCESS_TOKEN_SECRET,
-  //       { expiresIn: "1d" },
-  //     );
-
-  //     return res.json({
-  //       success: true,
-  //       accessToken,
-  //       user: {
-  //         id: user.user_id,
-  //         name: user.name,
-  //         email: user.email,
-  //       },
-  //     });
-  //   } catch (err) {
-  //     return res.status(500).json({ success: false, message: err.message });
-  //   }
-  // }
-
   /* ======================================================
      REGISTER
   ====================================================== */
@@ -155,6 +91,178 @@ class AuthController {
   }
 
   /* ======================================================
+     ACTIVATE ACCOUNT
+  ====================================================== */
+  async activateAccount(req, res) {
+    const { email } = req.body;
+
+    const employee = await AuthModel.findEmployeeByEmail(email);
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found",
+      });
+    }
+
+    const existingAccount = await AuthModel.findByEmail(email);
+
+    if (existingAccount) {
+      return res.status(400).json({
+        success: false,
+        message: "Account already activated",
+      });
+    }
+
+    const otp = generateOTP();
+
+    await AuthModel.storeActivationOTP(email, otp);
+
+    await sendOtpMail({
+      email,
+      name: employee.name,
+      otp,
+    });
+
+    return res.json({
+      success: true,
+      message: "OTP sent to email",
+    });
+  }
+
+  /* ======================================================
+     VERIFY OTP
+  ====================================================== */
+  async verifyActivationOTP(req, res) {
+    try {
+      const { email, otp } = req.body;
+
+      if (!email || !otp) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and OTP are required",
+        });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const attempt = await AuthModel.getOtpAttempts(normalizedEmail);
+
+      if (attempt && attempt.attempt_count >= 5) {
+        return res.status(429).json({
+          success: false,
+          message: "Too many OTP attempts. Try again later.",
+        });
+      }
+
+      const otpRecord = await AuthModel.verifyOTP(normalizedEmail, otp);
+
+      if (!otpRecord) {
+        await AuthModel.incrementOtpAttempts(normalizedEmail);
+
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or expired OTP",
+        });
+      }
+
+      await AuthModel.markOTPVerified(normalizedEmail);
+
+      return res.json({
+        success: true,
+        message: "OTP verified successfully",
+      });
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+      });
+    }
+  }
+
+  /* ======================================================
+     SET PASSWORD
+  ====================================================== */
+  async setPassword(req, res) {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and password are required",
+        });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      if (password.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 8 characters",
+        });
+      }
+
+      const existing = await AuthModel.findByEmail(normalizedEmail);
+
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: "Account already exists",
+        });
+      }
+
+      const otpVerified = await AuthModel.checkOTPVerified(normalizedEmail);
+
+      if (!otpVerified) {
+        return res.status(403).json({
+          success: false,
+          message: "OTP verification required",
+        });
+      }
+
+      const employee = await AuthModel.findEmployeeByEmail(normalizedEmail);
+
+      if (!employee) {
+        return res.status(404).json({
+          success: false,
+          message: "Employee not found",
+        });
+      }
+
+      const hashedPassword = await bcrypt.hash(password.toString(), 12);
+
+      await AuthModel.createCustomer({
+        company_id: employee.company_id,
+        company_user_id: employee.id,
+        name: employee.name,
+        email: employee.email,
+        phone: employee.phone,
+        password: hashedPassword,
+      });
+
+      await AuthModel.deleteOTP(normalizedEmail);
+
+      await accountCreationSuccessMail({
+        name: employee.name,
+        email: employee.email,
+      });
+
+      return res.json({
+        success: true,
+        message: "Account activated successfully",
+      });
+    } catch (err) {
+      console.error("SET PASSWORD ERROR:", err);
+
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+      });
+    }
+  }
+
+  /* ======================================================
      VERIFY EMAIL
   ====================================================== */
   async verifyEmail(req, res) {
@@ -176,34 +284,60 @@ class AuthController {
           new Date() < new Date(user.verification_token_expiry)
         ) {
           await AuthModel.markEmailVerified(user.user_id);
-
           return res.send(`
-            <html>
-              <head>
-                <title>Email Verified</title>
-              </head>
-              <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
-                <h2>Email verified successfully ✅</h2>
-                <p>You can now login in the app.</p>
+          <html>
+            <head>
+              <title>Email Verified</title>
+            </head>
 
-                <a href="rewardplanners://login"
-                  style="padding:12px 20px;background:black;color:white;text-decoration:none;border-radius:5px;">
-                  Open App
-                </a>
+            <body style="font-family: Arial, sans-serif; background:#f6f6f6; margin:0; padding:0;">
+              
+              <div style="max-width:600px;margin:60px auto;background:#ffffff;padding:40px;border-radius:8px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.05);">
+                
+                <h2 style="margin-bottom:10px;">Email verified successfully 🎉</h2>
 
-                <script>
-                  // Try opening app via custom scheme
-                  setTimeout(function() {
-                    window.location.href = "rewardplanners://login";
-                  }, 500);
+                <p style="font-size:16px;color:#333;">
+                  Hi ${user.name},
+                </p>
 
-                  // Fallback for Android Chrome
-                  setTimeout(function() {
-                    window.location.href = "intent://login#Intent;scheme=rewardplanners;package=com.rewardsplanners;end";
-                  }, 1500);
-                </script>
-              </body>
-            </html>
+                <p style="font-size:15px;color:#555;line-height:1.6;">
+                  Welcome to <b>RewardPlanners</b>! Your account has been successfully created and is now ready to use.
+                  <br><br>
+                  You can now start earning and redeeming rewards, explore exclusive benefits, and make smarter financial decisions — all from one platform.
+                </p>
+
+                <p style="font-size:15px;color:#555;margin-top:20px;">
+                  Log in to your account and begin your RewardPlanners journey today.
+                </p>
+
+                <div style="margin:30px 0;">
+                  <a href="rewardplanners://login"
+                    style="padding:14px 28px;background:#000;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">
+                    Open RewardPlanners App
+                  </a>
+                </div>
+
+                <p style="font-size:14px;color:#777;">
+                  Warm regards,<br>
+                  <b>Team RewardPlanners</b>
+                </p>
+
+              </div>
+
+              <script>
+                // Try opening app via custom scheme
+                setTimeout(function() {
+                  window.location.href = "rewardplanners://login";
+                }, 500);
+
+                // Android Chrome fallback
+                setTimeout(function() {
+                  window.location.href = "intent://login#Intent;scheme=rewardplanners;package=com.rewardsplanners;end";
+                }, 1500);
+              </script>
+
+            </body>
+          </html>
           `);
         }
       }
@@ -234,13 +368,15 @@ class AuthController {
 
       if (!user) return res.status(401).json({ success: false });
 
+      if (Number(user.status) !== 1)
+        return res
+          .status(403)
+          .json({ success: false, message: "Account inactive" });
+
       if (!user.is_verified)
         return res
           .status(403)
           .json({ success: false, message: "Email not verified" });
-
-      if (Number(user.status) !== 1)
-        return res.status(403).json({ success: false });
 
       const match = await bcrypt.compare(password, user.password);
       if (!match) return res.status(401).json({ success: false });
@@ -261,20 +397,47 @@ class AuthController {
         Date.now() + REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
       );
 
+      // check existing device
+      const deviceInfo = req.headers["user-agent"];
+      const ipAddress = req.ip;
+
+      // check if device already exists
+      const existingDevice = await AuthModel.checkExistingDevice(
+        user.user_id,
+        deviceInfo,
+      );
+
+      if (!existingDevice) {
+        await sendNewDeviceLoginEmail({
+          email: user.email,
+          name: user.name,
+          ip: ipAddress,
+          device: deviceInfo,
+        });
+      }
+
       await AuthModel.storeRefreshToken(
         user.user_id,
         refreshToken,
         expiryDate,
-        req.headers["user-agent"],
-        req.ip,
+        deviceInfo,
+        ipAddress,
       );
 
       await AuthModel.updateLoginMeta(user.user_id, req.ip);
+
+      const firstLoginBonus = await WalletModel.createWalletOnFirstLogin(
+        user.user_id,
+      );
 
       return res.json({
         success: true,
         accessToken,
         refreshToken,
+        firstLoginReward: {
+          awarded: firstLoginBonus,
+          coins: firstLoginBonus ? 3000 : 0,
+        },
       });
     } catch (err) {
       return res.status(500).json({ success: false });
@@ -300,6 +463,11 @@ class AuthController {
       if (!exists) return res.status(403).json({ success: false });
 
       const user = await AuthModel.findById(payload.user_id);
+
+      if (!user) return res.status(401).json({ success: false });
+
+      if (Number(user.status) !== 1)
+        return res.status(403).json({ success: false });
 
       const newAccessToken = jwt.sign(
         { user_id: user.user_id, token_version: user.token_version },
@@ -457,6 +625,84 @@ class AuthController {
       });
     } catch (error) {
       return res.status(500).json({ success: false });
+    }
+  }
+
+  /* ======================================================
+     CHANGE PASSWORD
+  ====================================================== */
+  async changePassword(req, res) {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: "Current password and new password are required",
+        });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 8 characters",
+        });
+      }
+
+      const user = await AuthModel.getUserPassword(connection, userId);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+      if (!isMatch) {
+        return res.status(400).json({
+          success: false,
+          message: "Current password is incorrect",
+        });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+      await AuthModel.updatePassword(connection, userId, hashedPassword);
+
+      // invalidate all sessions
+      await AuthModel.incrementTokenVersion(connection, userId);
+      await AuthModel.deleteAllUserRefreshTokens(connection, userId);
+
+      await connection.commit();
+
+      return res.json({
+        success: true,
+        message: "Password changed successfully. Please login again.",
+      });
+    } catch (error) {
+      await connection.rollback();
+      console.error("Change Password Error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    } finally {
+      connection.release();
     }
   }
 
@@ -801,6 +1047,34 @@ class AuthController {
       return res.status(500).json({
         success: false,
         message: "Failed to fetch user info",
+      });
+    }
+  }
+
+  // Delete customer account
+  async deleteCustomer(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      await AuthModel.deleteCustomerAccount(userId);
+
+      return res.json({
+        success: true,
+        message: "Account deleted successfully",
+      });
+    } catch (error) {
+      console.error("Delete Account Error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Something went wrong",
       });
     }
   }

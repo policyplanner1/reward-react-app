@@ -7,6 +7,9 @@ const auth = require("../middlewares/auth");
 // get cart
 router.get("/cart-items", auth, CartController.getCart);
 
+// pricing engine
+router.get("/cart-summary", auth, CartController.getCartSummary);
+
 // add to cart
 router.post("/cart-item", auth, CartController.addToCart);
 

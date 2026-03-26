@@ -3,25 +3,6 @@ const fs = require("fs");
 const path = require("path");
 
 class authModel {
-  // async findByEmail(email) {
-  //   const [rows] = await db.execute(
-  //     `SELECT user_id, name, email, password, status
-  //      FROM customer
-  //      WHERE email = ?`,
-  //     [email],
-  //   );
-  //   return rows[0];
-  // }
-
-  // async createCustomer({ name, email, phone, password, status = 1 }) {
-  //   const [result] = await db.execute(
-  //     `INSERT INTO customer (name, email, phone, password,status)
-  //      VALUES (?, ?, ?, ?, ?)`,
-  //     [name, email, phone, password, status],
-  //   );
-  //   return result.insertId;
-  // }
-
   /* ======================================================
      BASIC USER QUERIES
   ====================================================== */
@@ -38,7 +19,7 @@ class authModel {
 
   async findById(userId) {
     const [rows] = await db.execute(
-      `SELECT user_id, name, email, status, is_verified, token_version
+      `SELECT user_id, name, email, status, is_verified, token_version,last_login_at
        FROM customer
        WHERE user_id = ?`,
       [userId],
@@ -46,29 +27,151 @@ class authModel {
     return rows[0];
   }
 
+  // async createCustomer(data) {
+  //   const {
+  //     name,
+  //     email,
+  //     phone,
+  //     password,
+  //     verification_token,
+  //     verification_token_expiry,
+  //   } = data;
+
+  //   const [result] = await db.execute(
+  //     `INSERT INTO customer
+  //      (name, email, phone, password,
+  //       verification_token, verification_token_expiry)
+  //      VALUES (?, ?, ?, ?, ?, ?)`,
+  //     [
+  //       name,
+  //       email,
+  //       phone,
+  //       password,
+  //       verification_token,
+  //       verification_token_expiry,
+  //     ],
+  //   );
+
+  //   return result.insertId;
+  // }
+
+  /* ======================================================
+     ACCOUNT ACTIVATION
+  ====================================================== */
+
+  async findEmployeeByEmail(email) {
+    const [rows] = await db.execute(
+      `SELECT 
+        id,
+        company_id,
+        name,
+        email,
+        contact AS phone
+     FROM company_users
+     WHERE email = ?
+     LIMIT 1`,
+      [email.toLowerCase()],
+    );
+
+    return rows[0];
+  }
+
+  async storeActivationOTP(email, otp) {
+    const expiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    await db.execute(
+      `INSERT INTO email_otps
+     (email, otp, expiry)
+     VALUES (?, ?, ?)`,
+      [email.toLowerCase(), otp, expiry],
+    );
+  }
+
+  async verifyOTP(email, otp) {
+    const [rows] = await db.execute(
+      `SELECT id, attempt_count
+     FROM email_otps
+     WHERE email = ?
+     AND otp = ?
+     AND expiry > NOW()
+     LIMIT 1`,
+      [email, otp],
+    );
+
+    return rows[0];
+  }
+
+  async incrementOtpAttempts(email) {
+    await db.execute(
+      `UPDATE email_otps
+     SET attempt_count = attempt_count + 1
+     WHERE email = ?`,
+      [email],
+    );
+  }
+
+  async getOtpAttempts(email) {
+    const [rows] = await db.execute(
+      `SELECT attempt_count
+     FROM email_otps
+     WHERE email = ?
+     ORDER BY id DESC
+     LIMIT 1`,
+      [email],
+    );
+
+    return rows[0];
+  }
+
+  async markOTPVerified(email) {
+    await db.execute(
+      `UPDATE email_otps
+     SET is_verified = 1
+     WHERE email = ?
+     ORDER BY id DESC
+     LIMIT 1`,
+      [email],
+    );
+  }
+
+  async checkOTPVerified(email) {
+    const [rows] = await db.execute(
+      `SELECT is_verified
+     FROM email_otps
+     WHERE email = ?
+     ORDER BY id DESC
+     LIMIT 1`,
+      [email],
+    );
+
+    return rows[0]?.is_verified === 1;
+  }
+
+  async deleteOTP(email) {
+    await db.execute(
+      `DELETE FROM email_otps
+     WHERE email = ?`,
+      [email.toLowerCase()],
+    );
+  }
+
   async createCustomer(data) {
-    const {
-      name,
-      email,
-      phone,
-      password,
-      verification_token,
-      verification_token_expiry,
-    } = data;
+    const { company_id, company_user_id, name, email, phone, password } = data;
+    const normalizedPhone = phone ? phone : "";
 
     const [result] = await db.execute(
       `INSERT INTO customer
-       (name, email, phone, password,
-        verification_token, verification_token_expiry)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        name,
-        email,
-        phone,
-        password,
-        verification_token,
-        verification_token_expiry,
-      ],
+     (
+       company_id,
+       company_user_id,
+       name,
+       email,
+       phone,
+       password,
+       is_verified
+     )
+     VALUES (?,?, ?, ?, ?, ?, 1)`,
+      [company_id, company_user_id, name, email.toLowerCase(), normalizedPhone , password],
     );
 
     return result.insertId;
@@ -80,7 +183,7 @@ class authModel {
 
   async findByVerificationToken() {
     const [rows] = await db.execute(
-      `SELECT user_id, verification_token, verification_token_expiry
+      `SELECT user_id, name, verification_token, verification_token_expiry
        FROM customer
        WHERE verification_token IS NOT NULL`,
     );
@@ -121,8 +224,17 @@ class authModel {
     return rows;
   }
 
-  async updatePassword(userId, hashedPassword) {
-    await db.execute(
+  async getUserPassword(conn, userId) {
+    const [rows] = await conn.execute(
+      `SELECT password FROM customer WHERE user_id = ?`,
+      [userId],
+    );
+
+    return rows[0];
+  }
+
+  async updatePassword(conn, userId, hashedPassword) {
+    await conn.execute(
       `UPDATE customer
        SET password = ?,
            reset_token = NULL,
@@ -132,13 +244,28 @@ class authModel {
     );
   }
 
-  async incrementTokenVersion(userId) {
-    await db.execute(
+  async incrementTokenVersion(conn, userId) {
+    await conn.execute(
       `UPDATE customer
        SET token_version = token_version + 1
        WHERE user_id = ?`,
       [userId],
     );
+  }
+  /* ======================================================
+     CHECK EXISTING DEVICE
+  ====================================================== */
+  async checkExistingDevice(userId, deviceInfo) {
+    const [rows] = await db.execute(
+      `SELECT id
+     FROM customer_refresh_tokens
+     WHERE user_id = ?
+     AND device_info = ?
+     LIMIT 1`,
+      [userId, deviceInfo],
+    );
+
+    return rows.length > 0;
   }
 
   /* ======================================================
@@ -188,8 +315,8 @@ class authModel {
     );
   }
 
-  async deleteAllUserRefreshTokens(userId) {
-    await db.execute(
+  async deleteAllUserRefreshTokens(conn, userId) {
+    await conn.execute(
       `DELETE FROM customer_refresh_tokens
        WHERE user_id = ?`,
       [userId],
@@ -280,6 +407,59 @@ class authModel {
           }
         : null,
     };
+  }
+
+  // Delete Customer
+  async deleteCustomerAccount(userId) {
+    const connection = await db.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      // Soft delete customer
+      await connection.execute(
+        `UPDATE customer
+       SET status = 0,
+           token_version = token_version + 1
+       WHERE user_id = ?`,
+        [userId],
+      );
+
+      // Remove cart items
+      await connection.execute(`DELETE FROM cart_items WHERE user_id = ?`, [
+        userId,
+      ]);
+
+      // Remove wishlist
+      await connection.execute(
+        `DELETE FROM customer_wishlist WHERE user_id = ?`,
+        [userId],
+      );
+
+      // Remove addresses
+      await connection.execute(
+        `DELETE FROM customer_addresses WHERE user_id = ?`,
+        [userId],
+      );
+
+      // Remove notifications
+      await connection.execute(`DELETE FROM notifications WHERE user_id = ?`, [
+        userId,
+      ]);
+
+      // Remove refresh tokens
+      await connection.execute(
+        `DELETE FROM customer_refresh_tokens WHERE user_id = ?`,
+        [userId],
+      );
+
+      await connection.commit();
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
   }
 }
 

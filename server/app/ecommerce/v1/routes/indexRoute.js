@@ -9,6 +9,7 @@ const v1WishlistRoutes = require("./wishlistRoute");
 const v1NotificationRoutes = require("./notificationRoute");
 const v1LogisticRoute=require('./logisticsRoute')
 const v1ReviewRoute=require('./reviewRoute')
+const v1WalletRoute=require('./walletRoute')
 
 
 router.use("/auth", v1AuthRoutes);
@@ -20,5 +21,6 @@ router.use("/wishlist", v1WishlistRoutes);
 router.use("/notification", v1NotificationRoutes);
 router.use("/logistics",v1LogisticRoute)
 router.use("/review",v1ReviewRoute)
+router.use("/wallet",v1WalletRoute)
 
 module.exports = router;

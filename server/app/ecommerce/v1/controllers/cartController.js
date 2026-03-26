@@ -1,4 +1,5 @@
 const CartModel = require("../models/cartModel");
+
 const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
@@ -30,6 +31,34 @@ class CartController {
       return res
         .status(500)
         .json({ success: false, message: "Internal server Error" });
+    }
+  }
+
+  // Pricing
+  async getCartSummary(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const useRewards = req.query.use_rewards === "true";
+
+      const summary = await CartModel.getCartSummary(userId, useRewards);
+
+      return res.json({
+        success: true,
+        data: summary,
+      });
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     }
   }
 

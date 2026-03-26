@@ -16,6 +16,9 @@ router.get("/find/:id", ServiceController.getServiceById);
 // Get by category Id
 router.get("/by-category/:categoryId", ServiceController.getServicesByCategory);
 
+// Aggregated api call for service details
+router.get("/details/:id", ServiceController.getServiceDetails);
+
 // ======================Admin Routes===================================
 // Create a services
 router.post(

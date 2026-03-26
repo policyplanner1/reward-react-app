@@ -2,6 +2,49 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 
+const TRACKING_STEPS = [
+  { key: "processing", label: "Processing" },
+  { key: "shipped", label: "Shipped" },
+  { key: "out_for_delivery", label: "Out for Delivery" },
+  { key: "delivered", label: "Delivered" },
+];
+
+function mapStatusToStep(status) {
+  if (["pending", "booking_in_progress", "booked"].includes(status)) return 0;
+  if (["picked_up", "in_transit"].includes(status)) return 1;
+  if (status === "out_for_delivery") return 2;
+  if (status === "delivered") return 3;
+
+  if (["ndr", "rto", "cancelled"].includes(status)) return 1;
+
+  return 0;
+}
+
+function getSpecialState(shipment) {
+  if (shipment.shipping_status === "ndr") {
+    return {
+      type: "ndr",
+      message: shipment.ndr_reason || "Delivery attempt failed",
+    };
+  }
+
+  if (shipment.shipping_status === "rto") {
+    return {
+      type: "rto",
+      message: "Order is being returned",
+    };
+  }
+
+  if (shipment.shipping_status === "cancelled") {
+    return {
+      type: "cancelled",
+      message: "Shipment cancelled",
+    };
+  }
+
+  return null;
+}
+
 class orderModel {
   async getOrderHistory({
     userId,
@@ -9,6 +52,8 @@ class orderModel {
     status = null,
     fromDate = null,
     toDate = null,
+    timeFilter = null,
+    search = null,
     page = 1,
     limit = 10,
   }) {
@@ -20,6 +65,25 @@ class orderModel {
     if (orderId) {
       conditions.push("o.order_id = ?");
       params.push(orderId);
+    }
+
+    if (search) {
+      conditions.push(`(
+      o.order_ref LIKE ?
+      OR EXISTS (
+        SELECT 1
+        FROM eorder_items oi2
+        JOIN eproducts p2 ON oi2.product_id = p2.product_id
+        WHERE oi2.order_id = o.order_id
+        AND (
+          p2.product_name LIKE ?
+          OR p2.brand_name LIKE ?
+        )
+      )
+  )`);
+
+      const searchValue = `%${search}%`;
+      params.push(searchValue, searchValue, searchValue);
     }
 
     if (status) {
@@ -35,6 +99,19 @@ class orderModel {
     if (toDate) {
       conditions.push("DATE(o.created_at) <= ?");
       params.push(toDate);
+    }
+
+    if (!fromDate && !toDate && timeFilter) {
+      if (timeFilter === "30days") {
+        conditions.push("o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
+      } else if (timeFilter === "3months") {
+        conditions.push("o.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)");
+      } else if (timeFilter === "6months") {
+        conditions.push("o.created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)");
+      } else if (/^\d{4}$/.test(timeFilter)) {
+        conditions.push("YEAR(o.created_at) = ?");
+        params.push(Number(timeFilter));
+      }
     }
 
     const whereClause = `WHERE ${conditions.join(" AND ")}`;
@@ -211,6 +288,103 @@ class orderModel {
 
     const itemTotal = processedItems.reduce((sum, i) => sum + i.item_total, 0);
 
+    // 4 shipping
+    const [shipments] = await db.execute(
+      `
+        SELECT
+        os.vendor_id,
+        os.courier_name,
+        os.awb_number,
+        os.shipping_charges,
+        os.shipping_status,
+        os.label_url,
+        os.manifest_url,
+        os.booked_at,
+        os.picked_up_at,
+        os.in_transit_at,
+        os.out_for_delivery_at,
+        os.delivered_at,
+        os.expected_delivery_date,
+        os.ndr_reason,
+        os.is_ndr_active
+        FROM order_shipments os
+        WHERE os.order_id = ?
+        `,
+      [orderId],
+    );
+
+    let overallStep = 0;
+
+    if (shipments.length) {
+      overallStep = Math.max(
+        ...shipments.map((s) => mapStatusToStep(s.shipping_status)),
+      );
+    }
+
+    const hasNdr = shipments.some((s) => s.shipping_status === "ndr");
+    const hasRto = shipments.some((s) => s.shipping_status === "rto");
+
+    if (hasNdr) {
+      overallStep = 1; // stuck in transit
+    }
+
+    // optional
+    if (hasRto) {
+      overallStep = 1;
+    }
+
+    const orderSteps = TRACKING_STEPS.map((step, index) => ({
+      ...step,
+      completed: index < overallStep,
+      current: index === overallStep,
+    }));
+
+    // Final object
+    const orderProgress = {
+      current_step: overallStep,
+      steps: orderSteps,
+    };
+
+    const shippingTotal = shipments.reduce(
+      (sum, s) => sum + Number(s.shipping_charges ?? 0),
+      0,
+    );
+
+    const shipmentDetails = shipments.map((s) => {
+      const currentStep = mapStatusToStep(s.shipping_status);
+
+      const steps = TRACKING_STEPS.map((step, index) => ({
+        ...step,
+        completed: index < currentStep,
+        current: index === currentStep,
+      }));
+
+      const timeline = [
+        { label: "Order Processed", time: s.booked_at },
+        { label: "Picked Up", time: s.picked_up_at },
+        { label: "In Transit", time: s.in_transit_at },
+        { label: "Out for Delivery", time: s.out_for_delivery_at },
+        { label: "Delivered", time: s.delivered_at },
+      ].filter((t) => t.time);
+
+      return {
+        vendor_id: s.vendor_id,
+        courier_name: s.courier_name,
+        awb_number: s.awb_number,
+        shipping_status: s.shipping_status,
+        shipping_charges: Number(s.shipping_charges ?? 0),
+        label_url: s.label_url,
+        current_step: currentStep,
+        steps,
+        timeline,
+        expected_delivery_date: s.expected_delivery_date
+          ? new Date(s.expected_delivery_date).toISOString().split("T")[0]
+          : null,
+
+        special_state: getSpecialState(s),
+      };
+    });
+
     return {
       order: {
         order_id: order.order_id,
@@ -235,10 +409,149 @@ class orderModel {
 
       items: processedItems,
 
+      shipments: shipmentDetails,
+      order_progress: orderProgress,
       summary: {
         item_total: itemTotal,
+        shipping_total: shippingTotal,
         order_total: order.total_amount,
       },
+    };
+  }
+
+  // Buy again
+  async getBuyAgainProducts({
+    userId,
+    page = 1,
+    search = null,
+    sort = "recent",
+    limit = 20,
+  }) {
+    const offset = (page - 1) * limit;
+
+    const conditions = [
+      "o.user_id = ?",
+      "p.is_visible = 1",
+      "v.is_visible = 1",
+    ];
+    const params = [userId];
+
+    if (search) {
+      conditions.push(`(
+      p.product_name LIKE ?
+      OR p.brand_name LIKE ?
+    )`);
+
+      const value = `%${search}%`;
+      params.push(value, value);
+    }
+
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
+
+    let orderBy = "last_purchased DESC";
+
+    if (sort === "frequent") {
+      orderBy = "purchase_count DESC";
+    } else if (sort === "price_low") {
+      orderBy = "v.sale_price ASC";
+    } else if (sort === "price_high") {
+      orderBy = "v.sale_price DESC";
+    }
+
+    const [rows] = await db.execute(
+      `
+      SELECT
+      p.product_id,
+      p.product_name,
+      p.brand_name,
+
+      v.variant_id,
+      v.sale_price,
+      v.mrp,
+      v.variant_attributes,
+
+      MAX(o.created_at) AS last_purchased,
+      COUNT(oi.order_item_id) AS purchase_count,
+
+      (
+        SELECT pi.image_url
+        FROM product_images pi
+        WHERE pi.product_id = p.product_id
+        ORDER BY pi.sort_order ASC
+        LIMIT 1
+      ) AS image
+
+    FROM eorders o
+
+    JOIN eorder_items oi
+      ON o.order_id = oi.order_id
+
+    JOIN eproducts p
+      ON oi.product_id = p.product_id
+
+    JOIN product_variants v
+      ON oi.variant_id = v.variant_id
+
+    ${whereClause}
+
+    GROUP BY oi.variant_id
+    ORDER BY ${orderBy}
+
+    LIMIT ? OFFSET ?
+    `,
+      [...params, limit, offset],
+    );
+
+    const [[{ total }]] = await db.execute(
+      `
+      SELECT COUNT(DISTINCT oi.variant_id) AS total
+
+      FROM eorders o
+      JOIN eorder_items oi
+        ON o.order_id = oi.order_id
+      JOIN eproducts p
+        ON oi.product_id = p.product_id
+      JOIN product_variants v
+        ON oi.variant_id = v.variant_id
+
+      ${whereClause}
+      `,
+      params,
+    );
+
+    const products = rows.map((p) => {
+      let attributes = {};
+
+      if (p.variant_attributes) {
+        try {
+          attributes = JSON.parse(p.variant_attributes);
+        } catch {
+          attributes = {};
+        }
+      }
+
+      return {
+        product_id: p.product_id,
+        product_name: p.product_name,
+        brand_name: p.brand_name,
+
+        variant_id: p.variant_id,
+        sale_price: p.sale_price,
+        mrp: p.mrp,
+
+        attributes,
+        image: p.image,
+
+        last_purchased: p.last_purchased,
+        purchase_count: p.purchase_count,
+      };
+    });
+
+    return {
+      products,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
     };
   }
 

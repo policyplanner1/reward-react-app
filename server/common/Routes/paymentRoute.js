@@ -12,6 +12,6 @@ router.post('/verify-payment', PaymentController.verifyPayment);
 router.get('/payment-status/:orderId',PaymentController.paymentStatus)
 
 // refund
-router.post('/refund', PaymentController.refundPayment);
+// router.post('/refund', PaymentController.refundPayment);
 
 module.exports = router;

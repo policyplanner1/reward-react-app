@@ -50,6 +50,10 @@ class ProductModel {
           v.mrp,
           v.sale_price,
           v.reward_redemption_limit,
+          prs.can_earn_reward,
+          rr.reward_type,
+          rr.reward_value,
+          rr.max_reward,
 
           GROUP_CONCAT(
             DISTINCT CONCAT(
@@ -93,6 +97,26 @@ class ProductModel {
         /* ---- Images ---- */
         LEFT JOIN product_images pi 
           ON p.product_id = pi.product_id
+
+        /* ---- Reward Settings ---- */
+        LEFT JOIN product_reward_settings prs 
+          ON prs.id = (
+            SELECT prs2.id
+            FROM product_reward_settings prs2
+            WHERE prs2.product_id = p.product_id
+              AND prs2.is_active = 1
+              AND (
+                prs2.variant_id = v.variant_id
+                OR prs2.variant_id IS NULL
+              )
+            ORDER BY 
+              CASE WHEN prs2.variant_id = v.variant_id THEN 1 ELSE 2 END
+            LIMIT 1
+          )
+
+        LEFT JOIN reward_rules rr 
+          ON rr.reward_rule_id = prs.reward_rule_id
+          AND rr.is_active = 1
 
         /* ---- Categories ---- */
         LEFT JOIN categories c ON p.category_id = c.category_id
@@ -140,6 +164,10 @@ class ProductModel {
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,
+          can_earn_reward: row.can_earn_reward ?? 0,
+          reward_type: row.reward_type,
+          reward_value: row.reward_value,
+          max_reward: row.max_reward,
           images,
         };
       });
@@ -206,7 +234,35 @@ class ProductModel {
 
       // 3 Get product variants
       const [variants] = await db.execute(
-        `SELECT * FROM product_variants WHERE product_id = ? AND is_visible = 1`,
+        `SELECT 
+          v.*,
+          prs.can_earn_reward,
+          rr.reward_type,
+          rr.reward_value,
+          rr.max_reward
+        FROM product_variants v
+
+        LEFT JOIN product_reward_settings prs 
+          ON prs.id = (
+            SELECT prs2.id
+            FROM product_reward_settings prs2
+            WHERE prs2.product_id = v.product_id
+              AND prs2.is_active = 1
+              AND (
+                prs2.variant_id = v.variant_id
+                OR prs2.variant_id IS NULL
+              )
+            ORDER BY 
+              CASE WHEN prs2.variant_id = v.variant_id THEN 1 ELSE 2 END
+            LIMIT 1
+          )
+
+        LEFT JOIN reward_rules rr 
+          ON rr.reward_rule_id = prs.reward_rule_id
+          AND rr.is_active = 1
+
+        WHERE v.product_id = ? 
+        AND v.is_visible = 1`,
         [productId],
       );
 
@@ -264,6 +320,7 @@ class ProductModel {
     categoryId = null,
     priceMin = null,
     priceMax = null,
+    ratingMin = null,
   }) {
     try {
       const conditions = [];
@@ -285,7 +342,7 @@ class ProductModel {
       conditions.push("p.is_deleted = ?");
       params.push(0);
 
-      // conditions.push("v.variant_id IS NOT NULL");
+      conditions.push("v.variant_id IS NOT NULL");
 
       if (categoryId) {
         conditions.push("p.category_id = ?");
@@ -308,6 +365,12 @@ class ProductModel {
         params.push(priceMax);
       }
 
+      // rating filter
+      if (ratingMin !== null) {
+        conditions.push("p.avg_rating >= ?");
+        params.push(ratingMin);
+      }
+
       const whereClause = conditions.length
         ? `WHERE ${conditions.join(" AND ")}`
         : "";
@@ -328,6 +391,8 @@ class ProductModel {
         p.product_id,
         p.product_name,
         p.brand_name,
+        p.avg_rating,
+        p.rating_count,
         p.created_at,
         c.category_name,
         sc.subcategory_name,
@@ -335,6 +400,10 @@ class ProductModel {
         v.mrp,
         v.sale_price,
         v.reward_redemption_limit,
+        prs.can_earn_reward,
+        rr.reward_type,
+        rr.reward_value,
+        rr.max_reward,
 
         GROUP_CONCAT(
           DISTINCT CONCAT(
@@ -367,6 +436,25 @@ class ProductModel {
 
       /* ---- Images ---- */
       LEFT JOIN product_images pi ON p.product_id = pi.product_id
+
+     LEFT JOIN product_reward_settings prs 
+      ON prs.id = (
+        SELECT prs2.id
+        FROM product_reward_settings prs2
+        WHERE prs2.product_id = p.product_id
+          AND prs2.is_active = 1
+          AND (
+            prs2.variant_id = v.variant_id
+            OR prs2.variant_id IS NULL
+          )
+        ORDER BY 
+          CASE WHEN prs2.variant_id = v.variant_id THEN 1 ELSE 2 END
+        LIMIT 1
+      )
+
+      LEFT JOIN reward_rules rr 
+        ON rr.reward_rule_id = prs.reward_rule_id
+        AND rr.is_active = 1
 
       ${whereClause}
 
@@ -404,9 +492,15 @@ class ProductModel {
           subcategory_name: row.subcategory_name,
           sub_subcategory_name: row.sub_subcategory_name,
           created_at: row.created_at,
+          avg_rating: row.avg_rating,
+          rating_count: row.rating_count,
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,
+          can_earn_reward: row.can_earn_reward ?? 0,
+          reward_type: row.reward_type,
+          reward_value: row.reward_value,
+          max_reward: row.max_reward,
           images,
         };
       });
@@ -456,6 +550,7 @@ class ProductModel {
     subcategoryId = null,
     priceMin = null,
     priceMax = null,
+    ratingMin = null,
   }) {
     try {
       const conditions = [];
@@ -495,6 +590,12 @@ class ProductModel {
         params.push(priceMax);
       }
 
+      // rating filter
+      if (ratingMin !== null) {
+        conditions.push("p.avg_rating >= ?");
+        params.push(ratingMin);
+      }
+
       const whereClause = conditions.length
         ? `WHERE ${conditions.join(" AND ")}`
         : "";
@@ -510,6 +611,8 @@ class ProductModel {
         p.product_id,
         p.product_name,
         p.brand_name,
+        p.avg_rating,
+        p.rating_count,
         p.created_at,
         c.category_name,
         sc.subcategory_name,
@@ -579,6 +682,8 @@ class ProductModel {
           brand_name: row.brand_name,
           category_name: row.category_name,
           created_at: row.created_at,
+          avg_rating: row.avg_rating,
+          rating_count: row.rating_count,
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,
@@ -826,10 +931,11 @@ class ProductModel {
       categoryId: null,
       priceMin: null,
       priceMax: null,
+      ratingMin: null,
     });
   }
 
-  async getSimilarProducts({ productId, limit = 10 }) {
+  async getSimilarProducts({ productId, limit = 10, offset = 0 }) {
     try {
       /* -------------------------------
        1 Get category hierarchy
@@ -915,8 +1021,8 @@ class ProductModel {
         )
 
       GROUP BY p.product_id
-      ORDER BY RAND()
-      LIMIT ?
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
     `;
 
       const [rows] = await db.execute(query, [
@@ -925,6 +1031,7 @@ class ProductModel {
         subcategory_id,
         sub_subcategory_id,
         limit,
+        offset,
       ]);
 
       /* -------------------------------
@@ -970,7 +1077,7 @@ class ProductModel {
   }
 
   // Get User Recommendations
-  async getUserRecommendations(userId, limit = 10) {
+  async getUserRecommendations(userId, limit = 10, offset = 0) {
     try {
       const query = `
       SELECT 
@@ -1051,7 +1158,7 @@ class ProductModel {
       GROUP BY p.product_id
       HAVING total_score > 0
       ORDER BY total_score DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
       `;
 
       const [rows] = await db.execute(query, [
@@ -1060,6 +1167,7 @@ class ProductModel {
         userId,
         userId,
         limit,
+        offset,
       ]);
 
       return rows.map((row) => {
@@ -1103,7 +1211,7 @@ class ProductModel {
   }
 
   // New Arrivals
-  async getNewArrivals(limit = 10) {
+  async getNewArrivals(limit = 10, offset = 0) {
     try {
       const query = `
       SELECT
@@ -1162,10 +1270,10 @@ class ProductModel {
 
       GROUP BY p.product_id
       ORDER BY p.created_at DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `;
 
-      const [rows] = await db.execute(query, [limit]);
+      const [rows] = await db.execute(query, [limit, offset]);
 
       const products = rows.map((row) => {
         const salePrice = Number(row.sale_price || 0);
@@ -1216,7 +1324,7 @@ class ProductModel {
   }
 
   // Customer also bought
-  async getCustomersAlsoBought(productId, limit = 10) {
+  async getCustomersAlsoBought(productId, limit = 10, offset = 0) {
     try {
       const query = `
       SELECT
@@ -1276,10 +1384,15 @@ class ProductModel {
 
       GROUP BY p.product_id
       ORDER BY frequency DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `;
 
-      const [rows] = await db.execute(query, [productId, productId, limit]);
+      const [rows] = await db.execute(query, [
+        productId,
+        productId,
+        limit,
+        offset,
+      ]);
 
       const products = rows.map((row) => {
         const salePrice = Number(row.sale_price || 0);
@@ -1329,7 +1442,7 @@ class ProductModel {
   }
 
   // Trending Products
-  async getTrendingProducts(limit = 10, days = 30) {
+  async getTrendingProducts(limit = 10, offset = 0, days = 30) {
     try {
       const query = `
       SELECT
@@ -1384,10 +1497,10 @@ class ProductModel {
 
       GROUP BY p.product_id
       ORDER BY total_sold DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `;
 
-      const [rows] = await db.execute(query, [days, limit]);
+      const [rows] = await db.execute(query, [days, limit, offset]);
 
       const products = rows.map((row) => {
         const salePrice = Number(row.sale_price || 0);
@@ -1437,7 +1550,7 @@ class ProductModel {
   }
 
   // Best sellers
-  async getBestSellers(limit = 10, days = 30) {
+  async getBestSellers(limit = 10, offset = 0, days = 30) {
     try {
       const query = `
       SELECT
@@ -1492,10 +1605,10 @@ class ProductModel {
 
       GROUP BY p.product_id
       ORDER BY total_sold DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `;
 
-      const [rows] = await db.execute(query, [days, limit]);
+      const [rows] = await db.execute(query, [days, limit, offset]);
 
       const products = rows.map((row) => {
         const salePrice = Number(row.sale_price || 0);
@@ -1545,7 +1658,7 @@ class ProductModel {
   }
 
   // Get Most viewed products
-  async getMostViewedProducts(limit = 10, days = 30) {
+  async getMostViewedProducts(limit = 10, offset = 0, days = 30) {
     try {
       const query = `
       SELECT
@@ -1596,10 +1709,10 @@ class ProductModel {
 
       GROUP BY p.product_id
       ORDER BY view_count DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `;
 
-      const [rows] = await db.execute(query, [days, limit]);
+      const [rows] = await db.execute(query, [days, limit, offset]);
 
       const products = rows.map((row) => {
         const salePrice = Number(row.sale_price || 0);
@@ -1649,7 +1762,7 @@ class ProductModel {
   }
 
   // Get Rop rated products
-  async getTopRatedProducts(limit = 10) {
+  async getTopRatedProducts(limit = 10, offset = 0) {
     try {
       const query = `
       SELECT
@@ -1701,10 +1814,10 @@ class ProductModel {
       GROUP BY p.product_id
       HAVING total_reviews >= 3
       ORDER BY avg_rating DESC, total_reviews DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `;
 
-      const [rows] = await db.execute(query, [limit]);
+      const [rows] = await db.execute(query, [limit, offset]);
 
       return rows;
     } catch (error) {

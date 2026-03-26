@@ -1,6 +1,7 @@
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const tempFolder = path.join(__dirname, "../uploads/temp");
 if (!fs.existsSync(tempFolder)) fs.mkdirSync(tempFolder, { recursive: true });
@@ -11,7 +12,10 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const safe = file.originalname.replace(/\s+/g, "_");
-    cb(null, Date.now() + "-" + safe);
+    cb(
+      null,
+      Date.now() + "-" + crypto.randomBytes(6).toString("hex") + "-" + safe,
+    );
   },
 });
 

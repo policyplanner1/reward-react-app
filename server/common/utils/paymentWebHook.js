@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const db = require("../../config/database");
 const { enqueueWhatsApp } = require("../../services/whatsapp/waEnqueueService");
 const xpressService = require("../../services/ExpressBees/xpressbees_service");
+const { orderConfirmationMail } = require("../../services/orderConfirmation");
 
 // booking payload
 async function buildXpressBookingPayload(orderId, vendorId) {
@@ -134,64 +135,228 @@ async function processShipmentsAfterPayment(orderId) {
   const conn = await db.getConnection();
 
   try {
-    // Fetch only shipments ready for booking
-    const [shipments] = await conn.query(
-      `SELECT * FROM order_shipments
-       WHERE order_id = ?
-       AND shipping_status = 'pending'`,
+    // ==========================
+    // GUARD: CHECK IF SHIPMENT SYNC ALREADY COMPLETED
+    // ==========================
+    const [[order]] = await conn.query(
+      `
+      SELECT shipment_sync_status 
+      FROM eorders 
+      WHERE order_id = ?
+    `,
       [orderId],
     );
 
+    if (!order) return;
+
+    if (order?.shipment_sync_status === "completed") {
+      return;
+    }
+
+    // ==========================
+    // FETCH SHIPMENTS (WITH RETRY + COOLDOWN)
+    // ==========================
+    const [shipments] = await conn.query(
+      `
+        SELECT * FROM order_shipments
+        WHERE order_id = ?
+        AND shipping_status IN ('pending', 'booking_failed')
+        AND booking_in_progress = 0
+        AND (
+          booking_last_attempt_at IS NULL
+          OR booking_last_attempt_at < NOW() - INTERVAL 5 MINUTE
+        )
+      `,
+      [orderId],
+    );
+
+    if (shipments.length > 0) {
+      await conn.query(
+        `
+          UPDATE eorders
+          SET shipment_sync_status = 'in_progress'
+          WHERE order_id = ?
+        `,
+        [orderId],
+      );
+    }
+
     for (const shipment of shipments) {
       try {
+        // 1 Skip if already booked
         if (shipment.shipment_id || shipment.awb_number) {
           continue;
         }
 
+        // 2 Lock the shipment row for booking
+        const [lock] = await conn.query(
+          `
+            UPDATE order_shipments
+            SET booking_in_progress = 1
+            WHERE id = ?
+            AND shipping_status IN ('pending', 'booking_failed')
+            AND booking_in_progress = 0
+          `,
+          [shipment.id],
+        );
+
+        if (lock.affectedRows === 0) {
+          continue;
+        }
+
+        // ==========================
+        // COURIER FALLBACK LOGIC
+        // ==========================
+        const allCouriers = JSON.parse(shipment.courier_options || "[]");
+        const attempted = JSON.parse(shipment.attempted_couriers || "[]");
+
+        const remainingCouriers = allCouriers.filter(
+          (c) => !attempted.includes(c.id),
+        );
+
+        if (remainingCouriers.length === 0) {
+          await conn.query(
+            `
+            UPDATE order_shipments
+            SET shipping_status = 'booking_failed',
+                booking_in_progress = 0
+            WHERE id = ?
+            `,
+            [shipment.id],
+          );
+          continue;
+        }
+
+        // Pick cheapest available courier
+        const nextCourier = remainingCouriers
+          .filter((c) => c.total_charges > 0)
+          .sort((a, b) => a.total_charges - b.total_charges)[0];
+
+        if (!nextCourier) {
+          throw new Error("No valid courier found");
+        }
+
+        // 3 Build payload
         const payload = await buildXpressBookingPayload(
           orderId,
           shipment.vendor_id,
         );
 
+        // Override courier
+        payload.courier_id = nextCourier.id;
+
+        // 4 Call booking API
         const xpResponse = await xpressService.bookShipment(payload);
 
         if (!xpResponse.status) {
-          throw new Error("Booking failed");
+          throw new Error(xpResponse.message || "Courier booking failed");
         }
 
         const data = xpResponse.data;
 
-        const [updateResult] = await conn.query(
-          `UPDATE order_shipments
-           SET shipment_id = ?,
-               awb_number = ?,
-               label_url = ?,
-               manifest_url = ?,
-               shipping_status = 'booked'
-           WHERE id = ?
-             AND shipping_status = 'pending'`,
+        // update shipment row
+        await conn.query(
+          `
+          UPDATE order_shipments
+          SET courier_id = ?,
+              courier_name = ?,
+              shipment_id = ?,
+              awb_number = ?,
+              label_url = ?,
+              manifest_url = ?,
+              shipping_status = 'booked',
+              booking_attempts = booking_attempts + 1,
+              booking_in_progress = 0,
+              booked_at = NOW(),
+              attempted_couriers = JSON_ARRAY_APPEND(
+                COALESCE(attempted_couriers, JSON_ARRAY()),
+                '$',
+                ?
+              )
+          WHERE id = ?
+          `,
           [
+            nextCourier.id,
+            nextCourier.name,
             data.shipment_id,
             data.awb_number,
             data.label,
             data.manifest,
+            nextCourier.id,
             shipment.id,
           ],
         );
-
-        if (updateResult.affectedRows === 0) {
-          continue;
-        }
       } catch (err) {
         console.error(`Shipment booking failed for ${shipment.id}`, err);
-
-        // await conn.query(
-        //   `UPDATE order_shipments
-        //    SET shipping_status = 'pending'
-        //    WHERE id = ?`,
-        //   [shipment.id],
-        // );
+        //   HANDLE FAILURE + RELEASE LOCK
+        await conn.query(
+          `
+          UPDATE order_shipments
+          SET booking_in_progress = 0,
+              booking_attempts = booking_attempts + 1,
+              last_booking_error = ?,
+              booking_last_attempt_at = NOW(),
+              attempted_couriers = JSON_ARRAY_APPEND(
+                COALESCE(attempted_couriers, JSON_ARRAY()),
+                '$',
+                ?
+              ),
+              shipping_status = CASE
+                WHEN booking_attempts + 1 >= 5 THEN 'booking_failed'
+                ELSE 'pending'
+              END
+          WHERE id = ?
+          `,
+          [err.message, shipment.courier_id || null, shipment.id],
+        );
       }
+    }
+
+    // ==========================
+    // CHECK PARTIAL FAILURE
+    // ==========================
+    const [[counts]] = await conn.query(
+      `
+        SELECT 
+        COUNT(*) AS total,
+        SUM(CASE WHEN shipping_status = 'booked' THEN 1 ELSE 0 END) AS booked
+        FROM order_shipments
+        WHERE order_id = ?
+        AND shipping_status NOT IN ('cancelled')
+      `,
+      [orderId],
+    );
+
+    if (counts.booked === counts.total) {
+      //  All shipments booked
+      await conn.query(
+        `
+        UPDATE eorders
+        SET shipment_sync_status = 'completed'
+        WHERE order_id = ?
+      `,
+        [orderId],
+      );
+    } else if (counts.booked > 0) {
+      // Partial success
+      await conn.query(
+        `
+        UPDATE eorders
+        SET shipment_sync_status = 'partial'
+        WHERE order_id = ?
+      `,
+        [orderId],
+      );
+    } else {
+      // All failed
+      await conn.query(
+        `
+        UPDATE eorders
+        SET shipment_sync_status = 'failed'
+        WHERE order_id = ?
+      `,
+        [orderId],
+      );
     }
   } finally {
     conn.release();
@@ -231,6 +396,39 @@ async function sendOrderPlacedWhatsApp(orderId) {
       total_amount: ctx.total_amount,
     },
   });
+}
+
+// send email
+async function sendOrderPlacedEmail(orderId) {
+  try {
+    const [rows] = await db.query(
+      `SELECT 
+        o.order_ref,
+        o.total_amount,
+        cu.name AS customer_name,
+        cu.email
+     FROM eorders o
+     JOIN customer cu ON cu.user_id = o.user_id
+     WHERE o.order_id = ?
+     LIMIT 1`,
+      [orderId],
+    );
+
+    if (!rows.length) return;
+
+    const ctx = rows[0];
+
+    if (!ctx.email) return;
+
+    await orderConfirmationMail({
+      name: ctx.customer_name,
+      email: ctx.email,
+      amount: ctx.total_amount,
+      orderId: ctx.order_ref,
+    });
+  } catch (err) {
+    console.error("Email sending error:", err);
+  }
 }
 
 // webhook
@@ -320,6 +518,11 @@ async function handleWebhook(req, res) {
       sendOrderPlacedWhatsApp(order_id).catch((err) =>
         console.error("WA failed:", err),
       );
+
+      // 8 Send Email
+      sendOrderPlacedEmail(order_id).catch((err) =>
+        console.error("Email failed:", err),
+      );
     }
 
     if (event === "payment.failed") {
@@ -344,4 +547,4 @@ async function handleWebhook(req, res) {
   }
 }
 
-module.exports = { handleWebhook };
+module.exports = { handleWebhook, processShipmentsAfterPayment };

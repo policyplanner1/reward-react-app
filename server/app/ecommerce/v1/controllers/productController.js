@@ -3,6 +3,29 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 
+// Helper function
+function calculateReward(price, product) {
+  if (!product.can_earn_reward) return 0;
+
+  if (!product.reward_type) return 0;
+
+  let reward = 0;
+
+  if (product.reward_type === "percentage") {
+    reward = (price * product.reward_value) / 100;
+
+    if (product.max_reward) {
+      reward = Math.min(reward, product.max_reward);
+    }
+  }
+
+  if (product.reward_type === "fixed") {
+    reward = product.reward_value;
+  }
+
+  return Math.floor(reward);
+}
+
 class ProductController {
   // all the products
   async getAllProducts(req, res) {
@@ -32,19 +55,20 @@ class ProductController {
 
         const salePrice = product.sale_price ? Number(product.sale_price) : 0;
 
-        const discountPercent = product.reward_redemption_limit
-          ? Number(product.reward_redemption_limit)
-          : 0;
-
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
-
-        const finalPrice = salePrice - discountAmount;
-
-        // extra discount
         const mrp = product.mrp ? Number(product.mrp) : 0;
 
+        // const discountPercent = product.reward_redemption_limit
+        //   ? Number(product.reward_redemption_limit)
+        //   : 0;
+
+        // const discountAmount = Math.round((salePrice * discountPercent) / 100);
+
+        // const finalPrice = salePrice - discountAmount;
+
+        const rewardCoins = calculateReward(salePrice, product);
+
         const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+          mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
         return {
           id: product.product_id,
@@ -60,8 +84,17 @@ class ProductController {
           discount: `${mrpDiscountPercent}%`,
           rating: 4.6,
           reviews: "18.9K",
-          pointsPrice: salePrice ? `₹${finalPrice}` : null,
-          points: discountAmount,
+          // pointsPrice: salePrice ? `₹${finalPrice}` : null,
+          // points: discountAmount,
+          rewardCoins: rewardCoins,
+          rewardLabel: rewardCoins > 0 ? `${rewardCoins} coins` : null,
+
+          reward: {
+            enabled: product.can_earn_reward === 1,
+            type: product.reward_type,
+            value: product.reward_value,
+            max: product.max_reward,
+          },
         };
       });
 
@@ -108,6 +141,11 @@ class ProductController {
 
       const priceMax = req.query.priceMax ? Number(req.query.priceMax) : null;
 
+      // rating filter
+      const ratingMin = req.query.ratingMin
+        ? Number(req.query.ratingMin)
+        : null;
+
       const { products, category_name, totalItems } =
         await ProductModel.getProductsByCategory({
           search,
@@ -118,6 +156,7 @@ class ProductController {
           categoryId,
           priceMin,
           priceMax,
+          ratingMin,
         });
 
       const processedProducts = products.map((product) => {
@@ -127,20 +166,23 @@ class ProductController {
             : null;
 
         const salePrice = product.sale_price ? Number(product.sale_price) : 0;
-
-        const discountPercent = product.reward_redemption_limit
-          ? Number(product.reward_redemption_limit)
-          : 0;
-
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
-
-        const finalPrice = salePrice - discountAmount;
-
-        // extra discount
         const mrp = product.mrp ? Number(product.mrp) : 0;
 
+        // const discountPercent = product.reward_redemption_limit
+        //   ? Number(product.reward_redemption_limit)
+        //   : 0;
+
+        // const discountAmount = Math.round((salePrice * discountPercent) / 100);
+
+        // const finalPrice = salePrice - rewardCoins;
+
+        // const mrpDiscountPercent =
+        //   mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+        const rewardCoins = calculateReward(salePrice, product);
+
         const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+          mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
         return {
           id: product.product_id,
@@ -153,10 +195,12 @@ class ProductController {
           price: salePrice ? `₹${salePrice}` : null,
           originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
           discount: `${mrpDiscountPercent}%`,
-          rating: 4.6,
-          reviews: "18.9K",
-          pointsPrice: salePrice ? `₹${finalPrice}` : null,
-          points: discountAmount,
+          rating: product.avg_rating,
+          reviews: product.rating_count,
+          // pointsPrice: salePrice ? `₹${finalPrice}` : null,
+          // points: discountAmount,
+          rewardCoins: rewardCoins,
+          rewardLabel: rewardCoins > 0 ? `${rewardCoins} coins` : null,
         };
       });
 
@@ -202,6 +246,11 @@ class ProductController {
 
       const priceMax = req.query.priceMax ? Number(req.query.priceMax) : null;
 
+      // rating filter
+      const ratingMin = req.query.ratingMin
+        ? Number(req.query.ratingMin)
+        : null;
+
       const { products, subcategory_name, totalItems } =
         await ProductModel.getProductsBySubcategory({
           search,
@@ -212,6 +261,7 @@ class ProductController {
           subcategoryId,
           priceMin,
           priceMax,
+          ratingMin,
         });
 
       const processedProducts = products.map((product) => {
@@ -248,8 +298,8 @@ class ProductController {
           discount: `${mrpDiscountPercent}%`,
           pointsPrice: `₹${finalPrice}`,
           points: discountAmount,
-          rating: 4.6,
-          reviews: "18.9K",
+          rating: product.avg_rating,
+          reviews: product.rating_count,
         };
       });
 
@@ -308,27 +358,49 @@ class ProductController {
           // Numbers only
           const salePrice = Number(variant.sale_price) || 0;
           const mrp = Number(variant.mrp) || 0;
-          const rewardDiscountPercent =
-            Number(variant.reward_redemption_limit) || 0;
 
-          // Reward discount on sale price
-          const rewardDiscountAmount = Math.round(
-            (salePrice * rewardDiscountPercent) / 100,
-          );
+          // const rewardDiscountPercent =
+          //   Number(variant.reward_redemption_limit) || 0;
 
-          const finalPrice = salePrice - rewardDiscountAmount;
+          // // Reward discount on sale price
+          // const rewardDiscountAmount = Math.round(
+          //   (salePrice * rewardDiscountPercent) / 100,
+          // );
+          // const finalPrice = salePrice - rewardDiscountAmount;
+
+          /* ===============================
+              REDEMPTION (DISCOUNT)
+            =============================== */
+          const redeemPercent = Number(variant.reward_redemption_limit) || 0;
+
+          const redeemAmount = Math.round((salePrice * redeemPercent) / 100);
+
+          const finalPrice = salePrice - redeemAmount;
 
           // Effective discount from MRP
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
 
+          const rewardCoins = calculateReward(salePrice, variant);
+
           return {
             ...variant,
+            price: `₹${salePrice}`,
+            finalPrice: `₹${finalPrice}`,
             discount: `${mrpDiscountPercent}%`,
+            redemption: {
+              percent: redeemPercent,
+              amount: redeemAmount,
+            },
             rating: 4.6,
             reviews: "18.9K",
-            pointsPrice: finalPrice ? `₹${finalPrice}` : null,
-            points: rewardDiscountAmount,
+            // pointsPrice: finalPrice ? `₹${finalPrice}` : null,
+            // points: rewardDiscountAmount,
+            reward: {
+              enabled: variant.can_earn_reward === 1,
+              coins: rewardCoins,
+              label: rewardCoins > 0 ? `${rewardCoins} coins` : null,
+            },
           };
         }),
       };
@@ -537,6 +609,7 @@ class ProductController {
         v.sale_price,
         v.mrp,
         v.reward_redemption_limit,
+        MAX(rv.viewed_at) AS viewed_at,
 
         GROUP_CONCAT(
           DISTINCT CONCAT(
@@ -573,9 +646,9 @@ class ProductController {
         AND p.is_visible = 1
         AND p.is_searchable = 1
 
-      GROUP BY p.product_id
+      GROUP BY rv.product_id
       ORDER BY rv.viewed_at DESC
-      LIMIT 6
+      LIMIT 10
     `;
 
       const [rows] = await db.execute(query, [userId]);
@@ -639,6 +712,7 @@ class ProductController {
     try {
       const userId = req.user?.user_id;
       const limit = req.query.limit ? Number(req.query.limit) : 10;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
 
       if (!userId) {
         return res.status(401).json({
@@ -647,11 +721,16 @@ class ProductController {
         });
       }
 
-      const products = await ProductModel.getUserRecommendations(userId, limit);
+      const products = await ProductModel.getUserRecommendations(
+        userId,
+        limit,
+        offset,
+      );
 
       return res.status(200).json({
         success: true,
         total: products.length,
+        hasMore: products.length === limit,
         products,
       });
     } catch (error) {
@@ -667,12 +746,14 @@ class ProductController {
   async getNewArrivals(req, res) {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 10;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
 
-      const products = await ProductModel.getNewArrivals(limit);
+      const products = await ProductModel.getNewArrivals(limit, offset);
 
       return res.status(200).json({
         success: true,
         total: products.length,
+        hasMore: products.length === limit,
         products,
       });
     } catch (error) {
@@ -689,6 +770,7 @@ class ProductController {
     try {
       const productId = Number(req.params.productId);
       const limit = req.query.limit ? Number(req.query.limit) : 10;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
 
       if (!productId) {
         return res.status(400).json({
@@ -700,11 +782,13 @@ class ProductController {
       const products = await ProductModel.getCustomersAlsoBought(
         productId,
         limit,
+        offset,
       );
 
       return res.status(200).json({
         success: true,
         total: products.length,
+        hasMore: products.length === limit,
         products,
       });
     } catch (error) {
@@ -722,12 +806,18 @@ class ProductController {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 10;
       const days = req.query.days ? Number(req.query.days) : 30;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
 
-      const products = await ProductModel.getTrendingProducts(limit, days);
+      const products = await ProductModel.getTrendingProducts(
+        limit,
+        offset,
+        days,
+      );
 
       return res.status(200).json({
         success: true,
         total: products.length,
+        hasMore: products.length === limit,
         products,
       });
     } catch (error) {
@@ -745,12 +835,14 @@ class ProductController {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 10;
       const days = req.query.days ? Number(req.query.days) : 30;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
 
-      const products = await ProductModel.getBestSellers(limit, days);
+      const products = await ProductModel.getBestSellers(limit, offset, days);
 
       return res.status(200).json({
         success: true,
         total: products.length,
+        hasMore: products.length === limit,
         products,
       });
     } catch (error) {
@@ -768,12 +860,18 @@ class ProductController {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 10;
       const days = req.query.days ? Number(req.query.days) : 30;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
 
-      const products = await ProductModel.getMostViewedProducts(limit, days);
+      const products = await ProductModel.getMostViewedProducts(
+        limit,
+        offset,
+        days,
+      );
 
       return res.status(200).json({
         success: true,
         total: products.length,
+        hasMore: products.length === limit,
         products,
       });
     } catch (error) {
@@ -790,12 +888,14 @@ class ProductController {
   async getTopRatedProducts(req, res) {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 10;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
 
-      const products = await ProductModel.getTopRatedProducts(limit);
+      const products = await ProductModel.getTopRatedProducts(limit, offset);
 
       return res.status(200).json({
         success: true,
         total: products.length,
+        hasMore: products.length === limit,
         products,
       });
     } catch (error) {
@@ -899,6 +999,7 @@ class ProductController {
     try {
       const productId = Number(req.params.productId);
       const limit = req.query.limit ? Number(req.query.limit) : 10;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
 
       if (!productId) {
         return res.status(400).json({
@@ -910,11 +1011,13 @@ class ProductController {
       const products = await ProductModel.getSimilarProducts({
         productId,
         limit,
+        offset,
       });
 
       return res.status(200).json({
         success: true,
         total: products.length,
+        hasMore: products.length === limit,
         products,
       });
     } catch (error) {
@@ -1068,6 +1171,32 @@ class ProductController {
       });
     } catch (error) {
       console.error("Get search history error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
+  // Clear Search History
+  async clearSearchHistory(req, res) {
+    try {
+      if (!req.user?.user_id) {
+        return res.status(401).json({ success: false });
+      }
+
+      const userId = req.user.user_id;
+
+      await db.execute(`DELETE FROM search_history WHERE user_id = ?`, [
+        userId,
+      ]);
+
+      return res.json({
+        success: true,
+        message: "Search history cleared",
+      });
+    } catch (error) {
+      console.error("Clear search history error:", error);
       return res.status(500).json({
         success: false,
         message: "Internal server error",

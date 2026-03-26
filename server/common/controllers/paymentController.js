@@ -152,57 +152,136 @@ class PaymentController {
     });
   }
 
-  async refundPayment(req, res) {
-    try {
-      const { orderId } = req.body;
+  // =================
+  // REFUND LOGIC
+  // =================
 
-      // Get successful payment for this order
-      const [payment] = await db.query(
-        `SELECT razorpay_payment_id, amount 
-       FROM order_payments
-       WHERE order_id = ? AND status = 'success'
-       LIMIT 1`,
+  async processRefund({ orderId, shipmentId, vendorOrderId, amount }) {
+    const conn = await db.getConnection();
+
+    try {
+      await conn.beginTransaction();
+
+      // ==========================
+      // 1. GET PAYMENT
+      // ==========================
+      const [[payment]] = await conn.query(
+        `
+      SELECT payment_id, razorpay_payment_id, amount, status
+      FROM order_payments
+      WHERE order_id = ?
+      AND status IN ('success','partially_refunded')
+      LIMIT 1
+    `,
         [orderId],
       );
 
-      if (!payment) {
-        return res.status(400).json({ message: "No successful payment found" });
+      if (!payment) throw new Error("Payment not found");
+
+      // ==========================
+      // 2. PREVENT DUPLICATE REFUND
+      // ==========================
+      const [existing] = await conn.query(
+        `
+      SELECT refund_id FROM order_refunds
+      WHERE shipment_id = ?
+      AND status IN ('initiated','completed')
+    `,
+        [shipmentId],
+      );
+
+      if (existing.length) {
+        await conn.rollback();
+        return;
       }
 
-      // Call Razorpay refund API
+      // ==========================
+      // 3. CREATE REFUND ENTRY
+      // ==========================
+      const [refundRes] = await conn.query(
+        `
+      INSERT INTO order_refunds
+      (order_id, shipment_id, vendor_order_id, refund_amount, refund_method, status)
+      VALUES (?, ?, ?, ?, 'original', 'initiated')
+    `,
+        [orderId, shipmentId, vendorOrderId, amount],
+      );
+
+      const refundId = refundRes.insertId;
+
+      // ==========================
+      // 4. CALL RAZORPAY
+      // ==========================
       const refund = await razorpay.payments.refund(
         payment.razorpay_payment_id,
         {
-          amount: payment.amount * 100, // full refund
+          amount: Math.round(amount * 100),
         },
       );
 
-      // Insert refund as new payment row (audit trail)
-      await db.query(
-        `INSERT INTO order_payments 
-       (order_id, razorpay_order_id, razorpay_payment_id, amount, status, payment_method, raw_webhook)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          orderId,
-          refund.order_id || null,
-          refund.id,
-          payment.amount,
-          "refunded",
-          "refund",
-          JSON.stringify(refund),
-        ],
+      // ==========================
+      // 5. UPDATE REFUND TABLE
+      // ==========================
+      await conn.query(
+        `
+      UPDATE order_refunds
+      SET status = 'completed',
+          razorpay_refund_id = ?,
+          completed_at = NOW()
+      WHERE refund_id = ?
+    `,
+        [refund.id, refundId],
       );
 
-      // Update order status
-      await db.query(
-        `UPDATE eorders SET status = 'cancelled' WHERE order_id = ?`,
+      // ==========================
+      // 6. UPDATE PAYMENT STATUS
+      // ==========================
+      const [[totalRefunded]] = await conn.query(
+        `
+      SELECT SUM(refund_amount) AS refunded
+      FROM order_refunds
+      WHERE order_id = ?
+      AND status = 'completed'
+    `,
         [orderId],
       );
 
-      res.json({ message: "Refund successful", refund });
+      if (totalRefunded.refunded >= payment.amount) {
+        await conn.query(
+          `
+        UPDATE order_payments
+        SET status = 'refunded'
+        WHERE payment_id = ?
+      `,
+          [payment.payment_id],
+        );
+      } else {
+        await conn.query(
+          `
+        UPDATE order_payments
+        SET status = 'partially_refunded'
+        WHERE payment_id = ?
+      `,
+          [payment.payment_id],
+        );
+      }
+
+      await conn.commit();
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Refund failed" });
+      await conn.rollback();
+      console.error("Refund failed:", err);
+
+      // mark failed
+      await conn.query(
+        `
+      UPDATE order_refunds
+      SET status = 'failed'
+      WHERE shipment_id = ?
+    `,
+        [shipmentId],
+      );
+    } finally {
+      conn.release();
     }
   }
 }

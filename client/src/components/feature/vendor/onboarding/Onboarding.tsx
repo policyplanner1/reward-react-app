@@ -30,7 +30,7 @@ interface VendorOnboardingData {
     | "";
   gstin: string;
   panNumber: string;
-  ip_address: string;
+  // ip_address: string;
 
   gstinFile: File | null;
   panFile: File | null;
@@ -90,7 +90,7 @@ const initialFormData: VendorOnboardingData = {
   vendorType: "",
   gstin: "",
   panNumber: "",
-  ip_address: "",
+  // ip_address: "",
 
   gstinFile: null,
   panFile: null,
@@ -359,7 +359,7 @@ const mapBackendToForm = (data: any): VendorOnboardingData => {
     vendorType: vendor.vendor_type || "",
     gstin: vendor.gstin || "",
     panNumber: vendor.pan_number || "",
-    ip_address: vendor.ipaddress || "",
+    // ip_address: vendor.ipaddress || "",
 
     // FILES MUST BE NULL
     gstinFile: null,
@@ -1078,140 +1078,144 @@ export default function Onboarding() {
                 required
                 error={errors.panNumber}
               />
-              <FormInput
+              {/* <FormInput
                 id="ip_address"
                 label="IP Address"
                 value={formData.ip_address}
                 onChange={handleChange}
-              />
+              /> */}
               {/* File uploads: only the common docs */}
               {/* GST */}
-              <DocumentUploadRow
-                label="GST Certificate"
-                docKey="gstinFile"
-                existingDoc={existingDocs["gstinFile"]}
-                file={formData.gstinFile}
-                onChange={handleChange}
-                required={false}
-              />
-              {/* Pan */}
-              <DocumentUploadRow
-                label="PAN Card"
-                docKey="panFile"
-                existingDoc={existingDocs["panFile"]}
-                file={formData.panFile}
-                onChange={handleChange}
-                required={false}
-              />
-              {/* Noc */}
-              <DocumentUploadRow
-                label="NOC"
-                docKey="nocFile"
-                existingDoc={existingDocs["nocFile"]}
-                file={formData.nocFile}
-                onChange={handleChange}
-                required={false}
-              />
-              {/* Trademark File */}
-              <DocumentUploadRow
-                label="Trademark Certificate"
-                docKey="rightsAdvisoryFile"
-                existingDoc={existingDocs["rightsAdvisoryFile"]}
-                file={formData.rightsAdvisoryFile}
-                onChange={handleChange}
-                required={false}
-              />
-              {/* Signatory ID */}
-              <DocumentUploadRow
-                label="Authorized Signatory ID Proof"
-                docKey="signatoryIdFile"
-                existingDoc={existingDocs["signatoryIdFile"]}
-                file={formData.signatoryIdFile}
-                onChange={handleChange}
-              />
-              {/* Business profile */}
-              <DocumentUploadRow
-                label="Business Profile"
-                docKey="businessProfileFile"
-                existingDoc={existingDocs["businessProfileFile"]}
-                file={formData.businessProfileFile}
-                onChange={handleChange}
-              />
-              {/* Brand logo - required for Manufacturer and Trader */}
-              <DocumentUploadRow
-                label="Brand Logo"
-                docKey="brandLogoFile"
-                existingDoc={existingDocs["brandLogoFile"]}
-                file={formData.brandLogoFile}
-                onChange={handleChange}
-              />
-              {/* Bank proof - cancelled cheque or passbook image */}
-              <DocumentUploadRow
-                label="Bank Cancelled Cheque"
-                docKey="bankProofFile"
-                existingDoc={existingDocs["bankProofFile"]}
-                file={formData.bankProofFile}
-                onChange={handleChange}
-              />
-              {/* Electricity */}
-              <DocumentUploadRow
-                label="Electricity bill"
-                docKey="electricityBillFile"
-                existingDoc={existingDocs["electricityBillFile"]}
-                file={formData.electricityBillFile}
-                onChange={handleChange}
-              />
-              {/* Vendor agreement - checkbox + optional upload */}
               <div className="col-span-1 md:col-span-2 lg:col-span-3">
-                <div className="flex items-start gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.agreementAccepted}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        agreementAccepted: e.target.checked,
-                      }))
-                    }
+                <div className="grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
+                  <DocumentUploadRow
+                    label="GST Certificate"
+                    docKey="gstinFile"
+                    existingDoc={existingDocs["gstinFile"]}
+                    file={formData.gstinFile}
+                    onChange={handleChange}
+                    required={false}
                   />
-                  <label className="text-sm mb-4">
-                    I have read and agree to the Vendor Agreement
-                  </label>
+                  {/* Pan */}
+                  <DocumentUploadRow
+                    label="PAN Card"
+                    docKey="panFile"
+                    existingDoc={existingDocs["panFile"]}
+                    file={formData.panFile}
+                    onChange={handleChange}
+                    required={false}
+                  />
+                  {/* Noc */}
+                  <DocumentUploadRow
+                    label="NOC"
+                    docKey="nocFile"
+                    existingDoc={existingDocs["nocFile"]}
+                    file={formData.nocFile}
+                    onChange={handleChange}
+                    required={false}
+                  />
+                  {/* Trademark File */}
+                  <DocumentUploadRow
+                    label="Trademark Certificate"
+                    docKey="rightsAdvisoryFile"
+                    existingDoc={existingDocs["rightsAdvisoryFile"]}
+                    file={formData.rightsAdvisoryFile}
+                    onChange={handleChange}
+                    required={false}
+                  />
+                  {/* Signatory ID */}
+                  <DocumentUploadRow
+                    label="Authorized Signatory ID Proof"
+                    docKey="signatoryIdFile"
+                    existingDoc={existingDocs["signatoryIdFile"]}
+                    file={formData.signatoryIdFile}
+                    onChange={handleChange}
+                  />
+                  {/* Business profile */}
+                  <DocumentUploadRow
+                    label="Business Profile"
+                    docKey="businessProfileFile"
+                    existingDoc={existingDocs["businessProfileFile"]}
+                    file={formData.businessProfileFile}
+                    onChange={handleChange}
+                  />
+                  {/* Brand logo - required for Manufacturer and Trader */}
+                  <DocumentUploadRow
+                    label="Brand Logo"
+                    docKey="brandLogoFile"
+                    existingDoc={existingDocs["brandLogoFile"]}
+                    file={formData.brandLogoFile}
+                    onChange={handleChange}
+                  />
+                  {/* Bank proof - cancelled cheque or passbook image */}
+                  <DocumentUploadRow
+                    label="Bank Cancelled Cheque"
+                    docKey="bankProofFile"
+                    existingDoc={existingDocs["bankProofFile"]}
+                    file={formData.bankProofFile}
+                    onChange={handleChange}
+                  />
+                  {/* Electricity */}
+                  <DocumentUploadRow
+                    label="Electricity bill"
+                    docKey="electricityBillFile"
+                    existingDoc={existingDocs["electricityBillFile"]}
+                    file={formData.electricityBillFile}
+                    onChange={handleChange}
+                  />
+                  {/* Vendor agreement - checkbox + optional upload */}
+                  <div className="col-span-1 md:col-span-2 lg:col-span-3">
+                    <div className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.agreementAccepted}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            agreementAccepted: e.target.checked,
+                          }))
+                        }
+                      />
+                      <label className="text-sm mb-4">
+                        I have read and agree to the Vendor Agreement
+                      </label>
+                    </div>
+
+                    {errors.agreementAccepted && (
+                      <p className="text-xs text-red-500 mt-1">
+                        {errors.agreementAccepted}
+                      </p>
+                    )}
+
+                    <DocumentUploadRow
+                      label="Signed Agreement"
+                      docKey="vendorAgreementFile"
+                      existingDoc={existingDocs["vendorAgreementFile"]}
+                      file={formData.vendorAgreementFile}
+                      onChange={handleChange}
+                      required={false}
+                    />
+
+                    {errors.vendorAgreementFile && (
+                      <p className="text-xs text-red-500 mt-1">
+                        {errors.vendorAgreementFile}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Conditional: Authorization letter (Trader only) */}
+                  {formData.vendorType === "Trader" && (
+                    <DocumentUploadRow
+                      label="Authorization / Dealership Letter"
+                      docKey="authorizationLetterFile"
+                      existingDoc={existingDocs["authorizationLetterFile"]}
+                      file={formData.authorizationLetterFile}
+                      onChange={handleChange}
+                      required={false}
+                    />
+                  )}
                 </div>
-
-                {errors.agreementAccepted && (
-                  <p className="text-xs text-red-500 mt-1">
-                    {errors.agreementAccepted}
-                  </p>
-                )}
-
-                <DocumentUploadRow
-                  label="Signed Agreement"
-                  docKey="vendorAgreementFile"
-                  existingDoc={existingDocs["vendorAgreementFile"]}
-                  file={formData.vendorAgreementFile}
-                  onChange={handleChange}
-                  required={false}
-                />
-
-                {errors.vendorAgreementFile && (
-                  <p className="text-xs text-red-500 mt-1">
-                    {errors.vendorAgreementFile}
-                  </p>
-                )}
               </div>
-
-              {/* Conditional: Authorization letter (Trader only) */}
-              {formData.vendorType === "Trader" && (
-                <DocumentUploadRow
-                  label="Authorization / Dealership Letter"
-                  docKey="authorizationLetterFile"
-                  existingDoc={existingDocs["authorizationLetterFile"]}
-                  file={formData.authorizationLetterFile}
-                  onChange={handleChange}
-                  required={false}
-                />
-              )}
             </div>
           </section>
 

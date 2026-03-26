@@ -33,7 +33,7 @@ const authController = {
         });
       }
 
-      const [existing] = await db.execute(
+      const [existing] = await connection.execute(
         "SELECT user_id FROM eusers WHERE email = ?",
         [email.toLowerCase()],
       );
@@ -49,7 +49,7 @@ const authController = {
       const hashedPassword = await bcrypt.hash(password, 12);
 
       // Create User
-      const [insertUser] = await db.execute(
+      const [insertUser] = await connection.execute(
         "INSERT INTO eusers (name, email, password, role, phone, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
         [name, email.toLowerCase(), hashedPassword, role, phone || null],
       );
@@ -59,11 +59,11 @@ const authController = {
       const otpHash = hashOTP(otp);
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-      await db.execute("DELETE FROM user_otps WHERE user_id = ?", [
+      await connection.execute("DELETE FROM user_otps WHERE user_id = ?", [
         insertUser.insertId,
       ]);
 
-      await db.execute(
+      await connection.execute(
         `INSERT INTO user_otps (user_id, otp_hash, expires_at)
          VALUES (?, ?, ?)`,
         [insertUser.insertId, otpHash, expiresAt],
@@ -71,15 +71,19 @@ const authController = {
 
       // vendor creation
       if (role === "vendor") {
-        await db.execute(
+        await connection.execute(
           "INSERT INTO vendors (user_id, status, created_at) VALUES (?, 'pending', NOW())",
           [insertUser.insertId],
         );
       }
 
-      // await sendOtpEmail(email, otp);
-
       await connection.commit();
+
+      try {
+        await sendOtpEmail(email, otp);
+      } catch (mailErr) {
+        console.error("Email failed:", mailErr);
+      }
 
       return res.status(201).json({
         success: true,
@@ -115,7 +119,7 @@ const authController = {
 
     const [rows] = await db.execute(
       `
-      SELECT u.user_id, u.role, u.email
+      SELECT u.user_id, u.role,u.phone, u.email
         FROM eusers u
         JOIN user_otps o ON o.user_id = u.user_id
         WHERE u.email = ?
@@ -150,10 +154,12 @@ const authController = {
         [user.user_id],
       );
 
-      vendorData = {
-        vendor_id: data[0]?.vendor_id,
-        status: data[0]?.status,
-      };
+      if (data.length > 0) {
+        vendorData = {
+          vendor_id: data[0].vendor_id,
+          status: data[0].status,
+        };
+      }
     }
     const token = generateToken({
       user_id: user.user_id,
@@ -228,7 +234,12 @@ const authController = {
       [userId, otpHash, expiresAt],
     );
 
-    await sendOtpEmail(email, otp);
+    // Send mail
+    try {
+      await sendOtpEmail(email, otp);
+    } catch (mailErr) {
+      console.error("OTP MAIL FAILED:", mailErr);
+    }
 
     return res.json({
       success: true,
@@ -283,7 +294,12 @@ const authController = {
 
     const resetLink = `https://rewardplanners.com/crm/reset-password?token=${rawToken}`;
 
-    await sendPasswordResetEmail(user.email, resetLink);
+    // Send mail
+    try {
+      await sendPasswordResetEmail(user.email, resetLink);
+    } catch (mailErr) {
+      console.error("PASSWORD RESET MAIL FAILED:", mailErr);
+    }
 
     return res.json(genericResponse);
   },
@@ -357,6 +373,13 @@ const authController = {
     try {
       const { email, password } = req.body;
 
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and password are required",
+        });
+      }
+
       const [rows] = await db.execute("SELECT * FROM eusers WHERE email = ?", [
         email.toLowerCase(),
       ]);
@@ -396,7 +419,11 @@ const authController = {
           [user.user_id, otpHash, expiresAt],
         );
 
-        await sendOtpEmail(user.email, otp);
+        try {
+          await sendOtpEmail(user.email, otp);
+        } catch (mailErr) {
+          console.error("OTP mail failed:", mailErr);
+        }
 
         return res.status(403).json({
           success: false,
@@ -564,7 +591,7 @@ const authController = {
       STATES
      ============================================================ */
   getAllStates: async (req, res) => {
-      try {
+    try {
       const [rows] = await db.execute(
         `SELECT 
             state_id,
@@ -573,22 +600,21 @@ const authController = {
             created_at
          FROM states
          WHERE status = 1 AND country_id=75
-         ORDER BY state_name ASC`
+         ORDER BY state_name ASC`,
       );
 
       return res.status(200).json({
         success: true,
         message: "States fetched successfully",
-        data: rows
+        data: rows,
       });
-
     } catch (error) {
       console.error("Error fetching states:", error);
 
       return res.status(500).json({
         success: false,
         message: "Failed to fetch states",
-        error: error.message
+        error: error.message,
       });
     }
   },

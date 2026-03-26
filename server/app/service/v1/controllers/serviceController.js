@@ -2,7 +2,54 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 const ServiceModel = require("../models/serviceModel");
+const ServiceCategoryModel = require("../models/serviceCategoryModel");
+const ServiceVariantModel = require("../models/serviceVariantModel");
+const ServiceDocumentModel = require("../models/serviceDocumentModel");
+const ServiceFormModel = require("../models/serviceFormModel");
+const ServiceSectionModel = require("../models/serviceSectionModel");
 const { UPLOAD_BASE } = require("../../../../config/path");
+
+// =======================
+// HELPER FUNCTION
+// ====================
+function formatVariantSections(sections) {
+  const formatted = {
+    features: [],
+    details: [],
+    journey: [],
+    trust_stats: [],
+    paragraphs: [],
+  };
+
+  sections.forEach((s) => {
+    switch (s.section_type) {
+      case "features":
+        formatted.features = s.content;
+        break;
+
+      case "details":
+        formatted.details = s.content;
+        break;
+
+      case "journey":
+        formatted.journey = s.content;
+        break;
+
+      case "trust_stats":
+        formatted.trust_stats = s.content;
+        break;
+
+      case "paragraph":
+        formatted.paragraphs.push({
+          title: s.title,
+          content: s.content,
+        });
+        break;
+    }
+  });
+
+  return formatted;
+}
 
 class ServiceController {
   // Find all services
@@ -122,13 +169,132 @@ class ServiceController {
         });
       }
 
+      // 1 Get category details
+      const category = await ServiceCategoryModel.findById(categoryId);
+
+      if (!category) {
+        return res.status(404).json({
+          success: false,
+          message: "Category not found",
+        });
+      }
+
+      // ================= DIRECT FLOW =================
+      if (category.display_type === "direct") {
+        if (!category.direct_service_id) {
+          return res.status(400).json({
+            success: false,
+            message: "Direct service not configured",
+          });
+        }
+
+        const service = await ServiceModel.findBasicById(
+          category.direct_service_id,
+        );
+
+        if (!service) {
+          return res.status(404).json({
+            success: false,
+            message: "Service not found",
+          });
+        }
+
+        const variants = await ServiceVariantModel.getVariantsWithSections(
+          service.id,
+        );
+
+        const hasVariants = variants && variants.length > 0;
+
+        if (hasVariants) {
+          for (let v of variants) {
+            v.sections = await ServiceVariantModel.getSectionsByVariant(v.id);
+          }
+        }
+
+        const documents = await ServiceDocumentModel.findActiveByServiceId(
+          service.id,
+        );
+
+        const form = await ServiceFormModel.findFormByServiceId(service.id);
+
+        return res.json({
+          success: true,
+          type: "direct",
+          data: {
+            category,
+            service,
+            variants: hasVariants ? variants : [],
+            documents,
+            enquiry_fields: form,
+          },
+        });
+      }
+
+      // ================= NORMAL FLOW =================
       const services = await ServiceModel.findByCategoryId(categoryId);
+
+      return res.json({
+        success: true,
+        type: "list",
+        data: {
+          category,
+          services,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // Get all the service details in one api call
+
+  async getServiceDetails(req, res) {
+    try {
+      const { id } = req.params;
+
+      const service = await ServiceModel.findById(id);
+
+      const variants = await ServiceVariantModel.getVariantsByService(id);
+
+      for (let v of variants) {
+        const sections = await ServiceVariantModel.getSectionsByVariant(
+          v.id,
+        );
+
+        const formatted = formatVariantSections(sections);
+
+        v.features = formatted.features;
+        v.details = formatted.details;
+        v.journey = formatted.journey;
+        v.trust_stats = formatted.trust_stats;
+        v.paragraphs = formatted.paragraphs;
+
+        delete v.sections;
+      }
+
+      const documents = await ServiceDocumentModel.findActiveByServiceId(
+        service.id,
+      );
+
+      const enquiryFields = await ServiceFormModel.findFormByServiceId(id);
+
+      const serviceSections = await ServiceSectionModel.findByServiceId(id);
 
       res.json({
         success: true,
-        data: services,
+        data: {
+          service,
+          variants,
+          documents,
+          enquiry_fields: enquiryFields,
+          service_sections: serviceSections, // includes FAQ
+        },
       });
     } catch (err) {
+      console.log(err.message);
       res.status(500).json({
         success: false,
         message: err.message,

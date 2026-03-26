@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "./useAuth";
 import logoImage from "../assets/logo.svg";
 // import { User, Lock, Facebook, Twitter, Chrome } from "lucide-react";
@@ -23,9 +23,14 @@ export default function LoginPage() {
     role: "vendor",
   });
 
+  const location = useLocation();
+  const successMessage = location.state?.message;
+
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
+    setError("");
+
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
@@ -36,7 +41,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     try {
-      await login(formData.email, formData.password, formData.role);
+      await login(formData.email.trim(), formData.password, formData.role);
     } catch (err: unknown) {
       setError("Login failed. Please check your credentials.");
       console.error(err);
@@ -79,9 +84,16 @@ export default function LoginPage() {
           <h2 className="relative text-3xl font-extrabold text-center text-gray-900">
             Hello!
           </h2>
+
           <p className="mt-1 text-xl text-center text-gray-500 mb-8">
             Sign in to your Account
           </p>
+
+          {successMessage && (
+            <div className="mb-4 p-3 text-green-700 bg-green-50 border border-green-200 rounded-xl">
+              {successMessage}
+            </div>
+          )}
 
           {(error || authError) && (
             <div className="relative mb-4 p-3 text-sm text-red-700 rounded-xl bg-red-50 border border-red-200 shadow-sm">
@@ -115,7 +127,13 @@ export default function LoginPage() {
                     className="w-full bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
                     placeholder="name@company.com"
                     value={formData.email}
-                    onChange={handleChange}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        email: e.target.value.trimStart(),
+                      }))
+                    }
+                    autoComplete="email"
                   />
                 </div>
               </div>
@@ -144,6 +162,7 @@ export default function LoginPage() {
                     placeholder="********"
                     value={formData.password}
                     onChange={handleChange}
+                    autoComplete="current-password"
                   />
 
                   <button
@@ -197,7 +216,7 @@ export default function LoginPage() {
             {/* Login Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !formData.email || !formData.password}
               className="w-full mt-6 text-white font-bold py-3.5 rounded-full text-xl
                bg-gradient-to-r from-[#852BAF] to-[#FC3F78]
                shadow-lg shadow-[#852BAF]/25 transition-all duration-300 cursor-pointer

@@ -24,6 +24,17 @@ class ServiceDocumentModel {
     return rows;
   }
 
+  // active documents by service id
+  async findActiveByServiceId(serviceId) {
+    const [rows] = await db.execute(
+      `SELECT id, document_name, is_mandatory
+     FROM service_documents
+     WHERE service_id = ?`,
+      [serviceId],
+    );
+    return rows;
+  }
+
   //   delete
   async delete(id) {
     const [result] = await db.execute(
