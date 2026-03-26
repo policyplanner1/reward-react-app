@@ -4,9 +4,6 @@ class InsuranceController {
   // start enquiry
   async startEnquiry(req, res) {
     const { insurance_type } = req.body;
-    // {
-    //   insurance_type: "health";
-    // }
 
     if (!insurance_type) {
       return res.status(400).json({
