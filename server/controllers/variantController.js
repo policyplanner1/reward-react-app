@@ -149,7 +149,8 @@ class VariantController {
 
       // 5. Prepare DB paths (DO NOT MOVE FILES YET)
       const imagesToInsert = req.files.map((file) => {
-        const filename = path.basename(file.path);
+        // const filename = path.basename(file.path);
+        const filename = file.filename;
         return {
           file,
           finalPath: `products/${vendorId}/${productId}/variants/${variantId}/${filename}`,
@@ -165,7 +166,13 @@ class VariantController {
 
       // 7. Move files AFTER DB success
       for (const img of imagesToInsert) {
-        fs.renameSync(img.file.path, img.newPath);
+        if (!fs.existsSync(img.file.path)) {
+          console.error("FILE NOT FOUND:", img.file.path);
+          continue;
+        }
+
+        // fs.renameSync(img.file.path, img.newPath);
+        await fs.promises.rename(img.file.path, img.newPath);
       }
 
       return res.json({
