@@ -17,6 +17,7 @@ function formatVariantSections(sections) {
     features: [],
     details: [],
     journey: [],
+    when_required:[],
     trust_stats: [],
     paragraphs: [],
   };
@@ -33,6 +34,10 @@ function formatVariantSections(sections) {
 
       case "journey":
         formatted.journey = s.content;
+        break;
+
+      case "when_required":
+        formatted.when_required = s.content;
         break;
 
       case "trust_stats":
@@ -268,9 +273,10 @@ class ServiceController {
 
         v.features = formatted.features;
         v.details = formatted.details;
-        v.journey = formatted.journey;
         v.trust_stats = formatted.trust_stats;
         v.paragraphs = formatted.paragraphs;
+        v.when_required = formatted.when_required;
+        v.journey = formatted.journey;
 
         delete v.sections;
       }
