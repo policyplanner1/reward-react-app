@@ -15,7 +15,8 @@ class InsuranceController {
       });
     }
 
-    const userId = req.user.user_id;
+    const userId = req.user?.user_id;
+    // const userId = 1;
 
     if (!userId) {
       return res.status(401).json({
@@ -47,7 +48,8 @@ class InsuranceController {
       });
     }
 
-    const userId = req.user.user_id;
+    const userId = req.user?.user_id;
+    // const userId = 1;
 
     if (!userId) {
       return res.status(401).json({
@@ -105,7 +107,8 @@ class InsuranceController {
 
   // Get Enquiry
   async getEnquiry(req, res) {
-    const userId = req.user.user_id;
+    const userId = req.user?.user_id;
+    // const userId = 1;
 
     if (!userId) {
       return res.status(401).json({
@@ -141,6 +144,7 @@ class InsuranceController {
     }
 
     const userId = req.user?.user_id;
+    // const userId = 1;
 
     if (!userId) {
       return res.status(401).json({
@@ -198,13 +202,6 @@ class InsuranceController {
       });
     }
 
-    if (!rows[0].selected_plan) {
-      return res.status(400).json({
-        success: false,
-        message: "Plan not selected",
-      });
-    }
-
     await db.execute(
       `UPDATE insurance_enquiries
      SET status = 'completed'
@@ -235,7 +232,8 @@ class InsuranceController {
       });
     }
 
-    const userId = req.user.user_id;
+    const userId = req.user?.user_id;
+    // const userId = 1
 
     if (!userId) {
       return res.status(401).json({
