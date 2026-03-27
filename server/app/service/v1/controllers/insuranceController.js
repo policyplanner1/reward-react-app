@@ -4,6 +4,7 @@ class InsuranceController {
   // start enquiry
   async startEnquiry(req, res) {
     const { insurance_type } = req.body;
+    const userId = req.user?.user_id;
 
     if (!insurance_type) {
       return res.status(400).json({
@@ -12,9 +13,6 @@ class InsuranceController {
       });
     }
 
-    const userId = req.user?.user_id;
-    // const userId = 1;
-
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -22,6 +20,26 @@ class InsuranceController {
       });
     }
 
+    //  STEP 1: Check existing draft
+    const [existing] = await db.execute(
+      `SELECT id FROM insurance_enquiries 
+     WHERE user_id = ? 
+     AND insurance_type = ? 
+     AND status = 'draft'
+     ORDER BY id DESC LIMIT 1`,
+      [userId, insurance_type],
+    );
+
+    //  STEP 2: If exists → return same enquiry
+    if (existing.length) {
+      return res.json({
+        success: true,
+        enquiry_id: existing[0].id,
+        message: "Resuming existing enquiry",
+      });
+    }
+
+    //  STEP 3: Else create new
     const [result] = await db.execute(
       `INSERT INTO insurance_enquiries (user_id, insurance_type)
      VALUES (?, ?)`,
@@ -31,6 +49,7 @@ class InsuranceController {
     res.json({
       success: true,
       enquiry_id: result.insertId,
+      message: "New enquiry created",
     });
   }
 
