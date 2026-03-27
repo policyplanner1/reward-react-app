@@ -22,7 +22,7 @@ class InsuranceController {
       });
     }
 
-    const result = await db.execute(
+    const [result] = await db.execute(
       `INSERT INTO insurance_enquiries (user_id, insurance_type)
      VALUES (?, ?)`,
       [userId, insurance_type],
