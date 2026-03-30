@@ -1,5 +1,6 @@
 const ManagerModel = require("../models/managerModel");
 const db = require("../config/database");
+const ExcelJS = require("exceljs");
 
 class ManagerController {
   // ========== BASIC STATS FOR CARDS ==========
@@ -49,7 +50,7 @@ class ManagerController {
         JOIN eusers u ON v.user_id = u.user_id
         WHERE v.status != 'pending'
           `,
-        [role]
+        [role],
       );
 
       if (vendorRows.length === 0) {
@@ -72,6 +73,62 @@ class ManagerController {
     }
   }
 
+  // Download vendor report
+  async getVendorReport(req, res) {
+    try {
+      const { status, fromDate, toDate } = req.query;
+
+      const data = await ManagerModel.getVendorReport({
+        status,
+        fromDate,
+        toDate,
+      });
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Vendor Report");
+
+      worksheet.columns = [
+        { header: "Vendor ID", key: "vendor_id", width: 18 },
+        { header: "Company Name", key: "company_name", width: 25 },
+        { header: "Owner Name", key: "full_name", width: 25 },
+        { header: "Email", key: "email", width: 30 },
+        { header: "Phone", key: "phone", width: 20 },
+        { header: "GSTIN", key: "gstin", width: 20 },
+        { header: "PAN", key: "pan_number", width: 20 },
+        { header: "Status", key: "status", width: 15 },
+        { header: "Created At", key: "created_at", width: 20 },
+      ];
+
+      data.forEach((v) => {
+        worksheet.addRow({
+          ...v,
+          vendor_id: `VND-${v.vendor_id}`, 
+        });
+      });
+
+      worksheet.getRow(1).font = { bold: true };
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=vendor_report.xlsx",
+      );
+
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (err) {
+      console.error("Vendor report error:", err);
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
   // Approve vendor Product
   async approveProduct(req, res) {
     try {
@@ -85,7 +142,7 @@ class ManagerController {
 
       const [productRows] = await db.query(
         `SELECT * FROM eproducts WHERE product_id = ?`,
-        [productId]
+        [productId],
       );
 
       if (productRows.length === 0) {
@@ -102,7 +159,7 @@ class ManagerController {
           `UPDATE eproducts
          SET status = 'approved',rejection_reason=''
          WHERE product_id = ?`,
-          [product.product_id]
+          [product.product_id],
         );
       }
 
@@ -132,7 +189,7 @@ class ManagerController {
 
       const [productRows] = await db.query(
         `SELECT * FROM eproducts WHERE product_id = ?`,
-        [productId]
+        [productId],
       );
 
       if (productRows.length === 0) {
@@ -149,7 +206,7 @@ class ManagerController {
           `UPDATE eproducts
          SET status = 'rejected',rejection_reason = ?
          WHERE product_id = ?`,
-          [reason, product.product_id]
+          [reason, product.product_id],
         );
       }
 
@@ -179,7 +236,7 @@ class ManagerController {
 
       const [productRows] = await db.query(
         `SELECT * FROM eproducts WHERE product_id = ?`,
-        [productId]
+        [productId],
       );
 
       if (productRows.length === 0) {
@@ -196,7 +253,7 @@ class ManagerController {
           `UPDATE eproducts
          SET status = 'resubmission',rejection_reason = ?
          WHERE product_id = ?`,
-          [reason, product.product_id]
+          [reason, product.product_id],
         );
       }
 
@@ -254,7 +311,7 @@ class ManagerController {
       const [result] = await db.query(
         `INSERT INTO documents (document_name, status, created_at)
          VALUES (?, 1, NOW())`,
-        [name]
+        [name],
       );
 
       res.status(201).json({
@@ -285,7 +342,7 @@ class ManagerController {
 
       const [rows] = await db.query(
         `SELECT * FROM documents WHERE document_id = ?`,
-        [id]
+        [id],
       );
 
       if (!rows.length) {
@@ -339,7 +396,7 @@ class ManagerController {
         `UPDATE documents 
          SET document_name = ?
          WHERE document_id = ?`,
-        [name, id]
+        [name, id],
       );
 
       if (result.affectedRows === 0) {
@@ -351,7 +408,7 @@ class ManagerController {
 
       const [rows] = await db.execute(
         `SELECT * FROM documents WHERE document_id = ?`,
-        [id]
+        [id],
       );
 
       res.status(200).json({
@@ -382,7 +439,7 @@ class ManagerController {
 
       const [result] = await db.execute(
         `DELETE FROM documents WHERE document_id = ?`,
-        [id]
+        [id],
       );
 
       if (result.affectedRows === 0) {
@@ -426,7 +483,7 @@ class ManagerController {
       const [result] = await db.query(
         `INSERT INTO category_document (category_id, document_id, created_at)
        VALUES (?, ?, NOW())`,
-        [category_id, document_id]
+        [category_id, document_id],
       );
 
       if (result.affectedRows > 0) {
@@ -456,7 +513,7 @@ class ManagerController {
         `SELECT cd.*, c.category_name ,d.document_name
          FROM category_document cd
          LEFT JOIN categories c ON cd.category_id = c.category_id
-         LEFT JOIN documents d on cd.document_id = d.document_id`
+         LEFT JOIN documents d on cd.document_id = d.document_id`,
       );
 
       res.status(200).json({
@@ -491,7 +548,7 @@ class ManagerController {
          LEFT JOIN categories c ON cd.category_id = c.category_id
          LEFT JOIN documents d on cd.document_id = d.document_id
          WHERE cd.id = ?`,
-        [id]
+        [id],
       );
 
       res.status(200).json({
@@ -522,7 +579,7 @@ class ManagerController {
 
       const [result] = await db.query(
         `DELETE FROM category_document WHERE id = ?`,
-        [id]
+        [id],
       );
 
       if (result.affectedRows === 0) {

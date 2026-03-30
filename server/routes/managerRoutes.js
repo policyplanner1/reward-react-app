@@ -62,6 +62,14 @@ router.get(
   managerController.vendorList,
 );
 
+// vendor report
+router.get(
+  "/download-vendor-report",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  managerController.getVendorReport,
+);
+
 // approve product
 router.put(
   "/product/approve/:productId",
