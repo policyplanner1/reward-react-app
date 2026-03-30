@@ -1043,6 +1043,46 @@ class ProductModel {
     }
   }
 
+  // Download product Report
+  async getReportData({ vendorId, fromDate, toDate }) {
+    try {
+      const conditions = ["p.is_deleted = 0"];
+      const params = [];
+
+      if (vendorId) {
+        conditions.push("p.vendor_id = ?");
+        params.push(vendorId);
+      }
+
+      if (fromDate && toDate) {
+        conditions.push("DATE(p.created_at) BETWEEN ? AND ?");
+        params.push(fromDate, toDate);
+      }
+
+      const whereClause = `WHERE ${conditions.join(" AND ")}`;
+
+      const query = `
+      SELECT 
+        p.product_id,
+        p.product_name,
+        v.full_name AS vendor_name,
+        p.brand_name,
+        p.status,
+        p.created_at
+      FROM eproducts p
+      LEFT JOIN vendors v ON p.vendor_id = v.vendor_id
+      ${whereClause}
+      ORDER BY p.created_at DESC
+    `;
+
+      const [rows] = await db.execute(query, params);
+
+      return rows;
+    } catch (err) {
+      throw err;
+    }
+  }
+
   // Get all products for a specific vendor
   async getProductsByVendor(
     vendorId,

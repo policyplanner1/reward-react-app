@@ -54,6 +54,14 @@ router.get(
   ProductController.getAllProductDetails,
 );
 
+// Download Report for products
+router.get(
+  "/download-product-report",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  ProductController.getProductReport,
+);
+
 // Get products by vendor(admin and vendor manager can check)
 router.get(
   "/vendor-products/:vendorId",
