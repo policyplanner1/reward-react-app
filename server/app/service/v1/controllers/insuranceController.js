@@ -199,11 +199,22 @@ class InsuranceController {
       }
 
       // Validation
-      if (!formData.members || !Array.isArray(formData.members)) {
-        return res.status(400).json({
-          success: false,
-          message: "Members missing or invalid",
-        });
+      if (type !== "personal_accident") {
+        // health & super topup
+        if (!formData.members || !Array.isArray(formData.members)) {
+          return res.status(400).json({
+            success: false,
+            message: "Members missing or invalid",
+          });
+        }
+      } else {
+        // personal accident
+        if (!formData.basic) {
+          return res.status(400).json({
+            success: false,
+            message: "Personal accident requires basic details",
+          });
+        }
       }
 
       if (!formData.basic) {
