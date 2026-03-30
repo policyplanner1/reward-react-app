@@ -475,7 +475,10 @@ class ProductController {
       ];
 
       data.forEach((item) => {
-        worksheet.addRow(item);
+        worksheet.addRow({
+          ...item,
+          product_id: `PRD-${item.product_id}`, 
+        });
       });
 
       res.setHeader(

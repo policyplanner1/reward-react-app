@@ -504,7 +504,6 @@ export default function ProductManagerList() {
         },
         responseType: "blob",
       });
-      console.log(response,"respnse")
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
@@ -515,7 +514,6 @@ export default function ProductManagerList() {
       link.click();
       link.remove();
     } catch (error) {
-      console.log()
       console.error("Download failed", error);
     }
   };
@@ -697,7 +695,16 @@ export default function ProductManagerList() {
                 <tr key={product.product_id} className="hover:bg-gray-50">
                   {/* NEW: Product ID cell */}
                   <td className="px-4 py-4 font-medium text-gray-600">
-                    {product.product_id}
+                    <Link
+                      to={routes.manager.productView.replace(
+                        ":id",
+                        product.product_id.toString(),
+                      )}
+                      className="items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
+                      title="View"
+                    >
+                      {"PRD -"} {product.product_id}
+                    </Link>
                   </td>
 
                   <td className="px-4 py-4 font-medium">
