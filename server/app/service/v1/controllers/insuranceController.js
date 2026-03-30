@@ -251,7 +251,7 @@ class InsuranceController {
       }
 
       if (type === "personal_accident") {
-        const pa = formData.personal_accident;
+        const pa = formData.pa;
 
         if (!pa) {
           return res.status(400).json({
