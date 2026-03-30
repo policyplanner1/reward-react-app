@@ -250,6 +250,24 @@ class InsuranceController {
         }
       }
 
+      if (type === "personal_accident") {
+        const pa = formData.personal_accident;
+
+        if (!pa) {
+          return res.status(400).json({
+            success: false,
+            message: "Personal accident details missing",
+          });
+        }
+
+        if (!pa.sum_insured || !pa.occupation) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid personal accident data",
+          });
+        }
+      }
+
       await db.execute(
         `UPDATE insurance_enquiries
      SET status = 'completed'
