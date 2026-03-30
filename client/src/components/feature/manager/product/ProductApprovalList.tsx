@@ -708,7 +708,15 @@ export default function ProductManagerList() {
                   </td>
 
                   <td className="px-4 py-4 font-medium">
-                    {product.product_name}
+                    <Link
+                      to={routes.manager.productView.replace(
+                        ":id",
+                        product.product_id.toString(),
+                      )}
+                      title="View"
+                    >
+                      {product.product_name}
+                    </Link>
                   </td>
 
                   <td className="px-4 py-4 text-center">
