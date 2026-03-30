@@ -612,7 +612,7 @@ export default function ProductManagerList() {
             <select
               value={vendorFilter}
               onChange={(e) => setVendorFilter(e.target.value)}
-              className="p-2 border rounded-lg"
+              className="p-2 border rounded-lg cursor-pointer"
             >
               <option value="">All Vendors</option>
               {vendors.map((vendor) => (
@@ -626,14 +626,14 @@ export default function ProductManagerList() {
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="p-2 border rounded-lg"
+              className="p-2 border rounded-lg cursor-pointer"
             />
 
             <input
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="p-2 border rounded-lg"
+              className="p-2 border rounded-lg cursor-pointer"
             />
           </div>
 
