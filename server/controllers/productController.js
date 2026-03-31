@@ -91,11 +91,12 @@ class ProductController {
       );
 
       // 3 Move files from temp → final folders
-      const movedFiles = [];
+      let movedFiles = [];
 
       if (req.files && req.files.length) {
         for (const file of req.files) {
           const filename = path.basename(file.path);
+          const isDocField = /^\d+$/.test(file.fieldname);
           let newPath;
 
           // Main product images
@@ -104,9 +105,11 @@ class ProductController {
             file.finalPath = `products/${vendorId}/${productId}/images/${filename}`;
           }
           // Documents (fieldname is numeric ID)
-          else if (!isNaN(parseInt(file.fieldname))) {
+          else if (isDocField) {
+            const docId = Number(file.fieldname);
             newPath = path.join(docsFolder, filename);
             file.finalPath = `products/${vendorId}/${productId}/documents/${filename}`;
+            file.documentId = docId;
           }
           // Variant images (fieldname like variant_0_image)
           else if (file.fieldname.startsWith("variant_")) {
@@ -191,7 +194,9 @@ class ProductController {
       }
 
       // 5 Insert product documents
-      const docFiles = movedFiles.filter((f) => !isNaN(parseInt(f.fieldname)));
+      // const docFiles = movedFiles.filter((f) => !isNaN(parseInt(f.fieldname)));
+      // const docFiles = movedFiles.filter((f) => /^\d+$/.test(f.fieldname));
+      const docFiles = movedFiles.filter((f) => f.documentId);
       if (docFiles.length) {
         await ProductModel.insertProductDocuments(
           connection,
@@ -477,7 +482,7 @@ class ProductController {
       data.forEach((item) => {
         worksheet.addRow({
           ...item,
-          product_id: `PRD-${item.product_id}`, 
+          product_id: `PRD-${item.product_id}`,
         });
       });
 
