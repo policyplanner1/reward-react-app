@@ -117,6 +117,11 @@ interface Subcategory {
 interface BulkUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
+  categoryId: string;
+  setCategoryId: (val: string) => void;
+  subcategoryId: string;
+  setSubcategoryId: (val: string) => void;
+  onFileUpload: (file: File) => void;
 }
 
 const StatsCard = ({
@@ -389,12 +394,17 @@ const ActionModal = ({
   );
 };
 
-const BulkUploadModal = ({ isOpen, onClose }: BulkUploadModalProps) => {
+const BulkUploadModal = ({
+  isOpen,
+  onClose,
+  categoryId,
+  setCategoryId,
+  subcategoryId,
+  setSubcategoryId,
+  onFileUpload,
+}: BulkUploadModalProps) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-
-  const [categoryId, setCategoryId] = useState<string>("");
-  const [subcategoryId, setSubcategoryId] = useState<string>("");
 
   const [file, setFile] = useState<File | null>(null);
 
@@ -445,8 +455,6 @@ const BulkUploadModal = ({ isOpen, onClose }: BulkUploadModalProps) => {
   ================================= */
   useEffect(() => {
     if (!isOpen) {
-      setCategoryId("");
-      setSubcategoryId("");
       setFile(null);
       setSubcategories([]);
     }
@@ -600,8 +608,15 @@ const BulkUploadModal = ({ isOpen, onClose }: BulkUploadModalProps) => {
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center mb-5">
           <input
             type="file"
+            disabled={!categoryId || !subcategoryId}
             accept=".xlsx,.csv"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+
+              setFile(f);
+              onFileUpload(f);
+            }}
           />
 
           {file && (
@@ -624,24 +639,6 @@ const BulkUploadModal = ({ isOpen, onClose }: BulkUploadModalProps) => {
           >
             Cancel
           </button>
-
-          <button
-            onClick={handleImport}
-            disabled={loading}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 cursor-pointer disabled:opacity-50"
-          >
-            {loading ? (
-              <>
-                <FaSpinner className="animate-spin" />
-                Importing...
-              </>
-            ) : (
-              <>
-                <FaFileImport />
-                Import
-              </>
-            )}
-          </button>
         </div>
       </div>
     </div>
@@ -663,6 +660,10 @@ export default function ProductManagerList() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [rows, setRows] = useState<any[]>([]);
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const [categoryId, setCategoryId] = useState("");
+  const [subcategoryId, setSubcategoryId] = useState("");
+  const [validating, setValidating] = useState(false);
 
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -693,6 +694,73 @@ export default function ProductManagerList() {
     actionType: "approve",
   });
 
+  // =========================
+  // BULK UPLOAD
+  // ===============================
+  const validateBulk = async (rowsData: any[]) => {
+    if (!rowsData.length) return;
+
+    if (!categoryId || !subcategoryId) {
+      Swal.fire("Error", "Select category & subcategory first", "error");
+      return;
+    }
+
+    try {
+      setValidating(true);
+
+      const res = await api.post("/product/validate-bulk-upload", {
+        categoryId,
+        subcategoryId,
+        rows: rowsData,
+      });
+
+      const data = res.data;
+
+      setValidationResult(data);
+
+      Swal.fire({
+        icon: "success",
+        title: "File Processed",
+        text: `${data.validCount} valid rows ready to upload`,
+      });
+    } catch (err: any) {
+      console.error(err);
+
+      Swal.fire(
+        "Error",
+        err?.response?.data?.message || "Validation failed",
+        "error",
+      );
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const handleConfirmUpload = async () => {
+    try {
+      if (!validationResult?.validRows?.length) {
+        Swal.fire("Error", "No valid rows to upload", "error");
+        return;
+      }
+
+      await api.post("/product/bulk-upload", {
+        categoryId,
+        subcategoryId,
+        rows: validationResult.validRows,
+      });
+
+      Swal.fire("Success", "Products uploaded successfully", "success");
+
+      await fetchProducts();
+
+      //reset
+      setValidationResult(null);
+      setRows([]);
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error", "Upload failed", "error");
+    }
+  };
   /* ================================
        FETCH PRODUCTS
   ================================= */
@@ -911,9 +979,13 @@ export default function ProductManagerList() {
     }
   };
 
-
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
+
+    if (!categoryId || !subcategoryId) {
+      Swal.fire("Error", "Select category & subcategory first", "error");
+      return;
+    }
 
     reader.onload = () => {
       if (!reader.result) return;
@@ -923,11 +995,37 @@ export default function ProductManagerList() {
 
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
-      const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+      // const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
-      const cleanedRows = json.slice(2);
+      // const cleanedRows = json.slice(2);
+      const raw = XLSX.utils.sheet_to_json(sheet, {
+        header: 1,
+        defval: "",
+      }) as any[][];
 
+      // find header row (first row with actual column names)
+      const headerRowIndex = raw.findIndex((row) =>
+        row.some((cell) => cell && cell.toString().trim() !== ""),
+      );
+
+      // extract headers
+      const headers = raw[headerRowIndex] as string[];
+
+      // extract data rows after headers
+      const dataRows = raw.slice(headerRowIndex + 1);
+
+      // convert to objects
+      const cleanedRows = dataRows.map((row) => {
+        const obj: any = {};
+        headers.forEach((key: string, i: number) => {
+          obj[key] = row[i];
+        });
+        return obj;
+      });
+
+      setValidationResult(null);
       setRows(cleanedRows);
+      validateBulk(cleanedRows);
     };
 
     reader.readAsArrayBuffer(file);
@@ -961,6 +1059,11 @@ export default function ProductManagerList() {
       <BulkUploadModal
         isOpen={bulkModalOpen}
         onClose={() => setBulkModalOpen(false)}
+        categoryId={categoryId}
+        setCategoryId={setCategoryId}
+        subcategoryId={subcategoryId}
+        setSubcategoryId={setSubcategoryId}
+        onFileUpload={handleFileUpload}
       />
 
       <div className="p-4 bg-white border border-gray-200 shadow-lg rounded-2xl md:p-6">
@@ -1348,6 +1451,62 @@ export default function ProductManagerList() {
             </tbody>
           </table>
         </div>
+
+        {/* 🔄 VALIDATING LOADER */}
+        {validating && (
+          <div className="mt-4 text-sm text-blue-600 flex items-center gap-2">
+            <FaSpinner className="animate-spin" />
+            Validating file...
+          </div>
+        )}
+
+        {/* ✅ VALIDATION SUMMARY */}
+        {validationResult && (
+          <div className="mt-6 p-5 rounded-xl border bg-white shadow">
+            <h3 className="font-semibold text-lg mb-3">
+              Bulk Validation Result
+            </h3>
+
+            <div className="flex gap-6">
+              <div className="text-green-600 font-medium">
+                ✅ {validationResult.validCount} Valid Rows
+              </div>
+
+              <div className="text-red-600 font-medium">
+                ❌ {validationResult.invalidCount} Invalid Rows
+              </div>
+            </div>
+
+            {validationResult.validCount > 0 && (
+              <button
+                onClick={handleConfirmUpload}
+                className="mt-4 px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 cursor-pointer"
+              >
+                Upload Valid Rows
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ❌ INVALID ROW DETAILS */}
+        {validationResult?.invalidRows?.length > 0 && (
+          <div className="mt-6 p-4 bg-red-50 rounded-lg">
+            <h3 className="font-semibold text-red-700">
+              Invalid Rows ({validationResult.invalidCount})
+            </h3>
+
+            {validationResult.invalidRows.map((row: any, i: number) => (
+              <div key={i} className="mt-2 text-sm">
+                Row {row.rowNumber}:
+                <ul className="text-red-600">
+                  {row.errors.map((err: string, j: number) => (
+                    <li key={j}>• {err}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* PAGINATION */}
         {pagination.totalPages > 1 && (
