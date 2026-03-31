@@ -141,7 +141,7 @@ class CategoryController {
       const formatted = attributes.map((a) => ({
         key: a.attribute_key,
         label: a.is_required ? `${a.attribute_label} *` : a.attribute_label,
-        options: a.options ? a.options.split(",") : [],
+        options: a.options ? a.options.split(",").map((o) => o.trim()) : [],
       }));
 
       const baseColumns = [
@@ -161,31 +161,26 @@ class CategoryController {
 
       const headers = [...baseColumns, ...attributeColumns];
 
-      const sampleRow = headers.map(() => "");
-      const data = [headers, sampleRow];
+      // Row 2 → labels
+      const labelRow = headers.map((h, i) => {
+        if (i < baseColumns.length) return h;
+        return formatted[i - baseColumns.length].label;
+      });
+
+      // Row 3 → options
+      const optionsRow = headers.map((_, i) => {
+        if (i < baseColumns.length) return "";
+        const attr = formatted[i - baseColumns.length];
+        return attr.options.length > 0
+          ? `Options: ${attr.options.join(", ")}`
+          : "";
+      });
+
+      const data = [headers, labelRow, optionsRow];
 
       const ws = XLSX.utils.aoa_to_sheet(data);
 
-      // Column width
       ws["!cols"] = headers.map(() => ({ wch: 20 }));
-
-      // Add options hint (row 3)
-      formatted.forEach((attr, index) => {
-        const colIndex = baseColumns.length + index;
-        const colLetter = XLSX.utils.encode_col(colIndex);
-
-        // Row 2 → label
-        ws[`${colLetter}2`] = {
-          v: attr.label,
-        };
-
-        // Row 3 → options
-        if (attr.options.length > 0) {
-          ws[`${colLetter}3`] = {
-            v: `Options: ${attr.options.join(", ")}`,
-          };
-        }
-      });
 
       // workbook
       const wb = XLSX.utils.book_new();
