@@ -224,6 +224,178 @@ class ProductController {
       if (connection) connection.release();
     }
   }
+
+  // validate Bulk upload
+  async bulkValidate(req, res) {
+    try {
+      const { categoryId, subcategoryId, rows } = req.body;
+
+      if (!categoryId || !subcategoryId || !rows?.length) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid payload",
+        });
+      }
+
+      // 1. Fetch attributes (reuse your query)
+      const [attributes] = await db.execute(
+        `
+      SELECT
+        ca.attribute_key,
+        ca.input_type,
+        ca.is_required,
+        GROUP_CONCAT(cav.value ORDER BY cav.sort_order) AS options
+      FROM category_attributes ca
+      LEFT JOIN category_attribute_values cav
+        ON cav.attribute_id = ca.id
+      WHERE
+        ca.is_active = 1
+        AND (
+          ca.subcategory_id = ?
+          OR (ca.category_id = ? AND ca.subcategory_id IS NULL)
+        )
+      GROUP BY ca.id
+      `,
+        [subcategoryId, categoryId],
+      );
+
+      const attributeMap = {};
+      attributes.forEach((a) => {
+        attributeMap[a.attribute_key] = {
+          input_type: a.input_type,
+          is_required: a.is_required,
+          options: a.options ? a.options.split(",").map((o) => o.trim()) : [],
+        };
+      });
+
+      const validRows = [];
+      const invalidRows = [];
+
+      // 2. Validate each row
+      rows.forEach((row, index) => {
+        const errors = [];
+
+        //  BASE FIELD VALIDATION
+        if (!row.productName?.trim()) {
+          errors.push("productName is required");
+        }
+
+        if (!row.brandName?.trim()) {
+          errors.push("brandName is required");
+        }
+
+        if (row.gstSlab && (row.gstSlab < 0 || row.gstSlab > 100)) {
+          errors.push("gstSlab must be between 0–100");
+        }
+
+        if (row.hsnSacCode && !/^\d{6,8}$/.test(row.hsnSacCode)) {
+          errors.push("hsnSacCode must be 6–8 digits");
+        }
+
+        //  ATTRIBUTE VALIDATION
+        Object.keys(attributeMap).forEach((key) => {
+          const attr = attributeMap[key];
+          const value = row[key];
+
+          // Required
+          if (attr.is_required && !value) {
+            errors.push(`${key} is required`);
+            return;
+          }
+
+          if (!value) return;
+
+          // SELECT / MULTISELECT
+          if (attr.options.length > 0) {
+            const values = value.split(",").map((v) => v.trim());
+
+            values.forEach((v) => {
+              if (!attr.options.includes(v)) {
+                errors.push(`Invalid value "${v}" for ${key}`);
+              }
+            });
+          }
+
+          // NUMBER
+          if (attr.input_type === "number" && isNaN(Number(value))) {
+            errors.push(`${key} must be a number`);
+          }
+        });
+
+        //  UNKNOWN ATTRIBUTE CHECK
+        Object.keys(row).forEach((key) => {
+          if (
+            ![
+              "productName",
+              "brandName",
+              "manufacturer",
+              "gstSlab",
+              "hsnSacCode",
+              "description",
+              "shortDescription",
+              "brandDescription",
+              "is_discount_eligible",
+              "is_returnable",
+              "return_window_days",
+              "delivery_sla_min_days",
+              "delivery_sla_max_days",
+              "shipping_class",
+            ].includes(key) &&
+            !attributeMap[key]
+          ) {
+            errors.push(`Unknown attribute: ${key}`);
+          }
+
+          if (
+            row.is_discount_eligible &&
+            !["0", "1", 0, 1].includes(row.is_discount_eligible)
+          ) {
+            errors.push("is_discount_eligible must be 0 or 1");
+          }
+
+          if (
+            row.is_returnable &&
+            !["0", "1", 0, 1].includes(row.is_returnable)
+          ) {
+            errors.push("is_returnable must be 0 or 1");
+          }
+
+          if (
+            row.shipping_class &&
+            !["standard", "bulky", "fragile"].includes(row.shipping_class)
+          ) {
+            errors.push("Invalid shipping_class");
+          }
+        });
+
+        //  FINAL RESULT
+        if (errors.length > 0) {
+          invalidRows.push({
+            rowNumber: index + 1,
+            errors,
+            data: row,
+          });
+        } else {
+          validRows.push(row);
+        }
+      });
+
+      return res.json({
+        success: true,
+        validCount: validRows.length,
+        invalidCount: invalidRows.length,
+        validRows,
+        invalidRows,
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({
+        success: false,
+        message: "Validation failed",
+      });
+    }
+  }
+
   // Get product by ID
   async getProductDetailsById(req, res) {
     try {
