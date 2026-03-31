@@ -499,55 +499,6 @@ const BulkUploadModal = ({
   };
 
   /* ================================
-        IMPORT FILE
-  ================================= */
-  const handleImport = async () => {
-    if (!categoryId || !subcategoryId) {
-      Swal.fire("Error", "Select category & subcategory", "error");
-      return;
-    }
-
-    if (!file) {
-      Swal.fire("Error", "Please upload a file", "error");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("categoryId", categoryId);
-      formData.append("subcategoryId", subcategoryId);
-
-      await api.post("/product/bulk-upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      Swal.fire({
-        icon: "success",
-        title: "Success",
-        text: "Products imported successfully",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-
-      onClose();
-    } catch (err: any) {
-      console.error(err);
-      Swal.fire(
-        "Error",
-        err?.response?.data?.message || "Import failed",
-        "error",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* ================================
         RENDER
   ================================= */
   return (
@@ -1013,15 +964,26 @@ export default function ProductManagerList() {
 
       // extract data rows after headers
       const dataRows = raw.slice(headerRowIndex + 1);
+      // const dataRows = raw.slice(headerRowIndex + 3);
 
       // convert to objects
-      const cleanedRows = dataRows.map((row) => {
-        const obj: any = {};
-        headers.forEach((key: string, i: number) => {
-          obj[key] = row[i];
-        });
-        return obj;
-      });
+      // const cleanedRows = dataRows.map((row) => {
+      //   const obj: any = {};
+      //   headers.forEach((key: string, i: number) => {
+      //     // obj[key] = row[i];
+      //   });
+      //   return obj;
+      // });
+
+      const cleanedRows = dataRows
+        .map((row) => {
+          const obj: any = {};
+          headers.forEach((key: string, i: number) => {
+            obj[key] = typeof row[i] === "string" ? row[i].trim() : row[i];
+          });
+          return obj;
+        })
+        .filter((row) => Object.values(row).some((val) => val !== ""));
 
       setValidationResult(null);
       setRows(cleanedRows);

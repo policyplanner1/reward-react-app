@@ -396,6 +396,146 @@ class ProductController {
     }
   }
 
+  // Bulk upload products
+  async bulkUpload(req, res) {
+    const connection = await db.getConnection();
+
+    try {
+      const { categoryId, subcategoryId, rows } = req.body;
+      const vendorId = req.user?.vendor_id;
+
+      if (!rows?.length) {
+        return res.status(400).json({
+          success: false,
+          message: "No rows to process",
+        });
+      }
+
+      await connection.beginTransaction();
+
+      // 1. Fetch attributes (same as validation)
+      const [attributes] = await connection.execute(
+        `
+      SELECT
+        ca.attribute_key,
+        ca.is_required,
+        ca.input_type,
+        GROUP_CONCAT(cav.value ORDER BY cav.sort_order) AS options
+      FROM category_attributes ca
+      LEFT JOIN category_attribute_values cav
+        ON cav.attribute_id = ca.id
+      WHERE
+        ca.is_active = 1
+        AND (
+          ca.subcategory_id = ?
+          OR (ca.category_id = ? AND ca.subcategory_id IS NULL)
+        )
+      GROUP BY ca.id
+      `,
+        [subcategoryId, categoryId],
+      );
+
+      const attributeKeys = attributes.map((a) => a.attribute_key);
+
+      const results = [];
+
+      // 2. Process each row
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+
+        try {
+          //  BASE PRODUCT DATA
+          const productData = {
+            productName: row.productName,
+            brandName: row.brandName,
+            manufacturer: row.manufacturer || null,
+            description: row.description || "",
+            shortDescription: row.shortDescription || "",
+            brandDescription: row.brandDescription || "",
+            gstSlab: Number(row.gstSlab) || 0,
+            hsnSacCode: row.hsnSacCode || null,
+            is_discount_eligible: row.is_discount_eligible === "true",
+            is_returnable: row.is_returnable === "true",
+            return_window_days: Number(row.return_window_days) || 0,
+            delivery_sla_min_days: Number(row.delivery_sla_min_days) || 0,
+            delivery_sla_max_days: Number(row.delivery_sla_max_days) || 0,
+            shipping_class: row.shipping_class || null,
+          };
+
+          //  CREATE PRODUCT
+          const productId = await ProductModel.createProduct(
+            connection,
+            vendorId,
+            {
+              ...productData,
+              category_id: categoryId,
+              subcategory_id: subcategoryId,
+            },
+          );
+
+          //  MAP ATTRIBUTES
+          const productAttributes = {};
+
+          attributeKeys.forEach((key) => {
+            if (row[key]) {
+              productAttributes[key] = row[key]
+                .toString()
+                .split("|")
+                .map((v) => v.trim());
+            }
+          });
+
+          //  SAVE ATTRIBUTES
+          if (Object.keys(productAttributes).length > 0) {
+            await ProductModel.saveProductAttributes(
+              connection,
+              productId,
+              productAttributes,
+            );
+          }
+
+          //  GENERATE VARIANTS
+          await ProductModel.generateProductVariants(
+            connection,
+            productId,
+            categoryId,
+            subcategoryId,
+          );
+
+          results.push({
+            row: i + 1,
+            status: "success",
+            productId,
+          });
+        } catch (err) {
+          console.error(`Row ${i + 1} failed`, err);
+
+          results.push({
+            row: i + 1,
+            status: "failed",
+            error: err.message,
+          });
+        }
+      }
+
+      await connection.commit();
+
+      return res.json({
+        success: true,
+        results,
+      });
+    } catch (err) {
+      await connection.rollback();
+
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    } finally {
+      connection.release();
+    }
+  }
+
   // Get product by ID
   async getProductDetailsById(req, res) {
     try {

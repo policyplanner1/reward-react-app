@@ -22,6 +22,14 @@ router.post(
   ProductController.bulkValidate,
 );
 
+// upload bulk products
+router.post(
+  "/bulk-upload",
+  authenticateToken,
+  authorizeRoles("vendor"),
+  productUpload.any(),
+  ProductController.bulkUpload,
+);
 
 // Update product approval
 // router.put(
