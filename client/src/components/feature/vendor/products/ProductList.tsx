@@ -470,7 +470,7 @@ const BulkUploadModal = ({ isOpen, onClose }: BulkUploadModalProps) => {
       setTemplateLoading(true);
 
       const res = await api.get(
-        `/product/template?categoryId=${categoryId}&subcategoryId=${subcategoryId}`,
+        `/category/attributes-template?categoryId=${categoryId}&subcategoryId=${subcategoryId}`,
         { responseType: "blob" },
       );
 
