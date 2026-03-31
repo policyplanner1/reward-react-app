@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import * as XLSX from "xlsx";
 import {
   FaCheckCircle,
   FaTimesCircle,
@@ -661,6 +662,7 @@ export default function ProductManagerList() {
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [rows, setRows] = useState<any[]>([]);
 
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -907,6 +909,28 @@ export default function ProductManagerList() {
     if (page >= 1 && page <= pagination.totalPages) {
       setPagination((prev) => ({ ...prev, currentPage: page }));
     }
+  };
+
+
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (!reader.result) return;
+
+      const data = new Uint8Array(reader.result as ArrayBuffer);
+      const workbook = XLSX.read(data, { type: "array" });
+
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+      const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+      const cleanedRows = json.slice(2);
+
+      setRows(cleanedRows);
+    };
+
+    reader.readAsArrayBuffer(file);
   };
 
   /* ================================
