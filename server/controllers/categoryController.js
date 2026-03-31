@@ -19,6 +19,23 @@ const baseColumnConfig = {
   },
 };
 
+const baseColumnLabels = {
+  productName: "Product Name",
+  brandName: "Brand Name",
+  manufacturer: "Manufacturer",
+  gstSlab: "GST Slab",
+  hsnSacCode: "HSN/SAC Code",
+  description: "Description",
+  shortDescription: "Short Description",
+  brandDescription: "Brand Description",
+  is_discount_eligible: "Discount Eligible (0/1)",
+  is_returnable: "Returnable (0/1)",
+  return_window_days: "Return Window (Days)",
+  delivery_sla_min_days: "Min Delivery Days",
+  delivery_sla_max_days: "Max Delivery Days",
+  shipping_class: "Shipping Class",
+};
+
 class CategoryController {
   // Get all categories
   async getAllCategories(req, res) {
@@ -184,8 +201,13 @@ class CategoryController {
       const headers = [...baseColumns, ...attributeColumns];
 
       // Row 2 → labels
-      const labelRow = headers.map((h, i) => {
-        if (i < baseColumns.length) return h;
+      const labelRow = headers.map((col, i) => {
+        // base columns
+        if (i < baseColumns.length) {
+          return baseColumnLabels[col] || col;
+        }
+
+        // attributes
         return formatted[i - baseColumns.length].label;
       });
 
