@@ -1,6 +1,24 @@
 const db = require("../config/database");
 const XLSX = require("xlsx");
 
+const baseColumnConfig = {
+  shipping_class: {
+    options: ["standard", "bulky", "fragile"],
+  },
+  is_discount_eligible: {
+    options: ["0 (No)", "1 (Yes)"],
+  },
+  is_returnable: {
+    options: ["0 (No)", "1 (Yes)"],
+  },
+  delivery_sla_min_days: {
+    hint: "Enter minimum delivery days (number)",
+  },
+  delivery_sla_max_days: {
+    hint: "Enter maximum delivery days (number)",
+  },
+};
+
 class CategoryController {
   // Get all categories
   async getAllCategories(req, res) {
@@ -148,13 +166,17 @@ class CategoryController {
         "productName",
         "brandName",
         "manufacturer",
+        "gstSlab",
+        "hsnSacCode",
         "description",
         "shortDescription",
-        "sale_price",
-        "vendor_price",
-        "stock",
-        "sku",
-        "barcode",
+        "brandDescription",
+        "is_discount_eligible",
+        "is_returnable",
+        "return_window_days",
+        "delivery_sla_min_days",
+        "delivery_sla_max_days",
+        "shipping_class",
       ];
 
       const attributeColumns = formatted.map((a) => a.key);
@@ -168,9 +190,27 @@ class CategoryController {
       });
 
       // Row 3 → options
-      const optionsRow = headers.map((_, i) => {
-        if (i < baseColumns.length) return "";
+      const optionsRow = headers.map((col, i) => {
+        //  BASE COLUMNS
+        if (i < baseColumns.length) {
+          const config = baseColumnConfig[col];
+
+          if (!config) return "";
+
+          if (config.options) {
+            return `Options: ${config.options.join(", ")}`;
+          }
+
+          if (config.hint) {
+            return config.hint;
+          }
+
+          return "";
+        }
+
+        //  ATTRIBUTE COLUMNS
         const attr = formatted[i - baseColumns.length];
+
         return attr.options.length > 0
           ? `Options: ${attr.options.join(", ")}`
           : "";
