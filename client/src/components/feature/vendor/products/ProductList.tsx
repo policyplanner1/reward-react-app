@@ -17,6 +17,8 @@ import {
   FaPaperPlane,
   FaCogs,
   FaTrash,
+  FaUpload,
+  FaFileImport,
 } from "react-icons/fa";
 import { FiPackage } from "react-icons/fi";
 import Swal from "sweetalert2";
@@ -97,6 +99,21 @@ interface StatsCardProps {
   color: string;
   active?: boolean;
   onClick?: () => void;
+}
+
+interface Category {
+  id: number;
+  name: string;
+}
+
+interface Subcategory {
+  id: number;
+  name: string;
+}
+
+interface BulkUploadModalProps {
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 const StatsCard = ({
@@ -369,6 +386,265 @@ const ActionModal = ({
   );
 };
 
+const BulkUploadModal = ({ isOpen, onClose }: BulkUploadModalProps) => {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+
+  const [categoryId, setCategoryId] = useState<string>("");
+  const [subcategoryId, setSubcategoryId] = useState<string>("");
+
+  const [file, setFile] = useState<File | null>(null);
+
+  const [loading, setLoading] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
+
+  /* ================================
+        FETCH CATEGORIES
+  ================================= */
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchCategories = async () => {
+      try {
+        const res = await api.get("/category/list");
+        setCategories(res.data?.data || []);
+      } catch (err) {
+        console.error("Failed to fetch categories", err);
+      }
+    };
+
+    fetchCategories();
+  }, [isOpen]);
+
+  /* ================================
+        FETCH SUBCATEGORIES
+  ================================= */
+  useEffect(() => {
+    if (!categoryId) {
+      setSubcategories([]);
+      return;
+    }
+
+    const fetchSubcategories = async () => {
+      try {
+        const res = await api.get(`/category/subcategories/${categoryId}`);
+        setSubcategories(res.data?.data || []);
+      } catch (err) {
+        console.error("Failed to fetch subcategories", err);
+      }
+    };
+
+    fetchSubcategories();
+  }, [categoryId]);
+
+  /* ================================
+        RESET ON CLOSE
+  ================================= */
+  useEffect(() => {
+    if (!isOpen) {
+      setCategoryId("");
+      setSubcategoryId("");
+      setFile(null);
+      setSubcategories([]);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  /* ================================
+        DOWNLOAD TEMPLATE
+  ================================= */
+  const handleDownloadTemplate = async () => {
+    if (!categoryId || !subcategoryId) {
+      Swal.fire({
+        icon: "warning",
+        title: "Select Required Fields",
+        text: "Please select category and subcategory first",
+      });
+      return;
+    }
+
+    try {
+      setTemplateLoading(true);
+
+      const res = await api.get(
+        `/product/template?categoryId=${categoryId}&subcategoryId=${subcategoryId}`,
+        { responseType: "blob" },
+      );
+
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "product_template.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error", "Failed to download template", "error");
+    } finally {
+      setTemplateLoading(false);
+    }
+  };
+
+  /* ================================
+        IMPORT FILE
+  ================================= */
+  const handleImport = async () => {
+    if (!categoryId || !subcategoryId) {
+      Swal.fire("Error", "Select category & subcategory", "error");
+      return;
+    }
+
+    if (!file) {
+      Swal.fire("Error", "Please upload a file", "error");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("categoryId", categoryId);
+      formData.append("subcategoryId", subcategoryId);
+
+      await api.post("/product/bulk-upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Products imported successfully",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      Swal.fire(
+        "Error",
+        err?.response?.data?.message || "Import failed",
+        "error",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ================================
+        RENDER
+  ================================= */
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-black/40">
+      <div className="w-full max-w-xl bg-white rounded-2xl shadow-xl p-6">
+        {/* HEADER */}
+        <div className="mb-5">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Bulk Upload Products
+          </h2>
+          <p className="text-sm text-gray-500">
+            Download template, fill it, and upload here
+          </p>
+        </div>
+
+        {/* CATEGORY + TEMPLATE */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+          <select
+            value={categoryId}
+            onChange={(e) => {
+              setCategoryId(e.target.value);
+              setSubcategoryId("");
+            }}
+            className="border p-3 rounded-lg outline-none focus:ring-2 focus:ring-[#852BAF] cursor-pointer"
+          >
+            <option value="">Select Category</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={subcategoryId}
+            onChange={(e) => setSubcategoryId(e.target.value)}
+            className="border p-3 rounded-lg outline-none focus:ring-2 focus:ring-[#852BAF] cursor-pointer"
+            disabled={!categoryId}
+          >
+            <option value="">Select Subcategory</option>
+            {subcategories.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={handleDownloadTemplate}
+            disabled={!categoryId || !subcategoryId || templateLoading}
+            className="bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center cursor-pointer"
+          >
+            {templateLoading ? "Downloading..." : "Download"}
+          </button>
+        </div>
+
+        {/* FILE UPLOAD */}
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center mb-5">
+          <input
+            type="file"
+            accept=".xlsx,.csv"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+          />
+
+          {file && (
+            <p className="mt-2 text-sm text-gray-700 font-medium">
+              {file.name}
+            </p>
+          )}
+
+          <p className="text-xs text-gray-500 mt-2">
+            Supported formats: Excel (.xlsx) or CSV
+          </p>
+        </div>
+
+        {/* ACTIONS */}
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={handleImport}
+            disabled={loading}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <FaSpinner className="animate-spin" />
+                Importing...
+              </>
+            ) : (
+              <>
+                <FaFileImport />
+                Import
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ================================
        MAIN COMPONENT
 ================================ */
@@ -382,6 +658,7 @@ export default function ProductManagerList() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -655,6 +932,11 @@ export default function ProductManagerList() {
         actionType={modalState.actionType}
       />
 
+      <BulkUploadModal
+        isOpen={bulkModalOpen}
+        onClose={() => setBulkModalOpen(false)}
+      />
+
       <div className="p-4 bg-white border border-gray-200 shadow-lg rounded-2xl md:p-6">
         {/* HEADER */}
         <div className="flex flex-col justify-between mb-6 md:flex-row md:items-center">
@@ -670,11 +952,21 @@ export default function ProductManagerList() {
             </div>
           </div>
 
-          <div className="text-sm text-right text-gray-600">
-            <div className="font-semibold">
-              Total: {products?.length || 0} products
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-right text-gray-600">
+              <div className="font-semibold">
+                Total: {products?.length || 0} products
+              </div>
+              <div className="text-xs">Auto-refreshes every 30s</div>
             </div>
-            <div className="text-xs">Auto-refreshes every 30s</div>
+
+            <button
+              onClick={() => setBulkModalOpen(true)}
+              className="px-4 py-2 text-white rounded-lg bg-gradient-to-r from-[#8c4ea8] to-[#292325] hover:opacity-90 cursor-pointer flex items-center gap-2"
+            >
+              <FaUpload className="text-sm" />
+              Bulk Upload
+            </button>
           </div>
         </div>
 
