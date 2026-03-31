@@ -187,6 +187,12 @@ export default function ProductManagerList() {
     (Omit<ProductItem, "status"> & { status: ProductStatus })[]
   >([]);
   const [loading, setLoading] = useState(false);
+  const [vendors, setVendors] = useState<
+    { vendor_id: number; full_name: string }[]
+  >([]);
+  const [vendorFilter, setVendorFilter] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const [stats, setStats] = useState<Stats>({
     total: 0,
@@ -220,6 +226,22 @@ export default function ProductManagerList() {
       <FaSortDown className="ml-1 text-[#852BAF]" />
     );
   };
+
+  const fetchVendors = async () => {
+    try {
+      const res = await api.get("/vendor/approved-list");
+
+      if (res.data.success) {
+        setVendors(res.data.vendors);
+      }
+    } catch (err) {
+      console.error("Error fetching vendors", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchVendors();
+  }, []);
 
   const normalizeManagerStatus = (
     status: BackendProductStatus,
@@ -310,7 +332,9 @@ export default function ProductManagerList() {
     if (!result.isConfirmed) return;
 
     try {
-      const res = await api.delete(`/product/remove-product/${product.product_id}`);
+      const res = await api.delete(
+        `/product/remove-product/${product.product_id}`,
+      );
 
       if (!res.data.success) {
         throw new Error(res.data.message || "Delete failed");
@@ -470,6 +494,30 @@ export default function ProductManagerList() {
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
+  const handleDownloadReport = async () => {
+    try {
+      const response = await api.get("/product/download-product-report", {
+        params: {
+          vendorId: vendorFilter,
+          fromDate,
+          toDate,
+        },
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+
+      link.setAttribute("download", "product_report.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Download failed", error);
+    }
+  };
+
   const onSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearchQuery(e.target.value);
@@ -558,6 +606,45 @@ export default function ProductManagerList() {
           </select>
         </div>
 
+        {/* REPORT DOWNLOAD SECTION */}
+        <div className="flex flex-col md:flex-row gap-3 mb-6 items-center justify-between">
+          <div className="flex gap-2 flex-wrap">
+            <select
+              value={vendorFilter}
+              onChange={(e) => setVendorFilter(e.target.value)}
+              className="p-2 border rounded-lg cursor-pointer"
+            >
+              <option value="">All Vendors</option>
+              {vendors.map((vendor) => (
+                <option key={vendor.vendor_id} value={vendor.vendor_id}>
+                  {vendor.full_name}
+                </option>
+              ))}
+            </select>
+
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="p-2 border rounded-lg cursor-pointer"
+            />
+
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="p-2 border rounded-lg cursor-pointer"
+            />
+          </div>
+
+          <button
+            onClick={handleDownloadReport}
+            className="px-5 py-2 rounded-xl font-semibold text-white bg-gradient-to-r cursor-pointer from-[#852BAF] to-[#FC3F78]"
+          >
+            Download Report
+          </button>
+        </div>
+
         {/* TABLE */}
         <div className="relative overflow-x-auto border rounded-lg">
           {/*  Loading overlay (focus never breaks) */}
@@ -608,11 +695,28 @@ export default function ProductManagerList() {
                 <tr key={product.product_id} className="hover:bg-gray-50">
                   {/* NEW: Product ID cell */}
                   <td className="px-4 py-4 font-medium text-gray-600">
-                    {product.product_id}
+                    <Link
+                      to={routes.manager.productView.replace(
+                        ":id",
+                        product.product_id.toString(),
+                      )}
+                      className="items-center justify-center bg-gray-100 rounded hover:bg-gray-200"
+                      title="View"
+                    >
+                      {"PRD -"} {product.product_id}
+                    </Link>
                   </td>
 
                   <td className="px-4 py-4 font-medium">
-                    {product.product_name}
+                    <Link
+                      to={routes.manager.productView.replace(
+                        ":id",
+                        product.product_id.toString(),
+                      )}
+                      title="View"
+                    >
+                      {product.product_name}
+                    </Link>
                   </td>
 
                   <td className="px-4 py-4 text-center">

@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { moveFile } = require("../utils/moveFile");
 const { compressVideo } = require("../utils/videoCompression");
+const ExcelJS = require("exceljs");
 
 class ProductController {
   // create Product
@@ -447,6 +448,54 @@ class ProductController {
         success: false,
         message: err.message || "Internal server error",
       });
+    }
+  }
+
+  // Get Product Report
+  async getProductReport(req, res) {
+    try {
+      const { vendorId, fromDate, toDate } = req.query;
+
+      const data = await ProductModel.getReportData({
+        vendorId,
+        fromDate,
+        toDate,
+      });
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Products Report");
+
+      worksheet.columns = [
+        { header: "Product ID", key: "product_id", width: 15 },
+        { header: "Product Name", key: "product_name", width: 25 },
+        { header: "Vendor", key: "vendor_name", width: 25 },
+        { header: "Brand", key: "brand_name", width: 20 },
+        { header: "Status", key: "status", width: 15 },
+        { header: "Created At", key: "created_at", width: 20 },
+      ];
+
+      data.forEach((item) => {
+        worksheet.addRow({
+          ...item,
+          product_id: `PRD-${item.product_id}`, 
+        });
+      });
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=product_report.xlsx",
+      );
+
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (err) {
+      console.error("Download report error:", err);
+      res.status(500).json({ success: false, message: err.message });
     }
   }
 

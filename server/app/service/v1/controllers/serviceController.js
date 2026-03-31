@@ -17,6 +17,7 @@ function formatVariantSections(sections) {
     features: [],
     details: [],
     journey: [],
+    when_required: [],
     trust_stats: [],
     paragraphs: [],
   };
@@ -32,7 +33,17 @@ function formatVariantSections(sections) {
         break;
 
       case "journey":
-        formatted.journey = s.content;
+        formatted.journey.push({
+          title: s.title,
+          content: s.content,
+        });
+        break;
+
+      case "when_required":
+        formatted.when_required.push({
+          title: s.title,
+          content: s.content,
+        });
         break;
 
       case "trust_stats":
@@ -199,7 +210,7 @@ class ServiceController {
           });
         }
 
-        const variants = await ServiceVariantModel.getVariantsWithSections(
+        const variants = await ServiceVariantModel.getVariantsByService(
           service.id,
         );
 
@@ -207,7 +218,20 @@ class ServiceController {
 
         if (hasVariants) {
           for (let v of variants) {
-            v.sections = await ServiceVariantModel.getSectionsByVariant(v.id);
+            const sections = await ServiceVariantModel.getSectionsByVariant(
+              v.id,
+            );
+
+            const formatted = formatVariantSections(sections);
+
+            v.features = formatted.features;
+            v.details = formatted.details;
+            v.trust_stats = formatted.trust_stats;
+            v.paragraphs = formatted.paragraphs;
+            v.when_required = formatted.when_required;
+            v.journey = formatted.journey;
+
+            delete v.sections;
           }
         }
 
@@ -215,7 +239,13 @@ class ServiceController {
           service.id,
         );
 
-        const form = await ServiceFormModel.findFormByServiceId(service.id);
+        const enquiryFields = await ServiceFormModel.findFormByServiceId(
+          service.id,
+        );
+
+        const serviceSections = await ServiceSectionModel.findByServiceId(
+          service.id,
+        );
 
         return res.json({
           success: true,
@@ -225,7 +255,8 @@ class ServiceController {
             service,
             variants: hasVariants ? variants : [],
             documents,
-            enquiry_fields: form,
+            enquiry_fields: enquiryFields,
+            service_sections: serviceSections,
           },
         });
       }
@@ -250,7 +281,6 @@ class ServiceController {
   }
 
   // Get all the service details in one api call
-
   async getServiceDetails(req, res) {
     try {
       const { id } = req.params;
@@ -260,17 +290,16 @@ class ServiceController {
       const variants = await ServiceVariantModel.getVariantsByService(id);
 
       for (let v of variants) {
-        const sections = await ServiceVariantModel.getSectionsByVariant(
-          v.id,
-        );
+        const sections = await ServiceVariantModel.getSectionsByVariant(v.id);
 
         const formatted = formatVariantSections(sections);
 
         v.features = formatted.features;
         v.details = formatted.details;
-        v.journey = formatted.journey;
         v.trust_stats = formatted.trust_stats;
         v.paragraphs = formatted.paragraphs;
+        v.when_required = formatted.when_required;
+        v.journey = formatted.journey;
 
         delete v.sections;
       }

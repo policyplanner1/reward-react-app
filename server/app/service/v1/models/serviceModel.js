@@ -121,7 +121,7 @@ class ServiceModel {
       service_image
     FROM services
     WHERE category_id = ? AND status = 1
-    ORDER BY id DESC
+    ORDER BY sort_order ASC
     `,
       [categoryId],
     );

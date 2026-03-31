@@ -61,6 +61,8 @@ export default function VendorApprovalList() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const filteredVendors = vendors.filter((v) => {
     const matchesStatus = filter === "All" ? true : v.status === filter;
@@ -102,6 +104,28 @@ export default function VendorApprovalList() {
 
     return () => clearTimeout(t);
   }, [search]);
+
+  const handleDownloadVendorReport = async () => {
+    try {
+      const response = await api.get("/manager/download-vendor-report", {
+        params: {
+          status: filter !== "All" ? filter : "",
+        },
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+
+      link.setAttribute("download", "vendor_report.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Download failed", error);
+    }
+  };
 
   if (loading) return <p className="p-10 text-center">Loading vendors...</p>;
 
@@ -161,9 +185,50 @@ export default function VendorApprovalList() {
           </div>
         </div>
 
+        {/* REPORT FILTERS */}
+        <div className="flex flex-col md:flex-row gap-3 mb-4 items-center justify-between">
+          <div className="flex gap-2 flex-wrap">
+            {/* STATUS (reuse existing filter) */}
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as any)}
+              className="p-2 border rounded-lg cursor-pointer"
+            >
+              <option value="All">All Status</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="sent_for_approval">Pending</option>
+            </select>
+
+            {/* DATE FILTER */}
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="p-2 border rounded-lg cursor-pointer"
+            />
+
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="p-2 border rounded-lg cursor-pointer"
+            />
+          </div>
+
+          {/* DOWNLOAD BUTTON */}
+          <button
+            onClick={handleDownloadVendorReport}
+            disabled={!fromDate && !toDate && filter === "All"}
+            className="px-5 py-2 rounded-xl font-semibold text-white bg-gradient-to-r from-[#852BAF] to-[#FC3F78] disabled:opacity-50 cursor-pointer"
+          >
+            Download Report
+          </button>
+        </div>
+
         {/* TABLE */}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 mt-3">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">

@@ -113,7 +113,10 @@ const OrderList: React.FC = () => {
                     orders.map((order) => (
                       <tr key={order.order_id}>
                         <td data-label="Order Ref" className="order-ref">
-                          {order.order_ref}
+                          <a href={`/crm/manager/order-view/${order.order_id}`}>
+                            {" "}
+                            {order.order_ref}
+                          </a>
                           {order.awb_number && (
                             <div className="awb-text">
                               AWB: {order.awb_number}
