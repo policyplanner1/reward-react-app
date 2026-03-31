@@ -4,10 +4,16 @@ import type { ComponentType } from "react";
 import { api } from "../../../../api/api";
 import QuillEditor from "../../../QuillEditor";
 import Swal from "sweetalert2";
+import imageCompression from "browser-image-compression";
 
 type IconComp = ComponentType<any>;
 
 interface ImagePreview {
+  file: File;
+  url: string;
+}
+
+interface VideoPreview {
   file: File;
   url: string;
 }
@@ -125,6 +131,7 @@ interface ProductData {
   hsnSacCode: string;
   description: string;
   shortDescription: string;
+  brandDescription: string;
   categoryId: number | null;
   subCategoryId: number | null;
   subSubCategoryId: number | null;
@@ -135,6 +142,7 @@ interface ProductData {
   deliveryMinDays: string;
   deliveryMaxDays: string;
   shippingClass: "standard" | "bulky" | "fragile";
+  productVideo: VideoPreview | null;
 }
 
 const initialProductData: ProductData = {
@@ -145,6 +153,7 @@ const initialProductData: ProductData = {
   hsnSacCode: "",
   description: "",
   shortDescription: "",
+  brandDescription: "",
   categoryId: null,
   subCategoryId: null,
   subSubCategoryId: null,
@@ -156,12 +165,13 @@ const initialProductData: ProductData = {
   deliveryMinDays: "1",
   deliveryMaxDays: "3",
   shippingClass: "standard",
+  productVideo: null,
 };
 
 // --- UI Components ---
-const allowOnlyAlphabets = (value: string) => {
-  return /^[A-Za-z ]*$/.test(value);
-};
+// const allowOnlyAlphabets = (value: string) => {
+//   return /^[A-Za-z ]*$/.test(value);
+// };
 
 export default function ProductListingDynamic() {
   const [product, setProduct] = useState<ProductData>(initialProductData);
@@ -180,6 +190,7 @@ export default function ProductListingDynamic() {
   const [isCustomSubcategory, setIsCustomSubcategory] = useState(false);
   const [isCustomSubSubcategory, setIsCustomSubSubcategory] = useState(false);
   const [imageError, setImageError] = useState("");
+  const [videoError, setVideoError] = useState("");
   const [custom_category, setCustomCategory] = useState("");
   const [custom_subcategory, setCustomSubCategory] = useState("");
   const [custom_subsubcategory, setCustomSubSubCategory] = useState("");
@@ -187,6 +198,7 @@ export default function ProductListingDynamic() {
   const [productAttributes, setProductAttributes] = useState<
     Record<string, any>
   >({});
+  const [gstError, setGstError] = useState("");
 
   // --- Fetch data from API ---
   useEffect(() => {
@@ -205,34 +217,89 @@ export default function ProductListingDynamic() {
     }
   };
 
-  const handleMainImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMainImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
 
-    const newFiles = Array.from(e.target.files);
+    const file = e.target.files[0];
 
-    setProduct((prev) => {
-      const existingImages = prev.productImages;
+    if (!file.type.startsWith("image/")) {
+      setImageError("Only image files are allowed.");
+      return;
+    }
 
-      if (existingImages.length + newFiles.length > 1) {
-        setImageError("Only one cover image is allowed.");
-        return prev;
-      }
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+      initialQuality: 0.85,
+      fileType: "image/webp", // 🔥 convert to WebP
+    };
 
-      const newPreviews = newFiles.map((file) => ({
-        file,
-        url: URL.createObjectURL(file),
-      }));
+    try {
+      const compressedFile = await imageCompression(file, options);
 
-      return {
-        ...prev,
-        productImages: [...existingImages, ...newPreviews],
+      const preview = {
+        file: compressedFile,
+        url: URL.createObjectURL(compressedFile),
       };
-    });
 
-    setImageError("");
+      setProduct((prev) => {
+        // revoke old preview URLs
+        prev.productImages.forEach((img) => {
+          URL.revokeObjectURL(img.url);
+        });
 
-    // reset input so same file can be selected again if needed
+        return {
+          ...prev,
+          productImages: [preview],
+        };
+      });
+
+      setImageError("");
+    } catch (err) {
+      console.error("Image compression failed:", err);
+      setImageError("Failed to process image.");
+    }
+
     e.target.value = "";
+  };
+
+  // handle video upload
+  const handleProductVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+
+    const file = e.target.files[0];
+
+    // Optional size validation (50MB example)
+    if (file.size > 50 * 1024 * 1024) {
+      setVideoError("Video size must be under 50MB.");
+      return;
+    }
+
+    const preview = {
+      file,
+      url: URL.createObjectURL(file),
+    };
+
+    setProduct((prev) => ({
+      ...prev,
+      productVideo: preview,
+    }));
+
+    setVideoError("");
+    e.target.value = "";
+  };
+
+  // remove video
+  const removeVideo = () => {
+    if (product.productVideo) {
+      URL.revokeObjectURL(product.productVideo.url);
+    }
+
+    setProduct((prev) => ({
+      ...prev,
+      productVideo: null,
+    }));
   };
 
   // Fetch subcategories when category changes
@@ -249,25 +316,38 @@ export default function ProductListingDynamic() {
   }, [product.categoryId]);
 
   useEffect(() => {
-    if (!product.categoryId) return;
+    if (!product.subCategoryId) {
+      setCategoryAttributes([]);
+      setProductAttributes({});
+      return;
+    }
+
+    setCategoryAttributes([]);
+    setProductAttributes({});
 
     const params = new URLSearchParams({
       categoryId: String(product.categoryId),
+      subcategoryId: String(product.subCategoryId),
     });
-
-    if (product.subCategoryId) {
-      params.append("subcategoryId", String(product.subCategoryId));
-    }
 
     api.get(`/category/attributes?${params.toString()}`).then((res) => {
       if (res.data.success) {
-        setCategoryAttributes(res.data.data);
-        setProductAttributes({});
+        const attrs = res.data.data;
+        setCategoryAttributes(attrs);
+
+        setProductAttributes((prev) => {
+          const next: Record<string, any> = {};
+
+          attrs.forEach((attr: any) => {
+            next[attr.attribute_key] = prev[attr.attribute_key] || [];
+          });
+
+          return next;
+        });
       }
     });
-  }, [product.categoryId, product.subCategoryId]);
+  }, [product.subCategoryId]);
 
-  // Fetch sub-subcategories when subcategory changes
   useEffect(() => {
     if (product.subCategoryId) {
       fetchSubSubCategories(product.subCategoryId);
@@ -304,11 +384,11 @@ export default function ProductListingDynamic() {
 
     /* ================= PRODUCT TEXT FIELDS ================= */
 
-    const productAlphabetFields = ["brandName", "manufacturer"];
+    // const productAlphabetFields = ["brandName", "manufacturer"];
 
-    if (productAlphabetFields.includes(name)) {
-      if (!allowOnlyAlphabets(value)) return;
-    }
+    // if (productAlphabetFields.includes(name)) {
+    //   if (!allowOnlyAlphabets(value)) return;
+    // }
 
     /* ================= CATEGORY HANDLING ================= */
     if (name === "category_id") {
@@ -335,6 +415,42 @@ export default function ProductListingDynamic() {
         ...prev,
         subSubCategoryId: value ? Number(value) : null,
       }));
+      return;
+    }
+
+    if (name === "gstSlab") {
+      const num = Number(value);
+
+      if (value === "") {
+        setGstError("");
+      } else if (num < 0 || num > 100) {
+        setGstError("GST must be between 0 and 100");
+        return;
+      } else {
+        setGstError("");
+      }
+
+      setProduct((prev) => ({ ...prev, gstSlab: value }));
+      return;
+    }
+
+    if (name === "hsnSacCode") {
+      if (/^\d{0,8}$/.test(value)) {
+        setProduct((prev) => ({
+          ...prev,
+          hsnSacCode: value,
+        }));
+      }
+      return;
+    }
+
+    if (name === "deliveryMinDays" || name === "deliveryMaxDays") {
+      if (/^\d*$/.test(value)) {
+        setProduct((prev) => ({
+          ...prev,
+          [name]: value,
+        }));
+      }
       return;
     }
 
@@ -390,15 +506,26 @@ export default function ProductListingDynamic() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    const missingRequired = categoryAttributes.some(
-      (attr) =>
-        attr.is_required &&
-        (!productAttributes[attr.attribute_key] ||
-          productAttributes[attr.attribute_key].length === 0),
-    );
+    const missingAttrs = categoryAttributes.filter((attr) => {
+      if (attr.is_required !== 1) return false;
 
-    if (missingRequired) {
-      throw new Error("Please fill all required product attributes");
+      const val = productAttributes[attr.attribute_key];
+
+      return (
+        !val ||
+        !Array.isArray(val) ||
+        val.length === 0 ||
+        val.every((v) => v === null || v === undefined || v === "")
+      );
+    });
+
+    if (missingAttrs.length > 0) {
+      setError(
+        `Please fill required attributes: ${missingAttrs
+          .map((a) => a.attribute_label)
+          .join(", ")}`,
+      );
+      return;
     }
 
     setIsSubmitting(true);
@@ -412,12 +539,68 @@ export default function ProductListingDynamic() {
       }
 
       // Validate required fields
-      if (!product.categoryId && !custom_category) {
+      if (!product.categoryId && !isCustomCategory) {
         throw new Error("Please select a category");
       }
 
+      if (isCustomCategory && !custom_category.trim()) {
+        throw new Error("Please enter custom category name");
+      }
+
+      if (isCustomSubcategory && !custom_subcategory.trim()) {
+        throw new Error("Please enter custom sub-category name");
+      }
+
+      if (isCustomSubSubcategory && !custom_subsubcategory.trim()) {
+        throw new Error("Please enter custom type / sub-type name");
+      }
+
+      // Product name brand and manufacturer validation
       if (!product.productName || !product.brandName || !product.manufacturer) {
         throw new Error("Please fill in all required product information");
+      }
+
+      // Description validation
+      if (!product.description?.trim()) {
+        throw new Error("Detailed description is required");
+      }
+
+      if (!product.brandDescription?.trim()) {
+        throw new Error("Brand description is required");
+      }
+
+      if (!product.shortDescription?.trim()) {
+        throw new Error("Short description is required");
+      }
+
+      if (product.hsnSacCode && !/^\d{6,8}$/.test(product.hsnSacCode)) {
+        throw new Error("HSN/SAC code must be 6 to 8 digits");
+      }
+
+      // Delivery Days validation
+      const minDays = Number(product.deliveryMinDays);
+      const maxDays = Number(product.deliveryMaxDays);
+
+      if (!Number.isInteger(minDays) || !Number.isInteger(maxDays)) {
+        throw new Error("Delivery days must be whole numbers");
+      }
+
+      if (minDays <= 0 || maxDays <= 0) {
+        throw new Error("Delivery days must be greater than 0");
+      }
+
+      if (minDays > maxDays) {
+        throw new Error(
+          "Minimum delivery days cannot exceed maximum delivery days",
+        );
+      }
+
+      // Return Window
+      if (product.isReturnable === 1) {
+        const days = Number(product.returnWindowDays);
+        if (!days || days < 1 || days > 30) {
+          throw new Error("Return window must be between 1 and 30 days");
+        }
       }
 
       // Validate required documents
@@ -468,6 +651,7 @@ export default function ProductListingDynamic() {
       formData.append("productName", product.productName);
       formData.append("description", product.description);
       formData.append("shortDescription", product.shortDescription);
+      formData.append("brandDescription", product.brandDescription);
 
       if (product.gstSlab) {
         formData.append("gstSlab", product.gstSlab);
@@ -499,6 +683,11 @@ export default function ProductListingDynamic() {
         formData.append("images", file);
       });
 
+      //optional video
+      if (product.productVideo) {
+        formData.append("video", product.productVideo.file);
+      }
+
       // Add document files - map document_id to field names
       Object.entries(docFiles).forEach(([docId, file]) => {
         if (file) {
@@ -525,6 +714,14 @@ export default function ProductListingDynamic() {
       setProduct(initialProductData);
       setDocFiles({});
       setRequiredDocs([]);
+      //Resetting image and video
+      product.productImages.forEach((img) => {
+        URL.revokeObjectURL(img.url);
+      });
+
+      if (product.productVideo) {
+        URL.revokeObjectURL(product.productVideo.url);
+      }
     } catch (err: any) {
       console.error("Submit error:", err);
       setError(err.message);
@@ -604,6 +801,16 @@ export default function ProductListingDynamic() {
     );
     return subsubcategory?.name || "Not selected";
   };
+
+  //clean up object URLs on unmount
+  useEffect(() => {
+    return () => {
+      product.productImages.forEach((img) => URL.revokeObjectURL(img.url));
+      if (product.productVideo) {
+        URL.revokeObjectURL(product.productVideo.url);
+      }
+    };
+  }, []);
 
   if (loading && categories.length === 0) {
     return (
@@ -854,6 +1061,7 @@ export default function ProductListingDynamic() {
               <FormInput
                 id="productName"
                 label="Product Name"
+                required
                 value={product.productName}
                 onChange={handleFieldChange}
                 placeholder="Type of product (e.g., Shoes, TV)"
@@ -883,6 +1091,7 @@ export default function ProductListingDynamic() {
                 value={product.gstSlab}
                 onChange={handleFieldChange}
                 placeholder="e.g. 5, 12, 18, 28"
+                error={gstError}
               />
 
               <FormInput
@@ -901,108 +1110,153 @@ export default function ProductListingDynamic() {
               description="Select available options for this product"
             />
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {categoryAttributes.length === 0 ? (
-                <p className="text-sm text-gray-500 col-span-full">
-                  No attributes found for this category.
-                </p>
-              ) : (
-                categoryAttributes.map((attr) => {
-                  //  NORMALIZE input_type
-                  const inputType =
-                    attr.input_type && attr.input_type.trim()
-                      ? attr.input_type.toLowerCase().trim()
-                      : "textarea";
+            {/* Product Attributes */}
+            {!isCustomCategory && categoryAttributes.length > 0 && (
+              <div className="mt-8">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  {categoryAttributes.map((attr) => {
+                    const inputType = attr.input_type?.trim().toLowerCase();
 
-                  return (
-                    <div key={attr.attribute_key}>
-                      <label className="block mb-1 text-sm font-medium text-gray-700">
-                        {attr.attribute_label}
-                        {attr.is_required === 1 && (
-                          <span className="text-red-500">*</span>
+                    return (
+                      <div key={attr.attribute_key}>
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
+                          {attr.attribute_label}
+                          {attr.is_required === 1 && (
+                            <span className="text-red-500">*</span>
+                          )}
+                        </label>
+
+                        {/* MULTISELECT */}
+                        {inputType === "multiselect" && (
+                          <div className="flex flex-wrap gap-2">
+                            {(attr.options || []).map((opt: string) => {
+                              const selected =
+                                productAttributes[attr.attribute_key]?.includes(
+                                  opt,
+                                );
+
+                              return (
+                                <label
+                                  key={opt}
+                                  className="flex items-center gap-2"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selected}
+                                    onChange={(e) => {
+                                      const prevVals =
+                                        productAttributes[attr.attribute_key] ||
+                                        [];
+
+                                      const newVals = e.target.checked
+                                        ? [...prevVals, opt]
+                                        : prevVals.filter(
+                                            (v: string) => v !== opt,
+                                          );
+
+                                      setProductAttributes((prev) => ({
+                                        ...prev,
+                                        [attr.attribute_key]: newVals,
+                                      }));
+                                    }}
+                                  />
+                                  {opt}
+                                </label>
+                              );
+                            })}
+                          </div>
                         )}
-                      </label>
 
-                      {/* MULTISELECT */}
-                      {inputType === "multiselect" && (
-                        <input
-                          type="text"
-                          placeholder="Comma separated (e.g. S,M,L)"
-                          onChange={(e) =>
-                            setProductAttributes((prev) => ({
-                              ...prev,
-                              [attr.attribute_key]: e.target.value
-                                .split(",")
-                                .map((v) => v.trim())
-                                .filter(Boolean),
-                            }))
-                          }
-                          className="w-full p-2 border rounded-lg"
-                        />
-                      )}
+                        {/* SELECT */}
+                        {inputType === "select" && (
+                          <select
+                            required={attr.is_required === 1}
+                            value={
+                              (productAttributes[attr.attribute_key] ||
+                                [])[0] || ""
+                            }
+                            onChange={(e) =>
+                              setProductAttributes((prev) => ({
+                                ...prev,
+                                [attr.attribute_key]: [e.target.value],
+                              }))
+                            }
+                            className="w-full p-2 border rounded-lg"
+                          >
+                            <option value="">
+                              Select {attr.attribute_label}
+                            </option>
 
-                      {/* SELECT */}
-                      {inputType === "select" && (
-                        <input
-                          type="text"
-                          onChange={(e) =>
-                            setProductAttributes((prev) => ({
-                              ...prev,
-                              [attr.attribute_key]: [e.target.value],
-                            }))
-                          }
-                          className="w-full p-2 border rounded-lg"
-                          placeholder={`Enter ${attr.attribute_label}`}
-                        />
-                      )}
+                            {(attr.options || []).map((opt: string) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        )}
 
-                      {/* NUMBER */}
-                      {inputType === "number" && (
-                        <input
-                          type="number"
-                          onChange={(e) =>
-                            setProductAttributes((prev) => ({
-                              ...prev,
-                              [attr.attribute_key]: [e.target.value],
-                            }))
-                          }
-                          className="w-full p-2 border rounded-lg"
-                        />
-                      )}
+                        {/* NUMBER */}
+                        {inputType === "number" && (
+                          <input
+                            type="number"
+                            required={attr.is_required === 1}
+                            value={
+                              (productAttributes[attr.attribute_key] ||
+                                [])[0] || ""
+                            }
+                            onChange={(e) =>
+                              setProductAttributes((prev) => ({
+                                ...prev,
+                                [attr.attribute_key]: [e.target.value],
+                              }))
+                            }
+                            className="w-full p-2 border rounded-lg"
+                          />
+                        )}
 
-                      {/* TEXT */}
-                      {inputType === "text" && (
-                        <input
-                          type="text"
-                          onChange={(e) =>
-                            setProductAttributes((prev) => ({
-                              ...prev,
-                              [attr.attribute_key]: [e.target.value],
-                            }))
-                          }
-                          className="w-full p-2 border rounded-lg"
-                        />
-                      )}
+                        {/* TEXT */}
+                        {inputType === "text" && (
+                          <input
+                            type="text"
+                            required={attr.is_required === 1}
+                            value={(
+                              productAttributes[attr.attribute_key] || []
+                            ).join(",")}
+                            onChange={(e) =>
+                              setProductAttributes((prev) => ({
+                                ...prev,
+                                [attr.attribute_key]: [e.target.value],
+                              }))
+                            }
+                            className="w-full p-2 border rounded-lg"
+                          />
+                        )}
 
-                      {/* TEXTAREA */}
-                      {inputType === "textarea" && (
-                        <textarea
-                          onChange={(e) =>
-                            setProductAttributes((prev) => ({
-                              ...prev,
-                              [attr.attribute_key]: [e.target.value],
-                            }))
-                          }
-                          className="w-full p-2 border rounded-lg"
-                          rows={3}
-                          placeholder={attr.attribute_label}
-                        />
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
+                        {/* TEXTAREA */}
+                        {inputType === "textarea" && (
+                          <textarea
+                            required={attr.is_required === 1}
+                            value={
+                              (productAttributes[attr.attribute_key] ||
+                                [])[0] || ""
+                            }
+                            onChange={(e) =>
+                              setProductAttributes((prev) => ({
+                                ...prev,
+                                [attr.attribute_key]: [e.target.value],
+                              }))
+                            }
+                            className="w-full p-2 border rounded-lg"
+                            rows={3}
+                            placeholder={attr.attribute_label}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Product Description */}
@@ -1026,6 +1280,22 @@ export default function ProductListingDynamic() {
                   minHeight={300}
                   onChange={(val) =>
                     setProduct((prev) => ({ ...prev, description: val }))
+                  }
+                />
+              </div>
+
+              {/* Brand Description */}
+              <div className="mt-8">
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Brand Description <span className="text-red-500">*</span>
+                </label>
+
+                <QuillEditor
+                  value={product.brandDescription}
+                  placeholder="Describe the brand story, values, quality standards, and brand background..."
+                  minHeight={200}
+                  onChange={(val) =>
+                    setProduct((prev) => ({ ...prev, brandDescription: val }))
                   }
                 />
               </div>
@@ -1212,19 +1482,18 @@ export default function ProductListingDynamic() {
                   ? "No cover image chosen"
                   : "1 cover image selected"}
               </span>
+
               <label
                 className={`cursor-pointer px-3 py-1 text-xs rounded-full
-    ${
-      product.productImages.length >= 5
-        ? "bg-gray-400 cursor-not-allowed"
-        : "bg-[#852BAF] hover:bg-[#7a1c94] text-white"
-    }
-  `}
+        ${
+          product.productImages.length >= 1
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-[#852BAF] hover:bg-[#7a1c94] text-white"
+        }`}
               >
-                Choose Files
+                Choose Image
                 <input
                   type="file"
-                  multiple
                   hidden
                   disabled={product.productImages.length >= 1}
                   accept="image/*"
@@ -1241,8 +1510,6 @@ export default function ProductListingDynamic() {
               <p className="mt-1 text-xs text-red-500">{imageError}</p>
             )}
 
-            {/* Image Previews */}
-
             {product.productImages.length > 0 && (
               <div className="mt-3 flex gap-2 flex-wrap">
                 {product.productImages.map((img, index) => (
@@ -1255,13 +1522,11 @@ export default function ProductListingDynamic() {
                       alt={`Preview ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
-
-                    {/* Remove button */}
                     <button
                       type="button"
                       onClick={() => removeMainImage(index)}
                       className="absolute top-1 right-1 bg-black/80 text-white rounded-full p-1
-                     opacity-0 group-hover:opacity-100 transition cursor-pointer"
+            opacity-0 group-hover:opacity-100 transition cursor-pointer"
                     >
                       <FaTrash size={10} />
                     </button>
@@ -1270,6 +1535,60 @@ export default function ProductListingDynamic() {
               </div>
             )}
           </section>
+
+          {/* video section */}
+          <section className="mt-6">
+            <SectionHeader
+              icon={FaImages}
+              title="Product Video"
+              description="Upload one product demo video (optional)"
+            />
+
+            <div className="flex items-center p-3 bg-white border border-gray-400 border-dashed rounded-lg">
+              <span className="flex-1 text-sm text-gray-600">
+                {product.productVideo
+                  ? "1 video selected"
+                  : "No product video chosen"}
+              </span>
+
+              <label className="cursor-pointer px-3 py-1 text-xs rounded-full bg-[#852BAF] hover:bg-[#7a1c94] text-white">
+                Choose Video
+                <input
+                  type="file"
+                  hidden
+                  accept="video/mp4,video/webm,video/quicktime"
+                  onChange={handleProductVideo}
+                />
+              </label>
+            </div>
+
+            <p className="mt-2 text-xs text-gray-500">
+              Accepted formats: MP4, WEBM, MOV (Max 50MB)
+            </p>
+
+            {videoError && (
+              <p className="mt-1 text-xs text-red-500">{videoError}</p>
+            )}
+
+            {product.productVideo && (
+              <div className="mt-3 relative w-56 border rounded overflow-hidden group">
+                <video
+                  src={product.productVideo.url}
+                  controls
+                  className="w-full h-full"
+                />
+                <button
+                  type="button"
+                  onClick={removeVideo}
+                  className="absolute top-1 right-1 bg-black/80 text-white rounded-full p-1
+        opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                >
+                  <FaTrash size={10} />
+                </button>
+              </div>
+            )}
+          </section>
+
           {/* Documents */}
           {renderDocUploads()}
           {/* Submit Button */}
