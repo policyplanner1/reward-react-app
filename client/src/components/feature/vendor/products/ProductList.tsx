@@ -102,13 +102,15 @@ interface StatsCardProps {
 }
 
 interface Category {
-  id: number;
-  name: string;
+  category_id: number;
+  category_name: string;
+  variant_type?: string;
 }
 
 interface Subcategory {
-  id: number;
-  name: string;
+  subcategory_id: number;
+  category_id: number;
+  subcategory_name: string;
 }
 
 interface BulkUploadModalProps {
@@ -406,8 +408,8 @@ const BulkUploadModal = ({ isOpen, onClose }: BulkUploadModalProps) => {
 
     const fetchCategories = async () => {
       try {
-        const res = await api.get("/category/list");
-        setCategories(res.data?.data || []);
+        const res = await api.get("/category");
+        if (res.data.success) setCategories(res.data?.data);
       } catch (err) {
         console.error("Failed to fetch categories", err);
       }
@@ -427,8 +429,8 @@ const BulkUploadModal = ({ isOpen, onClose }: BulkUploadModalProps) => {
 
     const fetchSubcategories = async () => {
       try {
-        const res = await api.get(`/category/subcategories/${categoryId}`);
-        setSubcategories(res.data?.data || []);
+        const res = await api.get(`/subcategory/${categoryId}`);
+        if (res.data.success) setSubcategories(res.data.data);
       } catch (err) {
         console.error("Failed to fetch subcategories", err);
       }
@@ -564,8 +566,8 @@ const BulkUploadModal = ({ isOpen, onClose }: BulkUploadModalProps) => {
           >
             <option value="">Select Category</option>
             {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
+              <option key={c.category_id} value={c.category_id}>
+                {c.category_name}
               </option>
             ))}
           </select>
@@ -578,8 +580,8 @@ const BulkUploadModal = ({ isOpen, onClose }: BulkUploadModalProps) => {
           >
             <option value="">Select Subcategory</option>
             {subcategories.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
+              <option key={s.subcategory_id} value={s.subcategory_id}>
+                {s.subcategory_name}
               </option>
             ))}
           </select>
