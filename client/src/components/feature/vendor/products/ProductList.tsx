@@ -19,7 +19,7 @@ import {
   FaCogs,
   FaTrash,
   FaUpload,
-  FaFileImport,
+  // FaFileImport,
 } from "react-icons/fa";
 import { FiPackage } from "react-icons/fi";
 import Swal from "sweetalert2";
@@ -408,7 +408,7 @@ const BulkUploadModal = ({
 
   const [file, setFile] = useState<File | null>(null);
 
-  const [loading, setLoading] = useState(false);
+  // const [loading, setLoading] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(false);
 
   /* ================================
@@ -585,7 +585,7 @@ const BulkUploadModal = ({
         <div className="flex justify-end gap-3">
           <button
             onClick={onClose}
-            disabled={loading}
+            // disabled={loading}
             className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer"
           >
             Cancel
@@ -610,7 +610,7 @@ export default function ProductManagerList() {
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
-  const [rows, setRows] = useState<any[]>([]);
+  // const [rows, setRows] = useState<any[]>([]);
   const [validationResult, setValidationResult] = useState<any>(null);
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
@@ -706,7 +706,7 @@ export default function ProductManagerList() {
 
       //reset
       setValidationResult(null);
-      setRows([]);
+      // setRows([]);
     } catch (err) {
       console.error(err);
       Swal.fire("Error", "Upload failed", "error");
@@ -986,7 +986,7 @@ export default function ProductManagerList() {
         .filter((row) => Object.values(row).some((val) => val !== ""));
 
       setValidationResult(null);
-      setRows(cleanedRows);
+      // setRows(cleanedRows);
       validateBulk(cleanedRows);
     };
 
