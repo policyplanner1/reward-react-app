@@ -9,7 +9,7 @@ class PaymentController {
   //   create Order
   async createOrder(req, res) {
     try {
-      const userId = req.user.user_id;
+      const userId = req.user?.user_id;
       // const userId = 1;
 
       if (!userId) {
