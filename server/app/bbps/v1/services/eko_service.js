@@ -3,6 +3,15 @@ const headerUtil = require("../utils/header");
 
 const BASE = process.env.EKO_BASE_URL;
 
+// 0. Get Locations
+exports.getLocations = async () => {
+  const headers = await headerUtil.fetchHeaders();
+  const res = await axios.get(`${BASE}billpayments/operators_location`, {
+    headers,
+  });
+  return res.data;
+};
+
 // 1. Categories
 exports.getCategories = async () => {
   const headers = await headerUtil.fetchHeaders();
@@ -20,6 +29,40 @@ exports.getOperators = async (category) => {
     { headers },
   );
   return res.data;
+};
+
+// 2.5 Grouped operators
+exports.getOperatorsGrouped = async (category) => {
+  const headers = await headerUtil.fetchHeaders();
+
+  const [operatorsRes, locationRes] = await Promise.all([
+    axios.get(`${BASE}billpayments/operators?category=${category}`, {
+      headers,
+    }),
+    axios.get(`${BASE}billpayments/operators_location`, { headers }),
+  ]);
+
+  const operators = operatorsRes.data.data;
+  const locations = locationRes.data.data;
+
+  const locationMap = {};
+  locations.forEach((loc) => {
+    locationMap[loc.operator_location_id.padStart(2, "0")] =
+      loc.operator_location_name;
+  });
+
+  const grouped = {};
+
+  operators.forEach((op) => {
+    const locId = op.location_id.toString().padStart(2, "0");
+    const locName = locationMap[locId] || "Others";
+
+    if (!grouped[locName]) grouped[locName] = [];
+
+    grouped[locName].push(op);
+  });
+
+  return grouped;
 };
 
 // 3. Operator details
