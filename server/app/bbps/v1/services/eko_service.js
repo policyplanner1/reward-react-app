@@ -32,7 +32,7 @@ exports.getOperators = async (category) => {
 };
 
 // 2.5 Grouped operators
-exports.getOperatorsGrouped = async (category) => {
+exports.getOperatorsGrouped = async (category, search = "") => {
   const headers = await headerUtil.fetchHeaders();
 
   const [operatorsRes, locationRes] = await Promise.all([
@@ -42,15 +42,26 @@ exports.getOperatorsGrouped = async (category) => {
     axios.get(`${BASE}billpayments/operators_location`, { headers }),
   ]);
 
-  const operators = operatorsRes.data.data;
+  let operators = operatorsRes.data.data;
   const locations = locationRes.data.data;
 
+  //  STEP 1: Apply search filter (case-insensitive)
+  if (search) {
+    const keyword = search.toLowerCase();
+
+    operators = operators.filter((op) =>
+      op.name?.toLowerCase().includes(keyword),
+    );
+  }
+
+  //  STEP 2: Map locations
   const locationMap = {};
   locations.forEach((loc) => {
     locationMap[loc.operator_location_id.padStart(2, "0")] =
       loc.operator_location_name;
   });
 
+  //  STEP 3: Group
   const grouped = {};
 
   operators.forEach((op) => {
@@ -59,7 +70,10 @@ exports.getOperatorsGrouped = async (category) => {
 
     if (!grouped[locName]) grouped[locName] = [];
 
-    grouped[locName].push(op);
+    grouped[locName].push({
+      operator_id: op.operator_id,
+      name: op.name,
+    });
   });
 
   return grouped;
