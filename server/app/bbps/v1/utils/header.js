@@ -1,73 +1,69 @@
-const crypto = require('crypto');
-const axios = require('axios');
-const https = require('https');
+const axios = require("axios");
+const https = require("https");
 
-const agent = new https.Agent({
-  rejectUnauthorized: false  // Disable SSL verification
-});
+const agent =
+  process.env.NODE_ENV === "development"
+    ? new https.Agent({ rejectUnauthorized: false })
+    : undefined;
 
+//  Common API caller
+const callHeaderAPI = async (endpoint, payload) => {
+  try {
+    const res = await axios.post(
+      `${process.env.BACKEND_URL}/api/crm/v1/${endpoint}`,
+      payload,
+      {
+        headers: { "Content-Type": "application/json" },
+        httpsAgent: agent,
+      },
+    );
+
+    if (!res.data || !res.data.secret_key) {
+      throw new Error("Invalid header API response");
+    }
+
+    return res.data;
+  } catch (err) {
+    console.error(`Header API error (${endpoint}):`, err.message);
+    throw new Error("Header generation failed");
+  }
+};
+
+//  Fetch Bill Headers
 async function generateFetchBillHeaders(key) {
-  // Validate if the key and developer key are provided
-  const requestData = { key };
+  const data = await callHeaderAPI("BBPS/secret-key.php", { key });
 
-  try {
-    // Define headers directly here or pass as argument if needed
-    const headers = {
-      'Content-Type': 'application/json'
-    };
-
-    const response = await axios.post(`${process.env.HEADER_API_URL}BBPS/secret-key.php`, requestData, {
-      headers: headers,
-      httpsAgent: agent // Attach the custom agent to bypass SSL verification
-    });
-
-    // You can now use the response to extract the secret_key and secret_key_timestamp
-    const { secret_key, secret_key_timestamp } = response.data;
-
-    // Return headers for Fetch Bill API
-    return {
-      'Content-Type': 'application/json',
-      'developer_key': process.env.EKO_DEVELOPER_KEY,
-      'secret-key': secret_key,
-      'secret-key-timestamp': secret_key_timestamp,
-    };
-
-  } catch (error) {
-    console.error('Error fetching operators category', error);
-    throw new Error('Error fetching operators category');
-  }
+  return {
+    "Content-Type": "application/json",
+    developer_key: process.env.EKO_DEVELOPER_KEY,
+    "secret-key": data.secret_key,
+    "secret-key-timestamp": data.secret_key_timestamp,
+  };
 }
 
+//  Pay Bill Headers
 async function generatePayBillHeaders(key, utility_acc_no, amount, user_code) {
-  // Validate if the key and developer key are provided
-  const requestData = { key, utility_acc_no, amount, user_code };
+  const data = await callHeaderAPI("BBPS/request-hash.php", {
+    key,
+    utility_acc_no,
+    amount,
+    user_code,
+  });
 
-  try {
-    // Define headers directly here or pass as argument if needed
-    const headers = {
-      'Content-Type': 'application/json'
-    };
-
-    const response = await axios.post(`${process.env.HEADER_API_URL}BBPS/request-hash.php`, requestData, {
-      headers: headers,
-      httpsAgent: agent // Attach the custom agent to bypass SSL verification
-    });
-
-    // You can now use the response to extract the secret_key and secret_key_timestamp
-    const { secret_key, secret_key_timestamp, request_hash } = response.data;
-
-    // Return headers for Pay Bill API
-    return {
-      'Content-Type': 'application/json',
-      'developer_key': process.env.EKO_DEVELOPER_KEY,  // Fetch from .env file
-      'secret-key': secret_key,
-      'secret-key-timestamp': secret_key_timestamp,
-      'request_hash': request_hash,
-    };
-  } catch (error) {
-    console.error('Error fetching operators category', error);
-    throw new Error('Error fetching operators category');
+  if (!data.request_hash) {
+    throw new Error("Missing request_hash in response");
   }
+
+  return {
+    "Content-Type": "application/json",
+    developer_key: process.env.EKO_DEVELOPER_KEY,
+    "secret-key": data.secret_key,
+    "secret-key-timestamp": data.secret_key_timestamp,
+    request_hash: data.request_hash,
+  };
 }
 
-module.exports = { generateFetchBillHeaders, generatePayBillHeaders };
+module.exports = {
+  generateFetchBillHeaders,
+  generatePayBillHeaders,
+};
