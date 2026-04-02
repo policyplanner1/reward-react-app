@@ -704,22 +704,30 @@ export default function ProductManagerList() {
         return;
       }
 
-      await api.post("/product/bulk-upload", {
+      const res = await api.post("/product/bulk-upload", {
         categoryId,
         subcategoryId,
         rows: validationResult.validRows,
       });
 
-      Swal.fire("Success", "Products uploaded successfully", "success");
+      Swal.fire({
+        icon: "success",
+        title: "Upload Complete",
+        text: res.data.message || "Products uploaded successfully",
+      });
 
       await fetchProducts();
 
-      //reset
+      // Reset state
       setValidationResult(null);
-      // setRows([]);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      Swal.fire("Error", "Upload failed", "error");
+
+      Swal.fire(
+        "Error",
+        err?.response?.data?.message || "Upload failed",
+        "error",
+      );
     }
   };
   /* ================================
@@ -965,8 +973,11 @@ export default function ProductManagerList() {
       }) as any[][];
 
       // find header row (first row with actual column names)
+      // const headerRowIndex = raw.findIndex((row) =>
+      //   row.some((cell) => cell && cell.toString().trim() !== ""),
+      // );
       const headerRowIndex = raw.findIndex((row) =>
-        row.some((cell) => cell && cell.toString().trim() !== ""),
+        row.includes("productName"),
       );
 
       // extract headers
@@ -993,6 +1004,15 @@ export default function ProductManagerList() {
           return obj;
         })
         .filter((row) => Object.values(row).some((val) => val !== ""));
+
+      const hasInvalid = cleanedRows.some(
+        (row) => !row.productName || !row.brandName,
+      );
+
+      if (hasInvalid) {
+        Swal.fire("Error", "Some rows missing required fields", "error");
+        return;
+      }
 
       setValidationResult(null);
       // setRows(cleanedRows);
