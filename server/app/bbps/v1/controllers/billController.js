@@ -6,7 +6,13 @@ class BillController {
       const data = await ekoService.getCategories();
       res.json(data);
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      console.error("EKO ERROR:", e.response?.data || e.message);
+      if (e.response?.status === 500) {
+        return res.status(503).json({
+          success: false,
+          message: "Service temporarily unavailable. Please try again.",
+        });
+      }
     }
   }
 
