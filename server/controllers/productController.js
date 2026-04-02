@@ -411,8 +411,6 @@ class ProductController {
         });
       }
 
-      await connection.beginTransaction();
-
       // 1. Fetch attributes (same as validation)
       const [attributes] = await connection.execute(
         `
@@ -436,6 +434,8 @@ class ProductController {
       );
 
       const attributeKeys = attributes.map((a) => a.attribute_key);
+      const toBool = (val) =>
+        val === "1" || val === 1 || val === true || val === "true";
 
       const results = [];
 
@@ -444,6 +444,15 @@ class ProductController {
         const row = rows[i];
 
         try {
+          if (!row.productName || !row.brandName) {
+            results.push({
+              row: i + 1,
+              status: "failed",
+              error: "productName and brandName are required",
+            });
+            continue;
+          }
+
           //  BASE PRODUCT DATA
           const productData = {
             productName: row.productName,
@@ -454,13 +463,15 @@ class ProductController {
             brandDescription: row.brandDescription || "",
             gstSlab: Number(row.gstSlab) || 0,
             hsnSacCode: row.hsnSacCode || null,
-            is_discount_eligible: row.is_discount_eligible === "true",
-            is_returnable: row.is_returnable === "true",
+            is_discount_eligible: toBool(row.is_discount_eligible),
+            is_returnable: toBool(row.is_returnable),
             return_window_days: Number(row.return_window_days) || 0,
             delivery_sla_min_days: Number(row.delivery_sla_min_days) || 0,
             delivery_sla_max_days: Number(row.delivery_sla_max_days) || 0,
             shipping_class: row.shipping_class || null,
           };
+
+          await connection.beginTransaction();
 
           //  CREATE PRODUCT
           const productId = await ProductModel.createProduct(
@@ -477,10 +488,15 @@ class ProductController {
           const productAttributes = {};
 
           attributeKeys.forEach((key) => {
-            if (row[key]) {
+            // if (row[key]) {
+            if (
+              row[key] !== undefined &&
+              row[key] !== null &&
+              row[key] !== ""
+            ) {
               productAttributes[key] = row[key]
                 .toString()
-                .split("|")
+                .split(",")
                 .map((v) => v.trim());
             }
           });
@@ -502,12 +518,15 @@ class ProductController {
             subcategoryId,
           );
 
+          await connection.commit();
+
           results.push({
             row: i + 1,
             status: "success",
             productId,
           });
         } catch (err) {
+          await connection.rollback();
           console.error(`Row ${i + 1} failed`, err);
 
           results.push({
@@ -518,15 +537,15 @@ class ProductController {
         }
       }
 
-      await connection.commit();
+      const successCount = results.filter((r) => r.status === "success").length;
+      const failedCount = results.length - successCount;
 
       return res.json({
         success: true,
+        message: `${successCount} uploaded, ${failedCount} failed`,
         results,
       });
     } catch (err) {
-      await connection.rollback();
-
       return res.status(500).json({
         success: false,
         message: err.message,
