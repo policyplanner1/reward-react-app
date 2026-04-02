@@ -12,7 +12,10 @@ class BillController {
 
   async getOperators(req, res) {
     try {
-      const data = await ekoService.getOperators(req.query.category);
+      const { category_id } = req.query;
+
+      const data = await ekoService.getOperators(category_id);
+
       res.json(data);
     } catch (e) {
       res.status(500).json({ error: e.message });
@@ -59,7 +62,7 @@ class BillController {
 
   async fetchBill(req, res) {
     try {
-      const data = await ekoService.fetchBill(req.body,req);
+      const data = await ekoService.fetchBill(req.body, req);
       res.json(data);
     } catch (e) {
       res.status(500).json({ error: e.message });

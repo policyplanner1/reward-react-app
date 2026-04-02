@@ -22,13 +22,21 @@ exports.getCategories = async () => {
 };
 
 // 2. Operators
-exports.getOperators = async (category) => {
+exports.getOperators = async (category_id) => {
   const headers = await headerUtil.fetchHeaders();
-  const res = await axios.get(
-    `${BASE}billpayments/operators?category=${category}`,
-    { headers },
-  );
-  return res.data;
+
+  const res = await axios.get(`${BASE}billpayments/operators`, { headers });
+
+  let operators = res.data?.data || [];
+
+  if (category_id) {
+    operators = operators.filter((op) => op.operator_category == category_id);
+  }
+
+  return {
+    ...res.data,
+    data: operators,
+  };
 };
 
 // 2.5 Grouped operators
