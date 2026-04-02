@@ -1,5 +1,6 @@
 const axios = require("axios");
 const headerUtil = require("../utils/header");
+const retry = require("../utils/retry");
 
 const BASE = process.env.EKO_BASE_URL;
 
@@ -133,10 +134,12 @@ exports.payBill = async (body, req) => {
     source_ip: getClientIP(req) || "127.0.0.1",
   };
 
-  const res = await axios.post(
-    `${BASE}billpayments/paybill?initiator_id=${process.env.EKO_INITIATOR_ID}`,
-    payload,
-    { headers },
+  const res = await retry(() =>
+    axios.post(
+      `${BASE}billpayments/paybill?initiator_id=${process.env.EKO_INITIATOR_ID}`,
+      payload,
+      { headers, timeout: 10000 },
+    ),
   );
 
   return res.data;
