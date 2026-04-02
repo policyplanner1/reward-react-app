@@ -973,8 +973,7 @@ export default function ProductManagerList() {
       const headers = raw[headerRowIndex] as string[];
 
       // extract data rows after headers
-      const dataRows = raw.slice(headerRowIndex + 1);
-      // const dataRows = raw.slice(headerRowIndex + 3);
+      const dataRows = raw.slice(headerRowIndex + 3);
 
       // convert to objects
       // const cleanedRows = dataRows.map((row) => {
