@@ -512,6 +512,16 @@ const BulkUploadModal = ({
           <p className="text-sm text-gray-500">
             Download template, fill it, and upload here
           </p>
+
+          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+            <p className="font-semibold mb-1">⚠️ Instructions:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Do not modify first 3 rows</li>
+              <li>Start entering data from row 4</li>
+              <li>Use comma (,) for multiple values</li>
+              <li>Follow options exactly</li>
+            </ul>
+          </div>
         </div>
 
         {/* CATEGORY + TEMPLATE */}
