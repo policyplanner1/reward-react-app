@@ -1,6 +1,4 @@
-const crypto = require("crypto");
 const ekoService = require("../services/eko_service");
-const db = require("../../../../config/database");
 
 class BillController {
   async getCategories(req, res) {
@@ -61,7 +59,7 @@ class BillController {
 
   async fetchBill(req, res) {
     try {
-      const data = await ekoService.fetchBill(req.body);
+      const data = await ekoService.fetchBill(req.body,req);
       res.json(data);
     } catch (e) {
       res.status(500).json({ error: e.message });

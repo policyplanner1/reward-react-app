@@ -42,8 +42,8 @@ exports.getOperatorsGrouped = async (category, search = "") => {
     axios.get(`${BASE}billpayments/operators_location`, { headers }),
   ]);
 
-  let operators = operatorsRes.data.data;
-  const locations = locationRes.data.data;
+  let operators = operatorsRes.data?.data || [];
+  const locations = locationRes.data?.data || [];
 
   //  STEP 1: Apply search filter (case-insensitive)
   if (search) {
@@ -89,7 +89,7 @@ exports.getOperatorDetails = async (id) => {
 };
 
 // 4. Fetch bill
-exports.fetchBill = async (body) => {
+exports.fetchBill = async (body, req) => {
   const headers = await headerUtil.fetchHeaders();
 
   const payload = {
@@ -97,6 +97,7 @@ exports.fetchBill = async (body) => {
     user_code: process.env.EKO_USER_CODE,
     client_ref_id: Date.now(),
     hc_channel: "0",
+    source_ip: getClientIP(req) || "127.0.0.1",
   };
 
   const res = await axios.post(
@@ -109,7 +110,7 @@ exports.fetchBill = async (body) => {
 };
 
 // 5. Pay bill
-exports.payBill = async (body) => {
+exports.payBill = async (body, req) => {
   const headers = await headerUtil.payHeaders(
     body.utility_acc_no,
     body.amount,
@@ -121,6 +122,7 @@ exports.payBill = async (body) => {
     user_code: process.env.EKO_USER_CODE,
     client_ref_id: Date.now(),
     hc_channel: "0",
+    source_ip: getClientIP(req) || "127.0.0.1",
   };
 
   const res = await axios.post(
@@ -130,4 +132,17 @@ exports.payBill = async (body) => {
   );
 
   return res.data;
+};
+
+// 6. Get Client IP
+const getClientIP = (req) => {
+  let ip =
+    req.headers["x-forwarded-for"]?.split(",")[0] ||
+    req.connection?.remoteAddress ||
+    req.socket?.remoteAddress;
+
+  if (ip === "::1") ip = "127.0.0.1";
+  else if (ip?.startsWith("::ffff:")) ip = ip.replace("::ffff:", "");
+
+  return ip;
 };

@@ -21,6 +21,13 @@ class PaymentController {
 
       const { amount, operator_id, utility_acc_no, cycle_number } = req.body;
 
+      if (!amount || !operator_id || !utility_acc_no) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields",
+        });
+      }
+
       // 1. create transaction
       const transaction_id = await TransactionModel.create({
         user_id: userId,
@@ -71,6 +78,20 @@ class PaymentController {
         return res.status(400).json({ error: "Invalid signature" });
       }
 
+      // check if already processed
+      const existing = await PaymentModel.getByOrderId(razorpay_order_id);
+
+      if (!existing) {
+        return res.status(404).json({
+          success: false,
+          message: "Payment not found",
+        });
+      }
+
+      if (existing.status === "SUCCESS") {
+        return res.json({ success: true, message: "Already processed" });
+      }
+
       // update payment
       await PaymentModel.updateStatus(razorpay_order_id, "SUCCESS", req.body);
 
@@ -78,19 +99,49 @@ class PaymentController {
 
       const transaction = await TransactionModel.getByPaymentId(payment.id);
 
-      // call BBPS
-      const bbpsResponse = await ekoService.payBill({
-        utility_acc_no: transaction.utility_acc_no,
-        operator_id: transaction.operator_id,
-        amount: transaction.amount,
-        cycle_number: transaction.cycle_number,
-      });
+      if (!transaction) {
+        return res.status(404).json({
+          success: false,
+          message: "Transaction not found",
+        });
+      }
 
-      // update transaction
-      await TransactionModel.updateStatus(transaction.id, "PAID", bbpsResponse);
+      //  CALL BBPS
+      let bbpsResponse;
+
+      try {
+        bbpsResponse = await ekoService.payBill({
+          utility_acc_no: transaction.utility_acc_no,
+          operator_id: transaction.operator_id,
+          amount: transaction.amount,
+          cycle_number: transaction.cycle_number,
+        }, req);
+
+        //  Success → mark PAID
+        await TransactionModel.updateStatus(
+          transaction.id,
+          "PAID",
+          bbpsResponse,
+        );
+      } catch (err) {
+        console.error("BBPS Error:", err.message);
+
+        //  Failure → mark FAILED
+        await TransactionModel.updateStatus(
+          transaction.id,
+          "FAILED",
+          err.message,
+        );
+
+        return res.status(500).json({
+          success: false,
+          message: "BBPS payment failed",
+        });
+      }
 
       res.json({
         success: true,
+        transaction_id: transaction.id,
         bbpsResponse,
       });
     } catch (err) {

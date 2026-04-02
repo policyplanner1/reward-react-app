@@ -63,7 +63,12 @@ async function generatePayBillHeaders(key, utility_acc_no, amount, user_code) {
   };
 }
 
+async function fetchHeaders() {
+  return await generateFetchBillHeaders(process.env.EKO_SECRET_KEY);
+}
+
 module.exports = {
   generateFetchBillHeaders,
   generatePayBillHeaders,
+  fetchHeaders,
 };
