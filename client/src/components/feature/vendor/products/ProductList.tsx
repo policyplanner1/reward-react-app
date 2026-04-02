@@ -1443,7 +1443,7 @@ export default function ProductManagerList() {
           </table>
         </div>
 
-        {/* 🔄 VALIDATING LOADER */}
+        {/*  VALIDATING LOADER */}
         {validating && (
           <div className="mt-4 text-sm text-blue-600 flex items-center gap-2">
             <FaSpinner className="animate-spin" />
@@ -1451,7 +1451,7 @@ export default function ProductManagerList() {
           </div>
         )}
 
-        {/* ✅ VALIDATION SUMMARY */}
+        {/*  VALIDATION SUMMARY */}
         {validationResult && (
           <div className="mt-6 p-5 rounded-xl border bg-white shadow">
             <h3 className="font-semibold text-lg mb-3">
@@ -1479,23 +1479,44 @@ export default function ProductManagerList() {
           </div>
         )}
 
-        {/* ❌ INVALID ROW DETAILS */}
+        {/*  INVALID ROW DETAILS */}
         {validationResult?.invalidRows?.length > 0 && (
-          <div className="mt-6 p-4 bg-red-50 rounded-lg">
-            <h3 className="font-semibold text-red-700">
-              Invalid Rows ({validationResult.invalidCount})
-            </h3>
+          <div className="mt-6 bg-white border border-red-200 rounded-2xl shadow-sm">
+            {/* HEADER */}
+            <div className="flex items-center justify-between px-5 py-4 border-b bg-red-50 rounded-t-2xl">
+              <h3 className="text-sm font-semibold text-red-700 flex items-center gap-2">
+                ❌ Invalid Rows ({validationResult.invalidCount})
+              </h3>
+            </div>
 
-            {validationResult.invalidRows.map((row: any, i: number) => (
-              <div key={i} className="mt-2 text-sm">
-                Row {row.rowNumber}:
-                <ul className="text-red-600">
-                  {row.errors.map((err: string, j: number) => (
-                    <li key={j}>• {err}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+            {/* LIST */}
+            <div className="max-h-72 overflow-y-auto divide-y">
+              {validationResult.invalidRows.map((row: any, i: number) => (
+                <div key={i} className="px-5 py-3 hover:bg-red-50 transition">
+                  {/* ROW HEADER */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-gray-800">
+                      Row {row.rowNumber}
+                    </span>
+
+                    <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">
+                      {row.errors.length} error
+                      {row.errors.length > 1 ? "s" : ""}
+                    </span>
+                  </div>
+
+                  {/* ERRORS */}
+                  <ul className="mt-2 space-y-1 text-sm text-red-600">
+                    {row.errors.map((err: string, j: number) => (
+                      <li key={j} className="flex items-start gap-2">
+                        <span className="text-red-400">•</span>
+                        <span>{err}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
