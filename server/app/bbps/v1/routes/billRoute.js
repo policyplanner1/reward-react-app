@@ -4,18 +4,18 @@ const BillController = require("../controllers/billController");
 const auth = require("../../../ecommerce/v1/middlewares/auth");
 
 // Categories
-router.get("/categories", auth, BillController.getCategories);
+router.get("/categories", BillController.getCategories);
 
 // Operators
-router.get("/operators", auth, BillController.getOperators);
+router.get("/operators", BillController.getOperators);
 
 // Grouped operators
-router.get("/operators-grouped", auth, BillController.getGroupedOperators);
+router.get("/operators-grouped", BillController.getGroupedOperators);
 
 // Operator details
-router.get("/operator/:id", auth, BillController.getOperatorDetails);
+router.get("/operator/:id", BillController.getOperatorDetails);
 
 // fetch bill details
-router.post("/fetch-bill", auth, BillController.fetchBill);
+router.post("/fetch-bill", BillController.fetchBill);
 
 module.exports = router;

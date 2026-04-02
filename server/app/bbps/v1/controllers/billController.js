@@ -25,23 +25,23 @@ class BillController {
   // Get Grouped operators
   async getGroupedOperators(req, res) {
     try {
-      const { category, search } = req.query;
+      const { category_id, search } = req.query;
 
-      if (!category) {
+      if (!category_id) {
         return res.status(400).json({
           success: false,
-          message: "Category is required",
+          message: "category_id is required",
         });
       }
 
-      const data = await ekoService.getOperatorsGrouped(category, search);
+      const data = await ekoService.getOperatorsGrouped(category_id, search);
 
       res.json({
         success: true,
         data,
       });
     } catch (error) {
-      console.error("Error in getGroupedOperators:", error);
+      console.error("EKO ERROR:", error.response?.data || error.message);
 
       res.status(500).json({
         success: false,
