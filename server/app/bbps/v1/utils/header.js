@@ -10,7 +10,7 @@ const agent =
 const callHeaderAPI = async (endpoint, payload) => {
   try {
     const res = await axios.post(
-      `${process.env.BACKEND_URL}${endpoint}`,
+      `${process.env.HEADER_API_URL}${endpoint}`,
       payload,
       {
         headers: { "Content-Type": "application/json" },
