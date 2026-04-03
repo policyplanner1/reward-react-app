@@ -6,6 +6,7 @@ const morgan = require("morgan");
 const path = require("path");
 require("dotenv").config();
 require('./services/ExpressBees/cron/shipmentCron');
+require('./services/Bbps/retryCron');
 
 // dashboard Route
 const dashboardRoute = require("./routes/indexRoute");
