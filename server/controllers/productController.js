@@ -91,11 +91,12 @@ class ProductController {
       );
 
       // 3 Move files from temp → final folders
-      const movedFiles = [];
+      let movedFiles = [];
 
       if (req.files && req.files.length) {
         for (const file of req.files) {
           const filename = path.basename(file.path);
+          const isDocField = /^\d+$/.test(file.fieldname);
           let newPath;
 
           // Main product images
@@ -104,9 +105,11 @@ class ProductController {
             file.finalPath = `products/${vendorId}/${productId}/images/${filename}`;
           }
           // Documents (fieldname is numeric ID)
-          else if (!isNaN(parseInt(file.fieldname))) {
+          else if (isDocField) {
+            const docId = Number(file.fieldname);
             newPath = path.join(docsFolder, filename);
             file.finalPath = `products/${vendorId}/${productId}/documents/${filename}`;
+            file.documentId = docId;
           }
           // Variant images (fieldname like variant_0_image)
           else if (file.fieldname.startsWith("variant_")) {
@@ -191,7 +194,9 @@ class ProductController {
       }
 
       // 5 Insert product documents
-      const docFiles = movedFiles.filter((f) => !isNaN(parseInt(f.fieldname)));
+      // const docFiles = movedFiles.filter((f) => !isNaN(parseInt(f.fieldname)));
+      // const docFiles = movedFiles.filter((f) => /^\d+$/.test(f.fieldname));
+      const docFiles = movedFiles.filter((f) => f.documentId);
       if (docFiles.length) {
         await ProductModel.insertProductDocuments(
           connection,
@@ -219,6 +224,337 @@ class ProductController {
       if (connection) connection.release();
     }
   }
+
+  // validate Bulk upload
+  async bulkValidate(req, res) {
+    try {
+      const { categoryId, subcategoryId, rows } = req.body;
+
+      if (!categoryId || !subcategoryId || !rows?.length) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid payload",
+        });
+      }
+
+      // 1. Fetch attributes (reuse your query)
+      const [attributes] = await db.execute(
+        `
+      SELECT
+        ca.attribute_key,
+        ca.input_type,
+        ca.is_required,
+        GROUP_CONCAT(cav.value ORDER BY cav.sort_order) AS options
+      FROM category_attributes ca
+      LEFT JOIN category_attribute_values cav
+        ON cav.attribute_id = ca.id
+      WHERE
+        ca.is_active = 1
+        AND (
+          ca.subcategory_id = ?
+          OR (ca.category_id = ? AND ca.subcategory_id IS NULL)
+        )
+      GROUP BY ca.id
+      `,
+        [subcategoryId, categoryId],
+      );
+
+      const attributeMap = {};
+      attributes.forEach((a) => {
+        attributeMap[a.attribute_key] = {
+          input_type: a.input_type,
+          is_required: a.is_required,
+          options: a.options ? a.options.split(",").map((o) => o.trim()) : [],
+        };
+      });
+
+      const validRows = [];
+      const invalidRows = [];
+
+      // 2. Validate each row
+      rows.forEach((row, index) => {
+        const errors = [];
+
+        //  BASE FIELD VALIDATION
+        if (!row.productName?.trim()) {
+          errors.push("productName is required");
+        }
+
+        if (!row.brandName?.trim()) {
+          errors.push("brandName is required");
+        }
+
+        if (row.gstSlab && (row.gstSlab < 0 || row.gstSlab > 100)) {
+          errors.push("gstSlab must be between 0–100");
+        }
+
+        if (row.hsnSacCode && !/^\d{6,8}$/.test(row.hsnSacCode)) {
+          errors.push("hsnSacCode must be 6–8 digits");
+        }
+
+        //  ATTRIBUTE VALIDATION
+        Object.keys(attributeMap).forEach((key) => {
+          const attr = attributeMap[key];
+          const value = row[key];
+
+          // Required
+          if (attr.is_required && !value) {
+            errors.push(`${key} is required`);
+            return;
+          }
+
+          if (!value) return;
+
+          // SELECT / MULTISELECT
+          if (attr.options.length > 0) {
+            const values = value.split(",").map((v) => v.trim());
+
+            values.forEach((v) => {
+              if (!attr.options.includes(v)) {
+                errors.push(`Invalid value "${v}" for ${key}`);
+              }
+            });
+          }
+
+          // NUMBER
+          if (attr.input_type === "number" && isNaN(Number(value))) {
+            errors.push(`${key} must be a number`);
+          }
+        });
+
+        //  UNKNOWN ATTRIBUTE CHECK
+        Object.keys(row).forEach((key) => {
+          if (
+            ![
+              "productName",
+              "brandName",
+              "manufacturer",
+              "gstSlab",
+              "hsnSacCode",
+              "description",
+              "shortDescription",
+              "brandDescription",
+              "is_discount_eligible",
+              "is_returnable",
+              "return_window_days",
+              "delivery_sla_min_days",
+              "delivery_sla_max_days",
+              "shipping_class",
+            ].includes(key) &&
+            !attributeMap[key]
+          ) {
+            errors.push(`Unknown attribute: ${key}`);
+          }
+
+          if (
+            row.is_discount_eligible &&
+            !["0", "1", 0, 1].includes(row.is_discount_eligible)
+          ) {
+            errors.push("is_discount_eligible must be 0 or 1");
+          }
+
+          if (
+            row.is_returnable &&
+            !["0", "1", 0, 1].includes(row.is_returnable)
+          ) {
+            errors.push("is_returnable must be 0 or 1");
+          }
+
+          if (
+            row.shipping_class &&
+            !["standard", "bulky", "fragile"].includes(row.shipping_class)
+          ) {
+            errors.push("Invalid shipping_class");
+          }
+        });
+
+        //  FINAL RESULT
+        if (errors.length > 0) {
+          invalidRows.push({
+            rowNumber: index + 1,
+            errors,
+            data: row,
+          });
+        } else {
+          validRows.push(row);
+        }
+      });
+
+      return res.json({
+        success: true,
+        validCount: validRows.length,
+        invalidCount: invalidRows.length,
+        validRows,
+        invalidRows,
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({
+        success: false,
+        message: "Validation failed",
+      });
+    }
+  }
+
+  // Bulk upload products
+  async bulkUpload(req, res) {
+    const connection = await db.getConnection();
+
+    try {
+      const { categoryId, subcategoryId, rows } = req.body;
+      const vendorId = req.user?.vendor_id;
+
+      if (!rows?.length) {
+        return res.status(400).json({
+          success: false,
+          message: "No rows to process",
+        });
+      }
+
+      // 1. Fetch attributes (same as validation)
+      const [attributes] = await connection.execute(
+        `
+      SELECT
+        ca.attribute_key,
+        ca.is_required,
+        ca.input_type,
+        GROUP_CONCAT(cav.value ORDER BY cav.sort_order) AS options
+      FROM category_attributes ca
+      LEFT JOIN category_attribute_values cav
+        ON cav.attribute_id = ca.id
+      WHERE
+        ca.is_active = 1
+        AND (
+          ca.subcategory_id = ?
+          OR (ca.category_id = ? AND ca.subcategory_id IS NULL)
+        )
+      GROUP BY ca.id
+      `,
+        [subcategoryId, categoryId],
+      );
+
+      const attributeKeys = attributes.map((a) => a.attribute_key);
+      const toBool = (val) =>
+        val === "1" || val === 1 || val === true || val === "true";
+
+      const results = [];
+
+      // 2. Process each row
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+
+        try {
+          if (!row.productName || !row.brandName) {
+            results.push({
+              row: i + 1,
+              status: "failed",
+              error: "productName and brandName are required",
+            });
+            continue;
+          }
+
+          //  BASE PRODUCT DATA
+          const productData = {
+            productName: row.productName,
+            brandName: row.brandName,
+            manufacturer: row.manufacturer || null,
+            description: row.description || "",
+            shortDescription: row.shortDescription || "",
+            brandDescription: row.brandDescription || "",
+            gstSlab: Number(row.gstSlab) || 0,
+            hsnSacCode: row.hsnSacCode || null,
+            is_discount_eligible: toBool(row.is_discount_eligible),
+            is_returnable: toBool(row.is_returnable),
+            return_window_days: Number(row.return_window_days) || 0,
+            delivery_sla_min_days: Number(row.delivery_sla_min_days) || 0,
+            delivery_sla_max_days: Number(row.delivery_sla_max_days) || 0,
+            shipping_class: row.shipping_class || null,
+          };
+
+          await connection.beginTransaction();
+
+          //  CREATE PRODUCT
+          const productId = await ProductModel.createProduct(
+            connection,
+            vendorId,
+            {
+              ...productData,
+              category_id: categoryId,
+              subcategory_id: subcategoryId,
+            },
+          );
+
+          //  MAP ATTRIBUTES
+          const productAttributes = {};
+
+          attributeKeys.forEach((key) => {
+            // if (row[key]) {
+            if (
+              row[key] !== undefined &&
+              row[key] !== null &&
+              row[key] !== ""
+            ) {
+              productAttributes[key] = row[key]
+                .toString()
+                .split(",")
+                .map((v) => v.trim());
+            }
+          });
+
+          //  SAVE ATTRIBUTES
+          if (Object.keys(productAttributes).length > 0) {
+            await ProductModel.saveProductAttributes(
+              connection,
+              productId,
+              productAttributes,
+            );
+          }
+
+          //  GENERATE VARIANTS
+          await ProductModel.generateProductVariants(
+            connection,
+            productId,
+            categoryId,
+            subcategoryId,
+          );
+
+          await connection.commit();
+
+          results.push({
+            row: i + 1,
+            status: "success",
+            productId,
+          });
+        } catch (err) {
+          await connection.rollback();
+          console.error(`Row ${i + 1} failed`, err);
+
+          results.push({
+            row: i + 1,
+            status: "failed",
+            error: err.message,
+          });
+        }
+      }
+
+      const successCount = results.filter((r) => r.status === "success").length;
+      const failedCount = results.length - successCount;
+
+      return res.json({
+        success: true,
+        message: `${successCount} uploaded, ${failedCount} failed`,
+        results,
+      });
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    } finally {
+      connection.release();
+    }
+  }
+
   // Get product by ID
   async getProductDetailsById(req, res) {
     try {
@@ -477,7 +813,7 @@ class ProductController {
       data.forEach((item) => {
         worksheet.addRow({
           ...item,
-          product_id: `PRD-${item.product_id}`, 
+          product_id: `PRD-${item.product_id}`,
         });
       });
 

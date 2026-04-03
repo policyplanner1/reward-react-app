@@ -131,8 +131,9 @@ async function processUploadedFiles(
 async function generateUniqueSKU(connection, productId) {
   let sku;
   let exists = true;
+  let attempts = 0;
 
-  while (exists) {
+  while (exists && attempts < 10) {
     sku = generateSKU(productId);
 
     const [[row]] = await connection.execute(
@@ -141,8 +142,10 @@ async function generateUniqueSKU(connection, productId) {
     );
 
     exists = !!row;
+    attempts++;
   }
 
+  if (attempts >= 10) throw new Error("SKU generation failed");
   return sku;
 }
 

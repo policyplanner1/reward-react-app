@@ -1,0 +1,79 @@
+const ekoService = require("../services/eko_service");
+
+class BillController {
+  async getCategories(req, res) {
+    try {
+      const data = await ekoService.getCategories();
+      res.json(data);
+    } catch (e) {
+      console.error("EKO ERROR:", e.response?.data || e.message);
+      if (e.response?.status === 500) {
+        return res.status(503).json({
+          success: false,
+          message: "Service temporarily unavailable. Please try again.",
+        });
+      }
+    }
+  }
+
+  async getOperators(req, res) {
+    try {
+      const { category_id } = req.query;
+
+      const data = await ekoService.getOperators(category_id);
+
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  // Get Grouped operators
+  async getGroupedOperators(req, res) {
+    try {
+      const { category_id, search } = req.query;
+
+      if (!category_id) {
+        return res.status(400).json({
+          success: false,
+          message: "category_id is required",
+        });
+      }
+
+      const data = await ekoService.getOperatorsGrouped(category_id, search);
+
+      res.json({
+        success: true,
+        data,
+      });
+    } catch (error) {
+      console.error("EKO ERROR:", error.response?.data || error.message);
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch grouped operators",
+        error: error.message,
+      });
+    }
+  }
+
+  async getOperatorDetails(req, res) {
+    try {
+      const data = await ekoService.getOperatorDetails(req.params.id);
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  async fetchBill(req, res) {
+    try {
+      const data = await ekoService.fetchBill(req.body, req);
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+}
+
+module.exports = new BillController();
