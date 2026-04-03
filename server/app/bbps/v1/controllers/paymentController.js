@@ -110,12 +110,15 @@ class PaymentController {
       let bbpsResponse;
 
       try {
-        bbpsResponse = await ekoService.payBill({
-          utility_acc_no: transaction.utility_acc_no,
-          operator_id: transaction.operator_id,
-          amount: transaction.amount,
-          cycle_number: transaction.cycle_number,
-        }, req);
+        bbpsResponse = await ekoService.payBill(
+          {
+            utility_acc_no: transaction.utility_acc_no,
+            operator_id: transaction.operator_id,
+            amount: transaction.amount,
+            cycle_number: transaction.cycle_number,
+          },
+          req,
+        );
 
         //  Success → mark PAID
         await TransactionModel.updateStatus(
@@ -124,18 +127,18 @@ class PaymentController {
           bbpsResponse,
         );
       } catch (err) {
-        console.error("BBPS Error:", err.message);
+        console.error("BBPS Error:", err);
 
-        //  Failure → mark FAILED
+        //  MARK FOR RETRY (NOT FINAL FAILURE)
         await TransactionModel.updateStatus(
           transaction.id,
-          "FAILED",
+          "FAILED_RETRY",
           err.message,
         );
 
         return res.status(500).json({
           success: false,
-          message: "BBPS payment failed",
+          message: "Payment processing failed, will retry automatically",
         });
       }
 
