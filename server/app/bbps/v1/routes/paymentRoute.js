@@ -9,4 +9,7 @@ router.post("/create-order", PaymentController.createOrder);
 // verify payment
 router.post("/verify-payment", PaymentController.verifyPayment);
 
+// retry Transaction
+router.post("/retry", auth, PaymentController.retryTransaction);
+
 module.exports = router;

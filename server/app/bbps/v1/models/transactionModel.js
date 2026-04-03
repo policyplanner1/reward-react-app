@@ -66,6 +66,16 @@ class TransactionModel {
       [id],
     );
   }
+
+  // Get transaction By ID
+  async getById(id) {
+    const [rows] = await db.execute(
+      `SELECT * FROM bbps_transactions WHERE id = ?`,
+      [id],
+    );
+
+    return rows[0];
+  }
 }
 
 module.exports = new TransactionModel();

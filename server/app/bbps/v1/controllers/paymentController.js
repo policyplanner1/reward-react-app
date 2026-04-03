@@ -152,6 +152,35 @@ class PaymentController {
       res.status(500).json({ error: err.message });
     }
   }
+
+  // Retry Transaction
+  async retryTransaction(req, res) {
+    try {
+      const { transaction_id } = req.body;
+
+      const txn = await TransactionModel.getById(transaction_id);
+
+      if (!txn) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      const result = await ekoService.payBill({
+        utility_acc_no: txn.utility_acc_no,
+        operator_id: txn.operator_id,
+        amount: txn.amount,
+        cycle_number: txn.cycle_number,
+      });
+
+      await TransactionModel.updateStatus(txn.id, "PAID", result);
+
+      res.json({ success: true, result });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: "Retry failed",
+      });
+    }
+  }
 }
 
 module.exports = new PaymentController();
