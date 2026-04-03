@@ -6,6 +6,7 @@ const morgan = require("morgan");
 const path = require("path");
 require("dotenv").config();
 require('./services/ExpressBees/cron/shipmentCron');
+require('./services/Bbps/retryCron');
 
 // dashboard Route
 const dashboardRoute = require("./routes/indexRoute");
@@ -18,6 +19,7 @@ const ecommerceRoute = require("./app/ecommerce/v1/routes/indexRoute");
 const commonRoute = require("./app/common/routes/indexRoute");
 const serviceRoute = require("./app/service/v1/routes/indexRoute");
 const stepCounterRoute= require("./app/step-counter/v1/routes/indexRoute");
+const bbpsRoute= require("./app/bbps/v1/routes/indexRoute");
 
 const app = express();
 
@@ -73,6 +75,7 @@ app.use("/v1", ecommerceRoute);
 app.use("/v1", serviceRoute);
 app.use("/v1", stepCounterRoute);
 app.use("/v1", commonRoute);
+app.use("/v1", bbpsRoute);
 
 // 404 Handler
 app.use((req, res) => {
