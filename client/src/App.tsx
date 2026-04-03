@@ -14,6 +14,7 @@ import VerifyOtpPage from "./auth/VerifyOtpPage";
 /* Layouts */
 import VendorLayout from "./layouts/VendorLayout";
 import ManagerLayout from "./layouts/ManagerLayout";
+import AdminLayout from "./layouts/AdminLayout";
 
 /* Dashboards */
 import VendorDashboard from "./pages/vendor/Dashboard";
@@ -37,6 +38,12 @@ import EditProductPage from "./components/feature/vendor/products/ProductEdit";
 import ReviewProductPage from "./components/feature/vendor/products/ProductView";
 import VendorApprovalList from "./components/feature/manager/vendor/VendorApprovalList";
 import VendorApprovalForm from "./components/feature/manager/vendor/VendorApprovalForm";
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminServicesPage from "./pages/admin/Services.tsx";
+import AdminVendorApprovalList from "./components/feature/admin/vendor/VendorApprovalList";
+import AdminVendorApprovalForm from "./components/feature/admin/vendor/VendorApprovalForm";
+import AdminProductApprovalList from "./components/feature/admin/product/ProductApprovalList";
+import AdminProductViewPage from "./components/feature/admin/product/ProductViewPage";
 import NotFoundPage from "./pages/NotFound";
 
 // Vendor Orders
@@ -251,6 +258,17 @@ export default function App() {
         <Route path={routes.manager.rewards.edit} element={<RewardForm />} />
 
         <Route path={routes.manager.rewards.mapping} element={<ProductRewardMapping />} />
+      </Route>
+
+      {/* ========== ADMIN ========== */}
+      <Route element={<AdminLayout />}>
+        <Route path={routes.admin.dashboard} element={<AdminDashboard />} />
+        <Route path={routes.admin.vendors} element={<AdminVendorApprovalList />} />
+        <Route path={routes.admin.changePassword} element={<ChangePasswordPage />} />
+        <Route path={routes.admin.products} element={<AdminProductApprovalList />} />
+        <Route path={routes.admin.productView} element={<AdminProductViewPage />} />
+        <Route path={routes.admin.vendorReview} element={<AdminVendorApprovalForm />} />
+        <Route path={routes.admin.services} element={<AdminServicesPage />} />
       </Route>
 
       {/* ========== FALLBACK ========== */}

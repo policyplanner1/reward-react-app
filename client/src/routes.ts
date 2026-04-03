@@ -48,4 +48,14 @@ export const routes = {
       mapping:"/manager/reward-mapping",
     }
   },
+  admin: {
+    dashboard: "/admin/dashboard",
+    changePassword: "/admin/change-password",
+    vendors: "/admin/vendors",
+    products: "/admin/products",
+    services: "/admin/services",
+    productView: "/admin/product/:id",
+    vendorReview: "/admin/vendor-review/:id",
+  
+  },
 };
