@@ -43,6 +43,29 @@ class TransactionModel {
     );
     return rows[0];
   }
+
+  // get retryable transactions
+  async getRetryable() {
+    const [rows] = await db.execute(`
+    SELECT * FROM bbps_transactions
+    WHERE bbps_status = 'FAILED_RETRY'
+    AND retry_count < max_retry
+  `);
+
+    return rows;
+  }
+
+  // Increment retry count
+  async incrementRetry(id) {
+    await db.execute(
+      `
+    UPDATE bbps_transactions 
+    SET retry_count = retry_count + 1 
+    WHERE id = ?
+  `,
+      [id],
+    );
+  }
 }
 
 module.exports = new TransactionModel();
