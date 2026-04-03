@@ -76,6 +76,16 @@ class TransactionModel {
 
     return rows[0];
   }
+
+  // Get transaction by status
+  async getByStatus(status) {
+    const [rows] = await db.execute(
+      `SELECT * FROM bbps_transactions WHERE bbps_status = ?`,
+      [status],
+    );
+
+    return rows;
+  }
 }
 
 module.exports = new TransactionModel();
