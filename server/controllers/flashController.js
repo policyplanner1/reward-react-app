@@ -16,6 +16,13 @@ class flashController {
         });
       }
 
+      if (new Date(start_at) >= new Date(end_at)) {
+        return res.status(400).json({
+          success: false,
+          message: "End time must be after start time",
+        });
+      }
+
       const [result] = await db.query(
         `INSERT INTO flash_sales
        (title, banner_image, start_at, end_at, status)
@@ -192,7 +199,11 @@ class flashController {
         pv.variant_attributes,
         pv.mrp,
         pv.sale_price AS original_price,
-        fsi.offer_price,
+        CASE 
+         WHEN fsi.offer_price IS NOT NULL AND fsi.offer_price > 0
+            THEN fsi.offer_price
+            ELSE pv.sale_price
+          END AS final_price, 
         fs.start_at,
         fs.end_at
       FROM flash_sales fs
@@ -209,6 +220,7 @@ class flashController {
       WHERE
         fs.status = 'active'
         AND NOW() BETWEEN fs.start_at AND fs.end_at
+        AND (fsi.max_qty IS NULL OR fsi.sold_qty < fsi.max_qty)
         AND ep.status = 'approved'
         AND ep.is_visible = 1
         AND pv.is_visible = 1
@@ -236,7 +248,9 @@ class flashController {
         pv.sku,
         pv.sale_price,
         fsi.offer_price AS flash_price,
-        fsi.max_qty
+        fsi.max_qty,
+        fsi.sold_qty,
+        (fsi.max_qty - fsi.sold_qty) AS remaining_qty
       FROM flash_sale_items fsi
       JOIN product_variants pv
         ON pv.variant_id = fsi.variant_id
@@ -299,7 +313,9 @@ class flashController {
 
   // add variants to flash sale
   async addVariantsToFlashSale(req, res) {
+    const conn = await db.getConnection();
     try {
+      await conn.beginTransaction();
       const { flashId } = req.params;
       const { variant_ids } = req.body;
 
@@ -311,9 +327,9 @@ class flashController {
       }
 
       for (const variantId of variant_ids) {
-        await db.query(
+        await conn.query(
           `
-        INSERT INTO flash_sale_items
+        INSERT IGNORE INTO flash_sale_items
         (flash_sale_id, variant_id, offer_price)
         VALUES (?, ?, 0)
         `,
@@ -321,13 +337,18 @@ class flashController {
         );
       }
 
+      await conn.commit();
+
       return res.json({
         success: true,
         message: "Variants added successfully",
       });
     } catch (err) {
+      await conn.rollback();
       console.error(err);
       return res.status(500).json({ success: false, message: err.message });
+    } finally {
+      conn.release();
     }
   }
 
