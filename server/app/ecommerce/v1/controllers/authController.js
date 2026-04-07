@@ -361,11 +361,9 @@ class AuthController {
   async loginUser(req, res) {
     try {
       const { email, password } = req.body;
-
       const normalizedEmail = email.trim().toLowerCase();
 
       const user = await AuthModel.findByEmail(normalizedEmail);
-
       if (!user) return res.status(401).json({ success: false });
 
       if (Number(user.status) !== 1)
@@ -380,23 +378,19 @@ class AuthController {
 
       const match = await bcrypt.compare(password, user.password);
       if (!match) return res.status(401).json({ success: false });
-
       const accessToken = jwt.sign(
         { user_id: user.user_id, token_version: user.token_version },
         process.env.ACCESS_TOKEN_SECRET,
         { expiresIn: ACCESS_EXPIRES },
       );
-
       const refreshToken = jwt.sign(
         { user_id: user.user_id },
         process.env.REFRESH_TOKEN_SECRET,
         { expiresIn: `${REFRESH_EXPIRES_DAYS}d` },
       );
-
       const expiryDate = new Date(
         Date.now() + REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
       );
-
       // check existing device
       const deviceInfo = req.headers["user-agent"];
       const ipAddress = req.ip;

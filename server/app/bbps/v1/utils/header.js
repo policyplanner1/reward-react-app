@@ -1,54 +1,80 @@
 const crypto = require("crypto");
 
 //  Generate timestamp
-const getTimestamp = () => Math.floor(Date.now() / 1000).toString();
+const getTimestamp = () => Date.now().toString();
 
-//  Generate secret key
-const generateSecretKey = (secretKey, timestamp) => {
-  return crypto.createHmac("sha256", secretKey).update(timestamp).digest("hex");
+const getAccessKeySigningKey = () => {
+  const accessKey = (process.env.EKO_ACCESS_KEY || "").trim();
+
+  if (!accessKey) {
+    throw new Error("EKO_ACCESS_KEY is missing");
+  }
+
+  // EKO requirement: use base64(access_key) as HMAC key material.
+  return Buffer.from(accessKey, "utf8").toString("base64");
+};
+
+//  Generate secret key: base64(HMAC_SHA256(timestamp, base64(access_key)))
+const generateSecretKey = (timestamp) => {
+  const signingKey = getAccessKeySigningKey();
+  return crypto.createHmac("sha256", signingKey).update(timestamp).digest("base64");
 };
 
 // Generate request hash (for payBill)
-const generateRequestHash = (secretKey, payloadString) => {
+const generateRequestHash = (payloadString) => {
+  const signingKey = getAccessKeySigningKey();
+
   return crypto
-    .createHmac("sha256", secretKey)
+    .createHmac("sha256", signingKey)
     .update(payloadString)
-    .digest("hex");
+    .digest("base64");
 };
+
+const buildBaseHeaders = (timestamp, secret_key) => ({
+  "Content-Type": "application/json",
+  developer_key: process.env.EKO_DEVELOPER_KEY,
+  "secret-key": secret_key,
+  "secret-key-timestamp": timestamp,
+});
 
 //  Common headers (for categories, operators, fetchBill)
 exports.fetchHeaders = async () => {
   const timestamp = getTimestamp();
+  const secret_key = generateSecretKey(timestamp);
+  const headers = buildBaseHeaders(timestamp, secret_key);
 
-  const secret_key = generateSecretKey(process.env.EKO_SECRET_KEY, timestamp);
-
-  return {
-    "Content-Type": "application/json",
+  console.info("[BBPS][headers][fetch]", {
+    timestamp,
+    secret_key,
     developer_key: process.env.EKO_DEVELOPER_KEY,
-    "secret-key": secret_key,
-    "secret-key-timestamp": timestamp,
-  };
+    headers,
+  });
+
+  return headers;
 };
 
 //  PayBill headers (IMPORTANT)
 exports.payHeaders = async (utility_acc_no, amount, user_code) => {
   const timestamp = getTimestamp();
-
-  const secret_key = generateSecretKey(process.env.EKO_SECRET_KEY, timestamp);
+  const secret_key = generateSecretKey(timestamp);
 
   //  VERY IMPORTANT: payload string format
   const payloadString = `${utility_acc_no}|${amount}|${user_code}`;
 
-  const request_hash = generateRequestHash(
-    process.env.EKO_SECRET_KEY,
-    payloadString,
-  );
+  const request_hash = generateRequestHash(payloadString);
 
-  return {
-    "Content-Type": "application/json",
-    developer_key: process.env.EKO_DEVELOPER_KEY,
-    "secret-key": secret_key,
-    "secret-key-timestamp": timestamp,
+  const headers = {
+    ...buildBaseHeaders(timestamp, secret_key),
     request_hash,
   };
+
+  console.info("[BBPS][headers][pay]", {
+    timestamp,
+    secret_key,
+    request_hash,
+    payloadString,
+    headers,
+  });
+
+  return headers;
 };
