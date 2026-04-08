@@ -10,6 +10,7 @@ const {
   notifyVendorStatusChange,
 } = require("../services/vendorNotificationService");
 const { uploadToR2 } = require("../utils/r2upload");
+const { getPrivateFileUrl } = require("../utils/r2SignedUrl");
 
 // helper function
 async function moveVendorFiles(vendorId, files) {
@@ -854,6 +855,15 @@ class VendorController {
           success: false,
           message: "Vendor not found",
         });
+      }
+
+      //  signed URLs to documents
+      if (data.documents && data.documents.length) {
+        for (const doc of data.documents) {
+          if (doc.file_path) {
+            doc.url = await getPrivateFileUrl(doc.file_path);
+          }
+        }
       }
 
       return res.json({ success: true, data });
