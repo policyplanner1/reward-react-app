@@ -5,6 +5,7 @@ const path = require("path");
 const { moveFile } = require("../utils/moveFile");
 const { compressVideo } = require("../utils/videoCompression");
 const ExcelJS = require("exceljs");
+const { uploadToR2 } = require("../utils/r2upload");
 
 class ProductController {
   // create Product
@@ -52,14 +53,14 @@ class ProductController {
         });
       }
 
-      // 1 Create product entry
+      // 1 Create product
       const productId = await ProductModel.createProduct(
         connection,
         vendorId,
         body,
       );
 
-      // 1.5  Save product attributes (JSON)
+      // 1.5 Attributes
       if (body.attributes) {
         const attributes =
           typeof body.attributes === "string"
@@ -73,55 +74,31 @@ class ProductController {
         );
       }
 
-      // 2 Prepare folder structure
-      const baseFolder = path.join(
-        __dirname,
-        "../uploads/products",
-        `${vendorId}`,
-        `${productId}`,
-      );
-      const imagesFolder = path.join(baseFolder, "images");
-      const docsFolder = path.join(baseFolder, "documents");
-      const variantFolder = path.join(baseFolder, "variants");
-
-      [baseFolder, imagesFolder, docsFolder, variantFolder].forEach(
-        (folder) => {
-          if (!fs.existsSync(folder)) fs.mkdirSync(folder, { recursive: true });
-        },
-      );
-
-      // 3 Move files from temp → final folders
       let movedFiles = [];
 
       if (req.files && req.files.length) {
         for (const file of req.files) {
           const filename = path.basename(file.path);
           const isDocField = /^\d+$/.test(file.fieldname);
-          let newPath;
 
-          // Main product images
+          // ================= IMAGES =================
           if (file.fieldname === "images") {
-            newPath = path.join(imagesFolder, filename);
-            file.finalPath = `products/${vendorId}/${productId}/images/${filename}`;
+            file.finalPath = `public/products/${vendorId}/${productId}/images/${filename}`;
           }
-          // Documents (fieldname is numeric ID)
-          else if (isDocField) {
-            const docId = Number(file.fieldname);
-            newPath = path.join(docsFolder, filename);
-            file.finalPath = `products/${vendorId}/${productId}/documents/${filename}`;
-            file.documentId = docId;
-          }
-          // Variant images (fieldname like variant_0_image)
-          else if (file.fieldname.startsWith("variant_")) {
-            newPath = path.join(variantFolder, filename);
-            file.finalPath = `products/${vendorId}/${productId}/variants/${filename}`;
-          } else if (file.fieldname === "video") {
-            const videoFolder = path.join(baseFolder, "video");
-            if (!fs.existsSync(videoFolder)) {
-              fs.mkdirSync(videoFolder, { recursive: true });
-            }
 
-            // 1 Validate
+          // ================= DOCUMENTS =================
+          else if (isDocField) {
+            file.finalPath = `public/products/${vendorId}/${productId}/documents/${filename}`;
+            file.documentId = Number(file.fieldname);
+          }
+
+          // ================= VARIANTS =================
+          else if (file.fieldname.startsWith("variant_")) {
+            file.finalPath = `public/products/${vendorId}/${productId}/variants/${filename}`;
+          }
+
+          // ================= VIDEO =================
+          else if (file.fieldname === "video") {
             if (!file.mimetype.startsWith("video/")) {
               throw new Error("Invalid video file type");
             }
@@ -130,50 +107,55 @@ class ProductController {
               throw new Error("Video exceeds size limit");
             }
 
-            // 2 Move original file from temp → product video folder
-            const originalPath = path.join(
-              videoFolder,
-              path.basename(file.path),
-            );
-            await moveFile(file.path, originalPath);
+            const tempVideoPath = file.path;
 
-            // 3 Define compressed file path
             const compressedFilename = `compressed-${Date.now()}-${Math.random()
               .toString(36)
               .substring(2, 8)}.mp4`;
-            const compressedPath = path.join(videoFolder, compressedFilename);
 
-            // 4 compress
+            const compressedPath = path.join(
+              path.dirname(tempVideoPath),
+              compressedFilename,
+            );
+
             try {
-              await compressVideo(originalPath, compressedPath);
-              await fs.promises.unlink(originalPath);
+              await compressVideo(tempVideoPath, compressedPath);
+              await fs.promises.unlink(tempVideoPath);
             } catch (err) {
-              if (fs.existsSync(originalPath)) {
-                await fs.promises.unlink(originalPath);
-              }
-              if (fs.existsSync(compressedPath)) {
+              if (fs.existsSync(tempVideoPath))
+                await fs.promises.unlink(tempVideoPath);
+              if (fs.existsSync(compressedPath))
                 await fs.promises.unlink(compressedPath);
-              }
               throw new Error("Video compression failed");
             }
 
-            // 5 Update file metadata for DB storage
-            file.finalPath = `products/${vendorId}/${productId}/video/${compressedFilename}`;
-            file.path = compressedPath;
+            const buffer = fs.readFileSync(compressedPath);
+
+            file.finalPath = `public/products/${vendorId}/${productId}/video/${compressedFilename}`;
+
+            await uploadToR2(buffer, file.finalPath, "video/mp4");
+
+            fs.unlinkSync(compressedPath);
 
             movedFiles.push(file);
-
             continue;
           } else {
             continue;
           }
 
-          await moveFile(file.path, newPath);
+          // ================= UPLOAD TO R2 =================
+          const buffer = fs.readFileSync(file.path);
+
+          await uploadToR2(buffer, file.finalPath, file.mimetype);
+
+          fs.unlinkSync(file.path);
+
           movedFiles.push(file);
         }
       }
 
-      // 4 Insert main product images
+      // ================= DB INSERT =================
+
       const mainImages = movedFiles.filter((f) => f.fieldname === "images");
       if (mainImages.length) {
         await ProductModel.insertProductImages(
@@ -183,7 +165,6 @@ class ProductController {
         );
       }
 
-      // 4.5 Insert video if exists
       const videoFile = movedFiles.find((f) => f.fieldname === "video");
       if (videoFile) {
         await ProductModel.insertProductVideo(
@@ -193,9 +174,6 @@ class ProductController {
         );
       }
 
-      // 5 Insert product documents
-      // const docFiles = movedFiles.filter((f) => !isNaN(parseInt(f.fieldname)));
-      // const docFiles = movedFiles.filter((f) => /^\d+$/.test(f.fieldname));
       const docFiles = movedFiles.filter((f) => f.documentId);
       if (docFiles.length) {
         await ProductModel.insertProductDocuments(
@@ -206,7 +184,6 @@ class ProductController {
         );
       }
 
-      // 6 Handle variants
       await ProductModel.generateProductVariants(
         connection,
         productId,
@@ -215,6 +192,7 @@ class ProductController {
       );
 
       await connection.commit();
+
       return res.json({ success: true, productId });
     } catch (err) {
       if (connection) await connection.rollback();
@@ -224,7 +202,6 @@ class ProductController {
       if (connection) connection.release();
     }
   }
-
   // validate Bulk upload
   async bulkValidate(req, res) {
     try {
