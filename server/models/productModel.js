@@ -5,6 +5,7 @@ const path = require("path");
 const { compressVideo } = require("../utils/videoCompression");
 const { uploadToR2 } = require("../utils/r2upload");
 const { deleteFromR2 } = require("../utils/r2delete");
+const sharp = require("sharp");
 
 // generate SKU
 function generateSKU(productId) {
@@ -658,18 +659,47 @@ class ProductModel {
 
         // -------- IMAGES --------
         if (file.fieldname === "images") {
-          file.finalPath = `public/products/${vendorId}/${productId}/images/${filename}`;
+          const inputBuffer = fs.readFileSync(file.path);
+          if (!file.mimetype.startsWith("image/")) {
+            throw new Error("Invalid image file");
+          }
+
+          const webpFilename = `${Date.now()}-${Math.random()
+            .toString(36)
+            .substring(2, 8)}.webp`;
+
+          let optimizedBuffer;
+
+          try {
+            optimizedBuffer = await sharp(inputBuffer)
+              .resize({ width: 1920, withoutEnlargement: true })
+              .webp({ quality: 70 })
+              .toBuffer();
+          } catch (err) {
+            throw new Error("Image processing failed");
+          }
+
+          file.finalPath = `public/products/${vendorId}/${productId}/images/${webpFilename}`;
+
+          await uploadToR2(optimizedBuffer, file.finalPath, "image/webp");
         }
 
         // -------- DOCUMENTS --------
         else if (isDocField) {
+          const inputBuffer = fs.readFileSync(file.path);
+
           file.finalPath = `public/products/${vendorId}/${productId}/documents/${filename}`;
           file.documentId = Number(file.fieldname);
+
+          await uploadToR2(inputBuffer, file.finalPath, file.mimetype);
         }
 
         // -------- VARIANTS --------
         else if (file.fieldname.startsWith("variant_")) {
+          const inputBuffer = fs.readFileSync(file.path);
           file.finalPath = `public/products/${vendorId}/${productId}/variants/${filename}`;
+
+          await uploadToR2(inputBuffer, file.finalPath, file.mimetype);
         }
 
         // -------- VIDEO --------
@@ -717,11 +747,6 @@ class ProductModel {
         } else {
           continue;
         }
-
-        // -------- UPLOAD TO R2 --------
-        const buffer = fs.readFileSync(file.path);
-
-        await uploadToR2(buffer, file.finalPath, file.mimetype);
 
         fs.unlinkSync(file.path);
 
@@ -778,11 +803,7 @@ class ProductModel {
       const docFiles = movedFiles.filter((f) => f.documentId);
 
       if (mainImages.length) {
-        await this.insertProductImages(
-          connection,
-          productId,
-          mainImages,
-        );
+        await this.insertProductImages(connection, productId, mainImages);
       }
 
       if (videoFile) {
