@@ -277,9 +277,10 @@ function DocumentUploadRow({
   required = false,
   accept = "image/*,application/pdf",
 }: DocumentUploadRowProps) {
-  const fileUrl = existingDoc
-    ? `${BASE_UPLOAD_URL}/${existingDoc.file_path}`
-    : null;
+  // const fileUrl = existingDoc
+  //   ? `${BASE_UPLOAD_URL}/${existingDoc.file_path}`
+  //   : null;
+  const fileUrl = existingDoc?.url || null;
 
   const isImage = existingDoc?.mime_type?.startsWith("image/");
 
@@ -417,6 +418,7 @@ type ExistingDocument = {
   document_key: string;
   file_path: string;
   mime_type: string;
+  url?: string;
 };
 
 type DocumentUploadRowProps = {
