@@ -9,30 +9,9 @@ const path = require("path");
 const {
   notifyVendorStatusChange,
 } = require("../services/vendorNotificationService");
+const { uploadToR2 } = require("../utils/r2upload");
 
-// helper function to upload the images and docs
-// async function moveVendorFiles(vendorId, files) {
-//   const targetDir = path.join(
-//     __dirname,
-//     "../uploads/vendors",
-//     vendorId.toString(),
-//     "documents"
-//   );
-
-//   if (!fs.existsSync(targetDir)) {
-//     fs.mkdirSync(targetDir, { recursive: true });
-//   }
-
-//   for (const key of Object.keys(files)) {
-//     const file = files[key][0];
-
-//     const newPath = path.join(targetDir, file.filename);
-//     fs.renameSync(file.path, newPath);
-
-//     file.path = newPath;
-//   }
-// }
-
+// helper function
 async function moveVendorFiles(vendorId, files) {
   const targetDir = path.join(
     __dirname,
@@ -120,11 +99,28 @@ class VendorController {
       await VendorModel.insertBankDetails(connection, vndID, data);
       await VendorModel.insertContacts(connection, vndID, data);
 
+      // ===== Upload documents to R2 (PRIVATE) =====
       if (files) {
-        await moveVendorFiles(vndID, files);
+        for (const key of Object.keys(files)) {
+          const file = files[key][0];
+
+          const filename = path.basename(file.path);
+
+          const r2Key = `private/vendors/${vndID}/documents/${key}/${filename}`;
+
+          const buffer = fs.readFileSync(file.path);
+
+          await uploadToR2(buffer, r2Key, file.mimetype);
+
+          // attach final path for DB
+          file.finalPath = r2Key;
+
+          // delete temp file
+          fs.unlinkSync(file.path);
+        }
+
         await VendorModel.insertCommonDocuments(connection, vndID, files);
       }
-
       await connection.commit();
 
       return res.status(201).json({

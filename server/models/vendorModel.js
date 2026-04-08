@@ -159,7 +159,7 @@ class VendorModel {
     for (const key of Object.keys(files)) {
       const file = files[key][0];
 
-      //  deactivate ONLY this document type
+      // deactivate previous document of same type
       await connection.execute(
         `UPDATE vendor_documents
        SET is_active = 0
@@ -167,22 +167,16 @@ class VendorModel {
         [vendorId, key],
       );
 
-      const relativePath = path.join(
-        "vendors",
-        vendorId.toString(),
-        "documents",
-        file.filename,
-      );
+      const filePath = file.finalPath;
 
       await connection.execute(
         `INSERT INTO vendor_documents 
        (vendor_id, document_key, file_path, mime_type, uploaded_at, is_active)
        VALUES (?, ?, ?, ?, NOW(), 1)`,
-        [vendorId, key, relativePath, file.mimetype],
+        [vendorId, key, filePath, file.mimetype],
       );
     }
   }
-
   /* ============================================================
       GET VENDOR DETAILS
   ============================================================ */
