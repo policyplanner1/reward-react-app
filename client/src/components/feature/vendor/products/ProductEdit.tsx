@@ -99,7 +99,8 @@ import {
 
 // const API_BASE = import.meta.env.VITE_API_URL;
 import { api } from "../../../../api/api";
-const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
+// const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
+const R2_BASE_URL = "https://cdn.rewardplanners.com";
 
 interface Category {
   category_id: number;
@@ -1440,9 +1441,9 @@ export default function EditProductPage() {
               <div className="mb-3">
                 <div className="relative w-32 h-32 group">
                   <img
-                    src={`${API_BASEIMAGE_URL}/uploads/${coverImage}`}
+                    src={`${R2_BASE_URL }/${coverImage}`}
                     className="w-full h-full object-cover border rounded"
-                    alt="Cover Image"
+                    alt="Cover Image" 
                   />
 
                   <button
@@ -1529,7 +1530,7 @@ export default function EditProductPage() {
               <div className="mb-3">
                 <div className="relative w-72 group border rounded overflow-hidden">
                   <video
-                    src={`${API_BASEIMAGE_URL}/uploads/${product.existingVideo}`}
+                    src={`${R2_BASE_URL}/${product.existingVideo}`}
                     controls
                     className="w-full h-full"
                   />
