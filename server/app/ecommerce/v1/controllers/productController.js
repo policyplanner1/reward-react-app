@@ -2,6 +2,7 @@ const ProductModel = require("../models/productModel");
 const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
 
 // Helper function
 function calculateReward(price, product) {
@@ -48,10 +49,12 @@ class ProductController {
       });
 
       const processedProducts = products.map((product) => {
-        const mainImage =
+        const imagePath =
           product.images && product.images.length
             ? product.images[0].image_url
             : null;
+
+        const mainImage = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
 
         const salePrice = product.sale_price ? Number(product.sale_price) : 0;
 
@@ -685,7 +688,9 @@ class ProductController {
           brand_name: row.brand_name,
           variant_id: row.variant_id,
 
-          image: images.length ? images[0].image_url : null,
+          image: images.length
+            ? `${CDN_BASE_URL}/${images[0].image_url}`
+            : null,
 
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,

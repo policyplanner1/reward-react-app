@@ -2,6 +2,8 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
+
 class ProductModel {
   // Get all products
   async getAllProducts({ search, sortBy, sortOrder, limit, offset }) {
@@ -1185,7 +1187,8 @@ class ProductModel {
 
         if (row.images) {
           const first = row.images.split(",")[0];
-          image = first.split("::")[1];
+          const imagePath = first.split("::")[1];
+          image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
         }
 
         return {
@@ -1301,7 +1304,9 @@ class ProductModel {
           brand_name: row.brand_name,
           variant_id: row.variant_id,
 
-          image: images.length ? images[0].image_url : null,
+          image: images.length
+            ? `${CDN_BASE_URL}/${images[0].image_url}`
+            : null,
 
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
@@ -1740,7 +1745,9 @@ class ProductModel {
           brand_name: row.brand_name,
           variant_id: row.variant_id,
 
-          image: images.length ? images[0].image_url : null,
+          image: images.length
+            ? `${CDN_BASE_URL}/${images[0].image_url}`
+            : null,
 
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
