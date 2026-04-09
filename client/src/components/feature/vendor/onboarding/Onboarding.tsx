@@ -15,7 +15,7 @@ import {
 } from "react-icons/fa";
 import { api } from "../../../../api/api";
 
-const BASE_UPLOAD_URL = "https://rewardplanners.com/api/crm/uploads";
+// const BASE_UPLOAD_URL = "https://rewardplanners.com/api/crm/uploads";
 
 /* ================= TYPES ================= */
 

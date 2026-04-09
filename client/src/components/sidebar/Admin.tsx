@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState} from "react";
+import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   FiGrid,
@@ -13,18 +14,39 @@ import {
 import { useAuth } from "../../auth/useAuth";
 import { routes } from "../../routes";
 
+/* ================= TYPES ================= */
+
+type NavChild = {
+  label: string;
+  to: string;
+};
+
+type NavItem =
+  | {
+      label: string;
+      to: string;
+      icon: ReactNode;
+      type: "link";
+    }
+  | {
+      label: string;
+      icon: ReactNode;
+      type: "dropdown";
+      children: NavChild[];
+    };
+
 /* ================= COMPONENT ================= */
 
 export default function AdminNavbar() {
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
 
-  const [open, setOpen] = useState(null);
+  const [open, setOpen] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const isActive = (to) => pathname === to;
+  const isActive = (to: string) => pathname === to;
 
-  const navItems = [
+  const navItems: NavItem[] = [
     {
       label: "Dashboard",
       to: routes.admin.dashboard,
@@ -49,7 +71,17 @@ export default function AdminNavbar() {
       icon: <FiPackage />,
       type: "link",
     },
-    
+
+    // Example dropdown (keep if needed)
+    // {
+    //   label: "Management",
+    //   icon: <FiGrid />,
+    //   type: "dropdown",
+    //   children: [
+    //     { label: "Users", to: "/admin/users" },
+    //     { label: "Roles", to: "/admin/roles" },
+    //   ],
+    // },
   ];
 
   return (
@@ -72,8 +104,6 @@ export default function AdminNavbar() {
       {/* Navigation */}
       <div className="flex-1 px-4 space-y-1.5 overflow-y-auto">
         {navItems.map((item) => {
-          const isItemActive =
-            item.type === "link" && !!item.to && isActive(item.to);
           const isDropdownOpen = open === item.label;
 
           if (item.type === "dropdown") {
@@ -98,9 +128,9 @@ export default function AdminNavbar() {
                   />
                 </button>
 
-                {isDropdownOpen && item.children && (
+                {isDropdownOpen && (
                   <div className="py-1 mx-2 space-y-1 border bg-gray-50/50 rounded-xl border-gray-100/50">
-                    {item.children.map((child) => (
+                    {item.children.map((child: NavChild) => (
                       <Link
                         key={child.to}
                         to={child.to}
@@ -119,6 +149,9 @@ export default function AdminNavbar() {
               </div>
             );
           }
+
+          // LINK TYPE
+          const isItemActive = isActive(item.to);
 
           return (
             <Link
