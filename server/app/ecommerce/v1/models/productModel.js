@@ -1425,6 +1425,8 @@ class ProductModel {
             const [, image_url] = item.split("::");
             return { image_url };
           });
+
+          const imagePath = images.length ? images[0].image_url : null;
         }
 
         return {
@@ -1432,8 +1434,7 @@ class ProductModel {
           product_name: row.product_name,
           brand_name: row.brand_name,
           variant_id: row.variant_id,
-
-          image: images.length ? images[0].image_url : null,
+          image: imagePath ? `${CDN_BASE_URL}/${imagePath}` : null,
 
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
