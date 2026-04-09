@@ -3,6 +3,10 @@ const fs = require("fs");
 const path = require("path");
 
 const CDN_BASE_URL = "https://cdn.rewardplanners.com";
+function getPublicUrl(path) {
+  if (!path) return null;
+  return `${CDN_BASE_URL}/${path}`;
+}
 
 class ProductModel {
   // Get all products
@@ -225,14 +229,14 @@ class ProductModel {
         `SELECT image_url FROM product_images WHERE product_id = ?`,
         [productId],
       );
-      product.images = images.map((img) => img.image_url);
+      product.images = images.map((img) => getPublicUrl(img.image_url));
 
       //2.5 Get product videos
       const [videos] = await db.execute(
         `SELECT video_url FROM product_videos WHERE product_id = ? LIMIT 1`,
         [productId],
       );
-      product.video = videos.length ? videos[0].video_url : null;
+      product.video = getPublicUrl(videos[0]?.video_url);
 
       // 3 Get product variants
       const [variants] = await db.execute(
@@ -294,7 +298,9 @@ class ProductModel {
           `,
           [variant.variant_id],
         );
-        variant.images = variantImages.map((img) => img.image_url);
+        variant.images = variantImages.map((img) =>
+          getPublicUrl(img.image_url),
+        );
       }
 
       const attributes = {};
