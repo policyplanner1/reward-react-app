@@ -22,7 +22,8 @@ import {
 
 import { CSS } from "@dnd-kit/utilities";
 
-const BASE_IMAGE_URL = "https://rewardplanners.com/api/crm/uploads";
+// const BASE_IMAGE_URL = "https://rewardplanners.com/api/crm/uploads";
+const R2_BASE_URL = "https://cdn.rewardplanners.com";
 const MAX_IMAGES = 7;
 
 function SortableImage({
@@ -56,7 +57,7 @@ function SortableImage({
       </div>
 
       <img
-        src={`${BASE_IMAGE_URL}/${img.image_url}`}
+        src={`${R2_BASE_URL}/${img.image_url}`}
         className="h-44 w-full object-cover"
       />
 
