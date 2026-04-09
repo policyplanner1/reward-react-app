@@ -1528,12 +1528,15 @@ class ProductModel {
           mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
 
         let images = [];
+        let imagePath = null;
 
         if (row.images) {
           images = row.images.split(",").map((item) => {
             const [, image_url] = item.split("::");
             return { image_url };
           });
+
+          imagePath = images.length ? images[0].image_url : null;
         }
 
         return {
@@ -1542,7 +1545,7 @@ class ProductModel {
           brand_name: row.brand_name,
           variant_id: row.variant_id,
 
-          image: images.length ? images[0].image_url : null,
+          image: imagePath ? `${CDN_BASE_URL}/${imagePath}` : null,
 
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
@@ -1636,12 +1639,15 @@ class ProductModel {
           mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
 
         let images = [];
+        let imagePath = null;
 
         if (row.images) {
           images = row.images.split(",").map((item) => {
             const [, image_url] = item.split("::");
             return { image_url };
           });
+
+          imagePath = images.length ? images[0].image_url : null;
         }
 
         return {
@@ -1650,7 +1656,7 @@ class ProductModel {
           brand_name: row.brand_name,
           variant_id: row.variant_id,
 
-          image: images.length ? images[0].image_url : null,
+          image: imagePath ? `${CDN_BASE_URL}/${imagePath}` : null,
 
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
@@ -1740,12 +1746,14 @@ class ProductModel {
           mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
 
         let images = [];
+        let imagePath = null;
 
         if (row.images) {
           images = row.images.split(",").map((item) => {
             const [, image_url] = item.split("::");
             return { image_url };
           });
+          imagePath = images.length ? images[0].image_url : null;
         }
 
         return {
@@ -1754,9 +1762,7 @@ class ProductModel {
           brand_name: row.brand_name,
           variant_id: row.variant_id,
 
-          image: images.length
-            ? `${CDN_BASE_URL}/${images[0].image_url}`
-            : null,
+          image: imagePath ? `${CDN_BASE_URL}/${imagePath}` : null,
 
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
