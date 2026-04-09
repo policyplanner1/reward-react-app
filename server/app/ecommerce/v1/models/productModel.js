@@ -1419,6 +1419,7 @@ class ProductModel {
           mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
 
         let images = [];
+        let imagePath = null;
 
         if (row.images) {
           images = row.images.split(",").map((item) => {
@@ -1426,7 +1427,7 @@ class ProductModel {
             return { image_url };
           });
 
-          const imagePath = images.length ? images[0].image_url : null;
+          imagePath = images.length ? images[0].image_url : null;
         }
 
         return {
