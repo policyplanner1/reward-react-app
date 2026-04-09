@@ -163,10 +163,12 @@ class ProductController {
         });
 
       const processedProducts = products.map((product) => {
-        const mainImage =
+        const imagePath =
           product.images && product.images.length
             ? product.images[0].image_url
             : null;
+
+        const mainImage = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
 
         const salePrice = product.sale_price ? Number(product.sale_price) : 0;
         const mrp = product.mrp ? Number(product.mrp) : 0;
