@@ -1060,7 +1060,9 @@ class ProductModel {
 
         if (row.images) {
           const first = row.images.split(",")[0];
-          image = first.split("::")[1];
+          const imagePath = first.split("::")[1];
+
+          image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
         }
 
         return {
