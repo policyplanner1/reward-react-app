@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../../../api/api";
 import { FaArrowLeft, FaImages, FaTrash } from "react-icons/fa";
 import Swal from "sweetalert2";
-import imageCompression from "browser-image-compression";
+// import imageCompression from "browser-image-compression";
 
 import {
   DndContext,
@@ -194,10 +194,10 @@ export default function ProductVariantImages() {
     }
 
     try {
-      const compressedPreviews: PreviewImage[] = [];
+      const previewsList: PreviewImage[] = [];
 
       for (const file of selectedFiles) {
-        // 1 Type validation
+        // 1. Type validation
         if (!file.type.startsWith("image/")) {
           await Swal.fire({
             icon: "error",
@@ -207,38 +207,28 @@ export default function ProductVariantImages() {
           continue;
         }
 
-        // 2 Optional size validation (10MB example)
-        if (file.size > 10 * 1024 * 1024) {
+        // 2. Size validation (5MB)
+        if (file.size > 5 * 1024 * 1024) {
           await Swal.fire({
             icon: "error",
             title: "File too large",
-            text: "Each image must be under 10MB.",
+            text: "Each image must be under 5MB.",
           });
           continue;
         }
 
-        // 3 Compress + Convert to WebP
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true,
-          fileType: "image/webp",
-          initialQuality: 0.85,
-        };
-
-        const compressedFile = await imageCompression(file, options);
-
-        compressedPreviews.push({
-          file: compressedFile,
-          preview: URL.createObjectURL(compressedFile),
+        // 3. NO COMPRESSION → use original file
+        previewsList.push({
+          file: file,
+          preview: URL.createObjectURL(file),
         });
       }
 
-      setPreviews(compressedPreviews);
+      setPreviews(previewsList);
     } catch (err) {
       await Swal.fire({
         icon: "error",
-        title: "Compression failed",
+        title: "File processing failed",
         text: "Unable to process selected images.",
       });
     }
