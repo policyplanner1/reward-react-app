@@ -2,6 +2,12 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
+function getPublicUrl(path) {
+  if (!path) return null;
+  return `${CDN_BASE_URL}/${path}`;
+}
+
 class cartModel {
   // Get all cart item
   async getUserCart(userId) {
@@ -67,6 +73,8 @@ class cartModel {
         }
       }
 
+      const imagePath = images.length ? images[0].image_url : null;
+
       const salePrice = Number(row.sale_price) || 0;
       const quantity = Number(row.quantity) || 0;
       const rewardPercent = Number(row.reward_redemption_limit) || 0;
@@ -89,7 +97,7 @@ class cartModel {
         variant_id: row.variant_id,
 
         product_name: row.product_name,
-        image: images.length ? images[0].image_url : null,
+        image: getPublicUrl(imagePath),
 
         attributes,
 
@@ -212,7 +220,7 @@ class cartModel {
 
     for (let item of items) {
       if (!useRewards) break;
-      
+
       if (!item.can_redeem_reward || !item.reward_redemption_limit) continue;
       if (remainingWallet <= 0) break;
 
