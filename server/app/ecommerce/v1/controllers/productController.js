@@ -54,7 +54,9 @@ class ProductController {
             ? product.images[0].image_url
             : null;
 
-        const mainImage = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
+        const mainImage = imagePath
+          ? `${CDN_BASE_URL}/${imagePath}?v=${product.updated_at || Date.now()}`
+          : null;
 
         const salePrice = product.sale_price ? Number(product.sale_price) : 0;
 
@@ -437,7 +439,9 @@ class ProductController {
       const processedCategories = rows.map((category) => ({
         id: category.category_id,
         name: category.category_name,
-        image: category.cover_image,
+        image: category.cover_image
+          ? `${CDN_BASE_URL}/${category.cover_image}`
+          : null,
       }));
 
       res.json({
