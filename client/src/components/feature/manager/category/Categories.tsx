@@ -11,7 +11,7 @@ import {
 } from "react-icons/fi";
 import { api } from "../../../../api/api";
 import Swal from "sweetalert2";
-import imageCompression from "browser-image-compression";
+// import imageCompression from "browser-image-compression";
 const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 
 type Status = "active" | "inactive";
@@ -64,17 +64,17 @@ export default function CategoryManagement() {
     setCurrentPage(1);
   }, [searchTerm]);
 
-  const compressImage = async (file: File): Promise<File> => {
-    const options = {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1920,
-      useWebWorker: true,
-      fileType: "image/webp",
-      initialQuality: 0.85,
-    };
+  // const compressImage = async (file: File): Promise<File> => {
+  //   const options = {
+  //     maxSizeMB: 1,
+  //     maxWidthOrHeight: 1920,
+  //     useWebWorker: true,
+  //     fileType: "image/webp",
+  //     initialQuality: 0.85,
+  //   };
 
-    return await imageCompression(file, options);
-  };
+  //   return await imageCompression(file, options);
+  // };
 
   useEffect(() => {
     return () => {
@@ -536,18 +536,19 @@ export default function CategoryManagement() {
                         return;
                       }
 
-                      if (file.size > 10 * 1024 * 1024) {
+                      if (file.size > 5 * 1024 * 1024) {
                         await Swal.fire({
                           icon: "error",
                           title: "File too large",
-                          text: "Image must be under 10MB.",
+                          text: "Image must be under 5MB.",
                         });
                         return;
                       }
 
                       try {
-                        const compressed = await compressImage(file);
-                        setCoverImage(compressed);
+                        // const compressed = await compressImage(file);
+                        // setCoverImage(compressed);
+                        setCoverImage(file);
                       } catch {
                         await Swal.fire({
                           icon: "error",
@@ -710,9 +711,11 @@ export default function CategoryManagement() {
                           if (!file) return;
 
                           try {
-                            const compressed = await compressImage(file);
-                            setNewCoverImage(compressed);
-                            setPreviewImage(URL.createObjectURL(compressed));
+                            // const compressed = await compressImage(file);
+                            // setNewCoverImage(compressed);
+                            // setPreviewImage(URL.createObjectURL(compressed));
+                            setNewCoverImage(file);
+                            setPreviewImage(URL.createObjectURL(file));
                           } catch {
                             await Swal.fire({
                               icon: "error",

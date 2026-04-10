@@ -12,7 +12,7 @@ import {
   FiSave,
   FiLayers,
 } from "react-icons/fi";
-import imageCompression from "browser-image-compression";
+// import imageCompression from "browser-image-compression";
 
 import { api } from "../../../../api/api";
 const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
@@ -62,17 +62,17 @@ export default function SubcategoryManagement() {
     return "inactive";
   };
 
-  const compressImage = async (file: File): Promise<File> => {
-    const options = {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1600,
-      useWebWorker: true,
-      fileType: "image/webp",
-      initialQuality: 0.85,
-    };
+  // const compressImage = async (file: File): Promise<File> => {
+  //   const options = {
+  //     maxSizeMB: 1,
+  //     maxWidthOrHeight: 1600,
+  //     useWebWorker: true,
+  //     fileType: "image/webp",
+  //     initialQuality: 0.85,
+  //   };
 
-    return await imageCompression(file, options);
-  };
+  //   return await imageCompression(file, options);
+  // };
 
   const resolveImageUrl = (path?: string) => {
     if (!path) return "";
@@ -713,19 +713,21 @@ export default function SubcategoryManagement() {
                             return;
                           }
 
-                          // if (file.size > 2 * 1024 * 1024) {
-                          //   await Swal.fire({
-                          //     icon: "error",
-                          //     title: "File too large",
-                          //     text: "Image must be under 2MB.",
-                          //   });
-                          //   return;
-                          // }
+                          if (file.size > 5 * 1024 * 1024) {
+                            await Swal.fire({
+                              icon: "error",
+                              title: "File too large",
+                              text: "Image must be under 5MB.",
+                            });
+                            return;
+                          }
 
                           try {
-                            const compressed = await compressImage(file);
-                            setEditCoverImage(compressed);
-                            setPreviewImage(URL.createObjectURL(compressed));
+                            // const compressed = await compressImage(file);
+                            // setEditCoverImage(compressed);
+                            // setPreviewImage(URL.createObjectURL(compressed));
+                            setEditCoverImage(file);
+                            setPreviewImage(URL.createObjectURL(file));
                           } catch {
                             await Swal.fire({
                               icon: "error",
@@ -868,18 +870,19 @@ export default function SubcategoryManagement() {
                         return;
                       }
 
-                      // if (file.size > 2 * 1024 * 1024) {
-                      //   await Swal.fire({
-                      //     icon: "error",
-                      //     title: "File too large",
-                      //     text: "Image must be under 2MB.",
-                      //   });
-                      //   return;
-                      // }
+                      if (file.size > 5 * 1024 * 1024) {
+                        await Swal.fire({
+                          icon: "error",
+                          title: "File too large",
+                          text: "Image must be under 5MB.",
+                        });
+                        return;
+                      }
 
                       try {
-                        const compressed = await compressImage(file);
-                        setAddCoverImage(compressed);
+                        // const compressed = await compressImage(file);
+                        // setAddCoverImage(compressed);
+                        setAddCoverImage(file);
                       } catch {
                         await Swal.fire({
                           icon: "error",
