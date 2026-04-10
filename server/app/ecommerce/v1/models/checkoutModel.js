@@ -4,6 +4,12 @@ const path = require("path");
 const AddressModel = require("../models/addressModel");
 const xpressService = require("../../../../services/ExpressBees/xpressbees_service");
 
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
+function getPublicUrl(path) {
+  if (!path) return null;
+  return `${CDN_BASE_URL}/${path}`;
+}
+
 function generateOrderRef() {
   const date = new Date();
   const ymd = date.toISOString().slice(0, 10).replace(/-/g, "");
@@ -1695,6 +1701,8 @@ class CheckoutModel {
       const itemTotal = row.sale_price * row.quantity;
       totalAmount += itemTotal;
 
+      const imagePath = row.images ? row.images.split(",")[0] : null;
+
       return {
         cart_item_id: row.cart_item_id,
         product_id: row.product_id,
@@ -1702,7 +1710,7 @@ class CheckoutModel {
         vendor_id: row.vendor_id,
 
         title: row.product_name,
-        image: row.images ? row.images.split(",")[0] : null,
+        image: getPublicUrl(imagePath),
 
         mrp: row.mrp,
         price: row.sale_price,
@@ -2288,13 +2296,14 @@ class CheckoutModel {
     // 7. FINAL
     // ===============================
     const payableAmount = finalItemTotal + shippingCharge;
+    const imagePath = row.images ? row.images.split(",")[0] : null;
 
     return {
       item: {
         product_id: row.product_id,
         variant_id: row.variant_id,
         title: row.product_name,
-        image: row.images ? row.images.split(",")[0] : null,
+        image: getPublicUrl(imagePath),
 
         price: salePrice,
         quantity,
