@@ -75,8 +75,6 @@ class ProductController {
         const mrpDiscountPercent =
           mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
-        const hasMore = offset + products.length < totalItems;
-
         return {
           id: product.product_id,
           title: product.product_name,
@@ -221,6 +219,7 @@ class ProductController {
         total: totalItems,
         totalPages: Math.ceil(totalItems / limit),
         currentPage: page,
+        hasMore: offset + products.length < totalItems,
       });
     } catch (error) {
       console.error("Get products by category error:", error);
