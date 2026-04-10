@@ -15,7 +15,9 @@ import {
 // import imageCompression from "browser-image-compression";
 
 import { api } from "../../../../api/api";
-const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
+// const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
+const R2_BASE_URL = "https://cdn.rewardplanners.com";
+
 
 type Status = "active" | "inactive";
 
@@ -79,7 +81,7 @@ export default function SubcategoryManagement() {
     if (path.startsWith("http://") || path.startsWith("https://")) {
       return path;
     }
-    return `${API_BASEIMAGE_URL}/uploads/${path.replace(/^\/+/, "")}`;
+    return `${R2_BASE_URL}/${path.replace(/^\/+/, "")}`;
   };
 
   const fetchCategories = async () => {
