@@ -843,7 +843,22 @@ class ProductModel {
     /* ========================================
      Combine Results
   ======================================== */
-    return [...categories, ...subcategories, ...products].slice(0, limit);
+    const formattedCategories = categories.map((cat) => ({
+      ...cat,
+      image: getPublicUrl(cat.image),
+    }));
+
+    const formattedSubcategories = subcategories.map((sub) => ({
+      ...sub,
+      image: getPublicUrl(sub.image),
+    }));
+
+    const formattedProducts = products.map((prod) => ({
+      ...prod,
+      image: getPublicUrl(prod.image),
+    }));
+
+    return [...formattedCategories, ...formattedSubcategories, ...formattedProducts].slice(0, limit);
   }
 
   // async getSearchSuggestions({ search, limit }) {
