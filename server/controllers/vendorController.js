@@ -470,37 +470,42 @@ class VendorController {
         return res.status(400).json({ message: "Category required" });
       }
 
-      // if (!req.file) {
-      //   return res.status(400).json({ message: "Cover image is mandatory" });
-      // }
-
       // 1 Create subcategory
       const subcategoryId = await subCategoryModel.createSubCategory({
         name: name.trim(),
         category_id,
       });
 
-      // 2 Create folder
+      // 2 If image uploaded → process + upload to R2
       if (req.file) {
-        const subDir = path.join(
-          __dirname,
-          `../uploads/subcategory-images/${subcategoryId}`,
-        );
-
-        if (!fs.existsSync(subDir)) {
-          fs.mkdirSync(subDir, { recursive: true });
+        if (!req.file.mimetype.startsWith("image/")) {
+          return res.status(400).json({ message: "Only image files allowed" });
         }
 
-        // 3 Move image from temp
-        const ext = path.extname(req.file.originalname);
-        const finalPath = path.join(subDir, `cover${ext}`);
+        if (req.file.size > 5 * 1024 * 1024) {
+          return res.status(400).json({ message: "Image must be under 5MB" });
+        }
 
-        fs.renameSync(req.file.path, finalPath);
+        const inputBuffer = fs.readFileSync(req.file.path);
 
-        // 4 Store relative path in DB
-        const dbPath = `subcategory-images/${subcategoryId}/cover${ext}`;
+        let optimizedBuffer;
+        try {
+          optimizedBuffer = await sharp(inputBuffer)
+            .resize({ width: 1200, withoutEnlargement: true })
+            .webp({ quality: 88 })
+            .toBuffer();
+        } catch (err) {
+          fs.unlinkSync(req.file.path);
+          throw new Error("Image processing failed");
+        }
 
-        await subCategoryModel.updateSubCategoryImage(subcategoryId, dbPath);
+        const r2Path = `public/subcategory-images/${subcategoryId}/cover.webp`;
+
+        await uploadToR2(optimizedBuffer, r2Path, "image/webp");
+
+        fs.unlinkSync(req.file.path);
+
+        await subCategoryModel.updateSubCategoryImage(subcategoryId, r2Path);
       }
 
       return res.status(201).json({
@@ -569,7 +574,7 @@ class VendorController {
       const id = req.params.id;
       const { name, category_id, status } = req.body;
 
-      // 1 Update basic fields (your existing model)
+      // 1 Update basic fields
       const updated = await subCategoryModel.updateSubCategory(id, {
         name,
         category_id,
@@ -583,25 +588,37 @@ class VendorController {
         });
       }
 
-      // 2 If new image uploaded → replace it
+      // 2 If new image uploaded
       if (req.file) {
-        const dir = path.join(__dirname, `../uploads/subcategory-images/${id}`);
-
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
+        if (!req.file.mimetype.startsWith("image/")) {
+          return res.status(400).json({ message: "Only image files allowed" });
         }
 
-        // remove old files
-        fs.readdirSync(dir).forEach((f) => fs.unlinkSync(path.join(dir, f)));
+        if (req.file.size > 5 * 1024 * 1024) {
+          return res.status(400).json({ message: "Image must be under 5MB" });
+        }
 
-        const ext = path.extname(req.file.originalname);
-        const finalPath = path.join(dir, `cover${ext}`);
+        const inputBuffer = fs.readFileSync(req.file.path);
 
-        fs.renameSync(req.file.path, finalPath);
+        let optimizedBuffer;
+        try {
+          optimizedBuffer = await sharp(inputBuffer)
+            .resize({ width: 1200, withoutEnlargement: true })
+            .webp({ quality: 88 })
+            .toBuffer();
+        } catch (err) {
+          fs.unlinkSync(req.file.path);
+          throw new Error("Image processing failed");
+        }
 
-        const dbPath = `subcategory-images/${id}/cover${ext}`;
+        const r2Path = `public/subcategory-images/${id}/cover.webp`;
 
-        await subCategoryModel.updateSubCategoryImage(id, dbPath);
+        //  overwrite existing image
+        await uploadToR2(optimizedBuffer, r2Path, "image/webp");
+
+        fs.unlinkSync(req.file.path);
+
+        await subCategoryModel.updateSubCategoryImage(id, r2Path);
       }
 
       res.status(200).json({
@@ -616,7 +633,7 @@ class VendorController {
       });
     }
   }
-
+  
   // DELETE SUB CATEGORY
   async deleteSubCategory(req, res) {
     try {
