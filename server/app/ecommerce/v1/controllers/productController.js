@@ -943,7 +943,9 @@ class ProductController {
       const processedSubCategories = data.map((subcategory) => ({
         id: subcategory.subcategory_id,
         name: subcategory.subcategory_name,
-        image: subcategory.cover_image,
+        image: subcategory.cover_image
+          ? `${CDN_BASE_URL}/${subcategory.cover_image}`
+          : null,
       }));
 
       res.json({
@@ -983,7 +985,9 @@ class ProductController {
           categoryMap[row.category_id] = {
             id: row.category_id,
             name: row.category_name,
-            image: row.category_image,
+            image: row.category_image
+             ? `${CDN_BASE_URL}/${row.category_image}`
+             : null,
             subcategories: [],
           };
         }
@@ -993,7 +997,9 @@ class ProductController {
           categoryMap[row.category_id].subcategories.push({
             id: row.subcategory_id,
             name: row.subcategory_name,
-            image: row.subcategory_image,
+            image: row.subcategory_image
+               ? `${CDN_BASE_URL}/${row.subcategory_image}`
+               : null,
           });
         }
       });
