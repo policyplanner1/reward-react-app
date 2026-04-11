@@ -44,22 +44,15 @@ class ServiceVariantController {
           throw new Error("Invalid image file");
         }
 
-        //  optimize using sharp
-        const optimizedBuffer = await sharp(req.file.buffer)
-          .resize({ width: 800, withoutEnlargement: true })
-          .webp({ quality: 70 })
-          .toBuffer();
-
         const fileName = `${Date.now()}-${Math.random()
           .toString(36)
-          .substring(2, 8)}.webp`;
+          .substring(2, 8)}-${req.file.originalname}`;
 
         const key = `public/service_variants/${id}/${fileName}`;
 
-        //  upload to R2
-        imageUrl = await uploadToR2(optimizedBuffer, key, "image/webp");
+        //upload
+        imageUrl = await uploadToR2(req.file.path, key, req.file.mimetype);
 
-        // 3. update DB
         await ServiceVariantModel.updateImage(id, imageUrl);
       }
 
@@ -109,28 +102,17 @@ class ServiceVariantController {
           });
         }
 
-        let optimizedBuffer;
-
-        try {
-          optimizedBuffer = await sharp(req.file.path)
-            .resize({ width: 800, withoutEnlargement: true })
-            .webp({ quality: 70 })
-            .toBuffer();
-        } catch (err) {
-          return res.status(500).json({
-            success: false,
-            message: "Image processing failed",
-          });
-        }
-
         const fileName = `${Date.now()}-${Math.random()
           .toString(36)
-          .substring(2, 8)}.webp`;
+          .substring(2, 8)}-${req.file.originalname}`;
 
         newImageKey = `public/service_variants/${id}/${fileName}`;
 
-        // upload new image
-        imageUrl = await uploadToR2(optimizedBuffer, newImageKey, "image/webp");
+        imageUrl = await uploadToR2(
+          req.file.path, 
+          newImageKey,
+          req.file.mimetype,
+        );
       }
 
       // 3. Validate Price
