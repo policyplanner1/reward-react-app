@@ -9,4 +9,10 @@ router.post("/add", auth, ServiceCartController.addToCart);
 // Get cart
 router.get("/cart-items", auth, ServiceCartController.getCart);
 
+// Remove item from cart
+router.delete("/item/:id", auth, ServiceCartController.removeItem);
+
+// Clear cart
+router.delete("/clear", auth, ServiceCartController.clearCart);
+
 module.exports = router;
