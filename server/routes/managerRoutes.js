@@ -222,4 +222,12 @@ router.delete(
   CategoryAttributeController.deleteValue,
 );
 
+// delete a vendor
+router.put(
+  "/deactivate/:vendorId",
+  authenticateToken,
+  authorizeRoles("admin", "vendor_manager"),
+  managerController.deactivateVendor,
+);
+
 module.exports = router;

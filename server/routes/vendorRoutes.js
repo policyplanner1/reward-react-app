@@ -53,14 +53,6 @@ router.put(
   VendorController.updateVendorStatus,
 );
 
-// delete vendor
-router.patch(
-  "/deactivate/:vendorId",
-  authenticateToken,
-  authorizeRoles("admin","vendor_manager"),
-  VendorController.deactivateVendor,
-);
-
 // Update document verification
 router.put(
   "/documents/:documentId/status",

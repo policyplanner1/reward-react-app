@@ -127,6 +127,31 @@ export default function VendorApprovalList() {
     }
   };
 
+  const handleDeleteVendor = async (vendorId: number) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to deactivate this vendor?",
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const res = await api.put(`/manager/deactivate/${vendorId}`);
+      console.log(res, "deactivate response");
+
+      if (res.data) {
+        // remove from UI OR refetch
+        setVendors((prev) =>
+          prev.map((v) =>
+            v.vendor_id === vendorId ? { ...v, status: "rejected" } : v,
+          ),
+        );
+      }
+    } catch (err) {
+      console.error("Error deleting vendor:", err);
+      alert("Failed to deactivate vendor");
+    }
+  };
+
   if (loading) return <p className="p-10 text-center">Loading vendors...</p>;
 
   return (
@@ -281,12 +306,21 @@ export default function VendorApprovalList() {
                   </td>
 
                   {/* Action */}
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 flex gap-2">
+                    {/* REVIEW BUTTON */}
                     <Link to={`/manager/vendor-review/${v.vendor_id}`}>
-                      <button className="flex items-center px-4 py-2 bg-[#852BAF] text-white rounded-lg hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition text-sm cursor-pointer">
+                      <button className="flex items-center px-3 py-2 bg-[#852BAF] text-white rounded-lg text-sm cursor-pointer">
                         <FaEye className="mr-2" /> Review
                       </button>
                     </Link>
+
+                    {/* DELETE BUTTON */}
+                    <button
+                      onClick={() => handleDeleteVendor(v.vendor_id)}
+                      className="flex items-center px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm cursor-pointer"
+                    >
+                      <FaTimesCircle className="mr-2" /> Delete
+                    </button>
                   </td>
                 </tr>
               ))}
