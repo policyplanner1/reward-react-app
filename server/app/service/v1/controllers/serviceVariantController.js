@@ -4,7 +4,9 @@ const path = require("path");
 const ServiceVariantModel = require("../models/serviceVariantModel");
 const { UPLOAD_BASE } = require("../../../../config/path");
 const { uploadToR2 } = require("../../../../utils/r2upload");
+const { deleteFromR2 } = require("../../../../utils/r2delete");
 const sharp = require("sharp");
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
 
 class ServiceVariantController {
   // create variant
@@ -103,19 +105,60 @@ class ServiceVariantController {
         });
       }
 
+      let imageUrl = existing.image_url;
+
+      // Image update
+      if (req.file) {
+        if (!req.file.mimetype.startsWith("image/")) {
+          throw new Error("Invalid image file");
+        }
+
+        let optimizedBuffer;
+
+        try {
+          optimizedBuffer = await sharp(req.file.buffer)
+            .resize({ width: 800, withoutEnlargement: true })
+            .webp({ quality: 70 })
+            .toBuffer();
+        } catch (err) {
+          throw new Error("Image processing failed");
+        }
+
+        const fileName = `${Date.now()}-${Math.random()
+          .toString(36)
+          .substring(2, 8)}.webp`;
+
+        const key = `public/service_variants/${id}/${fileName}`;
+
+        //  upload new image
+        imageUrl = await uploadToR2(optimizedBuffer, key, "image/webp");
+
+        //  delete old image (if exists)
+        if (existing.image_url) {
+          try {
+            const oldKey = new URL(existing.image_url).pathname.substring(1);
+            await deleteFromR2(oldKey);
+          } catch (err) {
+            console.error("Old image delete failed:", err.message);
+          }
+        }
+      }
+
       // update
       await ServiceVariantModel.update(id, {
         service_id: service_id ?? existing.service_id,
-        variant_name,
-        title,
-        short_description,
-        price,
+        variant_name: variant_name ?? existing.variant_name,
+        title: title ?? existing.title,
+        short_description: short_description ?? existing.short_description,
+        price: price ?? existing.price,
         status: status ?? existing.status,
+        image_url: imageUrl,
       });
 
       res.status(200).json({
         success: true,
         message: "Variant updated successfully",
+        data: { id, image_url: imageUrl },
       });
     } catch (err) {
       res.status(500).json({

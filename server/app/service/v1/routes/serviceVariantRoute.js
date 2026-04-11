@@ -21,7 +21,8 @@ router.put(
   "/update-variant/:id",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
-  ServiceVariantController.updateVariant
+  upload.single("service_variant_image"),
+  ServiceVariantController.updateVariant,
 );
 
 // Get variant by Id
