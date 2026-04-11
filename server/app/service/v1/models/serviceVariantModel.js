@@ -7,24 +7,33 @@ class ServiceVariantModel {
   async create(data) {
     const [result] = await db.execute(
       `INSERT INTO service_variants
-      (service_id, variant_name, title, short_description, price)
-      VALUES (?, ?, ?, ?, ?)`,
+      (service_id, variant_name, title, short_description, price, image_url)
+      VALUES (?, ?, ?, ?, ?, ?)`,
       [
         data.service_id,
         data.variant_name,
         data.title,
         data.short_description,
         data.price,
+        data.image_url,
       ],
     );
 
     return result.insertId;
   }
 
+  async updateImage(id, imagePath) {
+    const [result] = await db.execute(
+      `UPDATE service_variants SET image_url = ? WHERE id = ?`,
+      [imagePath, id],
+    );
+    return result.affectedRows;
+  }
+
   //   find by service
   async findByServiceId(serviceId) {
     const [rows] = await db.execute(
-      `SELECT id, variant_name,title, short_description, price
+      `SELECT id, variant_name,title, short_description, price, image_url
        FROM service_variants
        WHERE service_id = ? AND status = 1`,
       [serviceId],
@@ -137,6 +146,41 @@ class ServiceVariantModel {
       ...r,
       content: JSON.parse(r.content || "{}"),
     }));
+  }
+
+  // find variant by Id
+  async findById(id) {
+    const [rows] = await db.execute(
+      `SELECT * FROM service_variants WHERE id = ?`,
+      [id],
+    );
+
+    return rows[0] || null;
+  }
+
+  // update by id
+  async update(id, data) {
+    const [result] = await db.execute(
+      `UPDATE service_variants 
+     SET service_id = ?, 
+         variant_name = ?, 
+         title = ?, 
+         short_description = ?, 
+         price = ?, 
+         status = ?
+     WHERE id = ?`,
+      [
+        data.service_id,
+        data.variant_name,
+        data.title,
+        data.short_description,
+        data.price,
+        data.status,
+        id,
+      ],
+    );
+
+    return result.affectedRows;
   }
 }
 

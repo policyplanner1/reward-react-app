@@ -2,6 +2,9 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 const ServiceVariantModel = require("../models/serviceVariantModel");
+const { UPLOAD_BASE } = require("../../../../config/path");
+const { uploadToR2 } = require("../../../../utils/r2upload");
+const sharp = require("sharp");
 
 class ServiceVariantController {
   // create variant
@@ -30,15 +33,95 @@ class ServiceVariantController {
         title,
         short_description,
         price,
+        image_url: null,
       });
+
+      let imageUrl = null;
+      if (req.file) {
+        if (!req.file.mimetype.startsWith("image/")) {
+          throw new Error("Invalid image file");
+        }
+
+        //  optimize using sharp
+        const optimizedBuffer = await sharp(req.file.buffer)
+          .resize({ width: 800, withoutEnlargement: true })
+          .webp({ quality: 70 })
+          .toBuffer();
+
+        const fileName = `${Date.now()}-${Math.random()
+          .toString(36)
+          .substring(2, 8)}.webp`;
+
+        const key = `public/service_variants/${id}/${fileName}`;
+
+        //  upload to R2
+        imageUrl = await uploadToR2(optimizedBuffer, key, "image/webp");
+
+        // 3. update DB
+        await ServiceVariantModel.updateImage(id, imageUrl);
+      }
 
       res.status(201).json({
         success: true,
         message: "Variant added successfully",
-        data: { id },
+        data: { id, image_url: imageUrl },
       });
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  // update variant
+  async updateVariant(req, res) {
+    try {
+      const { id } = req.params;
+
+      const {
+        service_id,
+        variant_name,
+        title,
+        short_description,
+        price,
+        status,
+      } = req.body;
+
+      // basic validation
+      if (!variant_name || !title || !price) {
+        return res.status(400).json({
+          success: false,
+          message: "variant_name, title and price are required",
+        });
+      }
+
+      // check if variant exists
+      const existing = await ServiceVariantModel.findById(id);
+
+      if (!existing) {
+        return res.status(404).json({
+          success: false,
+          message: "Variant not found",
+        });
+      }
+
+      // update
+      await ServiceVariantModel.update(id, {
+        service_id: service_id ?? existing.service_id,
+        variant_name,
+        title,
+        short_description,
+        price,
+        status: status ?? existing.status,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Variant updated successfully",
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     }
   }
 
