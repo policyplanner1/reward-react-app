@@ -627,7 +627,7 @@ class ManagerController {
       }
 
       // 2. Optional: prevent duplicate deactivation
-      if (vendor[0].status === "rejected") {
+      if (vendor[0].status === "deleted") {
         await connection.rollback();
         return res.status(400).json({ message: "Vendor already inactive" });
       }
@@ -635,7 +635,7 @@ class ManagerController {
       // 3. Deactivate vendor
       await connection.query(
         `UPDATE vendors 
-         SET status = 'rejected', updated_at = NOW()
+         SET status = 'deleted', updated_at = NOW()
          WHERE vendor_id = ?`,
         [vendorId],
       );
