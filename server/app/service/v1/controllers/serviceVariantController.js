@@ -87,14 +87,6 @@ class ServiceVariantController {
         status,
       } = req.body;
 
-      // basic validation
-      if (!variant_name || !title || !price) {
-        return res.status(400).json({
-          success: false,
-          message: "variant_name, title and price are required",
-        });
-      }
-
       // check if variant exists
       const existing = await ServiceVariantModel.findById(id);
 
@@ -116,7 +108,7 @@ class ServiceVariantController {
         let optimizedBuffer;
 
         try {
-          optimizedBuffer = await sharp(req.file.buffer)
+          optimizedBuffer = await sharp(req.file.path)
             .resize({ width: 800, withoutEnlargement: true })
             .webp({ quality: 70 })
             .toBuffer();
@@ -144,14 +136,40 @@ class ServiceVariantController {
         }
       }
 
+      // default price
+      const parsedPrice =
+        price !== undefined && price !== ""
+          ? parseFloat(price)
+          : existing.price;
+
+      if (isNaN(parsedPrice)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid price value",
+        });
+      }
+
+      // default status
+      const parsedStatus =
+        status === undefined || status === null || status === ""
+          ? existing.status
+          : Number(status);
+
+      if (![0, 1].includes(parsedStatus)) {
+        return res.status(400).json({
+          success: false,
+          message: "Status must be 0 or 1",
+        });
+      }
+
       // update
       await ServiceVariantModel.update(id, {
         service_id: service_id ?? existing.service_id,
         variant_name: variant_name ?? existing.variant_name,
         title: title ?? existing.title,
         short_description: short_description ?? existing.short_description,
-        price: price ?? existing.price,
-        status: status ?? existing.status,
+        price: parsedPrice,
+        status: parsedStatus,
         image_url: imageUrl,
       });
 
