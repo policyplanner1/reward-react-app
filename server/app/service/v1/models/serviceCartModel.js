@@ -1,5 +1,12 @@
 const db = require("../../../../config/database");
 
+// helper function
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
+function getPublicUrl(path) {
+  if (!path) return null;
+  return `${CDN_BASE_URL}/${path}`;
+}
+
 class ServiceCartModel {
   // get or create cart item
   async getOrCreateCart(userId) {
@@ -47,7 +54,7 @@ class ServiceCartModel {
   }
 
   // get cart items
-  async   getCart(cartId) {
+  async getCart(cartId) {
     const [rows] = await db.execute(
       `
       SELECT 
@@ -57,7 +64,8 @@ class ServiceCartModel {
 
         s.name AS service_name,
         sv.variant_name,
-        sv.title
+        sv.title,
+        sv.image_url
 
       FROM service_cart_items ci
       JOIN services s ON s.id = ci.service_id
@@ -68,7 +76,12 @@ class ServiceCartModel {
       [cartId],
     );
 
-    return rows;
+    const formatted = rows.map((item) => ({
+      ...item,
+      image_url: getPublicUrl(item.image_url),
+    }));
+
+    return formatted;
   }
 
   // remove item from cart
