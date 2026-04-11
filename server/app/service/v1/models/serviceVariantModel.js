@@ -167,7 +167,8 @@ class ServiceVariantModel {
          title = ?, 
          short_description = ?, 
          price = ?, 
-         status = ?
+         status = ?,
+         image_url = ?
      WHERE id = ?`,
       [
         data.service_id,
@@ -176,6 +177,7 @@ class ServiceVariantModel {
         data.short_description,
         data.price,
         data.status,
+        data.image_url,
         id,
       ],
     );

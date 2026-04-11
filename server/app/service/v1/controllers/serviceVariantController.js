@@ -87,7 +87,7 @@ class ServiceVariantController {
         status,
       } = req.body;
 
-      // check if variant exists
+      // 1. Check if variant exists
       const existing = await ServiceVariantModel.findById(id);
 
       if (!existing) {
@@ -98,11 +98,15 @@ class ServiceVariantController {
       }
 
       let imageUrl = existing.image_url;
+      let newImageKey = null;
 
-      // Image update
+      // 2. Handle Image Upload (SAFE FLOW)
       if (req.file) {
         if (!req.file.mimetype.startsWith("image/")) {
-          throw new Error("Invalid image file");
+          return res.status(400).json({
+            success: false,
+            message: "Invalid image file",
+          });
         }
 
         let optimizedBuffer;
@@ -113,30 +117,23 @@ class ServiceVariantController {
             .webp({ quality: 70 })
             .toBuffer();
         } catch (err) {
-          throw new Error("Image processing failed");
+          return res.status(500).json({
+            success: false,
+            message: "Image processing failed",
+          });
         }
 
         const fileName = `${Date.now()}-${Math.random()
           .toString(36)
           .substring(2, 8)}.webp`;
 
-        const key = `public/service_variants/${id}/${fileName}`;
+        newImageKey = `public/service_variants/${id}/${fileName}`;
 
-        //  upload new image
-        imageUrl = await uploadToR2(optimizedBuffer, key, "image/webp");
-
-        //  delete old image (if exists)
-        if (existing.image_url) {
-          try {
-            const oldKey = new URL(existing.image_url).pathname.substring(1);
-            await deleteFromR2(oldKey);
-          } catch (err) {
-            console.error("Old image delete failed:", err.message);
-          }
-        }
+        // upload new image
+        imageUrl = await uploadToR2(optimizedBuffer, newImageKey, "image/webp");
       }
 
-      // default price
+      // 3. Validate Price
       const parsedPrice =
         price !== undefined && price !== ""
           ? parseFloat(price)
@@ -149,11 +146,11 @@ class ServiceVariantController {
         });
       }
 
-      // default status
+      // 4. Validate Status
       const parsedStatus =
-        status === undefined || status === null || status === ""
-          ? existing.status
-          : Number(status);
+        status !== undefined && status !== null && status !== ""
+          ? Number(status)
+          : existing.status;
 
       if (![0, 1].includes(parsedStatus)) {
         return res.status(400).json({
@@ -162,24 +159,66 @@ class ServiceVariantController {
         });
       }
 
-      // update
-      await ServiceVariantModel.update(id, {
-        service_id: service_id ?? existing.service_id,
-        variant_name: variant_name ?? existing.variant_name,
-        title: title ?? existing.title,
-        short_description: short_description ?? existing.short_description,
+      // 5. Prepare update payload
+      const updateData = {
+        service_id:
+          service_id !== undefined && service_id !== ""
+            ? service_id
+            : existing.service_id,
+
+        variant_name:
+          variant_name !== undefined && variant_name !== ""
+            ? variant_name
+            : existing.variant_name,
+
+        title: title !== undefined && title !== "" ? title : existing.title,
+
+        short_description:
+          short_description !== undefined && short_description !== ""
+            ? short_description
+            : existing.short_description,
+
         price: parsedPrice,
         status: parsedStatus,
         image_url: imageUrl,
-      });
+      };
 
-      res.status(200).json({
+      // 6. Update DB
+      const updated = await ServiceVariantModel.update(id, updateData);
+
+      if (!updated) {
+        // rollback uploaded image if DB failed
+        if (newImageKey) {
+          await deleteFromR2(newImageKey).catch(() => {});
+        }
+
+        return res.status(500).json({
+          success: false,
+          message: "Failed to update variant",
+        });
+      }
+
+      // 7. Delete old image AFTER success
+      if (req.file && existing.image_url) {
+        try {
+          const oldKey = new URL(existing.image_url).pathname.substring(1);
+          await deleteFromR2(oldKey);
+        } catch (err) {
+          console.error("Old image delete failed:", err.message);
+        }
+      }
+
+      // 8. Response
+      return res.status(200).json({
         success: true,
         message: "Variant updated successfully",
-        data: { id, image_url: imageUrl },
+        data: {
+          id,
+          image_url: imageUrl,
+        },
       });
     } catch (err) {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: err.message,
       });
