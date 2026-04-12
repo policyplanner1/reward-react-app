@@ -3,6 +3,9 @@ const { moveFile } = require("../utils/moveFile");
 const fs = require("fs");
 const path = require("path");
 const { compressVideo } = require("../utils/videoCompression");
+const { uploadToR2 } = require("../utils/r2upload");
+const { deleteFromR2 } = require("../utils/r2delete");
+const sharp = require("sharp");
 
 // generate SKU
 function generateSKU(productId) {
@@ -576,36 +579,7 @@ class ProductModel {
     const custom_subcategory = data.custom_subcategory || null;
     const custom_sub_subcategory = data.custom_sub_subcategory || null;
 
-    // ---------- FOLDERS ----------
-    const imagesFolder = path.join(
-      UPLOAD_BASE,
-      vendorId.toString(),
-      productId.toString(),
-      "images",
-    );
-
-    const videoFolder = path.join(
-      UPLOAD_BASE,
-      vendorId.toString(),
-      productId.toString(),
-      "video",
-    );
-
-    const docsFolder = path.join(
-      UPLOAD_BASE,
-      vendorId.toString(),
-      productId.toString(),
-      "documents",
-    );
-
-    const variantFolder = path.join(
-      UPLOAD_BASE,
-      vendorId.toString(),
-      productId.toString(),
-      "variants",
-    );
-
-    // ---------- 1. UPDATE PRODUCT ----------
+    // ================== 1. UPDATE PRODUCT ==================
     await connection.execute(
       `UPDATE eproducts SET 
       category_id = ?, 
@@ -654,7 +628,7 @@ class ProductModel {
       ],
     );
 
-    //1.2 update attributes
+    // ================== 1.2 ATTRIBUTES ==================
     if (data.attributes) {
       const attributes =
         typeof data.attributes === "string"
@@ -662,14 +636,12 @@ class ProductModel {
           : data.attributes;
 
       await connection.execute(
-        `UPDATE product_attributes
-     SET attributes = ?
-     WHERE product_id = ?`,
+        `UPDATE product_attributes SET attributes = ? WHERE product_id = ?`,
         [JSON.stringify(attributes), productId],
       );
     }
 
-    // 1.3---------- REGENERATE VARIANTS AFTER ATTRIBUTE CHANGE ----------
+    // ================== 1.3 VARIANTS ==================
     await this.generateProductVariants(
       connection,
       productId,
@@ -677,22 +649,115 @@ class ProductModel {
       data.subcategory_id,
     );
 
-    // ---------- 2. PROCESS FILES ----------
-    const movedFiles = await processUploadedFiles(files, {
-      vendorId,
-      productId,
-      imagesFolder,
-      docsFolder,
-      variantFolder,
-    });
+    let movedFiles = [];
 
-    // ============================================================
-    // 3. REMOVE MAIN PRODUCT IMAGES (EDIT MODE)
-    // ============================================================
+    // ================== 2. HANDLE FILE UPLOAD ==================
+    if (files && files.length) {
+      for (const file of files) {
+        const filename = path.basename(file.path);
+        const isDocField = /^\d+$/.test(file.fieldname);
+
+        // -------- IMAGES --------
+        if (file.fieldname === "images") {
+          const inputBuffer = fs.readFileSync(file.path);
+          if (!file.mimetype.startsWith("image/")) {
+            throw new Error("Invalid image file");
+          }
+
+          const webpFilename = `${Date.now()}-${Math.random()
+            .toString(36)
+            .substring(2, 8)}.webp`;
+
+          let optimizedBuffer;
+
+          try {
+            optimizedBuffer = await sharp(inputBuffer)
+              .resize({ width: 1920, withoutEnlargement: true })
+              .webp({ quality: 70 })
+              .toBuffer();
+          } catch (err) {
+            throw new Error("Image processing failed");
+          }
+
+          file.finalPath = `public/products/${vendorId}/${productId}/images/${webpFilename}`;
+
+          await uploadToR2(optimizedBuffer, file.finalPath, "image/webp");
+        }
+
+        // -------- DOCUMENTS --------
+        else if (isDocField) {
+          const inputBuffer = fs.readFileSync(file.path);
+
+          file.finalPath = `public/products/${vendorId}/${productId}/documents/${filename}`;
+          file.documentId = Number(file.fieldname);
+
+          await uploadToR2(inputBuffer, file.finalPath, file.mimetype);
+        }
+
+        // -------- VARIANTS --------
+        else if (file.fieldname.startsWith("variant_")) {
+          const inputBuffer = fs.readFileSync(file.path);
+          file.finalPath = `public/products/${vendorId}/${productId}/variants/${filename}`;
+
+          await uploadToR2(inputBuffer, file.finalPath, file.mimetype);
+        }
+
+        // -------- VIDEO --------
+        else if (file.fieldname === "video") {
+          if (!file.mimetype.startsWith("video/")) {
+            throw new Error("Invalid video file type");
+          }
+
+          if (file.size > 50 * 1024 * 1024) {
+            throw new Error("Video exceeds size limit");
+          }
+
+          const tempVideoPath = file.path;
+
+          const compressedFilename = `compressed-${Date.now()}-${Math.random()
+            .toString(36)
+            .substring(2, 8)}.mp4`;
+
+          const compressedPath = path.join(
+            path.dirname(tempVideoPath),
+            compressedFilename,
+          );
+
+          try {
+            await compressVideo(tempVideoPath, compressedPath);
+            await fs.promises.unlink(tempVideoPath);
+          } catch (err) {
+            if (fs.existsSync(tempVideoPath))
+              await fs.promises.unlink(tempVideoPath);
+            if (fs.existsSync(compressedPath))
+              await fs.promises.unlink(compressedPath);
+            throw new Error("Video compression failed");
+          }
+
+          const buffer = fs.readFileSync(compressedPath);
+
+          file.finalPath = `public/products/${vendorId}/${productId}/video/${compressedFilename}`;
+
+          await uploadToR2(buffer, file.finalPath, "video/mp4");
+
+          fs.unlinkSync(compressedPath);
+
+          movedFiles.push(file);
+          continue;
+        } else {
+          continue;
+        }
+
+        fs.unlinkSync(file.path);
+
+        movedFiles.push(file);
+      }
+    }
+
+    // ================== 3. DELETE REMOVED IMAGES ==================
     if (data.removedMainImages) {
       const removedImagesRaw = JSON.parse(data.removedMainImages || "[]");
 
-      //  FILTER INVALID VALUES
       const removedImages = removedImagesRaw.filter(
         (img) => typeof img === "string" && img.trim() !== "",
       );
@@ -702,24 +767,17 @@ class ProductModel {
 
         await connection.execute(
           `DELETE FROM product_images
-       WHERE product_id = ? AND image_url IN (${placeholders})`,
+         WHERE product_id = ? AND image_url IN (${placeholders})`,
           [productId, ...removedImages],
         );
 
         for (const imgUrl of removedImages) {
-          const imgPath = path.join(UPLOAD_BASE, imgUrl);
-          if (fs.existsSync(imgPath)) {
-            fs.unlinkSync(imgPath);
-          }
+          await deleteFromR2(imgUrl);
         }
       }
     }
 
-    // ============================================================
-    // 3.5 HANDLE PRODUCT VIDEO (EDIT MODE)
-    // ============================================================
-
-    // Case 1: Remove existing video
+    // ================== 3.5 DELETE VIDEO ==================
     if (data.removedVideo === "true") {
       const [rows] = await connection.execute(
         `SELECT video_url FROM product_videos WHERE product_id = ?`,
@@ -734,46 +792,34 @@ class ProductModel {
           [productId],
         );
 
-        const fullPath = path.join(UPLOAD_BASE, videoPath);
-        if (fs.existsSync(fullPath)) {
-          fs.unlinkSync(fullPath);
-        }
+        await deleteFromR2(videoPath);
       }
     }
 
-    // ============================================================
-    // 4. INSERT NEW MAIN IMAGES + VIDEO + DOCUMENTS
-    // ============================================================
+    // ================== 4. INSERT NEW FILES ==================
     if (movedFiles.length) {
       const mainImages = movedFiles.filter((f) => f.fieldname === "images");
       const videoFile = movedFiles.find((f) => f.fieldname === "video");
-      const otherFiles = movedFiles.filter(
-        (f) => f.fieldname !== "images" && f.fieldname !== "video",
-      );
+      const docFiles = movedFiles.filter((f) => f.documentId);
 
-      // ---------- IMAGES ----------
       if (mainImages.length) {
         await this.insertProductImages(connection, productId, mainImages);
       }
 
-      // ---------- VIDEO (ADD THIS BLOCK HERE) ----------
       if (videoFile) {
-        // remove old video if exists
         await connection.execute(
           `DELETE FROM product_videos WHERE product_id = ?`,
           [productId],
         );
 
-        // insert new one
         await connection.execute(
           `INSERT INTO product_videos (product_id, video_url)
-       VALUES (?, ?)`,
+         VALUES (?, ?)`,
           [productId, videoFile.finalPath],
         );
       }
 
-      // ---------- DOCUMENTS ----------
-      if (otherFiles.length && data.category_id) {
+      if (docFiles.length && data.category_id) {
         await connection.execute(
           `DELETE FROM product_documents WHERE product_id = ?`,
           [productId],
@@ -783,7 +829,7 @@ class ProductModel {
           connection,
           productId,
           data.category_id,
-          otherFiles,
+          docFiles,
         );
       }
     }

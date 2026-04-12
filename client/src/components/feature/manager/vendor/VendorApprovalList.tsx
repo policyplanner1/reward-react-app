@@ -15,7 +15,7 @@ interface VendorItem {
   vendor_id: number;
   company_name: string;
   full_name: string;
-  status: "sent_for_approval" | "approved" | "rejected";
+  status: "sent_for_approval" | "approved" | "rejected" | "deleted";
   rejection_reason?: string;
   email: string;
   phone?: string;
@@ -50,13 +50,21 @@ const StatusChip = ({ status }: { status: VendorItem["status"] }) => {
     );
   }
 
+  if (status === "deleted") {
+    return (
+      <span className="inline-flex items-center text-gray-700 bg-gray-200 border border-gray-400 px-3 py-1 text-xs rounded-full">
+        <FaTimesCircle className="mr-1" /> Inactive
+      </span>
+    );
+  }
+
   return null;
 };
 
 export default function VendorApprovalList() {
   const [vendors, setVendors] = useState<VendorItem[]>([]);
   const [filter, setFilter] = useState<
-    "All" | "sent_for_approval" | "approved" | "rejected"
+    "All" | "sent_for_approval" | "approved" | "rejected" | "deleted"
   >("All");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -127,6 +135,31 @@ export default function VendorApprovalList() {
     }
   };
 
+  const handleDeleteVendor = async (vendorId: number) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to deactivate this vendor?",
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const res = await api.put(`/manager/deactivate/${vendorId}`);
+      console.log(res, "deactivate response");
+
+      if (res.data) {
+        // remove from UI OR refetch
+        setVendors((prev) =>
+          prev.map((v) =>
+            v.vendor_id === vendorId ? { ...v, status: "deleted" } : v,
+          ),
+        );
+      }
+    } catch (err) {
+      console.error("Error deleting vendor:", err);
+      alert("Failed to deactivate vendor");
+    }
+  };
+
   if (loading) return <p className="p-10 text-center">Loading vendors...</p>;
 
   return (
@@ -157,6 +190,7 @@ export default function VendorApprovalList() {
               { label: "Pending", value: "sent_for_approval" },
               { label: "Approved", value: "approved" },
               { label: "Rejected", value: "rejected" },
+              { label: "Inactive", value: "deleted" },
             ].map(({ label, value }) => (
               <button
                 key={value}
@@ -197,6 +231,7 @@ export default function VendorApprovalList() {
               <option value="All">All Status</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
+              <option value="deleted">Inactive</option>
               <option value="sent_for_approval">Pending</option>
             </select>
 
@@ -281,12 +316,29 @@ export default function VendorApprovalList() {
                   </td>
 
                   {/* Action */}
-                  <td className="px-6 py-4">
-                    <Link to={`/manager/vendor-review/${v.vendor_id}`}>
-                      <button className="flex items-center px-4 py-2 bg-[#852BAF] text-white rounded-lg hover:bg-gradient-to-r hover:from-[#852BAF] hover:to-[#FC3F78] transition text-sm cursor-pointer">
-                        <FaEye className="mr-2" /> Review
-                      </button>
-                    </Link>
+                  <td className="px-6 py-4 flex gap-2">
+                    {v.status !== "deleted" ? (
+                      <>
+                        {/* REVIEW BUTTON */}
+                        <Link to={`/manager/vendor-review/${v.vendor_id}`}>
+                          <button className="flex items-center px-3 py-2 bg-[#852BAF] text-white rounded-lg text-sm cursor-pointer">
+                            <FaEye className="mr-2" /> Review
+                          </button>
+                        </Link>
+
+                        {/* DELETE BUTTON */}
+                        <button
+                          onClick={() => handleDeleteVendor(v.vendor_id)}
+                          className="flex items-center px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm cursor-pointer"
+                        >
+                          <FaTimesCircle className="mr-2" /> Delete
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-gray-400 text-sm italic">
+                        No actions available
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -1,6 +1,7 @@
 const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
 
 class wishListModel {
   // add to wishlist
@@ -101,7 +102,7 @@ class wishListModel {
           const [image_id, image_url, type, sort_order] = item.split("::");
           return {
             image_id: Number(image_id),
-            image_url,
+            image_url: image_url ? `${CDN_BASE_URL}/${image_url}` : null,
             type,
             sort_order: Number(sort_order),
           };

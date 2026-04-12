@@ -361,12 +361,9 @@ class AuthController {
   async loginUser(req, res) {
     try {
       const { email, password } = req.body;
-      console.log(email, password); // Debug log
-
       const normalizedEmail = email.trim().toLowerCase();
 
       const user = await AuthModel.findByEmail(normalizedEmail);
-  console.log("USER FOUND:", user); // Debug log
       if (!user) return res.status(401).json({ success: false });
 
       if (Number(user.status) !== 1)
@@ -381,24 +378,19 @@ class AuthController {
 
       const match = await bcrypt.compare(password, user.password);
       if (!match) return res.status(401).json({ success: false });
-      console.log("PASSWORD MATCHED"); // Debug log
       const accessToken = jwt.sign(
         { user_id: user.user_id, token_version: user.token_version },
         process.env.ACCESS_TOKEN_SECRET,
         { expiresIn: ACCESS_EXPIRES },
       );
-console.log("ACCESS TOKEN GENERATED"); // Debug log
       const refreshToken = jwt.sign(
         { user_id: user.user_id },
         process.env.REFRESH_TOKEN_SECRET,
         { expiresIn: `${REFRESH_EXPIRES_DAYS}d` },
       );
-console.log("REFRESH TOKEN GENERATED"); // Debug log
-console.log("TOKENS GENERATED"); // Debug log
       const expiryDate = new Date(
         Date.now() + REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
       );
-console.log("EXPIRY DATE CALCULATED"); // Debug log
       // check existing device
       const deviceInfo = req.headers["user-agent"];
       const ipAddress = req.ip;

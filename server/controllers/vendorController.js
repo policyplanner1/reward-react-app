@@ -9,30 +9,11 @@ const path = require("path");
 const {
   notifyVendorStatusChange,
 } = require("../services/vendorNotificationService");
+const { uploadToR2 } = require("../utils/r2upload");
+const { getPrivateFileUrl } = require("../utils/r2SignedUrl");
+const sharp = require("sharp");
 
-// helper function to upload the images and docs
-// async function moveVendorFiles(vendorId, files) {
-//   const targetDir = path.join(
-//     __dirname,
-//     "../uploads/vendors",
-//     vendorId.toString(),
-//     "documents"
-//   );
-
-//   if (!fs.existsSync(targetDir)) {
-//     fs.mkdirSync(targetDir, { recursive: true });
-//   }
-
-//   for (const key of Object.keys(files)) {
-//     const file = files[key][0];
-
-//     const newPath = path.join(targetDir, file.filename);
-//     fs.renameSync(file.path, newPath);
-
-//     file.path = newPath;
-//   }
-// }
-
+// helper function
 async function moveVendorFiles(vendorId, files) {
   const targetDir = path.join(
     __dirname,
@@ -120,11 +101,28 @@ class VendorController {
       await VendorModel.insertBankDetails(connection, vndID, data);
       await VendorModel.insertContacts(connection, vndID, data);
 
+      // ===== Upload documents to R2 (PRIVATE) =====
       if (files) {
-        await moveVendorFiles(vndID, files);
+        for (const key of Object.keys(files)) {
+          const file = files[key][0];
+
+          const filename = path.basename(file.path);
+
+          const r2Key = `private/vendors/${vndID}/documents/${key}/${filename}`;
+
+          const buffer = fs.readFileSync(file.path);
+
+          await uploadToR2(buffer, r2Key, file.mimetype);
+
+          // attach final path for DB
+          file.finalPath = r2Key;
+
+          // delete temp file
+          fs.unlinkSync(file.path);
+        }
+
         await VendorModel.insertCommonDocuments(connection, vndID, files);
       }
-
       await connection.commit();
 
       return res.status(201).json({
@@ -284,23 +282,28 @@ class VendorController {
       // 1 Create category (without image)
       const categoryId = await categoryModel.createCategory(name.trim());
 
-      // 2 Folder creation
-      const categoryDir = path.join(
-        __dirname,
-        `../uploads/category-images/${categoryId}`,
-      );
+      const inputBuffer = fs.readFileSync(req.file.path);
 
-      if (!fs.existsSync(categoryDir)) {
-        fs.mkdirSync(categoryDir, { recursive: true });
+      let optimizedBuffer;
+      try {
+        optimizedBuffer = await sharp(inputBuffer)
+          .resize({ width: 1200, withoutEnlargement: true })
+          .webp({ quality: 88 })
+          .toBuffer();
+      } catch (err) {
+        fs.unlinkSync(req.file.path);
+        throw new Error("Image processing failed");
       }
 
-      // 3 Move file from temp to image folder
-      const ext = path.extname(req.file.originalname);
-      const finalFilePath = path.join(categoryDir, `cover${ext}`);
+      const r2Path = `public/category-images/${categoryId}/cover.webp`;
 
-      fs.renameSync(req.file.path, finalFilePath);
+      await uploadToR2(optimizedBuffer, r2Path, "image/webp");
 
-      const dbPath = `category-images/${categoryId}/cover${ext}`;
+      // delete temp file
+      fs.unlinkSync(req.file.path);
+
+      // save R2 path in DB
+      const dbPath = r2Path;
 
       // 4 Update DB with image path
       await categoryModel.updateCategoryImage(categoryId, dbPath);
@@ -334,31 +337,40 @@ class VendorController {
         });
       }
 
-      // 2 If new image uploaded => replace it
+      // 2 If new image uploaded
       if (req.file) {
-        const categoryDir = path.join(
-          __dirname,
-          `../uploads/category-images/${categoryID}`,
-        );
-
-        if (!fs.existsSync(categoryDir)) {
-          fs.mkdirSync(categoryDir, { recursive: true });
+        if (!req.file.mimetype.startsWith("image/")) {
+          return res.status(400).json({ message: "Only image files allowed" });
         }
 
-        const ext = path.extname(req.file.originalname);
-        const finalPath = path.join(categoryDir, `cover${ext}`);
+        if (req.file.size > 5 * 1024 * 1024) {
+          return res.status(400).json({ message: "Image must be under 5MB" });
+        }
 
-        fs.renameSync(req.file.path, finalPath);
+        const inputBuffer = fs.readFileSync(req.file.path);
 
-        fs.readdirSync(categoryDir).forEach((file) => {
-          if (path.join(categoryDir, file) !== finalPath) {
-            fs.unlinkSync(path.join(categoryDir, file));
-          }
-        });
+        let optimizedBuffer;
+        try {
+          optimizedBuffer = await sharp(inputBuffer)
+            .resize({ width: 1200, withoutEnlargement: true })
+            .webp({ quality: 88 })
+            .toBuffer();
+        } catch (err) {
+          fs.unlinkSync(req.file.path);
+          throw new Error("Image processing failed");
+        }
 
-        const dbPath = `category-images/${categoryID}/cover${ext}`;
+        //  R2 path
+        const r2Path = `public/category-images/${categoryID}/cover.webp`;
 
-        await categoryModel.updateCategoryImage(categoryID, dbPath);
+        // Upload to R2 (overwrites existing file)
+        await uploadToR2(optimizedBuffer, r2Path, "image/webp");
+
+        // cleanup temp file
+        fs.unlinkSync(req.file.path);
+
+        // update DB
+        await categoryModel.updateCategoryImage(categoryID, r2Path);
       }
 
       res.status(200).json({
@@ -458,37 +470,42 @@ class VendorController {
         return res.status(400).json({ message: "Category required" });
       }
 
-      // if (!req.file) {
-      //   return res.status(400).json({ message: "Cover image is mandatory" });
-      // }
-
       // 1 Create subcategory
       const subcategoryId = await subCategoryModel.createSubCategory({
         name: name.trim(),
         category_id,
       });
 
-      // 2 Create folder
+      // 2 If image uploaded → process + upload to R2
       if (req.file) {
-        const subDir = path.join(
-          __dirname,
-          `../uploads/subcategory-images/${subcategoryId}`,
-        );
-
-        if (!fs.existsSync(subDir)) {
-          fs.mkdirSync(subDir, { recursive: true });
+        if (!req.file.mimetype.startsWith("image/")) {
+          return res.status(400).json({ message: "Only image files allowed" });
         }
 
-        // 3 Move image from temp
-        const ext = path.extname(req.file.originalname);
-        const finalPath = path.join(subDir, `cover${ext}`);
+        if (req.file.size > 5 * 1024 * 1024) {
+          return res.status(400).json({ message: "Image must be under 5MB" });
+        }
 
-        fs.renameSync(req.file.path, finalPath);
+        const inputBuffer = fs.readFileSync(req.file.path);
 
-        // 4 Store relative path in DB
-        const dbPath = `subcategory-images/${subcategoryId}/cover${ext}`;
+        let optimizedBuffer;
+        try {
+          optimizedBuffer = await sharp(inputBuffer)
+            .resize({ width: 1200, withoutEnlargement: true })
+            .webp({ quality: 88 })
+            .toBuffer();
+        } catch (err) {
+          fs.unlinkSync(req.file.path);
+          throw new Error("Image processing failed");
+        }
 
-        await subCategoryModel.updateSubCategoryImage(subcategoryId, dbPath);
+        const r2Path = `public/subcategory-images/${subcategoryId}/cover.webp`;
+
+        await uploadToR2(optimizedBuffer, r2Path, "image/webp");
+
+        fs.unlinkSync(req.file.path);
+
+        await subCategoryModel.updateSubCategoryImage(subcategoryId, r2Path);
       }
 
       return res.status(201).json({
@@ -557,7 +574,7 @@ class VendorController {
       const id = req.params.id;
       const { name, category_id, status } = req.body;
 
-      // 1 Update basic fields (your existing model)
+      // 1 Update basic fields
       const updated = await subCategoryModel.updateSubCategory(id, {
         name,
         category_id,
@@ -571,25 +588,37 @@ class VendorController {
         });
       }
 
-      // 2 If new image uploaded → replace it
+      // 2 If new image uploaded
       if (req.file) {
-        const dir = path.join(__dirname, `../uploads/subcategory-images/${id}`);
-
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
+        if (!req.file.mimetype.startsWith("image/")) {
+          return res.status(400).json({ message: "Only image files allowed" });
         }
 
-        // remove old files
-        fs.readdirSync(dir).forEach((f) => fs.unlinkSync(path.join(dir, f)));
+        if (req.file.size > 5 * 1024 * 1024) {
+          return res.status(400).json({ message: "Image must be under 5MB" });
+        }
 
-        const ext = path.extname(req.file.originalname);
-        const finalPath = path.join(dir, `cover${ext}`);
+        const inputBuffer = fs.readFileSync(req.file.path);
 
-        fs.renameSync(req.file.path, finalPath);
+        let optimizedBuffer;
+        try {
+          optimizedBuffer = await sharp(inputBuffer)
+            .resize({ width: 1200, withoutEnlargement: true })
+            .webp({ quality: 88 })
+            .toBuffer();
+        } catch (err) {
+          fs.unlinkSync(req.file.path);
+          throw new Error("Image processing failed");
+        }
 
-        const dbPath = `subcategory-images/${id}/cover${ext}`;
+        const r2Path = `public/subcategory-images/${id}/cover.webp`;
 
-        await subCategoryModel.updateSubCategoryImage(id, dbPath);
+        //  overwrite existing image
+        await uploadToR2(optimizedBuffer, r2Path, "image/webp");
+
+        fs.unlinkSync(req.file.path);
+
+        await subCategoryModel.updateSubCategoryImage(id, r2Path);
       }
 
       res.status(200).json({
@@ -858,6 +887,15 @@ class VendorController {
           success: false,
           message: "Vendor not found",
         });
+      }
+
+      //  signed URLs to documents
+      if (data.documents && data.documents.length) {
+        for (const doc of data.documents) {
+          if (doc.file_path) {
+            doc.url = await getPrivateFileUrl(doc.file_path);
+          }
+        }
       }
 
       return res.json({ success: true, data });

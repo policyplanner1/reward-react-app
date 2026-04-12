@@ -104,7 +104,8 @@ import { Link } from "react-router-dom";
 
 // const API_BASE = import.meta.env.VITE_API_URL;
 import { api } from "../../../../api/api";
-const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
+// const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
+const R2_BASE_URL = "https://cdn.rewardplanners.com";
 
 type ProductVariant = {
   variant_id: number;
@@ -178,6 +179,16 @@ export default function ReviewProductPage() {
     fetchProduct(productId);
   }, [productId]);
 
+  // const resolveImageUrl = (path?: string) => {
+  //   if (!path) return "";
+
+  //   if (path.startsWith("http://") || path.startsWith("https://")) {
+  //     return path;
+  //   }
+
+  //   return `${API_BASEIMAGE_URL}/uploads/${path.replace(/^\/+/, "")}`;
+  // };
+
   const resolveImageUrl = (path?: string) => {
     if (!path) return "";
 
@@ -185,7 +196,7 @@ export default function ReviewProductPage() {
       return path;
     }
 
-    return `${API_BASEIMAGE_URL}/uploads/${path.replace(/^\/+/, "")}`;
+    return `${R2_BASE_URL}/${path.replace(/^\/+/, "")}`;
   };
 
   const fetchProduct = async (id: string) => {

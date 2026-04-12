@@ -4,7 +4,7 @@ import type { ComponentType } from "react";
 import { api } from "../../../../api/api";
 import QuillEditor from "../../../QuillEditor";
 import Swal from "sweetalert2";
-import imageCompression from "browser-image-compression";
+// import imageCompression from "browser-image-compression";
 
 type IconComp = ComponentType<any>;
 
@@ -216,7 +216,54 @@ export default function ProductListingDynamic() {
     }
   };
 
-  const handleMainImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // const handleMainImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (!e.target.files) return;
+
+  //   const file = e.target.files[0];
+
+  //   if (!file.type.startsWith("image/")) {
+  //     setImageError("Only image files are allowed.");
+  //     return;
+  //   }
+
+  //   const options = {
+  //     maxSizeMB: 1,
+  //     maxWidthOrHeight: 1920,
+  //     useWebWorker: true,
+  //     initialQuality: 0.85,
+  //     fileType: "image/webp", //  convert to WebP
+  //   };
+
+  //   try {
+  //     const compressedFile = await imageCompression(file, options);
+
+  //     const preview = {
+  //       file: compressedFile,
+  //       url: URL.createObjectURL(compressedFile),
+  //     };
+
+  //     setProduct((prev) => {
+  //       // revoke old preview URLs
+  //       prev.productImages.forEach((img) => {
+  //         URL.revokeObjectURL(img.url);
+  //       });
+
+  //       return {
+  //         ...prev,
+  //         productImages: [preview],
+  //       };
+  //     });
+
+  //     setImageError("");
+  //   } catch (err) {
+  //     console.error("Image compression failed:", err);
+  //     setImageError("Failed to process image.");
+  //   }
+
+  //   e.target.value = "";
+  // };
+
+  const handleMainImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
 
     const file = e.target.files[0];
@@ -226,40 +273,23 @@ export default function ProductListingDynamic() {
       return;
     }
 
-    const options = {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1920,
-      useWebWorker: true,
-      initialQuality: 0.85,
-      fileType: "image/webp", // 🔥 convert to WebP
+    const preview = {
+      file: file,
+      url: URL.createObjectURL(file),
     };
 
-    try {
-      const compressedFile = await imageCompression(file, options);
-
-      const preview = {
-        file: compressedFile,
-        url: URL.createObjectURL(compressedFile),
-      };
-
-      setProduct((prev) => {
-        // revoke old preview URLs
-        prev.productImages.forEach((img) => {
-          URL.revokeObjectURL(img.url);
-        });
-
-        return {
-          ...prev,
-          productImages: [preview],
-        };
+    setProduct((prev) => {
+      prev.productImages.forEach((img) => {
+        URL.revokeObjectURL(img.url);
       });
 
-      setImageError("");
-    } catch (err) {
-      console.error("Image compression failed:", err);
-      setImageError("Failed to process image.");
-    }
+      return {
+        ...prev,
+        productImages: [preview],
+      };
+    });
 
+    setImageError("");
     e.target.value = "";
   };
 

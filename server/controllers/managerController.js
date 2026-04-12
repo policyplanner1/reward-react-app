@@ -102,7 +102,7 @@ class ManagerController {
       data.forEach((v) => {
         worksheet.addRow({
           ...v,
-          vendor_id: `VND-${v.vendor_id}`, 
+          vendor_id: `VND-${v.vendor_id}`,
         });
       });
 
@@ -600,6 +600,80 @@ class ManagerController {
         message: "Error deleting Document",
         error: error.message,
       });
+    }
+  }
+
+  // delete vendor
+  /* ============================================================
+          DELETE VENDOR 
+    ============================================================ */
+  async deactivateVendor(req, res) {
+    const { vendorId } = req.params;
+
+    const connection = await db.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      // 1. Check if vendor exists
+      const [vendor] = await connection.query(
+        `SELECT vendor_id, status FROM vendors WHERE vendor_id = ?`,
+        [vendorId],
+      );
+
+      if (vendor.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+
+      // 2. Optional: prevent duplicate deactivation
+      if (vendor[0].status === "deleted") {
+        await connection.rollback();
+        return res.status(400).json({ message: "Vendor already inactive" });
+      }
+
+      // 3. Deactivate vendor
+      await connection.query(
+        `UPDATE vendors 
+         SET status = 'deleted', updated_at = NOW()
+         WHERE vendor_id = ?`,
+        [vendorId],
+      );
+
+      // 4. Soft delete products
+      await connection.query(
+        `UPDATE eproducts
+         SET 
+           is_deleted = 1,
+           is_visible = 0,
+           is_searchable = 0
+         WHERE vendor_id = ?`,
+        [vendorId],
+      );
+
+      // 5. Disable variants
+      await connection.query(
+        `UPDATE product_variants pv
+         JOIN eproducts p ON pv.product_id = p.product_id
+         SET pv.is_visible = 0
+         WHERE p.vendor_id = ?`,
+        [vendorId],
+      );
+
+      await connection.commit();
+
+      return res.status(200).json({
+        message: "Vendor deactivated successfully",
+      });
+    } catch (error) {
+      await connection.rollback();
+      console.error("Deactivate Vendor Error:", error);
+      return res.status(500).json({
+        message: "Something went wrong",
+        error: error.message,
+      });
+    } finally {
+      connection.release();
     }
   }
 }

@@ -5,14 +5,24 @@ const {
   authenticateToken,
   authorizeRoles,
 } = require("../../../../middleware/auth");
-
+const upload = require("../../../../middleware/serviceCategoryUpload");
 
 // add Variant
 router.post(
   "/create-variant",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
-  ServiceVariantController.addVariant
+  upload.single("service_variant_image"),
+  ServiceVariantController.addVariant,
+);
+
+// update variant
+router.put(
+  "/update-variant/:id",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  upload.single("service_variant_image"),
+  ServiceVariantController.updateVariant,
 );
 
 // Get variant by Id
@@ -23,18 +33,21 @@ router.delete(
   "/remove/:id",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
-  ServiceVariantController.deleteVariant
+  ServiceVariantController.deleteVariant,
 );
 
 // Get variant Description details
-router.get("/variant-section/:variantId", ServiceVariantController.getVariantSection);
+router.get(
+  "/variant-section/:variantId",
+  ServiceVariantController.getVariantSection,
+);
 
 // add variant section details
 router.post(
   "/variant-section",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
-  ServiceVariantController.addVariantSection
+  ServiceVariantController.addVariantSection,
 );
 
 // delete a variant section details
@@ -42,7 +55,7 @@ router.delete(
   "/variant-section/:variantId",
   authenticateToken,
   authorizeRoles("vendor_manager", "admin"),
-  ServiceVariantController.deleteVariantSection
+  ServiceVariantController.deleteVariantSection,
 );
 
 module.exports = router;

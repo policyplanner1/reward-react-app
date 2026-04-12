@@ -2,6 +2,12 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
+function getPublicUrl(path) {
+  if (!path) return null;
+  return `${CDN_BASE_URL}/${path}`;
+}
+
 class ProductModel {
   // Get all products
   async getAllProducts({ search, sortBy, sortOrder, limit, offset }) {
@@ -223,14 +229,14 @@ class ProductModel {
         `SELECT image_url FROM product_images WHERE product_id = ?`,
         [productId],
       );
-      product.images = images.map((img) => img.image_url);
+      product.images = images.map((img) => getPublicUrl(img.image_url));
 
       //2.5 Get product videos
       const [videos] = await db.execute(
         `SELECT video_url FROM product_videos WHERE product_id = ? LIMIT 1`,
         [productId],
       );
-      product.video = videos.length ? videos[0].video_url : null;
+      product.video = getPublicUrl(videos[0]?.video_url);
 
       // 3 Get product variants
       const [variants] = await db.execute(
@@ -292,7 +298,9 @@ class ProductModel {
           `,
           [variant.variant_id],
         );
-        variant.images = variantImages.map((img) => img.image_url);
+        variant.images = variantImages.map((img) =>
+          getPublicUrl(img.image_url),
+        );
       }
 
       const attributes = {};
@@ -835,7 +843,22 @@ class ProductModel {
     /* ========================================
      Combine Results
   ======================================== */
-    return [...categories, ...subcategories, ...products].slice(0, limit);
+    const formattedCategories = categories.map((cat) => ({
+      ...cat,
+      image: getPublicUrl(cat.image),
+    }));
+
+    const formattedSubcategories = subcategories.map((sub) => ({
+      ...sub,
+      image: getPublicUrl(sub.image),
+    }));
+
+    const formattedProducts = products.map((prod) => ({
+      ...prod,
+      image: getPublicUrl(prod.image),
+    }));
+
+    return [...formattedCategories, ...formattedSubcategories, ...formattedProducts].slice(0, limit);
   }
 
   // async getSearchSuggestions({ search, limit }) {
@@ -1052,7 +1075,9 @@ class ProductModel {
 
         if (row.images) {
           const first = row.images.split(",")[0];
-          image = first.split("::")[1];
+          const imagePath = first.split("::")[1];
+
+          image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
         }
 
         return {
@@ -1185,7 +1210,8 @@ class ProductModel {
 
         if (row.images) {
           const first = row.images.split(",")[0];
-          image = first.split("::")[1];
+          const imagePath = first.split("::")[1];
+          image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
         }
 
         return {
@@ -1301,7 +1327,9 @@ class ProductModel {
           brand_name: row.brand_name,
           variant_id: row.variant_id,
 
-          image: images.length ? images[0].image_url : null,
+          image: images.length
+            ? `${CDN_BASE_URL}/${images[0].image_url}`
+            : null,
 
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
@@ -1406,12 +1434,15 @@ class ProductModel {
           mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
 
         let images = [];
+        let imagePath = null;
 
         if (row.images) {
           images = row.images.split(",").map((item) => {
             const [, image_url] = item.split("::");
             return { image_url };
           });
+
+          imagePath = images.length ? images[0].image_url : null;
         }
 
         return {
@@ -1419,8 +1450,7 @@ class ProductModel {
           product_name: row.product_name,
           brand_name: row.brand_name,
           variant_id: row.variant_id,
-
-          image: images.length ? images[0].image_url : null,
+          image: imagePath ? `${CDN_BASE_URL}/${imagePath}` : null,
 
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
@@ -1514,12 +1544,15 @@ class ProductModel {
           mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
 
         let images = [];
+        let imagePath = null;
 
         if (row.images) {
           images = row.images.split(",").map((item) => {
             const [, image_url] = item.split("::");
             return { image_url };
           });
+
+          imagePath = images.length ? images[0].image_url : null;
         }
 
         return {
@@ -1528,7 +1561,7 @@ class ProductModel {
           brand_name: row.brand_name,
           variant_id: row.variant_id,
 
-          image: images.length ? images[0].image_url : null,
+          image: imagePath ? `${CDN_BASE_URL}/${imagePath}` : null,
 
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
@@ -1622,12 +1655,15 @@ class ProductModel {
           mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
 
         let images = [];
+        let imagePath = null;
 
         if (row.images) {
           images = row.images.split(",").map((item) => {
             const [, image_url] = item.split("::");
             return { image_url };
           });
+
+          imagePath = images.length ? images[0].image_url : null;
         }
 
         return {
@@ -1636,7 +1672,7 @@ class ProductModel {
           brand_name: row.brand_name,
           variant_id: row.variant_id,
 
-          image: images.length ? images[0].image_url : null,
+          image: imagePath ? `${CDN_BASE_URL}/${imagePath}` : null,
 
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
@@ -1726,12 +1762,14 @@ class ProductModel {
           mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
 
         let images = [];
+        let imagePath = null;
 
         if (row.images) {
           images = row.images.split(",").map((item) => {
             const [, image_url] = item.split("::");
             return { image_url };
           });
+          imagePath = images.length ? images[0].image_url : null;
         }
 
         return {
@@ -1740,7 +1778,7 @@ class ProductModel {
           brand_name: row.brand_name,
           variant_id: row.variant_id,
 
-          image: images.length ? images[0].image_url : null,
+          image: imagePath ? `${CDN_BASE_URL}/${imagePath}` : null,
 
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,

@@ -2,6 +2,7 @@ const ProductModel = require("../models/productModel");
 const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
 
 // Helper function
 function calculateReward(price, product) {
@@ -48,10 +49,14 @@ class ProductController {
       });
 
       const processedProducts = products.map((product) => {
-        const mainImage =
+        const imagePath =
           product.images && product.images.length
             ? product.images[0].image_url
             : null;
+
+        const mainImage = imagePath
+          ? `${CDN_BASE_URL}/${imagePath}?v=${product.updated_at || Date.now()}`
+          : null;
 
         const salePrice = product.sale_price ? Number(product.sale_price) : 0;
 
@@ -104,6 +109,7 @@ class ProductController {
         total: totalItems,
         totalPages: Math.ceil(totalItems / limit),
         currentPage: page,
+        hasMore: offset + products.length < totalItems,
       });
     } catch (err) {
       console.error("Get all products error:", err);
@@ -160,10 +166,12 @@ class ProductController {
         });
 
       const processedProducts = products.map((product) => {
-        const mainImage =
+        const imagePath =
           product.images && product.images.length
             ? product.images[0].image_url
             : null;
+
+        const mainImage = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
 
         const salePrice = product.sale_price ? Number(product.sale_price) : 0;
         const mrp = product.mrp ? Number(product.mrp) : 0;
@@ -211,6 +219,7 @@ class ProductController {
         total: totalItems,
         totalPages: Math.ceil(totalItems / limit),
         currentPage: page,
+        hasMore: offset + products.length < totalItems,
       });
     } catch (error) {
       console.error("Get products by category error:", error);
@@ -265,10 +274,12 @@ class ProductController {
         });
 
       const processedProducts = products.map((product) => {
-        const mainImage =
+        const imagePath =
           product.images && product.images.length
             ? product.images[0].image_url
             : null;
+
+        const mainImage = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
 
         const salePrice = product.sale_price ? Number(product.sale_price) : 0;
 
@@ -430,7 +441,9 @@ class ProductController {
       const processedCategories = rows.map((category) => ({
         id: category.category_id,
         name: category.category_name,
-        image: category.cover_image,
+        image: category.cover_image
+          ? `${CDN_BASE_URL}/${category.cover_image}`
+          : null,
       }));
 
       res.json({
@@ -685,7 +698,9 @@ class ProductController {
           brand_name: row.brand_name,
           variant_id: row.variant_id,
 
-          image: images.length ? images[0].image_url : null,
+          image: images.length
+            ? `${CDN_BASE_URL}/${images[0].image_url}`
+            : null,
 
           price: `₹${salePrice}`,
           originalPrice: `₹${mrp}`,
@@ -928,7 +943,9 @@ class ProductController {
       const processedSubCategories = data.map((subcategory) => ({
         id: subcategory.subcategory_id,
         name: subcategory.subcategory_name,
-        image: subcategory.cover_image,
+        image: subcategory.cover_image
+          ? `${CDN_BASE_URL}/${subcategory.cover_image}`
+          : null,
       }));
 
       res.json({
@@ -968,7 +985,9 @@ class ProductController {
           categoryMap[row.category_id] = {
             id: row.category_id,
             name: row.category_name,
-            image: row.category_image,
+            image: row.category_image
+             ? `${CDN_BASE_URL}/${row.category_image}`
+             : null,
             subcategories: [],
           };
         }
@@ -978,7 +997,9 @@ class ProductController {
           categoryMap[row.category_id].subcategories.push({
             id: row.subcategory_id,
             name: row.subcategory_name,
-            image: row.subcategory_image,
+            image: row.subcategory_image
+               ? `${CDN_BASE_URL}/${row.subcategory_image}`
+               : null,
           });
         }
       });
@@ -1068,10 +1089,14 @@ class ProductController {
       });
 
       const processedProducts = products.map((product) => {
-        const mainImage =
+        const imagePath =
           product.images && product.images.length
             ? product.images[0].image_url
             : null;
+
+        const mainImage = imagePath
+          ? `${CDN_BASE_URL}/${imagePath}?v=${product.updated_at || Date.now()}`
+          : null;
 
         const salePrice = product.sale_price ? Number(product.sale_price) : 0;
 

@@ -4,7 +4,7 @@ import type { ComponentType } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import QuillEditor from "../../../QuillEditor";
 import { FaArrowLeft } from "react-icons/fa";
-import imageCompression from "browser-image-compression";
+// import imageCompression from "browser-image-compression";
 
 type IconComp = ComponentType<any>;
 
@@ -99,7 +99,8 @@ import {
 
 // const API_BASE = import.meta.env.VITE_API_URL;
 import { api } from "../../../../api/api";
-const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
+// const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
+const R2_BASE_URL = "https://cdn.rewardplanners.com";
 
 interface Category {
   category_id: number;
@@ -229,7 +230,53 @@ export default function EditProductPage() {
     }
   };
 
-  const handleMainImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // const handleMainImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (!e.target.files?.length) return;
+
+  //   const file = e.target.files[0];
+
+  //   if (!file.type.startsWith("image/")) {
+  //     setImageError("Only image files are allowed.");
+  //     return;
+  //   }
+
+  //   const existingCount = product.existingImages?.length || 0;
+  //   const newCount = product.productImages.length;
+
+  //   if (existingCount + newCount >= 1) {
+  //     setImageError("Only one cover image is allowed.");
+  //     return;
+  //   }
+
+  //   try {
+  //     const compressedFile = await imageCompression(file, {
+  //       maxSizeMB: 1,
+  //       maxWidthOrHeight: 1920,
+  //       useWebWorker: true,
+  //       fileType: "image/webp",
+  //       initialQuality: 0.85,
+  //     });
+
+  //     const preview = {
+  //       file: compressedFile,
+  //       url: URL.createObjectURL(compressedFile),
+  //     };
+
+  //     setProduct((prev) => ({
+  //       ...prev,
+  //       productImages: [preview],
+  //     }));
+
+  //     setImageError("");
+  //   } catch (err) {
+  //     console.error("Image compression failed:", err);
+  //     setImageError("Image processing failed.");
+  //   }
+
+  //   e.target.value = "";
+  // };
+
+  const handleMainImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
 
     const file = e.target.files[0];
@@ -247,31 +294,17 @@ export default function EditProductPage() {
       return;
     }
 
-    try {
-      const compressedFile = await imageCompression(file, {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1920,
-        useWebWorker: true,
-        fileType: "image/webp",
-        initialQuality: 0.85,
-      });
+    const preview = {
+      file: file, // original file
+      url: URL.createObjectURL(file),
+    };
 
-      const preview = {
-        file: compressedFile,
-        url: URL.createObjectURL(compressedFile),
-      };
+    setProduct((prev) => ({
+      ...prev,
+      productImages: [preview],
+    }));
 
-      setProduct((prev) => ({
-        ...prev,
-        productImages: [preview],
-      }));
-
-      setImageError("");
-    } catch (err) {
-      console.error("Image compression failed:", err);
-      setImageError("Image processing failed.");
-    }
-
+    setImageError("");
     e.target.value = "";
   };
 
@@ -1440,7 +1473,7 @@ export default function EditProductPage() {
               <div className="mb-3">
                 <div className="relative w-32 h-32 group">
                   <img
-                    src={`${API_BASEIMAGE_URL}/uploads/${coverImage}`}
+                    src={`${R2_BASE_URL}/${coverImage}`}
                     className="w-full h-full object-cover border rounded"
                     alt="Cover Image"
                   />
@@ -1529,7 +1562,7 @@ export default function EditProductPage() {
               <div className="mb-3">
                 <div className="relative w-72 group border rounded overflow-hidden">
                   <video
-                    src={`${API_BASEIMAGE_URL}/uploads/${product.existingVideo}`}
+                    src={`${R2_BASE_URL}/${product.existingVideo}`}
                     controls
                     className="w-full h-full"
                   />

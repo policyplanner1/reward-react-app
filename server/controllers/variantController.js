@@ -3,6 +3,8 @@ const db = require("../config/database");
 const path = require("path");
 const fs = require("fs");
 const variantModel = require("../models/variantModel");
+const { uploadToR2 } = require("../utils/r2upload");
+const sharp = require("sharp");
 
 class VariantController {
   // 1. List all variants of a product
@@ -97,7 +99,7 @@ class VariantController {
       const variantId = Number(req.params.variantId);
       const MAX_IMAGES = 7;
 
-      // 1. Validate files first
+      // 1. Validate files
       if (!req.files || !req.files.length) {
         return res.status(400).json({
           success: false,
@@ -105,7 +107,7 @@ class VariantController {
         });
       }
 
-      // 2. Validate variant exists
+      // 2. Validate variant
       const [[variant]] = await db.execute(
         `SELECT product_id FROM product_variants WHERE variant_id = ?`,
         [variantId],
@@ -120,7 +122,7 @@ class VariantController {
 
       const productId = variant.product_id;
 
-      // 3. Check total image count
+      // 3. Check limit
       const [[{ count }]] = await db.execute(
         `SELECT COUNT(*) as count FROM product_variant_images WHERE variant_id = ?`,
         [variantId],
@@ -129,51 +131,50 @@ class VariantController {
       if (count + req.files.length > MAX_IMAGES) {
         return res.status(400).json({
           success: false,
-          message: `You can upload maximum ${MAX_IMAGES} images for this variant`,
+          message: `You can upload maximum ${MAX_IMAGES} images`,
         });
       }
 
-      // 4. Prepare folder
-      const variantFolder = path.join(
-        __dirname,
-        "../uploads/products",
-        vendorId.toString(),
-        productId.toString(),
-        "variants",
-        variantId.toString(),
-      );
+      let imagesToInsert = [];
 
-      if (!fs.existsSync(variantFolder)) {
-        fs.mkdirSync(variantFolder, { recursive: true });
-      }
-
-      // 5. Prepare DB paths (DO NOT MOVE FILES YET)
-      const imagesToInsert = req.files.map((file) => {
-        // const filename = path.basename(file.path);
-        const filename = file.filename;
-        return {
-          file,
-          finalPath: `products/${vendorId}/${productId}/variants/${variantId}/${filename}`,
-          newPath: path.join(variantFolder, filename),
-        };
-      });
-
-      // 6. Insert into DB FIRST
-      await VariantModel.insertVariantImages(
-        variantId,
-        imagesToInsert.map((i) => ({ path: i.finalPath })),
-      );
-
-      // 7. Move files AFTER DB success
-      for (const img of imagesToInsert) {
-        if (!fs.existsSync(img.file.path)) {
-          console.error("FILE NOT FOUND:", img.file.path);
-          continue;
+      // 4. Upload to R2
+      for (const file of req.files) {
+        if (!file.mimetype.startsWith("image/")) {
+          throw new Error("Invalid image file");
         }
 
-        // fs.renameSync(img.file.path, img.newPath);
-        await fs.promises.rename(img.file.path, img.newPath);
+        const inputBuffer = fs.readFileSync(file.path);
+
+        const webpFilename = `${Date.now()}-${Math.random()
+          .toString(36)
+          .substring(2, 8)}.webp`;
+
+        let optimizedBuffer;
+
+        try {
+          optimizedBuffer = await sharp(inputBuffer)
+            .resize({ width: 1200, withoutEnlargement: true }) // variant optimized size
+            .webp({ quality: 70 })
+            .toBuffer();
+        } catch (err) {
+          throw new Error(`Variant image processing failed: ${err.message}`);
+        }
+
+        const finalPath = `public/products/${vendorId}/${productId}/variants/${variantId}/${webpFilename}`;
+
+        // upload to R2
+        await uploadToR2(optimizedBuffer, finalPath, "image/webp");
+
+        // cleanup temp file
+        fs.unlinkSync(file.path);
+
+        imagesToInsert.push({
+          path: finalPath,
+        });
       }
+
+      // 5. Insert DB
+      await VariantModel.insertVariantImages(variantId, imagesToInsert);
 
       return res.json({
         success: true,
@@ -181,7 +182,11 @@ class VariantController {
       });
     } catch (err) {
       console.error("UPLOAD VARIANT IMAGE ERROR:", err);
-      res.status(500).json({ success: false, message: err.message });
+
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     }
   }
 

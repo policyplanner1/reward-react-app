@@ -27,7 +27,8 @@ import { Link } from "react-router-dom";
 import { routes } from "../../../../routes";
 import { api } from "../../../../api/api";
 
-const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
+// const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
+const R2_BASE_URL = "https://cdn.rewardplanners.com";
 
 /* ================================
        TYPES
@@ -1266,7 +1267,7 @@ export default function ProductManagerList() {
                       {product.main_image ? (
                         <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 ring-1 ring-gray-200">
                           <img
-                            src={`${API_BASEIMAGE_URL}/uploads/${product.main_image}`}
+                            src={`${R2_BASE_URL}/${product.main_image}`}
                             alt={product.product_name}
                             className="w-full h-full object-cover"
                           />
