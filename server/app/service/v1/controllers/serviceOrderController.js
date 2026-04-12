@@ -5,19 +5,26 @@ class ServiceOrderController {
   // direct order
   async createDirectOrder(req, res) {
     try {
-      // const user_id=req.user.user_id;
-      const user_id=1;
-      const {service_id, variant_id, price } = req.body;
+      const userId = req.user?.user_id;
 
-      if (!user_id || !service_id || !price) {
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { service_id, variant_id, price } = req.body;
+
+      if (!service_id || !price) {
         return res.status(400).json({
           success: false,
-          message: "user_id, service_id and price are required",
+          message: "service_id and price are required",
         });
       }
 
       const order = await ServiceOrderModel.create({
-        user_id,
+        user_id: userId,
         service_id,
         variant_id: variant_id || null,
         enquiry_id: null,
@@ -38,6 +45,15 @@ class ServiceOrderController {
   // enquiry order
   async createEnquiryOrder(req, res) {
     try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       const { enquiryId } = req.params;
 
       const enquiry = await ServiceEnquiryModel.findById(enquiryId);
@@ -50,7 +66,7 @@ class ServiceOrderController {
       }
 
       const order = await ServiceOrderModel.create({
-        user_id: null,
+        user_id: userId,
         service_id: enquiry.service_id,
         variant_id: enquiry.variant_id,
         enquiry_id: enquiry.id,
@@ -67,8 +83,6 @@ class ServiceOrderController {
       res.status(500).json({ success: false, message: err.message });
     }
   }
-
-  
 }
 
 module.exports = new ServiceOrderController();
