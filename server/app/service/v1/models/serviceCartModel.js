@@ -11,14 +11,17 @@ class ServiceCartModel {
   // get or create cart item
   async getOrCreateCart(userId) {
     const [rows] = await db.execute(
-      `SELECT * FROM service_cart WHERE user_id = ?`,
+      `SELECT * FROM service_cart 
+     WHERE user_id = ? AND status = 'active'
+     ORDER BY id DESC 
+     LIMIT 1`,
       [userId],
     );
 
     if (rows.length) return rows[0];
 
     const [result] = await db.execute(
-      `INSERT INTO service_cart (user_id) VALUES (?)`,
+      `INSERT INTO service_cart (user_id, status) VALUES (?, 'active')`,
       [userId],
     );
 
