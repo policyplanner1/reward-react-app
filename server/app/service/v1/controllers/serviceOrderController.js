@@ -111,6 +111,65 @@ class ServiceOrderController {
       });
     }
   }
+
+  // order details
+  async getOrderDetails(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+      
+      const { id } = req.params;
+
+      const order = await ServiceOrderModel.getOrderById(id, userId);
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      // documents
+      const documents = await OrderDocumentModel.getRequiredDocs(order.id);
+
+      // timeline (UI stepper)
+      const timeline = [
+        {
+          status: "Order Confirmed",
+          completed: true,
+        },
+        {
+          status: "Order in Progress",
+          completed:
+            order.status === "in_progress" || order.status === "completed",
+        },
+        {
+          status: "Order Delivered",
+          completed: order.status === "completed",
+        },
+      ];
+
+      res.json({
+        success: true,
+        data: {
+          order,
+          documents,
+          timeline,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
 }
 
 module.exports = new ServiceOrderController();

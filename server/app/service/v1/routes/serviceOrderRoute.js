@@ -11,4 +11,7 @@ router.post("/from-enquiry/:enquiryId", ServiceOrderController.createEnquiryOrde
 // Get all orders
 router.get("/my-orders", ServiceOrderController.getMyOrders);
 
+// get order details
+router.get("/order-details/:id", ServiceOrderController.getOrderDetails);
+
 module.exports = router;

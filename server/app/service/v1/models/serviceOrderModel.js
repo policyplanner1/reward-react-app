@@ -64,6 +64,29 @@ class ServiceOrderModel {
     const [rows] = await db.execute(sql, params);
     return rows;
   }
+
+  // order detail by Id
+  async getOrderById(orderId, userId) {
+    const [rows] = await db.execute(
+      `
+    SELECT 
+      so.*,
+      s.name AS service_name,
+      sv.variant_name,
+      sv.title,
+      sv.image_url
+
+    FROM service_orders so
+    JOIN services s ON s.id = so.service_id
+    LEFT JOIN service_variants sv ON sv.id = so.variant_id
+
+    WHERE so.id = ? AND so.user_id = ?
+    `,
+      [orderId, userId],
+    );
+
+    return rows[0];
+  }
 }
 
 module.exports = new ServiceOrderModel();
