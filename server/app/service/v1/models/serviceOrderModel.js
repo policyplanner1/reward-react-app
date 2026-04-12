@@ -1,5 +1,12 @@
 const db = require("../../../../config/database");
 
+// helper function
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
+function getPublicUrl(path) {
+  if (!path) return null;
+  return `${CDN_BASE_URL}/${path}`;
+}
+
 class ServiceOrderModel {
   // create order
   async create(data) {
@@ -62,7 +69,10 @@ class ServiceOrderModel {
     sql += ` ORDER BY so.created_at DESC`;
 
     const [rows] = await db.execute(sql, params);
-    return rows;
+    return rows.map((row) => ({
+      ...row,
+      image_url: row.image_url ? getPublicUrl(row.image_url) : null,
+    }));
   }
 
   // order detail by Id
@@ -85,7 +95,14 @@ class ServiceOrderModel {
       [orderId, userId],
     );
 
-    return rows[0];
+    const order = rows[0];
+
+    if (!order) return null;
+
+    return {
+      ...order,
+      image_url: order.image_url ? getPublicUrl(order.image_url) : null,
+    };
   }
 }
 
