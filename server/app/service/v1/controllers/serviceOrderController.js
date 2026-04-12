@@ -2,6 +2,7 @@ const ServiceOrderModel = require("../models/serviceOrderModel");
 const ServiceEnquiryModel = require("../models/serviceEnquiryModel");
 
 class ServiceOrderController {
+  // direct order
   async createDirectOrder(req, res) {
     try {
       // const user_id=req.user.user_id;
@@ -34,6 +35,7 @@ class ServiceOrderController {
     }
   }
 
+  // enquiry order
   async createEnquiryOrder(req, res) {
     try {
       const { enquiryId } = req.params;
@@ -65,6 +67,8 @@ class ServiceOrderController {
       res.status(500).json({ success: false, message: err.message });
     }
   }
+
+  
 }
 
 module.exports = new ServiceOrderController();
