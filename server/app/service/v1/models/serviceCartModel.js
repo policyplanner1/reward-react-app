@@ -67,6 +67,8 @@ class ServiceCartModel {
 
         s.name AS service_name,
         sv.variant_name,
+        sv.id as variant_id,
+        sv.service_id,
         sv.title,
         sv.image_url
 
