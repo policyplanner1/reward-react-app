@@ -1,6 +1,7 @@
 const db = require("../../../../config/database");
 
 class ServiceOrderModel {
+  // create order
   async create(data) {
     const [result] = await db.execute(
       `INSERT INTO service_orders
@@ -28,6 +29,40 @@ class ServiceOrderModel {
       id: insertId,
       order_ref: ref,
     };
+  }
+
+  // get my orders
+  async getUserOrders(userId, status = null) {
+    let sql = `
+    SELECT 
+      so.id,
+      so.order_ref,
+      so.price,
+      so.status,
+      so.created_at,
+
+      s.name AS service_name,
+      sv.variant_name,
+      sv.image_url
+
+    FROM service_orders so
+    JOIN services s ON s.id = so.service_id
+    LEFT JOIN service_variants sv ON sv.id = so.variant_id
+
+    WHERE so.user_id = ?
+  `;
+
+    const params = [userId];
+
+    if (status && status !== "all") {
+      sql += ` AND so.status = ?`;
+      params.push(status);
+    }
+
+    sql += ` ORDER BY so.created_at DESC`;
+
+    const [rows] = await db.execute(sql, params);
+    return rows;
   }
 }
 

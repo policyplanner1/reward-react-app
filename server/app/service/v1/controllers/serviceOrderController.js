@@ -83,6 +83,34 @@ class ServiceOrderController {
       res.status(500).json({ success: false, message: err.message });
     }
   }
+
+  // get all orders of a user
+  async getMyOrders(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { status } = req.query;
+
+      const orders = await ServiceOrderModel.getUserOrders(userId, status);
+
+      res.json({
+        success: true,
+        data: orders,
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
 }
 
 module.exports = new ServiceOrderController();

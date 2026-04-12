@@ -9,6 +9,6 @@ router.post("/direct", ServiceOrderController.createDirectOrder);
 router.post("/from-enquiry/:enquiryId", ServiceOrderController.createEnquiryOrder)
 
 // Get all orders
-router.get("/my-orders", ServiceOrderController.getAllOrders);
+router.get("/my-orders", ServiceOrderController.getMyOrders);
 
 module.exports = router;
