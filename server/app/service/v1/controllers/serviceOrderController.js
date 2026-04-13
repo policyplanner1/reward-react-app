@@ -188,8 +188,33 @@ class ServiceOrderController {
   // upload user documents for an order
   async uploadDocument(req, res) {
     try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       const { orderId } = req.params;
       const { document_id } = req.body;
+
+      if (!document_id) {
+        return res.status(400).json({
+          success: false,
+          message: "document_id required",
+        });
+      }
+
+      const order = await ServiceOrderModel.getOrderById(orderId, userId);
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
 
       if (!req.file) {
         return res.status(400).json({
@@ -207,12 +232,12 @@ class ServiceOrderController {
 
         fs.mkdirSync(orderDir, { recursive: true });
 
-        const finalPath = path.join(orderDir, req.file.filename);
+        const fileName = `${Date.now()}_${req.file.originalname}`;
+        const finalPath = path.join(orderDir, fileName);
 
-        fs.copyFileSync(req.file.path, finalPath);
-        fs.unlinkSync(req.file.path);
+       fs.renameSync(req.file.path, finalPath);
 
-        const filePath = `uploads/service-order-documents/${orderId}/${req.file.filename}`;
+        const filePath = `uploads/service-order-documents/${orderId}/${fileName}`;
 
         await ServiceOrderDocumentModel.uploadOrUpdate({
           order_id: orderId,
@@ -239,7 +264,25 @@ class ServiceOrderController {
   // submit documents
   async submitDocuments(req, res) {
     try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       const { orderId } = req.params;
+
+      const order = await ServiceOrderModel.getOrderById(orderId, userId);
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
 
       const docs = await ServiceOrderDocumentModel.getRequiredDocs(orderId);
 
@@ -256,8 +299,6 @@ class ServiceOrderController {
 
       // update order status
       await ServiceOrderModel.updateStatus(orderId, "documents_uploaded");
-
-      const order = await ServiceOrderModel.getOrderById(orderId);
 
       res.json({
         success: true,

@@ -68,7 +68,7 @@ class ServiceOrderDocumentModel {
         service_document_id: r.service_document_id,
         document_name: r.document_name,
         is_mandatory: r.is_mandatory,
-        uploaded: !!r.uploaded,
+        uploaded: r.uploaded === 1,
         file_path: r.file_path,
       };
     });
