@@ -1,7 +1,7 @@
 const db = require("../../../../config/database");
 const CartModel = require("../models/serviceCartModel");
 const ServiceOrderModel = require("../models/serviceOrderModel");
-const crypto=require('crypto')
+const crypto = require("crypto");
 
 // helper function
 const CDN_BASE_URL = "https://cdn.rewardplanners.com";
@@ -128,6 +128,8 @@ class ServiceCheckoutController {
         });
       }
 
+      const parentOrderId = crypto.randomUUID();
+
       // create single order
       const order = await ServiceOrderModel.create({
         user_id: userId,
@@ -135,6 +137,7 @@ class ServiceCheckoutController {
         variant_id,
         enquiry_id: null,
         price: variant.price,
+        parent_order_id: parentOrderId,
         status: "documents_pending",
       });
 
