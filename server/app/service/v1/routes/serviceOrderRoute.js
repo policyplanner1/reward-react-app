@@ -1,17 +1,18 @@
 const express = require("express");
 const router = express.Router();
 const ServiceOrderController = require("../controllers/serviceOrderController");
+const auth = require("../../../ecommerce/v1/middlewares/auth");
 
 // Direct Order
-router.post("/direct", ServiceOrderController.createDirectOrder);
+router.post("/direct", auth, ServiceOrderController.createDirectOrder);
 
 // Enquiry Order
-router.post("/from-enquiry/:enquiryId", ServiceOrderController.createEnquiryOrder)
+router.post("/from-enquiry/:enquiryId", auth, ServiceOrderController.createEnquiryOrder)
 
 // Get all orders
-router.get("/my-orders", ServiceOrderController.getMyOrders);
+router.get("/my-orders", auth, ServiceOrderController.getMyOrders);
 
 // get order details
-router.get("/order-details/:id", ServiceOrderController.getOrderDetails);
+router.get("/order-details/:id", auth, ServiceOrderController.getOrderDetails);
 
 module.exports = router;

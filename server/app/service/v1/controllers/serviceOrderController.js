@@ -136,7 +136,7 @@ class ServiceOrderController {
       }
 
       // documents
-      const documents = await OrderDocumentModel.getRequiredDocs(order.id);
+      // const documents = await OrderDocumentModel.getRequiredDocs(order.id);
 
       // timeline (UI stepper)
       const timeline = [
