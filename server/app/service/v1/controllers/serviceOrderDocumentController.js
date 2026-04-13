@@ -6,7 +6,7 @@ const { UPLOAD_BASE } = require("../../../../config/path");
 class ServiceOrderDocumentController {
   async uploadDocument(req, res) {
     try {
-      const { order_id, service_document_id, document_data } = req.body;
+      const { order_id, service_document_id } = req.body;
 
       if (!order_id || !service_document_id || !req.file) {
         return res.status(400).json({
@@ -32,13 +32,10 @@ class ServiceOrderDocumentController {
 
         const filePath = `uploads/service-orders/${order_id}/${req.file.filename}`;
 
-        await ServiceOrderDocumentModel.save({
+        await ServiceOrderDocumentModel.upload({
           order_id,
           service_document_id,
           file_path: filePath,
-          document_data: document_data
-            ? JSON.stringify(JSON.parse(document_data))
-            : null,
         });
       }
 

@@ -1,5 +1,6 @@
 const ServiceOrderModel = require("../models/serviceOrderModel");
 const ServiceEnquiryModel = require("../models/serviceEnquiryModel");
+const ServiceOrderDocumentModel = require("../models/serviceOrderDocumentModel");
 
 class ServiceOrderController {
   // direct order
@@ -123,7 +124,7 @@ class ServiceOrderController {
           message: "Unauthorized user",
         });
       }
-      
+
       const { id } = req.params;
 
       const order = await ServiceOrderModel.getOrderById(id, userId);
@@ -136,7 +137,7 @@ class ServiceOrderController {
       }
 
       // documents
-      // const documents = await OrderDocumentModel.getRequiredDocs(order.id);
+      const documents = await ServiceOrderDocumentModel.getRequiredDocs(order.id);
 
       // timeline (UI stepper)
       const timeline = [
@@ -162,6 +163,39 @@ class ServiceOrderController {
           documents,
           timeline,
         },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // upload user documents for an order
+  async uploadDocument(req, res) {
+    try {
+      const { id } = req.params;
+      const { document_id } = req.body;
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "File required",
+        });
+      }
+
+      const filePath = `uploads/order-documents/${req.file.filename}`;
+
+      await ServiceOrderDocumentModel.upload({
+        order_id: id,
+        document_id,
+        file_path: filePath,
+      });
+
+      res.json({
+        success: true,
+        message: "Document uploaded",
       });
     } catch (err) {
       res.status(500).json({

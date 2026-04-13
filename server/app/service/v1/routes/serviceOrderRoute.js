@@ -15,4 +15,7 @@ router.get("/my-orders", auth, ServiceOrderController.getMyOrders);
 // get order details
 router.get("/order-details/:id", auth, ServiceOrderController.getOrderDetails);
 
+// upload order document
+router.post("/upload-document/:id", auth, ServiceOrderController.uploadDocument);
+
 module.exports = router;
