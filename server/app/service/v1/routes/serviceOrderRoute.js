@@ -28,4 +28,11 @@ router.post(
   ServiceOrderController.uploadDocument,
 );
 
+// update the upload status
+router.post(
+  "/submit-documents/:orderId",
+  auth,
+  ServiceOrderController.submitDocuments,
+);
+
 module.exports = router;

@@ -105,6 +105,18 @@ class ServiceOrderModel {
       image_url: order.image_url ? getPublicUrl(order.image_url) : null,
     };
   }
+
+  // update status
+  async updateStatus(orderId, status) {
+    const [result] = await db.execute(
+      `UPDATE service_orders 
+     SET status = ? 
+     WHERE id = ?`,
+      [status, orderId],
+    );
+
+    return result.affectedRows;
+  }
 }
 
 module.exports = new ServiceOrderModel();

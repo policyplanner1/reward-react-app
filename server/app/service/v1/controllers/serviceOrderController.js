@@ -204,7 +204,7 @@ class ServiceOrderController {
 
         const filePath = `uploads/service-order-documents/${orderId}/${req.file.filename}`;
 
-        await ServiceOrderDocumentModel.upload({
+        await ServiceOrderDocumentModel.uploadOrUpdate({
           order_id: orderId,
           document_id,
           file_path: filePath,
@@ -219,6 +219,44 @@ class ServiceOrderController {
       if (req.file && fs.existsSync(req.file.path)) {
         fs.unlinkSync(req.file.path);
       }
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // submit documents
+  async submitDocuments(req, res) {
+    try {
+      const { orderId } = req.params;
+
+      const docs = await ServiceOrderDocumentModel.getRequiredDocs(orderId);
+
+      // check mandatory docs
+      const missingDocs = docs.filter((d) => d.is_mandatory && !d.uploaded);
+
+      if (missingDocs.length) {
+        return res.status(400).json({
+          success: false,
+          message: "Please upload all required documents",
+          missing: missingDocs,
+        });
+      }
+
+      // update order status
+      await ServiceOrderModel.updateStatus(orderId, "documents_uploaded");
+
+      const order = await ServiceOrderModel.getOrderById(orderId);
+
+      res.json({
+        success: true,
+        message: "Documents uploaded successfully",
+        data: {
+          order_ref: order.order_ref,
+        },
+      });
+    } catch (err) {
       res.status(500).json({
         success: false,
         message: err.message,
