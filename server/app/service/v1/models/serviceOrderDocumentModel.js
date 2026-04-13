@@ -4,8 +4,8 @@ class ServiceOrderDocumentModel {
   async upload(data) {
     await db.execute(
       `INSERT INTO order_documents
-    (order_id, service_document_id, file_path)
-    VALUES (?, ?, ?)`,
+    (order_id, service_document_id, file_path,uploaded)
+    VALUES (?, ?, ?, 1)`,
       [data.order_id, data.document_id, data.file_path],
     );
   }
@@ -22,7 +22,7 @@ class ServiceOrderDocumentModel {
     if (existing.length) {
       await db.execute(
         `UPDATE order_documents 
-       SET file_path = ?
+       SET file_path = ?,uploaded = 1 
        WHERE id = ?`,
         [data.file_path, existing[0].id],
       );
@@ -46,7 +46,8 @@ class ServiceOrderDocumentModel {
       sd.is_mandatory,
 
       od.id AS order_document_id,
-      od.file_path
+      od.file_path,
+      od.uploaded
 
     FROM service_orders so
     JOIN service_documents sd 
@@ -67,7 +68,7 @@ class ServiceOrderDocumentModel {
         service_document_id: r.service_document_id,
         document_name: r.document_name,
         is_mandatory: r.is_mandatory,
-        uploaded: !!r.order_document_id,
+        uploaded: !!r.uploaded,
         file_path: r.file_path,
       };
     });
