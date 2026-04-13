@@ -3,6 +3,10 @@ const router = express.Router();
 const ServiceOrderController = require("../controllers/serviceOrderController");
 const auth = require("../../../ecommerce/v1/middlewares/auth");
 const upload = require("../../../../middleware/serviceCategoryUpload");
+const {
+  authenticateToken,
+  authorizeRoles,
+} = require("../../../../middleware/auth");
 
 // Direct Order
 router.post("/direct", auth, ServiceOrderController.createDirectOrder);
@@ -33,6 +37,14 @@ router.post(
   "/submit-documents/:orderId",
   auth,
   ServiceOrderController.submitDocuments,
+);
+
+// update order status
+router.put(
+  "/status/:id",
+  authenticateToken,
+  authorizeRoles("admin", "vendor_manager"),
+  ServiceOrderController.updateOrderStatus,
 );
 
 module.exports = router;

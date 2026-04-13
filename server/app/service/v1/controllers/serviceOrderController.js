@@ -3,6 +3,16 @@ const ServiceEnquiryModel = require("../models/serviceEnquiryModel");
 const ServiceOrderDocumentModel = require("../models/serviceOrderDocumentModel");
 const { UPLOAD_BASE } = require("../../../../config/path");
 
+const ALLOWED_STATUSES = [
+  "pending_payment",
+  "payment_done",
+  "documents_pending",
+  "documents_uploaded",
+  "in_progress",
+  "completed",
+  "cancelled",
+];
+
 class ServiceOrderController {
   // direct order
   async createDirectOrder(req, res) {
@@ -255,6 +265,41 @@ class ServiceOrderController {
         data: {
           order_ref: order.order_ref,
         },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // order status
+  async updateOrderStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      // validate status
+      if (!ALLOWED_STATUSES.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid status",
+        });
+      }
+
+      const affected = await ServiceOrderModel.updateStatus(id, status);
+
+      if (!affected) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Order status updated",
       });
     } catch (err) {
       res.status(500).json({
