@@ -6,7 +6,7 @@ class ServiceOrderDocumentModel {
       `INSERT INTO order_documents
     (order_id, service_document_id, file_path)
     VALUES (?, ?, ?)`,
-      [data.order_id, data.service_document_id, data.file_path],
+      [data.order_id, data.document_id, data.file_path],
     );
   }
 
