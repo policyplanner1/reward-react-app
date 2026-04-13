@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const ServiceOrderController = require("../controllers/serviceOrderController");
 const auth = require("../../../ecommerce/v1/middlewares/auth");
-const upload = require("../../../../middleware/serviceCategoryUpload");
+const upload = require("../../../../middleware/serviceDocumentUpload");
 const {
   authenticateToken,
   authorizeRoles,
