@@ -1,15 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const ServiceOrderDocumentController = require("../controllers/serviceOrderDocumentController");
-const upload = require("../../../../middleware/serviceCategoryUpload");
 
-// Save Document
-router.post(
-  "/upload-document",
-  upload.single("file"),
-  ServiceOrderDocumentController.uploadDocument,
-);
-
+// Get Required documents for a service order
 router.get(
   "/required-documents/:orderId",
   ServiceOrderDocumentController.getRequiredDocuments

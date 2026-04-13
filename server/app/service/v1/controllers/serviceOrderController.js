@@ -1,6 +1,7 @@
 const ServiceOrderModel = require("../models/serviceOrderModel");
 const ServiceEnquiryModel = require("../models/serviceEnquiryModel");
 const ServiceOrderDocumentModel = require("../models/serviceOrderDocumentModel");
+const { UPLOAD_BASE } = require("../../../../config/path");
 
 class ServiceOrderController {
   // direct order
@@ -137,7 +138,9 @@ class ServiceOrderController {
       }
 
       // documents
-      const documents = await ServiceOrderDocumentModel.getRequiredDocs(order.id);
+      const documents = await ServiceOrderDocumentModel.getRequiredDocs(
+        order.id,
+      );
 
       // timeline (UI stepper)
       const timeline = [
@@ -175,7 +178,7 @@ class ServiceOrderController {
   // upload user documents for an order
   async uploadDocument(req, res) {
     try {
-      const { id } = req.params;
+      const { orderId } = req.params;
       const { document_id } = req.body;
 
       if (!req.file) {
@@ -185,19 +188,37 @@ class ServiceOrderController {
         });
       }
 
-      const filePath = `uploads/order-documents/${req.file.filename}`;
+      if (req.file) {
+        const orderDir = path.join(
+          UPLOAD_BASE,
+          "service-order-documents",
+          String(orderId),
+        );
 
-      await ServiceOrderDocumentModel.upload({
-        order_id: id,
-        document_id,
-        file_path: filePath,
-      });
+        fs.mkdirSync(orderDir, { recursive: true });
+
+        const finalPath = path.join(orderDir, req.file.filename);
+
+        fs.copyFileSync(req.file.path, finalPath);
+        fs.unlinkSync(req.file.path);
+
+        const filePath = `uploads/service-order-documents/${orderId}/${req.file.filename}`;
+
+        await ServiceOrderDocumentModel.upload({
+          order_id: orderId,
+          document_id,
+          file_path: filePath,
+        });
+      }
 
       res.json({
         success: true,
-        message: "Document uploaded",
+        message: "Document uploaded successfully",
       });
     } catch (err) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
       res.status(500).json({
         success: false,
         message: err.message,
