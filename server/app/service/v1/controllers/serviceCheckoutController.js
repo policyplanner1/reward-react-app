@@ -78,11 +78,15 @@ class ServiceCheckoutController {
       // clear cart
       await CartModel.clearCart(cart.id);
 
+      const firstOrder = createdOrders[0];
+
       res.json({
         success: true,
         message: "Orders created successfully",
         data: {
           orders: createdOrders,
+          redirect_to: `/service-orders/upload-documents/${firstOrder.id}`,
+          first_order_id: firstOrder.id,
         },
       });
     } catch (err) {
@@ -145,7 +149,9 @@ class ServiceCheckoutController {
         success: true,
         message: "Order created successfully",
         data: {
-          order,
+          orders: [order],
+          redirect_to: `/service-orders/upload-documents/${order.id}`,
+          first_order_id: order.id,
         },
       });
     } catch (err) {
