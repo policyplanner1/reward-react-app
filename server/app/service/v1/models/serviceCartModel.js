@@ -70,23 +70,53 @@ class ServiceCartModel {
         sv.id as variant_id,
         sv.service_id,
         sv.title,
-        sv.image_url
+        sv.image_url,
+
+        sd.id as document_id,
+        sd.document_name,
+        sd.is_mandatory
 
       FROM service_cart_items ci
       JOIN services s ON s.id = ci.service_id
       JOIN service_variants sv ON sv.id = ci.variant_id
+      LEFT JOIN service_documents sd ON sd.service_id = s.id
 
       WHERE ci.cart_id = ?
       `,
       [cartId],
     );
 
-    const formatted = rows.map((item) => ({
-      ...item,
-      image_url: getPublicUrl(item.image_url),
-    }));
+    const map = {};
 
-    return formatted;
+    rows.forEach((item) => {
+      if (!map[item.id]) {
+        map[item.id] = {
+          id: item.id,
+          quantity: item.quantity,
+          price: item.price,
+
+          service_name: item.service_name,
+          variant_name: item.variant_name,
+          variant_id: item.variant_id,
+          service_id: item.service_id,
+          title: item.title,
+          image_url: getPublicUrl(item.image_url),
+
+          documents: [],
+        };
+      }
+
+      // Push documents if present
+      if (item.document_id) {
+        map[item.id].documents.push({
+          id: item.document_id,
+          document_name: item.document_name,
+          is_mandatory: item.is_mandatory,
+        });
+      }
+    });
+
+    return Object.values(map);
   }
 
   // remove item from cart
