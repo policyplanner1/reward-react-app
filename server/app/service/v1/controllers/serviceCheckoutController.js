@@ -85,7 +85,7 @@ class ServiceCheckoutController {
         message: "Orders created successfully",
         data: {
           orders: createdOrders,
-          redirect_to: `/service-orders/upload-documents/${firstOrder.id}`,
+          redirect_to: `/service-order-documents/documents/${firstOrder.id}`,
           first_order_id: firstOrder.id,
         },
       });
@@ -150,7 +150,7 @@ class ServiceCheckoutController {
         message: "Order created successfully",
         data: {
           orders: [order],
-          redirect_to: `/service-orders/upload-documents/${order.id}`,
+          redirect_to: `/service-order-documents/documents/${order.id}`,
           first_order_id: order.id,
         },
       });
