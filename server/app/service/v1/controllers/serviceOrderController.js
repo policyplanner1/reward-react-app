@@ -1,9 +1,11 @@
 const ServiceOrderModel = require("../models/serviceOrderModel");
 const ServiceEnquiryModel = require("../models/serviceEnquiryModel");
 const ServiceOrderDocumentModel = require("../models/serviceOrderDocumentModel");
-const { UPLOAD_BASE } = require("../../../../config/path");
-const fs=require("fs");
-const path=require("path");
+// const { UPLOAD_BASE } = require("../../../../config/path");
+const fs = require("fs");
+// const path = require("path");
+const { uploadToR2 } = require("../../../../utils/r2upload");
+
 
 const ALLOWED_STATUSES = [
   "pending_payment",
@@ -225,28 +227,30 @@ class ServiceOrderController {
         });
       }
 
-      if (req.file) {
-        const orderDir = path.join(
-          UPLOAD_BASE,
-          "service-order-documents",
-          String(orderId),
-        );
+      //  Read file buffer
+      const fileBuffer = fs.readFileSync(req.file.path);
 
-        fs.mkdirSync(orderDir, { recursive: true });
+      //  Extract extension safely
+      const originalName = req.file.originalname;
+      const extension = originalName.includes(".")
+        ? originalName.split(".").pop()
+        : "bin";
 
-        const fileName = `${Date.now()}_${req.file.originalname}`;
-        const finalPath = path.join(orderDir, fileName);
+      //  Create R2 path
+      const r2Path = `public/service-order-documents/${orderId}/${document_id}_${Date.now()}.${extension}`;
 
-       fs.renameSync(req.file.path, finalPath);
+      //  Upload to R2 (no processing)
+      await uploadToR2(fileBuffer, r2Path, req.file.mimetype);
 
-        const filePath = `uploads/service-order-documents/${orderId}/${fileName}`;
+      //  Delete temp file
+      fs.unlinkSync(req.file.path);
 
-        await ServiceOrderDocumentModel.uploadOrUpdate({
-          order_id: orderId,
-          document_id,
-          file_path: filePath,
-        });
-      }
+      // Save in DB
+      await ServiceOrderDocumentModel.uploadOrUpdate({
+        order_id: orderId,
+        document_id,
+        file_path: r2Path,
+      });
 
       res.json({
         success: true,
