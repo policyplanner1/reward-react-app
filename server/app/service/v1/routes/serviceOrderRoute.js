@@ -32,14 +32,14 @@ router.post(
   ServiceOrderController.uploadDocument,
 );
 
-// update the upload status
+// submit document
 router.post(
   "/submit-documents/:orderId",
   auth,
   ServiceOrderController.submitDocuments,
 );
 
-// update order status
+// update order status from admin side
 router.put(
   "/status/:id",
   authenticateToken,
