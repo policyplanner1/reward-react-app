@@ -2,6 +2,8 @@ const ServiceOrderModel = require("../models/serviceOrderModel");
 const ServiceEnquiryModel = require("../models/serviceEnquiryModel");
 const ServiceOrderDocumentModel = require("../models/serviceOrderDocumentModel");
 const { UPLOAD_BASE } = require("../../../../config/path");
+const fs=require("fs");
+const path=require("path");
 
 const ALLOWED_STATUSES = [
   "pending_payment",
