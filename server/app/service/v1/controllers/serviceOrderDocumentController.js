@@ -21,6 +21,34 @@ class ServiceOrderDocumentController {
       });
     }
   }
+
+  // service document page
+  async getServiceOrderDocumentsPage(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { orderId } = req.params;
+
+      const docs = await ServiceOrderDocumentModel.getRequiredDocs(orderId);
+
+      res.json({
+        success: true,
+        data: docs,
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
 }
 
 module.exports = new ServiceOrderDocumentController();
