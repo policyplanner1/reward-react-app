@@ -135,6 +135,11 @@ class ServiceOrderController {
         amount: totalAmount * 100,
         currency: "INR",
         receipt: parent_order_id,
+
+        notes: {
+          module: "service",
+          parent_order_id: parent_order_id,
+        },
       });
 
       res.json({
