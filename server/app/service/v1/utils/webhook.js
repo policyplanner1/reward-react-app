@@ -1,6 +1,6 @@
 const db = require("../../../../config/database");
 
-async function processEvent(req, res) {
+async function processEvent(req) {
   try {
     const body = req.parsedBody;
     const event = body.event;
@@ -22,7 +22,7 @@ async function processEvent(req, res) {
 
       if (!rpOrder.length) {
         console.log("No matching razorpay order");
-        return res.sendStatus(200);
+        return;
       }
 
       const parentOrderId = rpOrder[0].receipt;
@@ -33,11 +33,15 @@ async function processEvent(req, res) {
          SET status = 'documents_pending',
              payment_id = ?,
              payment_status = 'paid'
-         WHERE parent_order_id = ?`,
+         WHERE parent_order_id = ?
+         AND payment_status != 'paid'`,
         [paymentId, parentOrderId],
       );
 
-      console.log("Payment captured → Orders updated");
+      console.log("Service Payment Success", {
+        razorpayOrderId,
+        paymentId,
+      });
     }
 
     // =========================
@@ -53,24 +57,23 @@ async function processEvent(req, res) {
         [razorpayOrderId],
       );
 
-      if (rpOrder.length) {
-        const parentOrderId = rpOrder[0].receipt;
+      if (!rpOrder.length) return;
 
-        await db.execute(
-          `UPDATE service_orders
-           SET payment_status = 'failed'
-           WHERE parent_order_id = ?`,
-          [parentOrderId],
-        );
-      }
+      const parentOrderId = rpOrder[0].receipt;
 
-      console.log("Payment failed");
+      await db.execute(
+        `UPDATE service_orders
+         SET payment_status = 'failed'
+         WHERE parent_order_id = ?
+         AND payment_status != 'failed'`,
+        [parentOrderId],
+      );
+
+      console.log("Service Payment failed", { razorpayOrderId });
     }
-
-    res.sendStatus(200);
   } catch (err) {
     console.error("Webhook error:", err);
-    res.sendStatus(500);
+    throw err;
   }
 }
 
