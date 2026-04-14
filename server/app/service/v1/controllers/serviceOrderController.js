@@ -145,9 +145,11 @@ class ServiceOrderController {
       res.json({
         success: true,
         data: {
-          razorpay_order_id: razorpayOrder.id,
+          key: process.env.RAZOR_API_KEY,
+          orderId: razorpayOrder.id,
           amount: razorpayOrder.amount,
           currency: razorpayOrder.currency,
+          parent_order_id: parent_order_id,
         },
       });
     } catch (err) {
