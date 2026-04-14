@@ -1,5 +1,23 @@
 const ServiceOrderModel = require("../models/serviceOrderModel");
 const ServiceEnquiryModel = require("../models/serviceEnquiryModel");
+const ServiceOrderDocumentModel = require("../models/serviceOrderDocumentModel");
+// const { UPLOAD_BASE } = require("../../../../config/path");
+const fs = require("fs");
+// const path = require("path");
+const { uploadToR2 } = require("../../../../utils/r2upload");
+const razorpay = require("../middlewares/razorpay");
+const db = require("../../../../config/database");
+const crypto = require("crypto");
+
+const ALLOWED_STATUSES = [
+  "pending_payment",
+  "payment_done",
+  "documents_pending",
+  "documents_uploaded",
+  "in_progress",
+  "completed",
+  "cancelled",
+];
 
 class ServiceOrderController {
   // direct order
@@ -84,6 +102,122 @@ class ServiceOrderController {
     }
   }
 
+  // create razorpay order
+  async createPaymentOrder(req, res) {
+    try {
+      const { parent_order_id } = req.body;
+
+      if (!parent_order_id) {
+        return res.status(400).json({
+          success: false,
+          message: "parent_order_id required",
+        });
+      }
+
+      //  Get total amount from DB
+      const [orders] = await db.execute(
+        `SELECT SUM(price) as total 
+       FROM service_orders 
+       WHERE parent_order_id = ?`,
+        [parent_order_id],
+      );
+
+      const totalAmount = orders[0]?.total;
+
+      if (!totalAmount) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid parent_order_id",
+        });
+      }
+
+      const razorpayOrder = await razorpay.orders.create({
+        amount: totalAmount * 100,
+        currency: "INR",
+        receipt: parent_order_id,
+
+        notes: {
+          module: "service",
+          parent_order_id: parent_order_id,
+        },
+      });
+
+      res.json({
+        success: true,
+        data: {
+          key: process.env.RAZOR_API_KEY,
+          orderId: razorpayOrder.id,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          parent_order_id: parent_order_id,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // verify payment
+  async verifyPayment(req, res) {
+    try {
+      const {
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+        parent_order_id,
+      } = req.body;
+
+      //  verify signature
+      const body = razorpay_order_id + "|" + razorpay_payment_id;
+
+      const expectedSignature = crypto
+        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+        .update(body.toString())
+        .digest("hex");
+
+      if (expectedSignature !== razorpay_signature) {
+        return res.status(400).json({
+          success: false,
+          message: "Payment verification failed",
+        });
+      }
+
+      //  Update ALL orders in this group
+      await db.execute(
+        `UPDATE service_orders 
+       SET status = 'documents_pending',
+           payment_id = ?,
+           payment_status = 'paid'
+       WHERE parent_order_id = ?`,
+        [razorpay_payment_id, parent_order_id],
+      );
+
+      // get first order for redirect
+      const [[firstOrder]] = await db.execute(
+        `SELECT id FROM service_orders 
+       WHERE parent_order_id = ? 
+       ORDER BY id ASC LIMIT 1`,
+        [parent_order_id],
+      );
+
+      res.json({
+        success: true,
+        message: "Payment successful",
+        data: {
+          redirect_to: `/service-order-documents/documents/${firstOrder.id}`,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
   // get all orders of a user
   async getMyOrders(req, res) {
     try {
@@ -123,7 +257,7 @@ class ServiceOrderController {
           message: "Unauthorized user",
         });
       }
-      
+
       const { id } = req.params;
 
       const order = await ServiceOrderModel.getOrderById(id, userId);
@@ -136,7 +270,9 @@ class ServiceOrderController {
       }
 
       // documents
-      const documents = await OrderDocumentModel.getRequiredDocs(order.id);
+      const documents = await ServiceOrderDocumentModel.getRequiredDocs(
+        order.id,
+      );
 
       // timeline (UI stepper)
       const timeline = [
@@ -162,6 +298,173 @@ class ServiceOrderController {
           documents,
           timeline,
         },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // upload user documents for an order
+  async uploadDocument(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { orderId } = req.params;
+      const { document_id } = req.body;
+
+      if (!document_id) {
+        return res.status(400).json({
+          success: false,
+          message: "document_id required",
+        });
+      }
+
+      const order = await ServiceOrderModel.getOrderById(orderId, userId);
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "File required",
+        });
+      }
+
+      //  Read file buffer
+      const fileBuffer = fs.readFileSync(req.file.path);
+
+      //  Extract extension safely
+      const originalName = req.file.originalname;
+      const extension = originalName.includes(".")
+        ? originalName.split(".").pop()
+        : "bin";
+
+      //  Create R2 path
+      const r2Path = `public/service-order-documents/${orderId}/${document_id}_${Date.now()}.${extension}`;
+
+      //  Upload to R2 (no processing)
+      await uploadToR2(fileBuffer, r2Path, req.file.mimetype);
+
+      //  Delete temp file
+      fs.unlinkSync(req.file.path);
+
+      // Save in DB
+      await ServiceOrderDocumentModel.uploadOrUpdate({
+        order_id: orderId,
+        document_id,
+        file_path: r2Path,
+      });
+
+      res.json({
+        success: true,
+        message: "Document uploaded successfully",
+      });
+    } catch (err) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // submit documents
+  async submitDocuments(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { orderId } = req.params;
+
+      const order = await ServiceOrderModel.getOrderById(orderId, userId);
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      const docs = await ServiceOrderDocumentModel.getRequiredDocs(orderId);
+
+      // check mandatory docs
+      const missingDocs = docs.filter((d) => d.is_mandatory && !d.uploaded);
+
+      if (missingDocs.length) {
+        return res.status(400).json({
+          success: false,
+          message: "Please upload all required documents",
+          missing: missingDocs,
+        });
+      }
+
+      // update order status
+      await ServiceOrderModel.updateStatus(orderId, "documents_uploaded");
+
+      res.json({
+        success: true,
+        message: "Documents uploaded successfully",
+        data: {
+          order_ref: order.order_ref,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // order status
+  async updateOrderStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      // validate status
+      if (!ALLOWED_STATUSES.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid status",
+        });
+      }
+
+      const affected = await ServiceOrderModel.updateStatus(id, status);
+
+      if (!affected) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Order status updated",
       });
     } catch (err) {
       res.status(500).json({

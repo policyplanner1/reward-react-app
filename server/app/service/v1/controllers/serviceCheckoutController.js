@@ -1,6 +1,7 @@
 const db = require("../../../../config/database");
 const CartModel = require("../models/serviceCartModel");
 const ServiceOrderModel = require("../models/serviceOrderModel");
+const crypto = require("crypto");
 
 // helper function
 const CDN_BASE_URL = "https://cdn.rewardplanners.com";
@@ -58,6 +59,7 @@ class ServiceCheckoutController {
       }
 
       const createdOrders = [];
+      const parentOrderId = crypto.randomUUID();
 
       for (let item of items) {
         const order = await ServiceOrderModel.create({
@@ -66,7 +68,8 @@ class ServiceCheckoutController {
           variant_id: item.variant_id,
           enquiry_id: null,
           price: item.price * item.quantity,
-          status: "documents_pending",
+          parent_order_id: parentOrderId,
+          status: "pending_payment",
         });
 
         createdOrders.push(order);
@@ -75,11 +78,16 @@ class ServiceCheckoutController {
       // clear cart
       await CartModel.clearCart(cart.id);
 
+      // const firstOrder = createdOrders[0];
+
       res.json({
         success: true,
         message: "Orders created successfully",
         data: {
           orders: createdOrders,
+          // redirect_to: `/service-order-documents/documents/${firstOrder.id}`,
+          // first_order_id: firstOrder.id,
+          parent_order_id: parentOrderId,
         },
       });
     } catch (err) {
@@ -125,6 +133,8 @@ class ServiceCheckoutController {
         });
       }
 
+      const parentOrderId = crypto.randomUUID();
+
       // create single order
       const order = await ServiceOrderModel.create({
         user_id: userId,
@@ -132,14 +142,17 @@ class ServiceCheckoutController {
         variant_id,
         enquiry_id: null,
         price: variant.price,
-        status: "documents_pending",
+        parent_order_id: parentOrderId,
+        status: "pending_payment",
       });
 
       res.json({
         success: true,
         message: "Order created successfully",
         data: {
-          order,
+          orders: [order],
+          // first_order_id: order.id,
+          parent_order_id: parentOrderId,
         },
       });
     } catch (err) {

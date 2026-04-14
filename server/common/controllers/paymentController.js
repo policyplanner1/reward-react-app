@@ -62,6 +62,10 @@ class PaymentController {
       currency: "INR",
       receipt: orderId.toString(),
       payment_capture: 1,
+      notes: {
+        module: "ecommerce",
+        order_id: orderId.toString(),
+      },
     });
 
     await PaymentModel.createOrder({
@@ -114,6 +118,10 @@ class PaymentController {
         `SELECT status FROM eorders WHERE order_id = ?`,
         [payment.order_id],
       );
+
+      if (!order.length) {
+        return res.status(404).json({ status: "order not found" });
+      }
 
       if (order[0]?.status !== "paid") {
         return res.json({ status: "pending" });

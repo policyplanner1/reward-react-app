@@ -12,14 +12,15 @@ class ServiceOrderModel {
   async create(data) {
     const [result] = await db.execute(
       `INSERT INTO service_orders
-    (user_id, service_id, variant_id, enquiry_id, price, status)
-    VALUES (?, ?, ?, ?, ?, ?)`,
+    (user_id, service_id, variant_id, enquiry_id, price, parent_order_id, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         data.user_id,
         data.service_id,
         data.variant_id,
         data.enquiry_id,
         data.price,
+        data.parent_order_id,
         data.status,
       ],
     );
@@ -103,6 +104,18 @@ class ServiceOrderModel {
       ...order,
       image_url: order.image_url ? getPublicUrl(order.image_url) : null,
     };
+  }
+
+  // update status
+  async updateStatus(orderId, status) {
+    const [result] = await db.execute(
+      `UPDATE service_orders 
+     SET status = ? 
+     WHERE id = ?`,
+      [status, orderId],
+    );
+
+    return result.affectedRows;
   }
 }
 

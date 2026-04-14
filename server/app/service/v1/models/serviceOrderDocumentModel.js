@@ -1,18 +1,39 @@
 const db = require("../../../../config/database");
 
 class ServiceOrderDocumentModel {
-  async save(data) {
+  async upload(data) {
     await db.execute(
       `INSERT INTO order_documents
-    (order_id, service_document_id, file_path, document_data)
-    VALUES (?, ?, ?, ?)`,
-      [
-        data.order_id,
-        data.service_document_id,
-        data.file_path,
-        data.document_data,
-      ],
+    (order_id, service_document_id, file_path,uploaded)
+    VALUES (?, ?, ?, 1)`,
+      [data.order_id, data.document_id, data.file_path],
     );
+  }
+
+  // upload or update document 
+  async uploadOrUpdate(data) {
+    // check if already exists
+    const [existing] = await db.execute(
+      `SELECT id FROM order_documents 
+     WHERE order_id = ? AND service_document_id = ?`,
+      [data.order_id, data.document_id],
+    );
+
+    if (existing.length) {
+      await db.execute(
+        `UPDATE order_documents 
+       SET file_path = ?,uploaded = 1 
+       WHERE id = ?`,
+        [data.file_path, existing[0].id],
+      );
+    } else {
+      await db.execute(
+        `INSERT INTO order_documents 
+      (order_id, service_document_id, file_path, uploaded)
+      VALUES (?, ?, ?, 1)`,
+        [data.order_id, data.document_id, data.file_path],
+      );
+    }
   }
 
   // Get required Docs
@@ -26,7 +47,7 @@ class ServiceOrderDocumentModel {
 
       od.id AS order_document_id,
       od.file_path,
-      od.document_data
+      od.uploaded
 
     FROM service_orders so
     JOIN service_documents sd 
@@ -43,20 +64,12 @@ class ServiceOrderDocumentModel {
     );
 
     return rows.map((r) => {
-      let parsedData = {};
-      try {
-        parsedData = r.document_data ? JSON.parse(r.document_data) : {};
-      } catch {
-        parsedData = {};
-      }
-
       return {
         service_document_id: r.service_document_id,
         document_name: r.document_name,
         is_mandatory: r.is_mandatory,
-        uploaded: !!r.order_document_id,
+        uploaded: r.uploaded === 1,
         file_path: r.file_path,
-        document_data: parsedData,
       };
     });
   }
