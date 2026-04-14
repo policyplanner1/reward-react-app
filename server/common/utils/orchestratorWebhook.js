@@ -27,11 +27,34 @@ async function handleWebhook(req, res) {
     req.parsedBody = body;
 
     //  FAN-OUT (parallel execution)
-    await Promise.all([
-      ecommerceWebhook.processEvent(req),
-      serviceWebhook.processEvent(req),
-    ]);
+    // await Promise.all([
+    //   ecommerceWebhook.processEvent(req),
+    //   serviceWebhook.processEvent(req),
+    // ]);
 
+    if (!body?.payload?.payment?.entity) {
+      console.warn("Unhandled webhook event", body.event);
+      return res.sendStatus(200);
+    }
+
+    const moduleType = body?.payload?.payment?.entity?.notes?.module;
+
+    const handler =
+      moduleType === "service"
+        ? serviceWebhook
+        : moduleType === "ecommerce"
+          ? ecommerceWebhook
+          : null;
+
+    if (!handler) {
+      console.warn("Unknown module in webhook", {
+        event: body.event,
+        notes: body?.payload?.payment?.entity?.notes,
+      });
+      return res.sendStatus(200);
+    }
+
+    await handler.processEvent(req);
     res.sendStatus(200);
   } catch (err) {
     console.error("Webhook Orchestrator Error:", err);
