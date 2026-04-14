@@ -1,4 +1,3 @@
-const crypto = require("crypto");
 const db = require("../../config/database");
 const { enqueueWhatsApp } = require("../../services/whatsapp/waEnqueueService");
 const xpressService = require("../../services/ExpressBees/xpressbees_service");
@@ -432,24 +431,11 @@ async function sendOrderPlacedEmail(orderId) {
 }
 
 // webhook
-async function handleWebhook(req, res) {
+async function processEvent(req, res) {
   const conn = await db.getConnection();
 
   try {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const signature = req.headers["x-razorpay-signature"];
-
-    // 1 Verify signature
-    const expected = crypto
-      .createHmac("sha256", secret)
-      .update(req.body)
-      .digest("hex");
-
-    if (expected !== signature) {
-      return res.status(400).send("Invalid signature");
-    }
-
-    const body = JSON.parse(req.body.toString());
+    const body = req.parsedBody;
     const event = body.event;
 
     if (event === "payment.captured") {
@@ -547,4 +533,4 @@ async function handleWebhook(req, res) {
   }
 }
 
-module.exports = { handleWebhook, processShipmentsAfterPayment };
+module.exports = { processEvent, processShipmentsAfterPayment };

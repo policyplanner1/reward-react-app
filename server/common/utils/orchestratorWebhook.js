@@ -1,5 +1,4 @@
 const crypto = require("crypto");
-const db = require("../../config/database");
 
 const ecommerceWebhook = require("./paymentWebHook");
 const serviceWebhook = require("../../app/service/v1/utils/webhook");
@@ -24,7 +23,7 @@ async function handleWebhook(req, res) {
     //  Parse once
     const body = JSON.parse(rawBody.toString());
 
-    //  Attach parsed body so child handlers don’t re-parse
+    //  Attach parsed body so child handlers don't re-parse
     req.parsedBody = body;
 
     //  FAN-OUT (parallel execution)

@@ -1,27 +1,8 @@
-const crypto = require("crypto");
 const db = require("../../../../config/database");
 
-async function handleServiceWebhook(req, res) {
+async function processEvent(req, res) {
   try {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const signature = req.headers["x-razorpay-signature"];
-
-    // Raw body
-    const rawBody = req.body;
-
-    // 1 Verify signature
-    const expected = crypto
-      .createHmac("sha256", secret)
-      .update(rawBody)
-      .digest("hex");
-
-    if (expected !== signature) {
-      console.log("Invalid webhook signature");
-      return res.status(400).send("Invalid signature");
-    }
-
-    // 2 Parse body
-    const body = JSON.parse(rawBody.toString());
+    const body = req.parsedBody;
     const event = body.event;
 
     // =========================
@@ -36,7 +17,7 @@ async function handleServiceWebhook(req, res) {
       //  Fetch receipt (parent_order_id)
       const [rpOrder] = await db.execute(
         `SELECT receipt FROM razorpay_orders WHERE razorpay_order_id = ?`,
-        [razorpayOrderId]
+        [razorpayOrderId],
       );
 
       if (!rpOrder.length) {
@@ -53,7 +34,7 @@ async function handleServiceWebhook(req, res) {
              payment_id = ?,
              payment_status = 'paid'
          WHERE parent_order_id = ?`,
-        [paymentId, parentOrderId]
+        [paymentId, parentOrderId],
       );
 
       console.log("Payment captured → Orders updated");
@@ -69,7 +50,7 @@ async function handleServiceWebhook(req, res) {
 
       const [rpOrder] = await db.execute(
         `SELECT receipt FROM razorpay_orders WHERE razorpay_order_id = ?`,
-        [razorpayOrderId]
+        [razorpayOrderId],
       );
 
       if (rpOrder.length) {
@@ -79,7 +60,7 @@ async function handleServiceWebhook(req, res) {
           `UPDATE service_orders
            SET payment_status = 'failed'
            WHERE parent_order_id = ?`,
-          [parentOrderId]
+          [parentOrderId],
         );
       }
 
@@ -93,4 +74,4 @@ async function handleServiceWebhook(req, res) {
   }
 }
 
-module.exports = { handleServiceWebhook };
+module.exports = { processEvent };

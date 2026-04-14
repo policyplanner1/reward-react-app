@@ -12,7 +12,7 @@ require('./services/Bbps/retryCron');
 const dashboardRoute = require("./routes/indexRoute");
 
 // web hook Route
-const webhook = require("./common/utils/paymentWebHook");
+const webhook = require("./common/utils/orchestratorWebhook");
 
 // App Route
 const ecommerceRoute = require("./app/ecommerce/v1/routes/indexRoute");
