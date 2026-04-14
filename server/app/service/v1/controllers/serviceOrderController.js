@@ -5,7 +5,9 @@ const ServiceOrderDocumentModel = require("../models/serviceOrderDocumentModel")
 const fs = require("fs");
 // const path = require("path");
 const { uploadToR2 } = require("../../../../utils/r2upload");
-
+const razorpay = require("../middlewares/razorpay");
+const db = require("../../../../config/database");
+const crypto = require("crypto");
 
 const ALLOWED_STATUSES = [
   "pending_payment",
@@ -97,6 +99,115 @@ class ServiceOrderController {
       });
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  // create razorpay order
+  async createPaymentOrder(req, res) {
+    try {
+      const { parent_order_id } = req.body;
+
+      if (!parent_order_id) {
+        return res.status(400).json({
+          success: false,
+          message: "parent_order_id required",
+        });
+      }
+
+      //  Get total amount from DB
+      const [orders] = await db.execute(
+        `SELECT SUM(price) as total 
+       FROM service_orders 
+       WHERE parent_order_id = ?`,
+        [parent_order_id],
+      );
+
+      const totalAmount = orders[0]?.total;
+
+      if (!totalAmount) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid parent_order_id",
+        });
+      }
+
+      const razorpayOrder = await razorpay.orders.create({
+        amount: totalAmount * 100,
+        currency: "INR",
+        receipt: parent_order_id,
+      });
+
+      res.json({
+        success: true,
+        data: {
+          razorpay_order_id: razorpayOrder.id,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // verify payment
+  async verifyPayment(req, res) {
+    try {
+      const {
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+        parent_order_id,
+      } = req.body;
+
+      //  verify signature
+      const body = razorpay_order_id + "|" + razorpay_payment_id;
+
+      const expectedSignature = crypto
+        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+        .update(body.toString())
+        .digest("hex");
+
+      if (expectedSignature !== razorpay_signature) {
+        return res.status(400).json({
+          success: false,
+          message: "Payment verification failed",
+        });
+      }
+
+      //  Update ALL orders in this group
+      await db.execute(
+        `UPDATE service_orders 
+       SET status = 'documents_pending',
+           payment_id = ?,
+           payment_status = 'paid'
+       WHERE parent_order_id = ?`,
+        [razorpay_payment_id, parent_order_id],
+      );
+
+      // get first order for redirect
+      const [[firstOrder]] = await db.execute(
+        `SELECT id FROM service_orders 
+       WHERE parent_order_id = ? 
+       ORDER BY id ASC LIMIT 1`,
+        [parent_order_id],
+      );
+
+      res.json({
+        success: true,
+        message: "Payment successful",
+        data: {
+          redirect_to: `/service-order-documents/documents/${firstOrder.id}`,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     }
   }
 

@@ -2,7 +2,6 @@ const db = require("../../../../config/database");
 const CartModel = require("../models/serviceCartModel");
 const ServiceOrderModel = require("../models/serviceOrderModel");
 const crypto = require("crypto");
-const razorpay = require("razorpay");
 
 // helper function
 const CDN_BASE_URL = "https://cdn.rewardplanners.com";

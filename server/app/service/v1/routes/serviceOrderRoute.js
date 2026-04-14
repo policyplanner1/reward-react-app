@@ -18,6 +18,12 @@ router.post(
   ServiceOrderController.createEnquiryOrder,
 );
 
+// create razorpay order
+router.post("/create-order", auth, ServiceOrderController.createPaymentOrder);
+
+// verify payment
+router.post("/verify-payment", auth, ServiceOrderController.verifyPayment);
+
 // Get all orders
 router.get("/my-orders", auth, ServiceOrderController.getMyOrders);
 
