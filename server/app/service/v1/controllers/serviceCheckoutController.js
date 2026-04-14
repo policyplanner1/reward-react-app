@@ -2,6 +2,7 @@ const db = require("../../../../config/database");
 const CartModel = require("../models/serviceCartModel");
 const ServiceOrderModel = require("../models/serviceOrderModel");
 const crypto = require("crypto");
+const razorpay = require("razorpay");
 
 // helper function
 const CDN_BASE_URL = "https://cdn.rewardplanners.com";
@@ -69,7 +70,7 @@ class ServiceCheckoutController {
           enquiry_id: null,
           price: item.price * item.quantity,
           parent_order_id: parentOrderId,
-          status: "documents_pending",
+          status: "pending_payment",
         });
 
         createdOrders.push(order);
@@ -78,15 +79,16 @@ class ServiceCheckoutController {
       // clear cart
       await CartModel.clearCart(cart.id);
 
-      const firstOrder = createdOrders[0];
+      // const firstOrder = createdOrders[0];
 
       res.json({
         success: true,
         message: "Orders created successfully",
         data: {
           orders: createdOrders,
-          redirect_to: `/service-order-documents/documents/${firstOrder.id}`,
-          first_order_id: firstOrder.id,
+          // redirect_to: `/service-order-documents/documents/${firstOrder.id}`,
+          // first_order_id: firstOrder.id,
+          parent_order_id: parentOrderId,
         },
       });
     } catch (err) {
@@ -142,7 +144,7 @@ class ServiceCheckoutController {
         enquiry_id: null,
         price: variant.price,
         parent_order_id: parentOrderId,
-        status: "documents_pending",
+        status: "pending_payment",
       });
 
       res.json({
@@ -150,8 +152,8 @@ class ServiceCheckoutController {
         message: "Order created successfully",
         data: {
           orders: [order],
-          redirect_to: `/service-order-documents/documents/${order.id}`,
-          first_order_id: order.id,
+          // first_order_id: order.id,
+          parent_order_id: parentOrderId,
         },
       });
     } catch (err) {
