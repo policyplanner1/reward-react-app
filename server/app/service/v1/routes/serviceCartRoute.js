@@ -6,6 +6,9 @@ const auth = require("../../../ecommerce/v1/middlewares/auth");
 // add to cart
 router.post("/add", auth, ServiceCartController.addToCart);
 
+// add bundle items to cart
+router.post("/add-bundle/:bundleId", auth, ServiceCartController.addBundleToCart);
+
 // Get cart
 router.get("/cart-items", auth, ServiceCartController.getCart);
 

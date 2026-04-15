@@ -52,6 +52,83 @@ class ServiceCartController {
     }
   }
 
+  // add bundle items to cart
+  async addBundleToCart(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { bundleId } = req.params;
+      const { selected_items } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      if (!bundleId) {
+        return res.status(400).json({
+          success: false,
+          message: "bundleId required",
+        });
+      }
+
+      // get cart
+      const cart = await CartModel.getOrCreateCart(userId);
+
+      // get bundle items
+      const [items] = await db.execute(
+        `SELECT * FROM service_bundle_items WHERE bundle_id = ?`,
+        [bundleId],
+      );
+
+      const insertedItems = [];
+
+      for (let item of items) {
+        // skip optional items if not selected
+        if (
+          item.is_required === 0 &&
+          selected_items &&
+          !selected_items.includes(item.id)
+        ) {
+          continue;
+        }
+
+        // add to cart
+        await CartModel.addItem({
+          cart_id: cart.id,
+          service_id: item.service_id,
+          variant_id: item.variant_id,
+          price: item.price,
+          quantity: 1,
+        });
+
+        insertedItems.push(item.id);
+      }
+
+      res.json({
+        success: true,
+        message: "Bundle added to cart",
+        data: {
+          added_items: insertedItems,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
   //   Get cart items for user
   async getCart(req, res) {
     try {
