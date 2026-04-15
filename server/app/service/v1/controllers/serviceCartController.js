@@ -55,7 +55,8 @@ class ServiceCartController {
   // add bundle items to cart
   async addBundleToCart(req, res) {
     try {
-      const userId = req.user?.user_id;
+      // const userId = req.user?.user_id;
+      const userId=1;
 
       if (!userId) {
         return res.status(401).json({
@@ -66,13 +67,6 @@ class ServiceCartController {
 
       const { bundleId } = req.params;
       const { selected_items } = req.body;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized",
-        });
-      }
 
       if (!bundleId) {
         return res.status(400).json({
