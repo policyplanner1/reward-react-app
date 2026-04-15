@@ -8,11 +8,12 @@ class ServiceBundleModel {
       bi.id,
       bi.service_id,
       bi.variant_id,
-      bi.price,
+      bi.price as bundle_price,
       bi.is_required,
 
       s.name AS service_name,
       sv.variant_name,
+      sv.price,
       sv.title,
       sv.image_url
 

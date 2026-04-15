@@ -91,19 +91,35 @@ class ServiceBundleController {
       const enquiryFields = await ServiceFormModel.findFormByBundleId(id);
 
       // 5  Calculate pricing summary
-      const total_price = items.reduce((sum, i) => sum + Number(i.price), 0);
+      const individual_total = items.reduce(
+        (sum, i) => sum + Number(i.price), // sv.price
+        0,
+      );
+
+      const bundle_total = items.reduce(
+        (sum, i) => sum + Number(i.bundle_price), // bi.price
+        0,
+      );
+
+      const formattedItems = items.map((i) => ({
+        ...i,
+
+        individual_price: Number(i.price),
+        bundle_price: Number(i.bundle_price),
+      }));
 
       res.json({
         success: true,
         data: {
           bundle,
-          items,
+          items: formattedItems,
           sections,
           enquiry_fields: enquiryFields,
+
           pricing: {
-            total_price,
-            bundle_price: bundle.bundle_price,
-            savings: total_price - bundle.bundle_price,
+            total_price:individual_total,
+            bundle_price:bundle_total,
+            savings: individual_total - bundle_total,
           },
         },
       });
