@@ -7,6 +7,6 @@ const auth = require("../../../ecommerce/v1/middlewares/auth");
 router.get("/", ServiceBundleController.getServiceBundles);
 
 // Get Bundle Detail
-router.get("/detail/:id", ServiceBundleController.getServiceBundleDetail);
+router.get("/bundle-detail/:id", ServiceBundleController.getServiceBundleDetail);
 
 module.exports = router;
