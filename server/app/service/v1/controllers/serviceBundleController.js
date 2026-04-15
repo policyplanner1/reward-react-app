@@ -1,5 +1,6 @@
 const db = require("../../../../config/database");
 const ServiceBundleModel = require("../models/serviceBundleModel");
+const ServiceFormModel = require("../models/serviceFormModel");
 
 // Helper function
 function formatBundleSections(sections) {
@@ -87,7 +88,7 @@ class ServiceBundleController {
       const sections = formatBundleSections(sectionsRaw);
 
       // 4 Enquiry fields
-      const enquiryFields = await ServiceBundleModel.findFormByBundleId(id);
+      const enquiryFields = await ServiceFormModel.findFormByBundleId(id);
 
       // 5  Calculate pricing summary
       const total_price = items.reduce((sum, i) => sum + Number(i.price), 0);
