@@ -1,4 +1,40 @@
 const db = require("../../../../config/database");
+const ServiceBundleModel = require("../models/serviceBundleModel");
+
+// Helper function
+function formatBundleSections(sections) {
+  const formatted = {
+    features: [],
+    details: [],
+    trust_stats: [],
+    paragraphs: [],
+  };
+
+  sections.forEach((s) => {
+    switch (s.section_type) {
+      case "features":
+        formatted.features = s.content;
+        break;
+
+      case "details":
+        formatted.details = s.content;
+        break;
+
+      case "trust_stats":
+        formatted.trust_stats = s.content;
+        break;
+
+      case "paragraph":
+        formatted.paragraphs.push({
+          title: s.title,
+          content: s.content,
+        });
+        break;
+    }
+  });
+
+  return formatted;
+}
 
 class ServiceBundleController {
   // service bundle list
@@ -44,33 +80,12 @@ class ServiceBundleController {
       }
 
       // items
-      const [items] = await db.execute(
-        `
-      SELECT 
-        s.name AS service_name,
-        sv.variant_name,
-        sv.image_url,
-        sv.title,
-        bi.price,
-        bi.is_required,
-        bi.service_id,
-        bi.variant_id
 
-      FROM service_bundle_items bi
-      JOIN services s ON s.id = bi.service_id
-      JOIN service_variants sv ON sv.id = bi.variant_id
-
-      WHERE bi.bundle_id = ?
-      ORDER BY bi.sort_order
-      `,
-        [id],
-      );
 
       res.json({
         success: true,
         data: {
           bundle,
-          items,
         },
       });
     } catch (err) {
