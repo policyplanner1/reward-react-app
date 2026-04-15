@@ -33,7 +33,7 @@ class ServiceBundleModel {
     const [rows] = await db.execute(
       `
     SELECT section_type, title, content
-    FROM service_sections
+    FROM service_bundle_sections
     WHERE bundle_id = ?
     ORDER BY sort_order
     `,
