@@ -79,13 +79,31 @@ class ServiceBundleController {
           .json({ success: false, message: "Bundle not found" });
       }
 
-      // items
+      // 2 Items (services inside bundle)
+      const items = await ServiceBundleModel.getBundleItems(id);
 
+      // 3 Sections (features, stats etc)
+      const sectionsRaw = await ServiceBundleModel.getBundleSections(id);
+      const sections = formatBundleSections(sectionsRaw);
+
+      // 4 Enquiry fields
+      const enquiryFields = await ServiceBundleModel.findFormByBundleId(id);
+
+      // 5  Calculate pricing summary
+      const total_price = items.reduce((sum, i) => sum + Number(i.price), 0);
 
       res.json({
         success: true,
         data: {
           bundle,
+          items,
+          sections,
+          enquiry_fields: enquiryFields,
+          pricing: {
+            total_price,
+            bundle_price: bundle.bundle_price,
+            savings: total_price - bundle.bundle_price,
+          },
         },
       });
     } catch (err) {
