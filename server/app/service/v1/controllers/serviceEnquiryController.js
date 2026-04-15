@@ -1,6 +1,8 @@
 const db = require("../../../../config/database");
 const ServiceEnquiryModel = require("../models/serviceEnquiryModel");
-const {sendNewEnquiryEmail} =require('../../../../services/enquiryNotification')
+const {
+  sendNewEnquiryEmail,
+} = require("../../../../services/enquiryNotification");
 
 class ServiceEnquiryController {
   // create user Enquiry
@@ -8,6 +10,7 @@ class ServiceEnquiryController {
     try {
       const {
         service_id,
+        bundle_id,
         variant_id,
         name,
         city,
@@ -16,10 +19,18 @@ class ServiceEnquiryController {
         enquiry_data,
       } = req.body;
 
-      if (!service_id || !name || !mobile) {
+      if ((!service_id && !bundle_id) || !name || !mobile) {
         return res.status(400).json({
           success: false,
-          message: "service_id, name and mobile are required",
+          message:
+            "Either service_id or bundle_id, name and mobile are required",
+        });
+      }
+
+      if (service_id && bundle_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Provide either service_id or bundle_id, not both",
         });
       }
 
@@ -27,8 +38,9 @@ class ServiceEnquiryController {
         enquiry_data && typeof enquiry_data === "object" ? enquiry_data : {};
 
       const result = await ServiceEnquiryModel.create({
-        service_id,
-        variant_id: variant_id || null,
+        service_id: service_id || null,
+        bundle_id: bundle_id || null,
+        variant_id: service_id ? variant_id || null : null,
         name,
         city,
         mobile,
@@ -90,7 +102,7 @@ class ServiceEnquiryController {
   }
 
   // send enquiry notification
-    async sendEnquiryNotification(req, res) {
+  async sendEnquiryNotification(req, res) {
     try {
       const { name, email, contact, subject, description } = req.body;
 
@@ -118,7 +130,6 @@ class ServiceEnquiryController {
       });
     }
   }
-
 }
 
 module.exports = new ServiceEnquiryController();
