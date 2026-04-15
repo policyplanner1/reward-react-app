@@ -11,6 +11,7 @@ const serviceOrderRoute = require("./serviceOrderRoute");
 const serviceOrderDocumentRoute = require("./serviceOrderDocument");
 const serviceCartRoute = require("./serviceCartRoute");
 const serviceCheckoutRoute = require("./serviceCheckoutRoute");
+const serviceBundleRoute = require("./serviceBundleRoute");
 const insuranceRoute = require("./insuranceRoute");
 
 router.use("/category", serviceCategoryRoute);
@@ -23,6 +24,7 @@ router.use("/service-checkout",serviceCheckoutRoute)
 router.use("/service-variant",serviceVariantRoute)
 router.use("/service-form",serviceFormRoute)
 router.use("/service-orders",serviceOrderRoute)
+router.use('/service-bundle',serviceBundleRoute)
 router.use("/service-order-documents",serviceOrderDocumentRoute)
 
 module.exports = router;
