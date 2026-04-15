@@ -103,8 +103,7 @@ class ServiceCartController {
         }
 
         // add to cart
-        await CartModel.addItem({
-          cart_id: cart.id,
+        await CartModel.addItem(cart.id, {
           service_id: item.service_id,
           variant_id: item.variant_id,
           price: item.price,
