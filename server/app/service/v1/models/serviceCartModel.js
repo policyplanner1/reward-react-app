@@ -38,19 +38,14 @@ class ServiceCartModel {
     );
 
     if (existing.length) {
-      // increase quantity
-      await db.execute(
-        `UPDATE service_cart_items 
-         SET quantity = quantity + 1 
-         WHERE id = ?`,
-        [existing[0].id],
-      );
-      return;
+      return {
+        already_exists: true,
+      };
     }
 
     await db.execute(
       `INSERT INTO service_cart_items
-      (cart_id, service_id, variant_id, price,quantity)
+      (cart_id, service_id, variant_id, price, quantity)
       VALUES (?, ?, ?, ?, 1)`,
       [cartId, data.service_id, data.variant_id, data.price],
     );

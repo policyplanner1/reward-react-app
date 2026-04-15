@@ -101,7 +101,6 @@ class ServiceCartController {
           service_id: item.service_id,
           variant_id: item.variant_id,
           price: item.price,
-          quantity: 1,
         });
 
         insertedItems.push(item.id);
