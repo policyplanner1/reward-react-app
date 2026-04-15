@@ -50,8 +50,8 @@ class ServiceCartModel {
 
     await db.execute(
       `INSERT INTO service_cart_items
-      (cart_id, service_id, variant_id, price)
-      VALUES (?, ?, ?, ?)`,
+      (cart_id, service_id, variant_id, price,quantity)
+      VALUES (?, ?, ?, ?, 1)`,
       [cartId, data.service_id, data.variant_id, data.price],
     );
   }
