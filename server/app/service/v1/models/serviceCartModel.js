@@ -97,7 +97,7 @@ class ServiceCartModel {
         itemMap[itemId] = {
           id: item.id,
           quantity: item.quantity,
-          price: item.price,
+          price: Number(item.price),
           bundle_id: item.bundle_id,
 
           service_name: item.service_name,
@@ -134,7 +134,7 @@ class ServiceCartModel {
         }
 
         bundles[item.bundle_id].items.push(item);
-        bundles[item.bundle_id].bundle_total += item.price;
+        bundles[item.bundle_id].bundle_total += Number(item.price);
       } else {
         individual_items.push(item);
       }
