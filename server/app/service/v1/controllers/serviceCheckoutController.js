@@ -232,6 +232,7 @@ class ServiceCheckoutController {
         enquiry_id: null,
         price: variant.price,
         parent_order_id: parentOrderId,
+        bundle_id: null,
         status: "pending_payment",
       });
 
@@ -240,7 +241,6 @@ class ServiceCheckoutController {
         message: "Order created successfully",
         data: {
           orders: [order],
-          // first_order_id: order.id,
           parent_order_id: parentOrderId,
         },
       });
