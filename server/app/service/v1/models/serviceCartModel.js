@@ -148,7 +148,24 @@ class ServiceCartModel {
 
   // remove item from cart
   async removeItem(itemId) {
-    await db.execute(`DELETE FROM service_cart_items WHERE id = ?`, [itemId]);
+    const [[item]] = await db.execute(
+      `SELECT cart_id, bundle_id FROM service_cart_items WHERE id = ?`,
+      [itemId],
+    );
+
+    if (!item) return;
+
+    // if its a bundle item, remove all items in the bundle
+    if (item.bundle_id) {
+      await db.execute(
+        `DELETE FROM service_cart_items 
+       WHERE cart_id = ? AND bundle_id = ?`,
+        [item.cart_id, item.bundle_id],
+      );
+    } else {
+      // normal item
+      await db.execute(`DELETE FROM service_cart_items WHERE id = ?`, [itemId]);
+    }
   }
 
   // clear cart
