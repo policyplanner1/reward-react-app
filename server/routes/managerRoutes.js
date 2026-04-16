@@ -24,15 +24,19 @@ router.get(
 
       const [[productStats]] = await db.execute(`
         SELECT
-          COUNT(CASE WHEN status != 'pending' THEN 1 END) AS totalProducts,
+          COUNT(*) AS totalProducts,
+
           SUM(status = 'pending') AS pendingProducts,
           SUM(status = 'sent_for_approval') AS sentForApprovalProducts,
           SUM(status = 'resubmission') AS resubmissionProducts,
           SUM(status = 'approved') AS approvedProducts,
           SUM(status = 'rejected') AS rejectedProducts
-        FROM eproducts
-      `);
 
+        FROM eproducts
+        WHERE 
+          is_deleted = 0
+          AND status IN ('sent_for_approval', 'approved', 'rejected', 'resubmission')
+    `);
       res.json({
         success: true,
         data: {
