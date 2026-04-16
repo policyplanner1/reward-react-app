@@ -5,6 +5,7 @@ class ServiceCartController {
   async addToCart(req, res) {
     try {
       const userId = req.user?.user_id;
+      // const userId = 1;
 
       if (!userId) {
         return res.status(401).json({
@@ -56,7 +57,7 @@ class ServiceCartController {
   async addBundleToCart(req, res) {
     try {
       const userId = req.user?.user_id;
-      // const userId=1;
+      // const userId = 1;
 
       if (!userId) {
         return res.status(401).json({
@@ -126,6 +127,7 @@ class ServiceCartController {
   async getCart(req, res) {
     try {
       const userId = req.user?.user_id;
+      // const userId = 1;
 
       if (!userId) {
         return res.status(401).json({
@@ -139,8 +141,8 @@ class ServiceCartController {
       const cartData = await CartModel.getCart(cart.id);
 
       const total =
-        cartData.individual_items.reduce((s, i) => s + i.price, 0) +
-        cartData.bundles.reduce((s, b) => s + b.bundle_total, 0);
+        cartData.individual_items.reduce((s, i) => s + Number(i.price), 0) +
+        cartData.bundles.reduce((s, b) => s + Number(b.bundle_total), 0);
 
       res.json({
         success: true,
@@ -157,6 +159,7 @@ class ServiceCartController {
   async removeItem(req, res) {
     try {
       const userId = req.user?.user_id;
+      // const userId = 1;
 
       if (!userId) {
         return res.status(401).json({
@@ -181,6 +184,7 @@ class ServiceCartController {
   async clearCart(req, res) {
     try {
       const userId = req.user?.user_id;
+      // const userId = 1;
 
       if (!userId) {
         return res.status(401).json({
