@@ -11,12 +11,23 @@ function getPublicUrl(path) {
 }
 
 //calculate summary utility function
-function calculateSummary(items) {
-  const item_total = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+function calculateSummary({ bundles = [], individual_items = [] }) {
+  // 1 Individual items total
+  const individual_total = individual_items.reduce(
+    (sum, item) => sum + item.price * (item.quantity || 1),
     0,
   );
 
+  // 2 Bundle total
+  const bundle_total = bundles.reduce(
+    (sum, bundle) => sum + bundle.bundle_total,
+    0,
+  );
+
+  // 3 Combined item total
+  const item_total = individual_total + bundle_total;
+
+  // 4 Other fields (same as before)
   const discount = 0;
   const reward_discount = 0;
   const delivery_fee = 0;
@@ -32,6 +43,12 @@ function calculateSummary(items) {
     delivery_fee,
     handling_fee,
     total,
+
+    //  extra clarity (optional but useful)
+    breakdown: {
+      individual_total,
+      bundle_total,
+    },
   };
 }
 
@@ -231,22 +248,31 @@ class ServiceCheckoutController {
       }
 
       const cart = await CartModel.getOrCreateCart(userId);
-      const items = await CartModel.getCart(cart.id);
+      const cartData = await CartModel.getCart(cart.id);
 
-      if (!items.length) {
+      const { bundles = [], individual_items = [] } = cartData;
+
+      if (!bundles.length && !individual_items.length) {
         return res.status(400).json({
           success: false,
           message: "Cart is empty",
         });
       }
 
-      const summary = calculateSummary(items);
+      const summary = calculateSummary(cartData);
+
+      const all_items = [
+        ...individual_items,
+        ...bundles.flatMap((b) => b.items),
+      ];
 
       res.json({
         success: true,
         data: {
           type: "cart",
-          items,
+          bundles,
+          individual_items,
+          items: all_items,
           summary,
         },
       });
@@ -306,7 +332,10 @@ class ServiceCheckoutController {
         },
       ];
 
-      const summary = calculateSummary(items);
+      const summary = calculateSummary({
+        bundles: [],
+        individual_items: items,
+      });
 
       res.json({
         success: true,
