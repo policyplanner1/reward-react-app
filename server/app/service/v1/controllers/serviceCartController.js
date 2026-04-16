@@ -76,6 +76,12 @@ class ServiceCartController {
         });
       }
 
+      // get bundle
+      const [[bundle]] = await db.execute(
+        `SELECT type FROM service_bundles WHERE id = ?`,
+        [bundleId],
+      );
+
       // get cart
       const cart = await CartModel.getOrCreateCart(userId);
 
@@ -85,16 +91,35 @@ class ServiceCartController {
         [bundleId],
       );
 
+      if (!items.length) {
+        return res.status(400).json({
+          success: false,
+          message: "No items found in bundle",
+        });
+      }
+
+      const hasOptional = items.some((i) => i.is_required === 0);
+
+      if (
+        bundle.type === "custom" &&
+        hasOptional &&
+        (!selected_items || selected_items.length === 0)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select at least one service",
+        });
+      }
+
+      const selectedSet = new Set(selected_items || []);
       const insertedItems = [];
 
       for (let item of items) {
-        // skip optional items if not selected
-        if (
-          item.is_required === 0 &&
-          selected_items &&
-          !selected_items.includes(item.id)
-        ) {
-          continue;
+        //  if custom bundle → apply selection
+        if (bundle.type === "custom") {
+          if (item.is_required === 0 && !selectedSet.has(item.id)) {
+            continue;
+          }
         }
 
         // add to cart
