@@ -89,6 +89,7 @@ class ServiceCheckoutController {
           enquiry_id: null,
           price: item.price,
           parent_order_id: parentOrderId,
+          bundle_id: null,
           status: "pending_payment",
         });
 
