@@ -8,6 +8,15 @@ class ServiceEnquiryController {
   // create user Enquiry
   async createEnquiry(req, res) {
     try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       const {
         service_id,
         bundle_id,
@@ -38,9 +47,10 @@ class ServiceEnquiryController {
         enquiry_data && typeof enquiry_data === "object" ? enquiry_data : {};
 
       const result = await ServiceEnquiryModel.create({
-        service_id: service_id || null,
-        bundle_id: bundle_id || null,
-        variant_id: service_id ? variant_id || null : null,
+        service_id: service_id ?? null,
+        user_id: userId,
+        bundle_id: bundle_id ?? null,
+        variant_id: service_id != null ? (variant_id ?? null) : null,
         name,
         city,
         mobile,
