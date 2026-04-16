@@ -7,7 +7,7 @@ const auth = require("../../../ecommerce/v1/middlewares/auth");
 router.post("/cart", auth, ServiceCheckoutController.addToCheckout);
 
 // bundle checkout
-router.post("/bundle", auth, ServiceCheckoutController.bundleCheckout);
+// router.post("/bundle", auth, ServiceCheckoutController.bundleCheckout);
 
 // buy now
 router.post("/buy-now", auth, ServiceCheckoutController.buyNow);

@@ -66,9 +66,11 @@ class ServiceCheckoutController {
       }
 
       const cart = await CartModel.getOrCreateCart(userId);
-      const items = await CartModel.getCart(cart.id);
+      const cartData = await CartModel.getCart(cart.id);
 
-      if (!items.length) {
+      const { bundles = [], individual_items = [] } = cartData;
+
+      if (!bundles.length && !individual_items.length) {
         return res.status(400).json({
           success: false,
           message: "Cart is empty",
@@ -78,73 +80,8 @@ class ServiceCheckoutController {
       const createdOrders = [];
       const parentOrderId = crypto.randomUUID();
 
-      for (let item of items) {
-        const order = await ServiceOrderModel.create({
-          user_id: userId,
-          service_id: item.service_id,
-          variant_id: item.variant_id,
-          enquiry_id: null,
-          price: item.price * item.quantity,
-          parent_order_id: parentOrderId,
-          status: "pending_payment",
-        });
-
-        createdOrders.push(order);
-      }
-
-      // clear cart
-      await CartModel.clearCart(cart.id);
-
-      // const firstOrder = createdOrders[0];
-
-      res.json({
-        success: true,
-        message: "Orders created successfully",
-        data: {
-          orders: createdOrders,
-          // redirect_to: `/service-order-documents/documents/${firstOrder.id}`,
-          // first_order_id: firstOrder.id,
-          parent_order_id: parentOrderId,
-        },
-      });
-    } catch (err) {
-      console.log(err);
-      res.status(500).json({
-        success: false,
-        message: err.message,
-      });
-    }
-  }
-
-  // Bundle checkout
-  async bundleCheckout(req, res) {
-    try {
-      const userId = req.user?.user_id;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized user",
-        });
-      }
-
-      const { bundle_id, selected_items } = req.body;
-
-      const parentOrderId = crypto.randomUUID();
-      const createdOrders = [];
-
-      // fetch bundle items
-      const [items] = await db.execute(
-        `SELECT * FROM service_bundle_items WHERE bundle_id = ?`,
-        [bundle_id],
-      );
-
-      for (let item of items) {
-        // if custom → check selected
-        if (item.is_required === 0 && !selected_items.includes(item.id)) {
-          continue;
-        }
-
+      //  1. Handle individual items
+      for (let item of individual_items) {
         const order = await ServiceOrderModel.create({
           user_id: userId,
           service_id: item.service_id,
@@ -158,18 +95,98 @@ class ServiceCheckoutController {
         createdOrders.push(order);
       }
 
+      //  2. Handle bundles
+      for (let bundle of bundles) {
+        for (let item of bundle.items) {
+          const order = await ServiceOrderModel.create({
+            user_id: userId,
+            service_id: item.service_id,
+            variant_id: item.variant_id,
+            enquiry_id: null,
+            price: item.price,
+            parent_order_id: parentOrderId,
+            bundle_id: bundle.bundle_id,
+            status: "pending_payment",
+          });
+
+          createdOrders.push(order);
+        }
+      }
+
+      //3. clear cart
+      await CartModel.clearCart(cart.id);
+
       res.json({
         success: true,
         message: "Orders created successfully",
         data: {
-          parent_order_id: parentOrderId,
           orders: createdOrders,
+          parent_order_id: parentOrderId,
         },
       });
     } catch (err) {
-      res.status(500).json({ success: false, message: err.message });
+      console.log(err);
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     }
   }
+
+  // Bundle checkout
+  // async bundleCheckout(req, res) {
+  //   try {
+  //     const userId = req.user?.user_id;
+
+  //     if (!userId) {
+  //       return res.status(401).json({
+  //         success: false,
+  //         message: "Unauthorized user",
+  //       });
+  //     }
+
+  //     const { bundle_id, selected_items } = req.body;
+
+  //     const parentOrderId = crypto.randomUUID();
+  //     const createdOrders = [];
+
+  //     // fetch bundle items
+  //     const [items] = await db.execute(
+  //       `SELECT * FROM service_bundle_items WHERE bundle_id = ?`,
+  //       [bundle_id],
+  //     );
+
+  //     for (let item of items) {
+  //       // if custom → check selected
+  //       if (item.is_required === 0 && !selected_items.includes(item.id)) {
+  //         continue;
+  //       }
+
+  //       const order = await ServiceOrderModel.create({
+  //         user_id: userId,
+  //         service_id: item.service_id,
+  //         variant_id: item.variant_id,
+  //         enquiry_id: null,
+  //         price: item.price,
+  //         parent_order_id: parentOrderId,
+  //         status: "pending_payment",
+  //       });
+
+  //       createdOrders.push(order);
+  //     }
+
+  //     res.json({
+  //       success: true,
+  //       message: "Orders created successfully",
+  //       data: {
+  //         parent_order_id: parentOrderId,
+  //         orders: createdOrders,
+  //       },
+  //     });
+  //   } catch (err) {
+  //     res.status(500).json({ success: false, message: err.message });
+  //   }
+  // }
 
   // buy now
   async buyNow(req, res) {
