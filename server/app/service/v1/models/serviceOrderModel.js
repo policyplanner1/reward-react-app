@@ -149,6 +149,7 @@ class ServiceOrderModel {
       so.price,
       so.status,
       so.bundle_id,
+      so.created_at,
 
       s.name AS service_name,
       sv.variant_name,
@@ -166,9 +167,23 @@ class ServiceOrderModel {
 
     if (!rows.length) return null;
 
+    // Aggregate status
+    const statuses = rows.map((r) => r.status);
+
+    let finalStatus = "pending_payment";
+
+    if (statuses.every((s) => s === "completed")) {
+      finalStatus = "completed";
+    } else if (statuses.some((s) => s === "in_progress")) {
+      finalStatus = "in_progress";
+    } else if (statuses.some((s) => s === "documents_pending")) {
+      finalStatus = "documents_pending";
+    }
+
     const response = {
       parent_order_id: parentId,
-      status: rows[0].status,
+      status: finalStatus,
+      created_at: rows[0].created_at,
       items: [],
       bundles: {},
       total_amount: 0,
