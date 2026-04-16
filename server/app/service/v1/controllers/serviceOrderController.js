@@ -132,7 +132,7 @@ class ServiceOrderController {
       }
 
       const razorpayOrder = await razorpay.orders.create({
-        amount: totalAmount * 100,
+        amount: Math.round(Number(totalAmount) * 100),
         currency: "INR",
         receipt: parent_order_id,
 
