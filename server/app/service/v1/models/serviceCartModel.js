@@ -32,22 +32,26 @@ class ServiceCartModel {
   async addItem(cartId, data) {
     // check if same variant already exists
     const [existing] = await db.execute(
-      `SELECT * FROM service_cart_items 
+      `SELECT id FROM service_cart_items 
        WHERE cart_id = ? AND variant_id = ?`,
       [cartId, data.variant_id],
     );
 
     if (existing.length) {
-      return {
-        already_exists: true,
-      };
+      return;
     }
 
     await db.execute(
       `INSERT INTO service_cart_items
-      (cart_id, service_id, variant_id, price, quantity)
-      VALUES (?, ?, ?, ?, 1)`,
-      [cartId, data.service_id, data.variant_id, data.price],
+      (cart_id, service_id, variant_id, price, quantity, bundle_id)
+      VALUES (?, ?, ?, ?, 1, ?)`,
+      [
+        cartId,
+        data.service_id,
+        data.variant_id,
+        data.price,
+        data.bundle_id || null,
+      ],
     );
   }
 
