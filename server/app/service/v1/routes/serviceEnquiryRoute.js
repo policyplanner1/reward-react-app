@@ -5,9 +5,10 @@ const {
   authenticateToken,
   authorizeRoles,
 } = require("../../../../middleware/auth");
+const auth = require("../../../ecommerce/v1/middlewares/auth");
 
 // create Enquiry
-router.post("/", ServiceEnquiryController.createEnquiry);
+router.post("/", auth, ServiceEnquiryController.createEnquiry);
 
 // Get all the Enquires
 router.get(

@@ -5,6 +5,7 @@ class ServiceCartController {
   async addToCart(req, res) {
     try {
       const userId = req.user?.user_id;
+      // const userId = 1;
 
       if (!userId) {
         return res.status(401).json({
@@ -52,10 +53,106 @@ class ServiceCartController {
     }
   }
 
+  // add bundle items to cart
+  async addBundleToCart(req, res) {
+    try {
+      const userId = req.user?.user_id;
+      // const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { bundleId } = req.params;
+      const { selected_items } = req.body || {};
+
+      if (!bundleId) {
+        return res.status(400).json({
+          success: false,
+          message: "bundleId required",
+        });
+      }
+
+      // get bundle
+      const [[bundle]] = await db.execute(
+        `SELECT type FROM service_bundles WHERE id = ?`,
+        [bundleId],
+      );
+
+      // get cart
+      const cart = await CartModel.getOrCreateCart(userId);
+
+      // get bundle items
+      const [items] = await db.execute(
+        `SELECT * FROM service_bundle_items WHERE bundle_id = ?`,
+        [bundleId],
+      );
+
+      if (!items.length) {
+        return res.status(400).json({
+          success: false,
+          message: "No items found in bundle",
+        });
+      }
+
+      const hasOptional = items.some((i) => i.is_required === 0);
+
+      if (
+        bundle.type === "custom" &&
+        hasOptional &&
+        (!selected_items || selected_items.length === 0)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select at least one service",
+        });
+      }
+
+      const selectedSet = new Set(selected_items || []);
+      const insertedItems = [];
+
+      for (let item of items) {
+        //  if custom bundle → apply selection
+        if (bundle.type === "custom") {
+          if (item.is_required === 0 && !selectedSet.has(item.id)) {
+            continue;
+          }
+        }
+
+        // add to cart
+        await CartModel.addItem(cart.id, {
+          service_id: item.service_id,
+          variant_id: item.variant_id,
+          price: item.price,
+          bundle_id: bundleId,
+        });
+
+        insertedItems.push(item.id);
+      }
+
+      res.json({
+        success: true,
+        message: "Bundle added to cart",
+        data: {
+          added_items: insertedItems,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
   //   Get cart items for user
   async getCart(req, res) {
     try {
       const userId = req.user?.user_id;
+      // const userId = 1;
 
       if (!userId) {
         return res.status(401).json({
@@ -66,17 +163,16 @@ class ServiceCartController {
 
       const cart = await CartModel.getOrCreateCart(userId);
 
-      const items = await CartModel.getCart(cart.id);
+      const cartData = await CartModel.getCart(cart.id);
 
-      const total = items.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0,
-      );
+      const total =
+        cartData.individual_items.reduce((s, i) => s + Number(i.price), 0) +
+        cartData.bundles.reduce((s, b) => s + Number(b.bundle_total), 0);
 
       res.json({
         success: true,
         data: {
-          items,
+          ...cartData,
           total,
         },
       });
@@ -88,6 +184,7 @@ class ServiceCartController {
   async removeItem(req, res) {
     try {
       const userId = req.user?.user_id;
+      // const userId = 1;
 
       if (!userId) {
         return res.status(401).json({
@@ -112,6 +209,7 @@ class ServiceCartController {
   async clearCart(req, res) {
     try {
       const userId = req.user?.user_id;
+      // const userId = 1;
 
       if (!userId) {
         return res.status(401).json({

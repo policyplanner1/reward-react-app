@@ -122,7 +122,9 @@ class ServiceVariantModel {
         variant_name,
         title,
         short_description,
-        price
+        price,
+        original_price,
+        image_url
        FROM service_variants
        WHERE service_id = ? AND status = 1
        ORDER BY id`,

@@ -4,11 +4,13 @@ class ServiceEnquiryModel {
   async create(data) {
     const [result] = await db.execute(
       `INSERT INTO service_enquiries
-      (service_id,variant_id, name, city, mobile, email, enquiry_data)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      (service_id,bundle_id,variant_id, user_id, name, city, mobile, email, enquiry_data)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         data.service_id,
-        data.variant_id || null,
+        data.bundle_id,
+        data.variant_id,
+        data.user_id,
         data.name,
         data.city || null,
         data.mobile,
@@ -38,6 +40,7 @@ class ServiceEnquiryModel {
     SELECT
       se.id,
       se.enquiry_ref,
+      se.bundle_id,
       se.name,
       se.city,
       se.mobile,
@@ -80,6 +83,7 @@ class ServiceEnquiryModel {
     SELECT 
       se.id,
       se.enquiry_ref,
+      se.bundle_id,
       se.name,
       se.city,
       se.mobile,

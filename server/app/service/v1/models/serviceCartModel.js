@@ -32,27 +32,26 @@ class ServiceCartModel {
   async addItem(cartId, data) {
     // check if same variant already exists
     const [existing] = await db.execute(
-      `SELECT * FROM service_cart_items 
+      `SELECT id FROM service_cart_items 
        WHERE cart_id = ? AND variant_id = ?`,
       [cartId, data.variant_id],
     );
 
     if (existing.length) {
-      // increase quantity
-      await db.execute(
-        `UPDATE service_cart_items 
-         SET quantity = quantity + 1 
-         WHERE id = ?`,
-        [existing[0].id],
-      );
       return;
     }
 
     await db.execute(
       `INSERT INTO service_cart_items
-      (cart_id, service_id, variant_id, price)
-      VALUES (?, ?, ?, ?)`,
-      [cartId, data.service_id, data.variant_id, data.price],
+      (cart_id, service_id, variant_id, price, quantity, bundle_id)
+      VALUES (?, ?, ?, ?, 1, ?)`,
+      [
+        cartId,
+        data.service_id,
+        data.variant_id,
+        data.price,
+        data.bundle_id || null,
+      ],
     );
   }
 
@@ -64,6 +63,7 @@ class ServiceCartModel {
         ci.id,
         ci.quantity,
         ci.price,
+        ci.bundle_id,
 
         s.name AS service_name,
         sv.variant_name,
@@ -86,14 +86,19 @@ class ServiceCartModel {
       [cartId],
     );
 
-    const map = {};
+    const itemMap = {};
+    const bundles = {};
 
     rows.forEach((item) => {
-      if (!map[item.id]) {
-        map[item.id] = {
+      const itemId = item.id;
+
+      // build item
+      if (!itemMap[itemId]) {
+        itemMap[itemId] = {
           id: item.id,
           quantity: item.quantity,
-          price: item.price,
+          price: Number(item.price),
+          bundle_id: item.bundle_id,
 
           service_name: item.service_name,
           variant_name: item.variant_name,
@@ -106,9 +111,8 @@ class ServiceCartModel {
         };
       }
 
-      // Push documents if present
       if (item.document_id) {
-        map[item.id].documents.push({
+        itemMap[itemId].documents.push({
           id: item.document_id,
           document_name: item.document_name,
           is_mandatory: item.is_mandatory,
@@ -116,12 +120,52 @@ class ServiceCartModel {
       }
     });
 
-    return Object.values(map);
+    //  Group into bundles
+    const individual_items = [];
+
+    Object.values(itemMap).forEach((item) => {
+      if (item.bundle_id) {
+        if (!bundles[item.bundle_id]) {
+          bundles[item.bundle_id] = {
+            bundle_id: item.bundle_id,
+            items: [],
+            bundle_total: 0,
+          };
+        }
+
+        bundles[item.bundle_id].items.push(item);
+        bundles[item.bundle_id].bundle_total += Number(item.price);
+      } else {
+        individual_items.push(item);
+      }
+    });
+
+    return {
+      bundles: Object.values(bundles),
+      individual_items,
+    };
   }
 
   // remove item from cart
   async removeItem(itemId) {
-    await db.execute(`DELETE FROM service_cart_items WHERE id = ?`, [itemId]);
+    const [[item]] = await db.execute(
+      `SELECT cart_id, bundle_id FROM service_cart_items WHERE id = ?`,
+      [itemId],
+    );
+
+    if (!item) return;
+
+    // if its a bundle item, remove all items in the bundle
+    if (item.bundle_id) {
+      await db.execute(
+        `DELETE FROM service_cart_items 
+       WHERE cart_id = ? AND bundle_id = ?`,
+        [item.cart_id, item.bundle_id],
+      );
+    } else {
+      // normal item
+      await db.execute(`DELETE FROM service_cart_items WHERE id = ?`, [itemId]);
+    }
   }
 
   // clear cart

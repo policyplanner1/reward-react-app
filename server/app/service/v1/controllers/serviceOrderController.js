@@ -122,7 +122,7 @@ class ServiceOrderController {
         [parent_order_id],
       );
 
-      const totalAmount = orders[0]?.total;
+      const totalAmount = Number(orders[0]?.total);
 
       if (!totalAmount) {
         return res.status(400).json({
@@ -132,15 +132,21 @@ class ServiceOrderController {
       }
 
       const razorpayOrder = await razorpay.orders.create({
-        amount: totalAmount * 100,
+        amount: Math.round(totalAmount * 100),
         currency: "INR",
         receipt: parent_order_id,
-
         notes: {
           module: "service",
-          parent_order_id: parent_order_id,
+          parent_order_id,
         },
       });
+
+      await db.execute(
+        `INSERT INTO razorpay_orders
+      (razorpay_order_id, receipt, amount, status, parent_order_id, module)
+      VALUES (?, ?, ?, 'created', ?, 'service')`,
+        [razorpayOrder.id, parent_order_id, totalAmount, parent_order_id],
+      );
 
       res.json({
         success: true,
@@ -149,7 +155,7 @@ class ServiceOrderController {
           orderId: razorpayOrder.id,
           amount: razorpayOrder.amount,
           currency: razorpayOrder.currency,
-          parent_order_id: parent_order_id,
+          parent_order_id,
         },
       });
     } catch (err) {
@@ -163,14 +169,10 @@ class ServiceOrderController {
   // verify payment
   async verifyPayment(req, res) {
     try {
-      const {
-        razorpay_order_id,
-        razorpay_payment_id,
-        razorpay_signature,
-        parent_order_id,
-      } = req.body;
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+        req.body;
 
-      //  verify signature
+      // verify signature
       const body = razorpay_order_id + "|" + razorpay_payment_id;
 
       const expectedSignature = crypto
@@ -185,17 +187,54 @@ class ServiceOrderController {
         });
       }
 
-      //  Update ALL orders in this group
-      await db.execute(
-        `UPDATE service_orders 
-       SET status = 'documents_pending',
-           payment_id = ?,
-           payment_status = 'paid'
-       WHERE parent_order_id = ?`,
-        [razorpay_payment_id, parent_order_id],
+      //  GET parent_order_id FROM DB
+      const [[rpOrder]] = await db.execute(
+        `SELECT parent_order_id FROM razorpay_orders 
+       WHERE razorpay_order_id = ?`,
+        [razorpay_order_id],
       );
 
-      // get first order for redirect
+      if (!rpOrder) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid razorpay order",
+        });
+      }
+
+      const parent_order_id = rpOrder.parent_order_id;
+
+      //  TRANSACTION
+      await db.beginTransaction();
+
+      try {
+        // update service orders
+        await db.execute(
+          `UPDATE service_orders 
+         SET status = 'documents_pending',
+             payment_id = ?,
+             payment_status = 'paid'
+         WHERE parent_order_id = ?
+         AND payment_status != 'paid'`,
+          [razorpay_payment_id, parent_order_id],
+        );
+
+        // update razorpay_orders
+        await db.execute(
+          `UPDATE razorpay_orders
+         SET razorpay_payment_id = ?,
+             status = 'success',
+             raw_response = ?
+         WHERE razorpay_order_id = ?`,
+          [razorpay_payment_id, JSON.stringify(req.body), razorpay_order_id],
+        );
+
+        await db.commit();
+      } catch (err) {
+        await db.rollback();
+        throw err;
+      }
+
+      // redirect
       const [[firstOrder]] = await db.execute(
         `SELECT id FROM service_orders 
        WHERE parent_order_id = ? 
@@ -270,9 +309,7 @@ class ServiceOrderController {
       }
 
       // documents
-      const documents = await ServiceOrderDocumentModel.getRequiredDocs(
-        order.id,
-      );
+      const documents = await ServiceOrderDocumentModel.getRequiredDocs(id);
 
       // timeline (UI stepper)
       const timeline = [

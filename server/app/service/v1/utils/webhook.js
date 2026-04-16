@@ -16,16 +16,14 @@ async function processEvent(req) {
 
       //  Fetch receipt (parent_order_id)
       const [rpOrder] = await db.execute(
-        `SELECT receipt FROM razorpay_orders WHERE razorpay_order_id = ?`,
+        `SELECT parent_order_id FROM razorpay_orders 
+         WHERE razorpay_order_id = ?`,
         [razorpayOrderId],
       );
 
-      if (!rpOrder.length) {
-        console.log("No matching razorpay order");
-        return;
-      }
+      if (!rpOrder.length) return;
 
-      const parentOrderId = rpOrder[0].receipt;
+      const parentOrderId = rpOrder[0].parent_order_id;
 
       //  Update ALL service orders
       await db.execute(
@@ -38,10 +36,14 @@ async function processEvent(req) {
         [paymentId, parentOrderId],
       );
 
-      console.log("Service Payment Success", {
-        razorpayOrderId,
-        paymentId,
-      });
+      await db.execute(
+        `UPDATE razorpay_orders
+         SET razorpay_payment_id = ?,
+             status = 'success',
+             raw_response = ?
+         WHERE razorpay_order_id = ?`,
+        [paymentId, JSON.stringify(body), razorpayOrderId],
+      );
     }
 
     // =========================
@@ -53,13 +55,13 @@ async function processEvent(req) {
       const razorpayOrderId = payment.order_id;
 
       const [rpOrder] = await db.execute(
-        `SELECT receipt FROM razorpay_orders WHERE razorpay_order_id = ?`,
+        `SELECT parent_order_id FROM razorpay_orders WHERE razorpay_order_id = ?`,
         [razorpayOrderId],
       );
 
       if (!rpOrder.length) return;
 
-      const parentOrderId = rpOrder[0].receipt;
+      const parentOrderId = rpOrder[0].parent_order_id;
 
       await db.execute(
         `UPDATE service_orders
@@ -69,7 +71,13 @@ async function processEvent(req) {
         [parentOrderId],
       );
 
-      console.log("Service Payment failed", { razorpayOrderId });
+      await db.execute(
+        `UPDATE razorpay_orders
+         SET status = 'failed',
+             raw_response = ?
+         WHERE razorpay_order_id = ?`,
+        [JSON.stringify(body), razorpayOrderId],
+      );
     }
   } catch (err) {
     console.error("Webhook error:", err);
