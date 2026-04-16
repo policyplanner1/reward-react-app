@@ -122,7 +122,7 @@ class ServiceOrderController {
         [parent_order_id],
       );
 
-      const totalAmount = orders[0]?.total;
+      const totalAmount = Number(orders[0]?.total);
 
       if (!totalAmount) {
         return res.status(400).json({
@@ -132,15 +132,21 @@ class ServiceOrderController {
       }
 
       const razorpayOrder = await razorpay.orders.create({
-        amount: Math.round(Number(totalAmount) * 100),
+        amount: Math.round(totalAmount * 100),
         currency: "INR",
         receipt: parent_order_id,
-
         notes: {
           module: "service",
-          parent_order_id: parent_order_id,
+          parent_order_id,
         },
       });
+
+      await db.execute(
+        `INSERT INTO razorpay_orders
+      (razorpay_order_id, receipt, amount, status, parent_order_id, module)
+      VALUES (?, ?, ?, 'created', ?, 'service')`,
+        [razorpayOrder.id, parent_order_id, totalAmount, parent_order_id],
+      );
 
       res.json({
         success: true,
@@ -149,7 +155,7 @@ class ServiceOrderController {
           orderId: razorpayOrder.id,
           amount: razorpayOrder.amount,
           currency: razorpayOrder.currency,
-          parent_order_id: parent_order_id,
+          parent_order_id,
         },
       });
     } catch (err) {
