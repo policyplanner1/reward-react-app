@@ -83,12 +83,27 @@ class ServiceOrderModel {
         ordersMap[parentId] = {
           parent_order_id: parentId,
           created_at: row.created_at,
-          status: row.status,
           total_amount: 0,
+
+          //  FIX: store all statuses
+          statuses: [],
+
+          // final structure
+          status: null,
           items: [],
           bundles: {},
+          summary: {
+            total_items: 0,
+            total_bundles: 0,
+          },
+          preview: [],
         };
       }
+
+      const order = ordersMap[parentId];
+
+      // collect statuses
+      order.statuses.push(row.status);
 
       const item = {
         id: row.id,
@@ -102,28 +117,70 @@ class ServiceOrderModel {
 
       //  bundle grouping
       if (row.bundle_id) {
-        if (!ordersMap[parentId].bundles[row.bundle_id]) {
-          ordersMap[parentId].bundles[row.bundle_id] = {
+        if (!order.bundles[row.bundle_id]) {
+          order.bundles[row.bundle_id] = {
             bundle_id: row.bundle_id,
             items: [],
             bundle_total: 0,
           };
+
+          // summary
+          order.summary.total_bundles += 1;
+
+          // preview (bundle)
+          order.preview.push({
+            type: "bundle",
+            name: `Bundle #${row.bundle_id}`, // later replace with actual bundle name
+          });
         }
 
-        ordersMap[parentId].bundles[row.bundle_id].items.push(item);
-        ordersMap[parentId].bundles[row.bundle_id].bundle_total += row.price;
+        order.bundles[row.bundle_id].items.push(item);
+        order.bundles[row.bundle_id].bundle_total += row.price;
       } else {
-        ordersMap[parentId].items.push(item);
+        order.items.push(item);
+
+        // preview (service)
+        order.preview.push({
+          type: "service",
+          name: row.service_name,
+        });
       }
 
-      ordersMap[parentId].total_amount += row.price;
+      order.summary.total_items += 1;
+      order.total_amount += row.price;
     });
 
-    // convert bundles object → array
-    return Object.values(ordersMap).map((order) => ({
-      ...order,
-      bundles: Object.values(order.bundles),
-    }));
+    //  FINAL TRANSFORM
+    const result = Object.values(ordersMap).map((order) => {
+      //  aggregate status
+      let finalStatus = "pending_payment";
+
+      if (order.statuses.every((s) => s === "completed")) {
+        finalStatus = "completed";
+      } else if (order.statuses.some((s) => s === "in_progress")) {
+        finalStatus = "in_progress";
+      } else if (order.statuses.some((s) => s === "documents_pending")) {
+        finalStatus = "documents_pending";
+      }
+
+      return {
+        parent_order_id: order.parent_order_id,
+        created_at: order.created_at,
+        status: finalStatus,
+        total_amount: order.total_amount,
+
+        items: order.items,
+        bundles: Object.values(order.bundles),
+
+        summary: order.summary,
+        preview: order.preview.slice(0, 3),
+      };
+    });
+
+    //  SORT (latest first)
+    result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    return result;
   }
 
   // order detail by Id
