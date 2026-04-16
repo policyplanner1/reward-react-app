@@ -63,6 +63,7 @@ class ServiceCartModel {
         ci.id,
         ci.quantity,
         ci.price,
+        ci.bundle_id,
 
         s.name AS service_name,
         sv.variant_name,
@@ -85,14 +86,19 @@ class ServiceCartModel {
       [cartId],
     );
 
-    const map = {};
+    const itemMap = {};
+    const bundles = {};
 
     rows.forEach((item) => {
-      if (!map[item.id]) {
-        map[item.id] = {
+      const itemId = item.id;
+
+      // build item
+      if (!itemMap[itemId]) {
+        itemMap[itemId] = {
           id: item.id,
           quantity: item.quantity,
           price: item.price,
+          bundle_id: item.bundle_id,
 
           service_name: item.service_name,
           variant_name: item.variant_name,
@@ -105,9 +111,8 @@ class ServiceCartModel {
         };
       }
 
-      // Push documents if present
       if (item.document_id) {
-        map[item.id].documents.push({
+        itemMap[itemId].documents.push({
           id: item.document_id,
           document_name: item.document_name,
           is_mandatory: item.is_mandatory,
@@ -115,7 +120,30 @@ class ServiceCartModel {
       }
     });
 
-    return Object.values(map);
+    //  Group into bundles
+    const individual_items = [];
+
+    Object.values(itemMap).forEach((item) => {
+      if (item.bundle_id) {
+        if (!bundles[item.bundle_id]) {
+          bundles[item.bundle_id] = {
+            bundle_id: item.bundle_id,
+            items: [],
+            bundle_total: 0,
+          };
+        }
+
+        bundles[item.bundle_id].items.push(item);
+        bundles[item.bundle_id].bundle_total += item.price;
+      } else {
+        individual_items.push(item);
+      }
+    });
+
+    return {
+      bundles: Object.values(bundles),
+      individual_items,
+    };
   }
 
   // remove item from cart

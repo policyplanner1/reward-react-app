@@ -136,17 +136,16 @@ class ServiceCartController {
 
       const cart = await CartModel.getOrCreateCart(userId);
 
-      const items = await CartModel.getCart(cart.id);
+      const cartData = await CartModel.getCart(cart.id);
 
-      const total = items.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0,
-      );
+      const total =
+        cartData.individual_items.reduce((s, i) => s + i.price, 0) +
+        cartData.bundles.reduce((s, b) => s + b.bundle_total, 0);
 
       res.json({
         success: true,
         data: {
-          items,
+          ...cartData,
           total,
         },
       });
