@@ -254,7 +254,7 @@ class ServiceOrderModel {
         variant_name: row.variant_name,
         title: row.title,
         image_url: row.image_url ? getPublicUrl(row.image_url) : null,
-        price: row.price,
+        price: Number(row.price),
       };
 
       if (row.bundle_id) {
@@ -267,12 +267,12 @@ class ServiceOrderModel {
         }
 
         response.bundles[row.bundle_id].items.push(item);
-        response.bundles[row.bundle_id].bundle_total += row.price;
+        response.bundles[row.bundle_id].bundle_total += Number(row.price);
       } else {
         response.items.push(item);
       }
 
-      response.total_amount += row.price;
+      response.total_amount += Number(row.price);
     });
 
     response.bundles = Object.values(response.bundles);
