@@ -87,7 +87,19 @@ class ServiceCartController {
 
       // get bundle items
       const [items] = await db.execute(
-        `SELECT * FROM service_bundle_items WHERE bundle_id = ?`,
+        `SELECT 
+            bi.id,
+            bi.service_id,
+            bi.variant_id,
+            bi.price AS bundle_price,
+            bi.is_required,
+
+            sv.price AS individual_price
+
+          FROM service_bundle_items bi
+          JOIN service_variants sv ON sv.id = bi.variant_id
+
+          WHERE bi.bundle_id = ?`,
         [bundleId],
       );
 
@@ -122,11 +134,16 @@ class ServiceCartController {
           }
         }
 
+        let finalPrice =
+          bundle.type === "fixed"
+            ? Number(item.bundle_price)
+            : Number(item.individual_price);
+
         // add to cart
         await CartModel.addItem(cart.id, {
           service_id: item.service_id,
           variant_id: item.variant_id,
-          price: item.price,
+          price: finalPrice,
           bundle_id: bundleId,
         });
 
