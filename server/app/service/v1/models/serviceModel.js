@@ -218,34 +218,38 @@ class ServiceModel {
     // 2 Fetch related services
     const [rows] = await db.execute(
       `
-    SELECT 
-      s.id,
-      s.name,
+  SELECT 
+    s.id,
+    s.name,
+    s.show_enquiry,
+    s.total_orders,
 
-      sv.id AS variant_id,
-      sv.price,
-      sv.original_price as mrp,
-      sv.title,
-      sv.image_url,
+    sv.id AS variant_id,
+    sv.price,
+    sv.original_price AS mrp,
+    sv.title,
+    sv.image_url
 
-      (
-        SELECT COUNT(*) 
-        FROM service_orders so 
-        WHERE so.service_id = s.id
-      ) AS order_count
+  FROM services s
 
-    FROM services s
-    JOIN service_variants sv ON sv.service_id = s.id
+  JOIN (
+    SELECT service_id, MIN(price) AS min_price
+    FROM service_variants
+    GROUP BY service_id
+  ) vmin ON vmin.service_id = s.id
 
-    WHERE 
-      s.category_id = ?
-      AND s.id != ?
-      AND s.status = 1
+  JOIN service_variants sv 
+    ON sv.service_id = s.id 
+    AND sv.price = vmin.min_price
 
-    GROUP BY s.id
-    ORDER BY order_count DESC, sv.price ASC
-    LIMIT 10
-    `,
+  WHERE 
+    s.category_id = ?
+    AND s.id != ?
+    AND s.status = 1
+
+  ORDER BY s.total_orders DESC, sv.price ASC
+  LIMIT 10
+  `,
       [categoryId, serviceId],
     );
 
@@ -253,6 +257,7 @@ class ServiceModel {
       service_id: r.id,
       variant_id: r.variant_id,
       name: r.name,
+      enquiry: r.show_enquiry,
       title: r.title,
       price: Number(r.price),
       mrp: Number(r.mrp),
