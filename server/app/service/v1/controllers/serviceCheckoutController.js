@@ -253,6 +253,123 @@ class ServiceCheckoutController {
     }
   }
 
+  // buy now bundle
+  async buyNowBundle(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { bundle_id, selected_items } = req.body;
+
+      if (!bundle_id) {
+        return res.status(400).json({
+          success: false,
+          message: "bundle_id required",
+        });
+      }
+
+      // get bundle
+      const [[bundle]] = await db.execute(
+        `SELECT type FROM service_bundles WHERE id = ?`,
+        [bundle_id],
+      );
+
+      if (!bundle) {
+        return res.status(404).json({
+          success: false,
+          message: "Bundle not found",
+        });
+      }
+
+      // get bundle items
+      const [items] = await db.execute(
+        `SELECT 
+          bi.id,
+          bi.service_id,
+          bi.variant_id,
+          bi.price AS bundle_price,
+          bi.is_required,
+          sv.price AS individual_price
+        FROM service_bundle_items bi
+        JOIN service_variants sv ON sv.id = bi.variant_id
+        WHERE bi.bundle_id = ?`,
+        [bundle_id],
+      );
+
+      if (!items.length) {
+        return res.status(400).json({
+          success: false,
+          message: "No items found in bundle",
+        });
+      }
+
+      const hasOptional = items.some((i) => i.is_required === 0);
+
+      if (
+        bundle.type === "custom" &&
+        hasOptional &&
+        (!selected_items || selected_items.length === 0)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select at least one service",
+        });
+      }
+
+      const selectedSet = new Set(selected_items || []);
+      const parentOrderId = crypto.randomUUID();
+
+      const createdOrders = [];
+
+      for (let item of items) {
+        // apply selection logic
+        if (bundle.type === "custom") {
+          if (item.is_required === 0 && !selectedSet.has(item.id)) {
+            continue;
+          }
+        }
+
+        const finalPrice =
+          bundle.type === "fixed"
+            ? Number(item.bundle_price)
+            : Number(item.individual_price);
+
+        const order = await ServiceOrderModel.create({
+          user_id: userId,
+          service_id: item.service_id,
+          variant_id: item.variant_id,
+          enquiry_id: null,
+          price: finalPrice,
+          parent_order_id: parentOrderId,
+          bundle_id: bundle_id,
+          status: "pending_payment",
+        });
+
+        createdOrders.push(order);
+      }
+
+      res.json({
+        success: true,
+        message: "Bundle order created",
+        data: {
+          orders: createdOrders,
+          parent_order_id: parentOrderId,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
   // checkout preview for cart
   async getCheckoutPreview(req, res) {
     try {
