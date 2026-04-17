@@ -154,6 +154,7 @@ class ServiceModel {
       s.name,
       s.service_image,
       s.description,
+      s.show_enquiry,
       s.price,
       s.is_featured,
       s.is_popular,
@@ -179,6 +180,8 @@ class ServiceModel {
       const service = {
         id: item.id,
         name: item.name,
+        description: item.description,
+        enquiry: item.show_enquiry,
         price: Number(item.price),
         image: item.image_url ? getPublicUrl(item.image_url) : null,
       };
