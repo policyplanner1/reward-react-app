@@ -202,6 +202,70 @@ class ServiceModel {
 
     return sections;
   }
+
+  // Related services
+  async getRelatedServices(serviceId) {
+    // 1 Get category of current service
+    const [[service]] = await db.execute(
+      `SELECT category_id FROM services WHERE id = ?`,
+      [serviceId],
+    );
+
+    if (!service) return [];
+
+    const categoryId = service.category_id;
+
+    // 2 Fetch related services
+    const [rows] = await db.execute(
+      `
+    SELECT 
+      s.id,
+      s.name,
+
+      sv.id AS variant_id,
+      sv.price,
+      sv.original_price as mrp,
+      sv.title,
+      sv.image_url,
+
+      (
+        SELECT COUNT(*) 
+        FROM service_orders so 
+        WHERE so.service_id = s.id
+      ) AS order_count
+
+    FROM services s
+    JOIN service_variants sv ON sv.service_id = s.id
+
+    WHERE 
+      s.category_id = ?
+      AND s.id != ?
+      AND s.status = 1
+
+    GROUP BY s.id
+    ORDER BY order_count DESC, sv.price ASC
+    LIMIT 10
+    `,
+      [categoryId, serviceId],
+    );
+
+    return rows.map((r) => ({
+      service_id: r.id,
+      variant_id: r.variant_id,
+      name: r.name,
+      title: r.title,
+      price: Number(r.price),
+      mrp: Number(r.mrp),
+      image_url: r.image_url ? getPublicUrl(r.image_url) : null,
+
+      // extra UI helpers
+      discount_percent: r.mrp
+        ? Math.round(((r.mrp - r.price) / r.mrp) * 100)
+        : 0,
+
+      coins: Math.floor(Number(r.price) * 0.1), // optional
+    }));
+  }
 }
 
 module.exports = new ServiceModel();

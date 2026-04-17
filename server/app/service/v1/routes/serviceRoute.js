@@ -22,6 +22,10 @@ router.get("/details/:id", ServiceController.getServiceDetails);
 // Api for advertisement
 router.get("/home", ServiceController.getHomeServices);
 
+// Related
+router.get("/related/:id", ServiceController.getRelatedServices);
+
+
 // ======================Admin Routes===================================
 // Create a services
 router.post(

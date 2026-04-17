@@ -348,6 +348,32 @@ class ServiceController {
     }
   }
 
+  async getRelatedServices(req, res) {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "Service ID required",
+        });
+      }
+
+      const services = await ServiceModel.getRelatedServices(id);
+
+      res.json({
+        success: true,
+        data: services,
+      });
+    } catch (err) {
+      console.log(err);
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
   // Update services
   async updateService(req, res) {
     try {
