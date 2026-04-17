@@ -85,6 +85,13 @@ class ServiceCartController {
       // get cart
       const cart = await CartModel.getOrCreateCart(userId);
 
+      // remove duplicate bundle if present
+      await db.execute(
+        `DELETE FROM service_cart_items 
+       WHERE cart_id = ? AND bundle_id = ?`,
+        [cart.id, bundleId],
+      );
+
       // get bundle items
       const [items] = await db.execute(
         `SELECT 
