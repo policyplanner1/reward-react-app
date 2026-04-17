@@ -545,7 +545,17 @@ class ServiceCheckoutController {
         });
       }
 
-      // 3 Validate selection (only for custom bundles)
+      // 3 Prepare selection sets
+      const requiredItems = items
+        .filter((i) => i.is_required === 1)
+        .map((i) => i.id);
+
+      const selectedSet = new Set([
+        ...requiredItems,
+        ...(selected_items || []),
+      ]);
+
+      // 4 Validate selection (only for custom bundles)
       const hasOptional = items.some((i) => i.is_required === 0);
 
       if (
@@ -559,9 +569,10 @@ class ServiceCheckoutController {
         });
       }
 
-      const selectedSet = new Set(selected_items || []);
+      // 4 Detect full bundle selection
+      const isFullBundleSelected = selectedSet.size === items.length;
 
-      // 4 Build selected items list
+      // 5 Build selected items
       const selectedItems = [];
 
       for (let item of items) {
@@ -572,10 +583,15 @@ class ServiceCheckoutController {
           }
         }
 
-        const finalPrice =
-          bundle.type === "fixed"
-            ? Number(item.bundle_price)
-            : Number(item.individual_price);
+        let finalPrice;
+
+        if (bundle.type === "fixed") {
+          finalPrice = Number(item.bundle_price);
+        } else {
+          finalPrice = isFullBundleSelected
+            ? Number(item.bundle_price) //  apply bundle pricing
+            : Number(item.individual_price); //  partial → individual pricing
+        }
 
         selectedItems.push({
           id: item.id,
@@ -604,6 +620,8 @@ class ServiceCheckoutController {
           (sum, i) => sum + Number(i.price),
           0,
         ),
+
+        is_bundle_applied: bundle.type === "fixed" || isFullBundleSelected,
       };
 
       // 6 Summary (reuse your helper)
