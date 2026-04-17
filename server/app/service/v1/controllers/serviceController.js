@@ -66,10 +66,15 @@ class ServiceController {
   // Find all services
   async getServices(req, res) {
     try {
-      const { category_id } = req.query;
+      const { category_id, search, page = 1, limit = 10 } = req.query;
+
+      const offset = (page - 1) * limit;
 
       const services = await ServiceModel.findAll({
         category_id,
+        search,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
       });
 
       res.json({

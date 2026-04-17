@@ -43,12 +43,29 @@ class ServiceModel {
 
     const params = [];
 
+    // category filter
     if (filters.category_id) {
       sql += ` AND s.category_id = ?`;
       params.push(filters.category_id);
     }
 
+    //  SEARCH FILTER
+    if (filters.search) {
+      sql += ` AND (
+      s.name LIKE ? 
+      OR s.description LIKE ?
+    )`;
+      params.push(`%${filters.search}%`, `%${filters.search}%`);
+    }
+
+    //  Sorting
     sql += ` ORDER BY s.created_at DESC`;
+
+    //  Pagination
+    if (filters.limit) {
+      sql += ` LIMIT ? OFFSET ?`;
+      params.push(filters.limit, filters.offset || 0);
+    }
 
     const [rows] = await db.execute(sql, params);
     return rows;
