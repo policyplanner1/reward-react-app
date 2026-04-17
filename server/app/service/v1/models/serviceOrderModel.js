@@ -255,6 +255,7 @@ class ServiceOrderModel {
         title: row.title,
         image_url: row.image_url ? getPublicUrl(row.image_url) : null,
         price: Number(row.price),
+        status: row.status,
       };
 
       if (row.bundle_id) {

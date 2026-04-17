@@ -319,8 +319,7 @@ class ServiceOrderController {
         },
         {
           status: "Order in Progress",
-          completed:
-            order.status === "in_progress" || order.status === "completed",
+          completed: ["in_progress", "completed"].includes(order.status),
         },
         {
           status: "Order Delivered",
