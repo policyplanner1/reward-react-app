@@ -112,11 +112,17 @@ class ServiceCartModel {
       }
 
       if (item.document_id) {
-        itemMap[itemId].documents.push({
-          id: item.document_id,
-          document_name: item.document_name,
-          is_mandatory: item.is_mandatory,
-        });
+        const exists = itemMap[itemId].documents.find(
+          (d) => d.id === item.document_id,
+        );
+
+        if (!exists) {
+          itemMap[itemId].documents.push({
+            id: item.document_id,
+            document_name: item.document_name,
+            is_mandatory: item.is_mandatory,
+          });
+        }
       }
     });
 
