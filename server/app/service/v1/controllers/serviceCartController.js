@@ -230,6 +230,43 @@ class ServiceCartController {
     }
   }
 
+  // remove bundle item
+  async removeBundle(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { bundleId } = req.params;
+
+      if (!bundleId) {
+        return res.status(400).json({
+          success: false,
+          message: "bundleId required",
+        });
+      }
+
+      const cart = await CartModel.getOrCreateCart(userId);
+
+      await CartModel.removeBundle(cart.id, bundleId);
+
+      res.json({
+        success: true,
+        message: "Bundle removed",
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
   async clearCart(req, res) {
     try {
       const userId = req.user?.user_id;

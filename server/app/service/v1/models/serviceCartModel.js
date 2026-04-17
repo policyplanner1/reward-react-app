@@ -174,6 +174,15 @@ class ServiceCartModel {
     }
   }
 
+  // remove bundle from cart
+  async removeBundle(cartId, bundleId) {
+    await db.execute(
+      `DELETE FROM service_cart_items 
+     WHERE cart_id = ? AND bundle_id = ?`,
+      [cartId, bundleId],
+    );
+  }
+
   // clear cart
   async clearCart(cartId) {
     await db.execute(`DELETE FROM service_cart_items WHERE cart_id = ?`, [
