@@ -103,7 +103,7 @@ class ServiceBundleController {
 
       const formattedItems = items.map((i) => ({
         ...i,
-
+        image_url: i.image_url ? getPublicUrl(i.image_url) : null,
         individual_price: Number(i.price),
         bundle_price: Number(i.bundle_price),
       }));
@@ -112,6 +112,7 @@ class ServiceBundleController {
         success: true,
         data: {
           bundle,
+          bundle_type:bundle.type,
           items: formattedItems,
           sections,
           enquiry_fields: enquiryFields,
