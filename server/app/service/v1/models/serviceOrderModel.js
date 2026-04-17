@@ -111,7 +111,7 @@ class ServiceOrderModel {
         service_name: row.service_name,
         variant_name: row.variant_name,
         image_url: row.image_url ? getPublicUrl(row.image_url) : null,
-        price: row.price,
+        price: Number(row.price),
         bundle_id: row.bundle_id,
       };
 
@@ -135,7 +135,7 @@ class ServiceOrderModel {
         }
 
         order.bundles[row.bundle_id].items.push(item);
-        order.bundles[row.bundle_id].bundle_total += row.price;
+        order.bundles[row.bundle_id].bundle_total += Number(row.price);
       } else {
         order.items.push(item);
 
@@ -147,7 +147,7 @@ class ServiceOrderModel {
       }
 
       order.summary.total_items += 1;
-      order.total_amount += row.price;
+      order.total_amount += Number(row.price);
     });
 
     //  FINAL TRANSFORM
