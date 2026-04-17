@@ -488,6 +488,146 @@ class ServiceCheckoutController {
       });
     }
   }
+
+  // bundle buy now preview
+  async getBuyNowBundlePreview(req, res) {
+    try {
+      const { bundle_id, selected_items } = req.body;
+
+      if (!bundle_id) {
+        return res.status(400).json({
+          success: false,
+          message: "bundle_id required",
+        });
+      }
+
+      // 1 Get bundle
+      const [[bundle]] = await db.execute(
+        `SELECT id, name, type FROM service_bundles WHERE id = ?`,
+        [bundle_id],
+      );
+
+      if (!bundle) {
+        return res.status(404).json({
+          success: false,
+          message: "Bundle not found",
+        });
+      }
+
+      // 2 Get bundle items (+ both prices)
+      const [items] = await db.execute(
+        `SELECT 
+          bi.id,
+          bi.service_id,
+          bi.variant_id,
+          bi.price AS bundle_price,
+          bi.is_required,
+
+          s.name AS service_name,
+          sv.variant_name,
+          sv.title,
+          sv.image_url,
+          sv.price AS individual_price
+
+        FROM service_bundle_items bi
+        JOIN services s ON s.id = bi.service_id
+        JOIN service_variants sv ON sv.id = bi.variant_id
+
+        WHERE bi.bundle_id = ?
+        ORDER BY bi.sort_order`,
+        [bundle_id],
+      );
+
+      if (!items.length) {
+        return res.status(400).json({
+          success: false,
+          message: "No items found in bundle",
+        });
+      }
+
+      // 3 Validate selection (only for custom bundles)
+      const hasOptional = items.some((i) => i.is_required === 0);
+
+      if (
+        bundle.type === "custom" &&
+        hasOptional &&
+        (!selected_items || selected_items.length === 0)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select at least one service",
+        });
+      }
+
+      const selectedSet = new Set(selected_items || []);
+
+      // 4 Build selected items list
+      const selectedItems = [];
+
+      for (let item of items) {
+        // apply custom selection
+        if (bundle.type === "custom") {
+          if (item.is_required === 0 && !selectedSet.has(item.id)) {
+            continue;
+          }
+        }
+
+        const finalPrice =
+          bundle.type === "fixed"
+            ? Number(item.bundle_price)
+            : Number(item.individual_price);
+
+        selectedItems.push({
+          id: item.id,
+          service_id: item.service_id,
+          variant_id: item.variant_id,
+
+          service_name: item.service_name,
+          variant_name: item.variant_name,
+          title: item.title,
+          image_url: getPublicUrl(item.image_url),
+
+          price: finalPrice,
+          quantity: 1,
+
+          // helpful for UI
+          is_required: item.is_required,
+        });
+      }
+
+      // 5 Build bundle structure (same as cart)
+      const bundleData = {
+        bundle_id: bundle.id,
+        bundle_name: bundle.name,
+        items: selectedItems,
+        bundle_total: selectedItems.reduce(
+          (sum, i) => sum + Number(i.price),
+          0,
+        ),
+      };
+
+      // 6 Summary (reuse your helper)
+      const summary = calculateSummary({
+        bundles: [bundleData],
+        individual_items: [],
+      });
+
+      res.json({
+        success: true,
+        data: {
+          type: "buy_now_bundle",
+          bundle: bundleData,
+          summary,
+        },
+      });
+    } catch (err) {
+      console.log(err);
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
 }
 
 module.exports = new ServiceCheckoutController();

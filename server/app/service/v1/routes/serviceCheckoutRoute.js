@@ -21,5 +21,12 @@ router.get("/checkout-preview", auth, ServiceCheckoutController.getCheckoutPrevi
 // Get buy now checkout Details
 router.get("/buy-now-preview", auth, ServiceCheckoutController.getBuyNowPreview);
 
+// Get buy now bundle preview
+router.post(
+  "/buy-now-bundle-preview",
+  auth,
+  ServiceCheckoutController.getBuyNowBundlePreview
+);
+
 
 module.exports = router;
