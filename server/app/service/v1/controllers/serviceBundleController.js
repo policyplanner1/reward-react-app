@@ -2,6 +2,14 @@ const db = require("../../../../config/database");
 const ServiceBundleModel = require("../models/serviceBundleModel");
 const ServiceFormModel = require("../models/serviceFormModel");
 
+// helper function
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
+function getPublicUrl(path) {
+  if (!path) return null;
+  return `${CDN_BASE_URL}/${path}`;
+}
+
+
 // Helper function
 function formatBundleSections(sections) {
   const formatted = {
