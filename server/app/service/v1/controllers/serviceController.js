@@ -331,6 +331,23 @@ class ServiceController {
     }
   }
 
+  // advertisement pov
+  async getHomeServices(req, res) {
+    try {
+      const sections = await ServiceModel.getHomeSections();
+
+      res.json({
+        success: true,
+        data: sections,
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
   // Update services
   async updateService(req, res) {
     try {

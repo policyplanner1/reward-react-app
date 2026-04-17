@@ -2,6 +2,13 @@ const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
 
+// helper function
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
+function getPublicUrl(path) {
+  if (!path) return null;
+  return `${CDN_BASE_URL}/${path}`;
+}
+
 class ServiceModel {
   async create(data) {
     const sql = `
@@ -137,6 +144,63 @@ class ServiceModel {
       [id],
     );
     return rows[0];
+  }
+
+  // Get home sections
+  async getHomeSections() {
+    const [rows] = await db.execute(`
+    SELECT 
+      s.id,
+      s.name,
+      s.service_image,
+      s.description,
+      s.price,
+      s.is_featured,
+      s.is_popular,
+      s.is_recommended,
+      s.section_type,
+      sv.price,
+      sv.image_url
+
+    FROM services s
+    LEFT JOIN service_variants sv ON sv.service_id = s.id
+    WHERE s.status = 1
+  `);
+
+    // group into sections
+    const sections = {
+      quick_services: [],
+      popular: [],
+      recommended: [],
+      value_added: [],
+    };
+
+    rows.forEach((item) => {
+      const service = {
+        id: item.id,
+        name: item.name,
+        price: Number(item.price),
+        image: item.image_url ? getPublicUrl(item.image_url) : null,
+      };
+
+      if (item.is_featured) {
+        sections.quick_services.push(service);
+      }
+
+      if (item.is_popular) {
+        sections.popular.push(service);
+      }
+
+      if (item.is_recommended) {
+        sections.recommended.push(service);
+      }
+
+      if (item.section_type === "value_added") {
+        sections.value_added.push(service);
+      }
+    });
+
+    return sections;
   }
 }
 
