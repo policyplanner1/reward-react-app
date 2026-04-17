@@ -513,7 +513,7 @@ class ServiceCheckoutController {
   // bundle buy now preview
   async getBuyNowBundlePreview(req, res) {
     try {
-      const { bundle_id, selected_items } = req.body;
+      const { bundle_id, selected_items } = req.query;
 
       if (!bundle_id) {
         return res.status(400).json({
