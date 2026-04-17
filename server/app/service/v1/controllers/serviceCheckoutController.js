@@ -422,7 +422,7 @@ class ServiceCheckoutController {
 
   async getBuyNowPreview(req, res) {
     try {
-      const { service_id, variant_id } = req.body;
+      const { service_id, variant_id } = req.query;
 
       if (!service_id || !variant_id) {
         return res.status(400).json({
