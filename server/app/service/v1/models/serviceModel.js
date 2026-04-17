@@ -160,6 +160,7 @@ class ServiceModel {
       s.is_popular,
       s.is_recommended,
       s.section_type,
+      sv.id AS variant_id,
       sv.price,
       sv.image_url
 
@@ -178,7 +179,8 @@ class ServiceModel {
 
     rows.forEach((item) => {
       const service = {
-        id: item.id,
+        service_id: item.id,
+        variant_id: item.variant_id,
         name: item.name,
         description: item.description,
         enquiry: item.show_enquiry,
