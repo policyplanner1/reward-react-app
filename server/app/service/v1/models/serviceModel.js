@@ -221,40 +221,66 @@ class ServiceModel {
     // 2 Fetch related services
     const [rows] = await db.execute(
       `
-  SELECT 
-    s.id,
-    s.name,
-    s.show_enquiry,
-    s.total_orders,
+      SELECT 
+        s.id,
+        s.name,
+        s.show_enquiry,
+        s.total_orders,
 
-    sv.id AS variant_id,
-    sv.price,
-    sv.original_price AS mrp,
-    sv.title,
-    sv.image_url
+        sv.id AS variant_id,
+        sv.price,
+        sv.original_price AS mrp,
+        sv.title,
+        sv.image_url
 
-  FROM services s
+      FROM services s
 
-  JOIN (
-    SELECT service_id, MIN(price) AS min_price
-    FROM service_variants
-    GROUP BY service_id
-  ) vmin ON vmin.service_id = s.id
+      JOIN (
+        SELECT service_id, MIN(price) AS min_price
+        FROM service_variants
+        GROUP BY service_id
+      ) vmin ON vmin.service_id = s.id
 
-  JOIN service_variants sv 
-    ON sv.service_id = s.id 
-    AND sv.price = vmin.min_price
+      JOIN service_variants sv 
+        ON sv.service_id = s.id 
+        AND sv.price = vmin.min_price
 
-  WHERE 
-    s.category_id = ?
-    AND s.id != ?
-    AND s.status = 1
+      WHERE 
+        s.category_id = ?
+        AND s.id != ?
+        AND s.status = 1
 
-  ORDER BY s.total_orders DESC, sv.price ASC
-  LIMIT 10
+      ORDER BY s.total_orders DESC, sv.price ASC
+      LIMIT 10
   `,
       [categoryId, serviceId],
     );
+
+    if (rows.length < 5) {
+      const [fallback] = await db.execute(
+        `
+      SELECT 
+        s.id,
+        s.name,
+        s.show_enquiry,
+        sv.id AS variant_id,
+        sv.price,
+        sv.original_price AS mrp,
+        sv.title,
+        sv.image_url
+
+      FROM services s
+      JOIN service_variants sv ON sv.service_id = s.id
+
+      WHERE s.status = 1 AND s.id != ?
+      ORDER BY s.total_orders DESC
+      LIMIT ?
+    `,
+        [serviceId, 10 - rows.length],
+      );
+
+      rows.push(...fallback);
+    }
 
     return rows.map((r) => ({
       service_id: r.id,
