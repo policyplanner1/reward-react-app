@@ -276,7 +276,7 @@ class ServiceCheckoutController {
 
       // get bundle
       const [[bundle]] = await db.execute(
-        `SELECT type FROM service_bundles WHERE id = ?`,
+        `SELECT id,type FROM service_bundles WHERE id = ?`,
         [bundle_id],
       );
 
@@ -309,6 +309,18 @@ class ServiceCheckoutController {
         });
       }
 
+      // 3 Required items
+      const requiredItems = items
+        .filter((i) => i.is_required === 1)
+        .map((i) => i.id);
+
+      // 4 Selection set (required always included)
+      const selectedSet = new Set([
+        ...requiredItems,
+        ...(selected_items || []),
+      ]);
+
+      // 5 validation
       const hasOptional = items.some((i) => i.is_required === 0);
 
       if (
@@ -322,11 +334,14 @@ class ServiceCheckoutController {
         });
       }
 
-      const selectedSet = new Set(selected_items || []);
+      // 6 Detect full bundle selection
+      const isFullBundleSelected = selectedSet.size === items.length;
+
       const parentOrderId = crypto.randomUUID();
 
       const createdOrders = [];
 
+      // 7 create orders
       for (let item of items) {
         // apply selection logic
         if (bundle.type === "custom") {
@@ -335,10 +350,15 @@ class ServiceCheckoutController {
           }
         }
 
-        const finalPrice =
-          bundle.type === "fixed"
-            ? Number(item.bundle_price)
-            : Number(item.individual_price);
+        let finalPrice;
+
+        if (bundle.type === "fixed") {
+          finalPrice = Number(item.bundle_price);
+        } else {
+          finalPrice = isFullBundleSelected
+            ? Number(item.bundle_price) //  apply discount
+            : Number(item.individual_price); //  partial
+        }
 
         const order = await ServiceOrderModel.create({
           user_id: userId,
@@ -360,6 +380,7 @@ class ServiceCheckoutController {
         data: {
           orders: createdOrders,
           parent_order_id: parentOrderId,
+          is_bundle_applied: bundle.type === "fixed" || isFullBundleSelected,
         },
       });
     } catch (err) {
