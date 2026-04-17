@@ -1,5 +1,12 @@
 const db = require("../../../../config/database");
 
+// helper function
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
+function getPublicUrl(path) {
+  if (!path) return null;
+  return `${CDN_BASE_URL}/${path}`;
+}
+
 class ServiceBannerModel {
   // create banner
   async create(data) {
