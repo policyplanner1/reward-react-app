@@ -9,6 +9,7 @@ const razorpay = require("../middlewares/razorpay");
 const db = require("../../../../config/database");
 const crypto = require("crypto");
 
+// Utility
 const ALLOWED_STATUSES = [
   "pending_payment",
   "payment_done",
@@ -18,6 +19,49 @@ const ALLOWED_STATUSES = [
   "completed",
   "cancelled",
 ];
+
+// Helper function
+//calculate summary utility function
+function calculateSummary({ bundles = [], individual_items = [] }) {
+  // 1 Individual items total
+  const individual_total = individual_items.reduce(
+    (sum, item) => sum + item.price * (item.quantity || 1),
+    0,
+  );
+
+  // 2 Bundle total
+  const bundle_total = bundles.reduce(
+    (sum, bundle) => sum + bundle.bundle_total,
+    0,
+  );
+
+  // 3 Combined item total
+  const item_total = individual_total + bundle_total;
+
+  // 4 Other fields (same as before)
+  const discount = 0;
+  const reward_discount = 0;
+  const delivery_fee = 0;
+  const handling_fee = 0;
+
+  const total =
+    item_total - discount - reward_discount + delivery_fee + handling_fee;
+
+  return {
+    item_total,
+    discount,
+    reward_discount,
+    delivery_fee,
+    handling_fee,
+    total,
+
+    //  extra clarity (optional but useful)
+    breakdown: {
+      individual_total,
+      bundle_total,
+    },
+  };
+}
 
 class ServiceOrderController {
   // direct order

@@ -57,11 +57,19 @@ class ServiceCheckoutController {
   async addToCheckout(req, res) {
     try {
       const userId = req.user?.user_id;
+      const addressId = req.body?.address_id;
 
       if (!userId) {
         return res.status(401).json({
           success: false,
           message: "Unauthorized user",
+        });
+      }
+
+      if (!addressId) {
+        return res.status(400).json({
+          success: false,
+          message: "Address is required",
         });
       }
 
@@ -84,6 +92,7 @@ class ServiceCheckoutController {
       for (let item of individual_items) {
         const order = await ServiceOrderModel.create({
           user_id: userId,
+          addressId,
           service_id: item.service_id,
           variant_id: item.variant_id,
           enquiry_id: null,
@@ -202,11 +211,19 @@ class ServiceCheckoutController {
       }
 
       const { service_id, variant_id } = req.body;
+      const addressId = req.body?.address_id;
 
       if (!service_id || !variant_id) {
         return res.status(400).json({
           success: false,
           message: "service_id and variant_id required",
+        });
+      }
+
+      if (!addressId) {
+        return res.status(400).json({
+          success: false,
+          message: "Address is required",
         });
       }
 
@@ -228,6 +245,7 @@ class ServiceCheckoutController {
       // create single order
       const order = await ServiceOrderModel.create({
         user_id: userId,
+        addressId,
         service_id,
         variant_id,
         enquiry_id: null,
@@ -266,11 +284,19 @@ class ServiceCheckoutController {
       }
 
       const { bundle_id, selected_items } = req.body;
+      const addressId = req.body?.address_id;
 
       if (!bundle_id) {
         return res.status(400).json({
           success: false,
           message: "bundle_id required",
+        });
+      }
+
+      if (!addressId) {
+        return res.status(400).json({
+          success: false,
+          message: "Address is required",
         });
       }
 
@@ -362,6 +388,7 @@ class ServiceCheckoutController {
 
         const order = await ServiceOrderModel.create({
           user_id: userId,
+          addressId,
           service_id: item.service_id,
           variant_id: item.variant_id,
           enquiry_id: null,

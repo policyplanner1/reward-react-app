@@ -12,12 +12,13 @@ class ServiceOrderModel {
   async create(data) {
     const [result] = await db.execute(
       `INSERT INTO service_orders
-    (user_id, service_id, variant_id, enquiry_id, price, parent_order_id, bundle_id, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    (user_id, service_id, variant_id, address_id, enquiry_id, price, parent_order_id, bundle_id, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         data.user_id,
         data.service_id,
         data.variant_id,
+        data.addressId,
         data.enquiry_id,
         data.price,
         data.parent_order_id,
