@@ -195,7 +195,7 @@ async function generateInvoices(orderId, conn) {
 
 class CheckoutModel {
   // Buy cart items
-  async checkoutCart(userId, companyId = null, addressId, useRewards = true) {
+  async checkoutCart(userId, addressId, useRewards = true) {
     const conn = await db.getConnection();
 
     try {
@@ -489,12 +489,11 @@ class CheckoutModel {
 
       const [orderRes] = await conn.execute(
         `
-        INSERT INTO eorders (user_id, company_id, total_amount,order_ref,address_id, product_total, reward_discount, reward_used,reward_earned, shipping_total)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO eorders (user_id, total_amount,order_ref,address_id, product_total, reward_discount, reward_used,reward_earned, shipping_total)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           userId,
-          companyId,
           finalTotal,
           orderRef,
           addressId,
@@ -990,7 +989,6 @@ class CheckoutModel {
     productId,
     variantId,
     quantity,
-    companyId = null,
     addressId,
     useRewards = true,
   }) {
@@ -1189,13 +1187,12 @@ class CheckoutModel {
       const [orderRes] = await conn.execute(
         `
       INSERT INTO eorders
-      (user_id, company_id, total_amount, order_ref, address_id,
+      (user_id, total_amount, order_ref, address_id,
        product_total, reward_discount, reward_used, reward_earned, shipping_total)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
         [
           userId,
-          companyId,
           finalTotal,
           orderRef,
           addressId,

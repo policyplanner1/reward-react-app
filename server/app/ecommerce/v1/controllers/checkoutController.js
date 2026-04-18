@@ -16,7 +16,6 @@ class CheckoutController {
         });
       }
 
-      const companyId = req.body?.company_id ?? null;
       const addressId = req.body?.address_id;
       const useRewards = req.body?.use_rewards ?? true;
 
@@ -29,7 +28,6 @@ class CheckoutController {
 
       const orderId = await CheckoutModel.checkoutCart(
         userId,
-        companyId,
         addressId,
         useRewards,
       );
@@ -109,7 +107,6 @@ class CheckoutController {
         product_id,
         variant_id,
         quantity = 1,
-        company_id,
         address_id,
         use_rewards = true,
       } = req.body;
@@ -133,7 +130,6 @@ class CheckoutController {
         productId: product_id,
         variantId: variant_id,
         quantity,
-        companyId: company_id || null,
         addressId: address_id,
         useRewards: use_rewards,
       });
