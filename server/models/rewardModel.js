@@ -1,58 +1,111 @@
 const db = require("../config/database");
 
 class RewardModel {
+  // check logs
+  async checkEventLog(conn, user_id, source_type, reference_id) {
+    const [rows] = await conn.execute(
+      `SELECT id FROM reward_event_log 
+     WHERE user_id = ? AND source_type = ? AND reference_id = ?`,
+      [user_id, source_type, reference_id],
+    );
+
+    return rows.length > 0;
+  }
+
+  // insert logs
+  async insertEventLog(conn, data) {
+    const { user_id, source_type, reference_id } = data;
+
+    await conn.execute(
+      `INSERT IGNORE INTO reward_event_log (user_id, source_type, reference_id)
+     VALUES (?, ?, ?)`,
+      [user_id, source_type, reference_id],
+    );
+  }
+
   // MAP PRODUCT / VARIANT
   async mapRewardToProduct(data) {
     const {
       product_id,
       variant_id,
+      category_id,
+      subcategory_id,
       reward_rule_id,
       can_earn_reward = 1,
       can_redeem_reward = 1,
+      priority = 1,
     } = data;
 
-    if (!product_id || !reward_rule_id) {
-      throw new Error("product_id and reward_rule_id are required");
+    if (!reward_rule_id) {
+      throw new Error("reward_rule_id is required");
     }
 
-    //  Step 1: Check if mapping exists
+    // ensure only one targeting level
+    const targets = [
+      variant_id ? 1 : 0,
+      product_id ? 1 : 0,
+      subcategory_id ? 1 : 0,
+      category_id ? 1 : 0,
+    ];
+    if (targets.reduce((a, b) => a + b, 0) > 1) {
+      throw new Error(
+        "Only one of variant_id, product_id, subcategory_id, category_id is allowed",
+      );
+    }
+
+    // dynamic where clause
+    let where = "";
+    let params = [];
+
+    if (variant_id && product_id) {
+      where = "product_id = ? AND variant_id = ?";
+      params = [product_id, variant_id];
+    } else if (product_id) {
+      where = "product_id = ? AND variant_id IS NULL";
+      params = [product_id];
+    } else if (subcategory_id) {
+      where = "subcategory_id = ?";
+      params = [subcategory_id];
+    } else if (category_id) {
+      where = "category_id = ?";
+      params = [category_id];
+    } else {
+      // global rule
+      where =
+        "product_id IS NULL AND variant_id IS NULL AND category_id IS NULL AND subcategory_id IS NULL";
+    }
+
     const [existing] = await db.execute(
-      `SELECT id FROM product_reward_settings
-     WHERE product_id = ?
-     AND (
-       (variant_id IS NULL AND ? IS NULL)
-       OR variant_id = ?
-     )`,
-      [product_id, variant_id || null, variant_id || null],
+      `SELECT id FROM product_reward_settings WHERE ${where}`,
+      params,
     );
 
-    //  Step 2: If exists → UPDATE
     if (existing.length > 0) {
-      const mappingId = existing[0].id;
+      const id = existing[0].id;
 
       await db.execute(
         `UPDATE product_reward_settings
-       SET reward_rule_id = ?,
-           can_earn_reward = ?,
-           can_redeem_reward = ?
+       SET reward_rule_id = ?, can_earn_reward = ?, can_redeem_reward = ?, priority = ?, is_active = 1
        WHERE id = ?`,
-        [reward_rule_id, can_earn_reward, can_redeem_reward, mappingId],
+        [reward_rule_id, can_earn_reward, can_redeem_reward, priority, id],
       );
 
-      return mappingId;
+      return id;
     }
 
-    // Step 3: Else → INSERT
     const [result] = await db.execute(
       `INSERT INTO product_reward_settings 
-      (product_id, variant_id, reward_rule_id, can_earn_reward, can_redeem_reward)
-      VALUES (?, ?, ?, ?, ?)`,
+     (product_id, variant_id, category_id, subcategory_id, reward_rule_id, can_earn_reward, can_redeem_reward, priority)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        product_id,
+        product_id || null,
         variant_id || null,
+        category_id || null,
+        subcategory_id || null,
         reward_rule_id,
         can_earn_reward,
         can_redeem_reward,
+        priority,
       ],
     );
 
@@ -60,42 +113,77 @@ class RewardModel {
   }
 
   // GET PRODUCT REWARD CONFIG
-  async getProductReward(product_id, variant_id) {
+  async getProductReward(product_id, variant_id, category_id, subcategory_id) {
     const [rows] = await db.execute(
       `
-      SELECT prs.*, rr.*
-      FROM product_reward_settings prs
-      LEFT JOIN reward_rules rr 
+    SELECT prs.*, rr.*
+    FROM product_reward_settings prs
+    JOIN reward_rules rr 
       ON prs.reward_rule_id = rr.reward_rule_id
-      WHERE prs.variant_id = ?
-         OR prs.product_id = ?
-      ORDER BY prs.variant_id DESC
-      LIMIT 1
-      `,
-      [variant_id || 0, product_id],
+    WHERE prs.is_active = 1
+      AND rr.is_active = 1
+      AND (
+        (prs.variant_id = ? AND prs.product_id = ?) OR
+        (prs.product_id = ? AND prs.variant_id IS NULL) OR
+        (prs.subcategory_id = ?) OR
+        (prs.category_id = ?) OR
+        (prs.product_id IS NULL AND prs.variant_id IS NULL AND prs.category_id IS NULL AND prs.subcategory_id IS NULL)
+      )
+    ORDER BY 
+      CASE
+        WHEN prs.variant_id IS NOT NULL THEN 1
+        WHEN prs.product_id IS NOT NULL THEN 2
+        WHEN prs.subcategory_id IS NOT NULL THEN 3
+        WHEN prs.category_id IS NOT NULL THEN 4
+        ELSE 5
+      END,
+      prs.priority ASC,
+      rr.priority ASC
+    LIMIT 1
+    `,
+      [
+        variant_id || 0,
+        product_id || 0,
+        product_id || 0,
+        subcategory_id || 0,
+        category_id || 0,
+      ],
     );
 
     return rows[0];
   }
 
-  // WALLET UPDATE
-  async updateWallet(conn, user_id, amount) {
-    await conn.execute(
-      `UPDATE customer_wallet SET balance = balance + ? WHERE user_id = ?`,
-      [amount, user_id],
-    );
-  }
-
   // WALLET TRANSACTION
   async insertWalletTransaction(conn, data) {
-    const { user_id, title, description, type, coins, category, reference_id } =
-      data;
+    const {
+      user_id,
+      title,
+      description,
+      type,
+      coins,
+      balance_after,
+      category,
+      reference_id,
+      expiry_date,
+      reason_code,
+    } = data;
 
     await conn.execute(
       `INSERT INTO wallet_transactions
-      (user_id, title, description, transaction_type, coins, category, reference_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [user_id, title, description, type, coins, category, reference_id],
+    (user_id, title, description, transaction_type, coins, balance_after, category, reference_id, expiry_date, reason_code)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        user_id,
+        title,
+        description,
+        type,
+        coins,
+        balance_after || null,
+        category,
+        reference_id,
+        expiry_date || null,
+        reason_code || "ORDER_REWARD",
+      ],
     );
   }
 
@@ -133,6 +221,29 @@ class RewardModel {
      SET is_active = 0
      WHERE id = ?`,
       [id],
+    );
+  }
+
+  // Get wallet balance
+  async getWalletForUpdate(conn, user_id) {
+    const [rows] = await conn.execute(
+      `SELECT balance FROM customer_wallet 
+     WHERE user_id = ? FOR UPDATE`,
+      [user_id],
+    );
+
+    if (!rows.length) {
+      throw new Error("Wallet not found");
+    }
+
+    return rows[0];
+  }
+
+  // update wallet balance
+  async updateWalletBalance(conn, user_id, balance) {
+    await conn.execute(
+      `UPDATE customer_wallet SET balance = ? WHERE user_id = ?`,
+      [balance, user_id],
     );
   }
 }
