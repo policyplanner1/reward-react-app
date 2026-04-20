@@ -116,7 +116,7 @@ const RewardRule: React.FC = () => {
 
           <button
             onClick={() => navigate(`/manager/reward-create`)}
-            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white px-4 py-2 rounded-lg shadow hover:opacity-90"
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white px-4 py-2 rounded-lg shadow hover:opacity-90 cursor-pointer"
           >
             <FiPlus />
             Create Rule
@@ -262,14 +262,14 @@ const RewardRule: React.FC = () => {
                               `/manager/reward-edit/${rule.reward_rule_id}`,
                             )
                           }
-                          className="px-3 py-1 text-xs bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+                          className="px-3 py-1 text-xs bg-blue-100 text-blue-600 rounded hover:bg-blue-200 cursor-pointer"
                         >
                           Edit
                         </button>
 
                         <button
                           onClick={() => handleDelete(rule.reward_rule_id)}
-                          className="px-3 py-1 text-xs bg-red-100 text-red-500 rounded hover:bg-red-200"
+                          className="px-3 py-1 text-xs bg-red-100 text-red-500 rounded hover:bg-red-200 cursor-pointer"
                         >
                           Delete
                         </button>

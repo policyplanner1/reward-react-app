@@ -317,7 +317,7 @@ const ProductRewardMapping = () => {
               </label>
             </div>
 
-            <button className="col-span-2 bg-blue-600 text-white p-2 rounded">
+            <button className="col-span-2 bg-blue-600 text-white p-2 rounded cursor-pointer">
               {editingId ? "Update Mapping" : "Create Mapping"}
             </button>
           </form>
@@ -434,14 +434,14 @@ const ProductRewardMapping = () => {
                       <td className="p-3 flex gap-2">
                         <button
                           onClick={() => handleEdit(m)}
-                          className="px-3 py-1 text-sm bg-yellow-400 text-white rounded hover:bg-yellow-500"
+                          className="px-3 py-1 text-sm bg-yellow-400 text-white rounded hover:bg-yellow-500 cursor-pointer"
                         >
                           Edit
                         </button>
 
                         <button
                           onClick={() => handleDelete(m.id)}
-                          className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                          className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 cursor-pointer"
                         >
                           Delete
                         </button>
