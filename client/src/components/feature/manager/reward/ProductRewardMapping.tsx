@@ -346,14 +346,14 @@ const ProductRewardMapping = () => {
                 </tr>
               ) : (
                 mappings.map((m: any, index) => {
-                  // 🎯 Detect target type
+                  //  Detect target type
                   let target = "Global";
                   if (m.variant_id) target = "Variant";
                   else if (m.product_id) target = "Product";
                   else if (m.subcategory_id) target = "Subcategory";
                   else if (m.category_id) target = "Category";
 
-                  // 🎯 Details display
+                  //  Details display
                   let details = "-";
 
                   if (target === "Variant") {

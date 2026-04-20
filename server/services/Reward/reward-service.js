@@ -181,7 +181,9 @@ class RewardService {
   }
 
   //  REDEEM WALLET
-  async applyWallet({ user_id, variant, wallet_balance }) {
+  applyWallet({ user_id, variant, wallet_balance, mapping }) {
+    if (!mapping.can_redeem_reward) return 0;
+
     if (!variant.reward_redemption_limit) return 0;
 
     return Math.min(wallet_balance, variant.reward_redemption_limit);
