@@ -42,7 +42,7 @@ const RewardRule: React.FC = () => {
         throw new Error("Failed to fetch rules");
       }
 
-      setRules(res.data.data);
+      setRules(res.data?.data);
     } catch (err) {
       console.error(err);
       setError("Failed to load reward rules");
