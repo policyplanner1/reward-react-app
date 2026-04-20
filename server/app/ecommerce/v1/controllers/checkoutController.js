@@ -16,6 +16,25 @@ class CheckoutController {
         });
       }
 
+      // Fetch company
+      const [rows] = await db.execute(
+        `SELECT company_id FROM customer WHERE user_id = ?`,
+        [userId],
+      );
+
+      if (!rows.length) {
+        throw new Error("CUSTOMER_NOT_FOUND");
+      }
+
+      const companyId = rows[0].company_id;
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: "company not found",
+        });
+      }
+
       const addressId = req.body?.address_id;
       const useRewards = req.body?.use_rewards ?? true;
 
@@ -101,6 +120,25 @@ class CheckoutController {
         return res.status(401).json({
           success: false,
           message: "Unauthorized user",
+        });
+      }
+
+      // Fetch company
+      const [rows] = await db.execute(
+        `SELECT company_id FROM customer WHERE user_id = ?`,
+        [userId],
+      );
+
+      if (!rows.length) {
+        throw new Error("CUSTOMER_NOT_FOUND");
+      }
+
+      const companyId = rows[0].company_id;
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: "company not found",
         });
       }
 
