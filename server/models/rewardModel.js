@@ -203,6 +203,8 @@ class RewardModel {
         prs.id,
         prs.product_id,
         prs.variant_id,
+        prs.category_id,
+        prs.subcategory_id,
         prs.reward_rule_id,
         prs.can_earn_reward,
         prs.can_redeem_reward,
