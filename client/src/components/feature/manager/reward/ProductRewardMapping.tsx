@@ -328,8 +328,8 @@ const ProductRewardMapping = () => {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-200 text-gray-700">
               <tr>
-                <th className="p-3">Product</th>
-                <th className="p-3">Variant</th>
+                <th className="p-3">Target</th>
+                <th className="p-3">Details</th>
                 <th className="p-3">Rule</th>
                 <th className="p-3">Earn</th>
                 <th className="p-3">Redeem</th>
@@ -345,58 +345,110 @@ const ProductRewardMapping = () => {
                   </td>
                 </tr>
               ) : (
-                mappings.map((m: any, index) => (
-                  <tr
-                    key={m.id}
-                    className={`border-t ${
-                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                    } hover:bg-blue-50`}
-                  >
-                    <td className="p-3">{m.product_name}</td>
-                    <td className="p-3">{m.variant_name || "All"}</td>
-                    <td className="p-3">{m.rule_name}</td>
+                mappings.map((m: any, index) => {
+                  // 🎯 Detect target type
+                  let target = "Global";
+                  if (m.variant_id) target = "Variant";
+                  else if (m.product_id) target = "Product";
+                  else if (m.subcategory_id) target = "Subcategory";
+                  else if (m.category_id) target = "Category";
 
-                    <td className="p-3">
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-medium ${
-                          m.can_earn_reward
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-600"
-                        }`}
-                      >
-                        {m.can_earn_reward ? "Yes" : "No"}
-                      </span>
-                    </td>
+                  // 🎯 Details display
+                  let details = "-";
 
-                    <td className="p-3">
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-medium ${
-                          m.can_redeem_reward
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-600"
-                        }`}
-                      >
-                        {m.can_redeem_reward ? "Yes" : "No"}
-                      </span>
-                    </td>
+                  if (target === "Variant") {
+                    details = `${m.product_name} → ${m.variant_name}`;
+                  }
 
-                    <td className="p-3 flex gap-2">
-                      <button
-                        onClick={() => handleEdit(m)}
-                        className="px-3 py-1 text-sm bg-yellow-400 text-white rounded hover:bg-yellow-500 cursor-pointer"
-                      >
-                        Edit
-                      </button>
+                  if (target === "Product") {
+                    details = m.product_name;
+                  }
 
-                      <button
-                        onClick={() => handleDelete(m.id)}
-                        className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 cursor-pointer"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                  if (target === "Subcategory") {
+                    details = m.subcategory_name;
+                  }
+
+                  if (target === "Category") {
+                    details = m.category_name;
+                  }
+
+                  return (
+                    <tr
+                      key={m.id}
+                      className={`border-t ${
+                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                      } hover:bg-blue-50`}
+                    >
+                      {/* TARGET TYPE */}
+                      <td className="p-3">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            target === "Variant"
+                              ? "bg-purple-100 text-purple-700"
+                              : target === "Product"
+                                ? "bg-blue-100 text-blue-700"
+                                : target === "Subcategory"
+                                  ? "bg-orange-100 text-orange-700"
+                                  : target === "Category"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-gray-200 text-gray-700"
+                          }`}
+                        >
+                          {target}
+                        </span>
+                      </td>
+
+                      {/* DETAILS */}
+                      <td className="p-3">{details}</td>
+
+                      {/* RULE */}
+                      <td className="p-3 font-medium">{m.rule_name}</td>
+
+                      {/* EARN */}
+                      <td className="p-3">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            m.can_earn_reward
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-600"
+                          }`}
+                        >
+                          {m.can_earn_reward ? "Yes" : "No"}
+                        </span>
+                      </td>
+
+                      {/* REDEEM */}
+                      <td className="p-3">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            m.can_redeem_reward
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-600"
+                          }`}
+                        >
+                          {m.can_redeem_reward ? "Yes" : "No"}
+                        </span>
+                      </td>
+
+                      {/* ACTION */}
+                      <td className="p-3 flex gap-2">
+                        <button
+                          onClick={() => handleEdit(m)}
+                          className="px-3 py-1 text-sm bg-yellow-400 text-white rounded hover:bg-yellow-500"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(m.id)}
+                          className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
