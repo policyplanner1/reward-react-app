@@ -46,6 +46,8 @@ class ProductModel {
       const query = `
         SELECT 
           p.product_id,
+          p.category_id,
+          p.subcategory_id,
           p.product_name,
           p.brand_name,
           p.created_at,
@@ -160,6 +162,8 @@ class ProductModel {
 
         return {
           product_id: row.product_id,
+          category_id: row.category_id,
+          subcategory_id: row.subcategory_id,
           product_name: row.product_name,
           category_name: row.category_name,
           subcategory_name: row.subcategory_name,
