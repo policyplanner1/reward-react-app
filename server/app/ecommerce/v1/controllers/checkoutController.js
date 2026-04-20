@@ -28,6 +28,7 @@ class CheckoutController {
 
       const orderId = await CheckoutModel.checkoutCart(
         userId,
+        companyId,
         addressId,
         useRewards,
       );
@@ -130,6 +131,7 @@ class CheckoutController {
         productId: product_id,
         variantId: variant_id,
         quantity,
+        companyId,
         addressId: address_id,
         useRewards: use_rewards,
       });
