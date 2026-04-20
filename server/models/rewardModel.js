@@ -208,7 +208,7 @@ class RewardModel {
         prs.can_redeem_reward,
 
         c.category_name,
-        sc.subcategory_name
+        sc.subcategory_name,
 
         p.product_name AS product_name,
         v.sku AS variant_name,
