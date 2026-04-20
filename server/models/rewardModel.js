@@ -113,7 +113,13 @@ class RewardModel {
   }
 
   // GET PRODUCT REWARD CONFIG
-  async getProductReward(product_id, variant_id, category_id, subcategory_id) {
+  async getProductRewards(
+    product_id,
+    variant_id,
+    category_id,
+    subcategory_id,
+    order_amount,
+  ) {
     const [rows] = await db.execute(
       `
     SELECT prs.*, rr.*
@@ -129,6 +135,8 @@ class RewardModel {
         (prs.category_id = ?) OR
         (prs.product_id IS NULL AND prs.variant_id IS NULL AND prs.category_id IS NULL AND prs.subcategory_id IS NULL)
       )
+      AND (? >= rr.min_order_amount)
+      AND (rr.max_order_amount IS NULL OR ? <= rr.max_order_amount)
     ORDER BY 
       CASE
         WHEN prs.variant_id IS NOT NULL THEN 1
@@ -139,7 +147,6 @@ class RewardModel {
       END,
       prs.priority ASC,
       rr.priority ASC
-    LIMIT 1
     `,
       [
         variant_id || 0,
@@ -147,10 +154,12 @@ class RewardModel {
         product_id || 0,
         subcategory_id || 0,
         category_id || 0,
+        order_amount,
+        order_amount,
       ],
     );
 
-    return rows[0];
+    return rows;
   }
 
   // WALLET TRANSACTION
