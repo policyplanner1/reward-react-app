@@ -215,7 +215,7 @@ class RewardModel {
         rr.name AS rule_name
 
       FROM product_reward_settings prs
-      JOIN eproducts p ON p.product_id = prs.product_id
+      LEFT JOIN eproducts p ON p.product_id = prs.product_id
       LEFT JOIN product_variants v ON v.variant_id = prs.variant_id
       LEFT JOIN categories c on c.category_id= prs.category_id
       LEFT JOIN sub_categories sc on sc.subcategory_id = prs.subcategory_id
