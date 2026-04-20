@@ -12,6 +12,7 @@ class RewardController {
         reward_value,
         max_reward,
         min_order_amount,
+        max_order_amount,
         source_type,
         description,
         start_date,
@@ -30,14 +31,15 @@ class RewardController {
 
       const [result] = await db.execute(
         `INSERT INTO reward_rules 
-      (name, reward_type, reward_value, max_reward, min_order_amount, source_type, description, start_date, end_date, priority, is_stackable, expiry_days)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (name, reward_type, reward_value, max_reward, min_order_amount, max_order_amount, source_type, description, start_date, end_date, priority, is_stackable, expiry_days)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           name,
           reward_type,
           reward_value,
           max_reward || null,
           min_order_amount || 0,
+          max_order_amount || 0,
           source_type,
           description || null,
           start_date || null,
@@ -120,6 +122,7 @@ class RewardController {
         reward_value,
         max_reward,
         min_order_amount,
+        max_order_amount,
         is_active,
         source_type,
         description,
@@ -138,6 +141,7 @@ class RewardController {
         reward_value = ?,
         max_reward = ?,
         min_order_amount = ?,
+        max_order_amount = ?,
         is_active = ?,
         source_type = ?,
         description = ?,
@@ -153,6 +157,7 @@ class RewardController {
           reward_value,
           max_reward,
           min_order_amount,
+          max_order_amount,
           is_active,
           source_type,
           description,
