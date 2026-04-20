@@ -2,26 +2,33 @@ import React, { useEffect, useState } from "react";
 import { api } from "../../../../api/api";
 
 const ProductRewardMapping = () => {
-  const [products, setProducts] = useState([]);
-  const [variants, setVariants] = useState([]);
-  const [rules, setRules] = useState([]);
-  const [mappings, setMappings] = useState([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [variants, setVariants] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [subcategories, setSubcategories] = useState<any[]>([]);
+  const [rules, setRules] = useState<any[]>([]);
+  const [mappings, setMappings] = useState<any[]>([]);
 
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  const [targetType, setTargetType] = useState("product");
 
   const [form, setForm] = useState({
     product_id: "",
     variant_id: "",
+    category_id: "",
+    subcategory_id: "",
     reward_rule_id: "",
     can_earn_reward: 1,
     can_redeem_reward: 1,
   });
 
-  // 🔹 Initial load
+  // ================= INIT =================
   useEffect(() => {
     fetchProducts();
     fetchRules();
     fetchMappings();
+    fetchCategories();
   }, []);
 
   const fetchProducts = async () => {
@@ -31,7 +38,7 @@ const ProductRewardMapping = () => {
 
   const fetchRules = async () => {
     const res = await api.get("/reward/get-rule");
-     setRules(res.data?.data || res.data || []);
+    setRules(res.data?.data || []);
   };
 
   const fetchMappings = async () => {
@@ -39,7 +46,13 @@ const ProductRewardMapping = () => {
     setMappings(res.data?.data || []);
   };
 
-  // 🔹 Load variants
+  const fetchCategories = async () => {
+    const res = await api.get("/category");
+    setCategories(res.data?.data || []);
+  };
+
+  // ================= HANDLERS =================
+
   const handleProductChange = async (productId: string) => {
     setForm((prev) => ({
       ...prev,
@@ -53,12 +66,47 @@ const ProductRewardMapping = () => {
     setVariants(res.data.data || []);
   };
 
-  // 🔹 Submit (Create / Update)
+  const handleCategoryChange = async (categoryId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      category_id: categoryId,
+      subcategory_id: "",
+    }));
+
+    const res = await api.get(`/subcategory/${categoryId}`);
+    setSubcategories(res.data.data || []);
+  };
+
+  // ================= SUBMIT =================
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      await api.post("/reward/product-reward-settings", form);
+      const payload: any = {
+        reward_rule_id: Number(form.reward_rule_id),
+        can_earn_reward: Number(form.can_earn_reward),
+        can_redeem_reward: Number(form.can_redeem_reward),
+      };
+
+      if (targetType === "variant") {
+        payload.product_id = Number(form.product_id);
+        payload.variant_id = Number(form.variant_id);
+      }
+
+      if (targetType === "product") {
+        payload.product_id = Number(form.product_id);
+      }
+
+      if (targetType === "subcategory") {
+        payload.subcategory_id = Number(form.subcategory_id);
+      }
+
+      if (targetType === "category") {
+        payload.category_id = Number(form.category_id);
+      }
+
+      await api.post("/reward/product-reward-settings", payload);
 
       alert(editingId ? "Updated successfully" : "Created successfully");
 
@@ -70,26 +118,35 @@ const ProductRewardMapping = () => {
     }
   };
 
-  // 🔹 Edit
+  // ================= EDIT =================
+
   const handleEdit = async (m: any) => {
     setEditingId(m.id);
 
+    if (m.variant_id) setTargetType("variant");
+    else if (m.product_id) setTargetType("product");
+    else if (m.subcategory_id) setTargetType("subcategory");
+    else if (m.category_id) setTargetType("category");
+    else setTargetType("global");
+
     setForm({
-      product_id: m.product_id,
+      product_id: m.product_id || "",
       variant_id: m.variant_id || "",
+      category_id: m.category_id || "",
+      subcategory_id: m.subcategory_id || "",
       reward_rule_id: m.reward_rule_id,
       can_earn_reward: m.can_earn_reward,
       can_redeem_reward: m.can_redeem_reward,
     });
 
-    // load variants
     if (m.product_id) {
       const res = await api.get(`/variant/product/${m.product_id}`);
       setVariants(res.data.data);
     }
   };
 
-  // 🔹 Delete
+  // ================= DELETE =================
+
   const handleDelete = async (id: number) => {
     if (!window.confirm("Delete this mapping?")) return;
 
@@ -97,149 +154,172 @@ const ProductRewardMapping = () => {
     fetchMappings();
   };
 
-  // 🔹 Reset
+  // ================= RESET =================
+
   const resetForm = () => {
     setEditingId(null);
+    setTargetType("product");
     setForm({
       product_id: "",
       variant_id: "",
+      category_id: "",
+      subcategory_id: "",
       reward_rule_id: "",
       can_earn_reward: 1,
       can_redeem_reward: 1,
     });
   };
 
+  // ================= UI =================
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="max-w-6xl mx-auto">
-        {/* HEADER */}
-        <h2 className="text-3xl font-bold mb-6 text-gray-800">
-          Product Reward Mapping
-        </h2>
+        <h2 className="text-3xl font-bold mb-6">Reward Mapping</h2>
 
-        {/* ================= FORM CARD ================= */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-          <form
-            onSubmit={handleSubmit}
-            className="grid grid-cols-1 md:grid-cols-2 gap-4"
-          >
-            {/* Product */}
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Product
-              </label>
+        {/* FORM */}
+        <div className="bg-white p-6 rounded-xl shadow mb-6">
+          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+            {/* TARGET TYPE */}
+            <select
+              value={targetType}
+              onChange={(e) => setTargetType(e.target.value)}
+              className="border p-2 rounded"
+            >
+              <option value="variant">Variant</option>
+              <option value="product">Product</option>
+              <option value="subcategory">Subcategory</option>
+              <option value="category">Category</option>
+              <option value="global">Global</option>
+            </select>
+
+            {/* RULE */}
+            <select
+              value={form.reward_rule_id}
+              onChange={(e) =>
+                setForm({ ...form, reward_rule_id: e.target.value })
+              }
+              className="border p-2 rounded"
+              required
+            >
+              <option value="">Select Rule</option>
+              {rules.map((r) => (
+                <option key={r.reward_rule_id} value={r.reward_rule_id}>
+                  {r.name} (
+                  {r.reward_type === "percentage"
+                    ? `${r.reward_value}%`
+                    : `₹${r.reward_value}`}
+                  )
+                </option>
+              ))}
+            </select>
+
+            {/* PRODUCT */}
+            {(targetType === "product" || targetType === "variant") && (
               <select
-                className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-400"
                 value={form.product_id}
                 onChange={(e) => handleProductChange(e.target.value)}
+                className="border p-2 rounded"
                 required
-                disabled={!!editingId}
               >
                 <option value="">Select Product</option>
-
-                {products.map((p: any) => (
+                {products.map((p) => (
                   <option key={p.product_id} value={p.product_id}>
-                    {p.product_name} ({p.brand_name})
+                    {p.product_name}
                   </option>
                 ))}
               </select>
-            </div>
+            )}
 
-            {/* Variant */}
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Variant
-              </label>
+            {/* VARIANT */}
+            {targetType === "variant" && (
               <select
-                className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-400"
                 value={form.variant_id}
                 onChange={(e) =>
                   setForm({ ...form, variant_id: e.target.value })
                 }
-              >
-                <option value="">All Variants</option>
-                {variants.map((v: any) => (
-                  <option key={v.variant_id} value={v.variant_id}>
-                    {"Variant"} ({v.sku})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Rule */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Reward Rule
-              </label>
-              <select
-                className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-400"
-                value={form.reward_rule_id}
-                onChange={(e) =>
-                  setForm({ ...form, reward_rule_id: e.target.value })
-                }
+                className="border p-2 rounded"
                 required
               >
-                <option value="">Select Reward Rule</option>
-                {rules.map((r:any) => (
-                  <option key={r.reward_rule_id} value={r.reward_rule_id}>
-                    {r.name}
+                <option value="">Select Variant</option>
+                {variants.map((v) => (
+                  <option key={v.variant_id} value={v.variant_id}>
+                    {v.sku}
                   </option>
                 ))}
               </select>
-            </div>
+            )}
 
-            {/* Toggles */}
-            <div className="flex items-center gap-6 md:col-span-2 mt-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="toggle toggle-primary"
-                  checked={form.can_earn_reward === 1}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      can_earn_reward: e.target.checked ? 1 : 0,
-                    })
-                  }
-                />
-                <span className="text-sm text-gray-700">Can Earn</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="toggle toggle-green"
-                  checked={form.can_redeem_reward === 1}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      can_redeem_reward: e.target.checked ? 1 : 0,
-                    })
-                  }
-                />
-                <span className="text-sm text-gray-700">Can Redeem</span>
-              </label>
-            </div>
-
-            {/* Buttons */}
-            <div className="md:col-span-2 flex gap-3 mt-4">
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer"
+            {/* CATEGORY */}
+            {(targetType === "category" || targetType === "subcategory") && (
+              <select
+                value={form.category_id}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                className="border p-2 rounded"
+                required
               >
-                {editingId ? "Update Mapping" : "Create Mapping"}
-              </button>
+                <option value="">Select Category</option>
+                {categories.map((c) => (
+                  <option key={c.category_id} value={c.category_id}>
+                    {c.category_name}
+                  </option>
+                ))}
+              </select>
+            )}
 
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="bg-gray-400 text-white px-5 py-2 rounded-lg hover:bg-gray-500 transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-              )}
+            {/* SUBCATEGORY */}
+            {targetType === "subcategory" && (
+              <select
+                value={form.subcategory_id}
+                onChange={(e) =>
+                  setForm({ ...form, subcategory_id: e.target.value })
+                }
+                className="border p-2 rounded"
+                required
+              >
+                <option value="">Select Subcategory</option>
+                {subcategories.map((s) => (
+                  <option key={s.subcategory_id} value={s.subcategory_id}>
+                    {s.subcategory_name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* TOGGLES */}
+            <div className="flex gap-4 col-span-2">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!!form.can_earn_reward}
+                  onChange={() =>
+                    setForm((p) => ({
+                      ...p,
+                      can_earn_reward: p.can_earn_reward ? 0 : 1,
+                    }))
+                  }
+                />
+                Earn Reward
+              </label>
+
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!!form.can_redeem_reward}
+                  onChange={() =>
+                    setForm((p) => ({
+                      ...p,
+                      can_redeem_reward: p.can_redeem_reward ? 0 : 1,
+                    }))
+                  }
+                />
+                Redeem Reward
+              </label>
             </div>
+
+            <button className="col-span-2 bg-blue-600 text-white p-2 rounded">
+              {editingId ? "Update Mapping" : "Create Mapping"}
+            </button>
           </form>
         </div>
 
