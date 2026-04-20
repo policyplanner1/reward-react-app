@@ -13,6 +13,12 @@ class RewardController {
         max_reward,
         min_order_amount,
         source_type,
+        description,
+        start_date,
+        end_date,
+        priority = 1,
+        is_stackable = 0,
+        expiry_days = 90,
       } = req.body;
 
       if (!reward_type || !reward_value || !source_type) {
@@ -24,8 +30,8 @@ class RewardController {
 
       const [result] = await db.execute(
         `INSERT INTO reward_rules 
-      (name, reward_type, reward_value, max_reward, min_order_amount, source_type)
-      VALUES (?, ?, ?, ?, ?, ?)`,
+      (name, reward_type, reward_value, max_reward, min_order_amount, source_type, description, start_date, end_date, priority, is_stackable, expiry_days)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           name,
           reward_type,
@@ -33,6 +39,12 @@ class RewardController {
           max_reward || null,
           min_order_amount || 0,
           source_type,
+          description || null,
+          start_date || null,
+          end_date || null,
+          priority,
+          is_stackable,
+          expiry_days,
         ],
       );
 
@@ -110,31 +122,48 @@ class RewardController {
         min_order_amount,
         is_active,
         source_type,
+        description,
+        start_date,
+        end_date,
+        priority,
+        is_stackable,
+        expiry_days,
       } = req.body;
 
-      const query = `
-      UPDATE reward_rules
-      SET 
+      const [result] = await db.execute(
+        `UPDATE reward_rules
+       SET 
         name = ?,
         reward_type = ?,
         reward_value = ?,
         max_reward = ?,
         min_order_amount = ?,
         is_active = ?,
-        source_type = ?
-      WHERE reward_rule_id = ?
-    `;
-
-      const [result] = await db.execute(query, [
-        name,
-        reward_type,
-        reward_value,
-        max_reward,
-        min_order_amount,
-        is_active,
-        source_type,
-        id,
-      ]);
+        source_type = ?,
+        description = ?,
+        start_date = ?,
+        end_date = ?,
+        priority = ?,
+        is_stackable = ?,
+        expiry_days = ?
+       WHERE reward_rule_id = ?`,
+        [
+          name,
+          reward_type,
+          reward_value,
+          max_reward,
+          min_order_amount,
+          is_active,
+          source_type,
+          description,
+          start_date,
+          end_date,
+          priority,
+          is_stackable,
+          expiry_days,
+          id,
+        ],
+      );
 
       if (result.affectedRows === 0) {
         return res.status(404).json({
@@ -192,6 +221,35 @@ class RewardController {
   // MAP PRODUCT
   async mapProductReward(req, res) {
     try {
+      const {
+        product_id,
+        variant_id,
+        category_id,
+        subcategory_id,
+        reward_rule_id,
+      } = req.body;
+
+      if (!reward_rule_id) {
+        return res.status(400).json({
+          success: false,
+          message: "reward_rule_id is required",
+        });
+      }
+
+      const targets = [
+        variant_id ? 1 : 0,
+        product_id ? 1 : 0,
+        subcategory_id ? 1 : 0,
+        category_id ? 1 : 0,
+      ];
+
+      if (targets.reduce((a, b) => a + b, 0) > 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Only one targeting level allowed",
+        });
+      }
+
       const id = await RewardModel.mapRewardToProduct(req.body);
 
       return res.json({
@@ -200,7 +258,6 @@ class RewardController {
         data: { id },
       });
     } catch (err) {
-      console.error("Mapping Error:", err);
       return res.status(500).json({ success: false, message: err.message });
     }
   }
@@ -249,12 +306,38 @@ class RewardController {
       const { user_id, product_id, variant_id, order_id, order_amount } =
         req.body;
 
+      if (!user_id || !product_id || !order_id || !order_amount) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields",
+        });
+      }
+
+      // Fetch category + subcategory
+      const [product] = await db.execute(
+        `SELECT category_id, subcategory_id 
+       FROM eproducts 
+       WHERE product_id = ?`,
+        [product_id],
+      );
+
+      if (!product.length) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      const { category_id, subcategory_id } = product[0];
+
       const result = await RewardService.processOrderReward({
         user_id,
         product_id,
         variant_id,
         order_id,
         order_amount,
+        category_id,
+        subcategory_id,
       });
 
       return res.json({

@@ -198,6 +198,9 @@ class RewardModel {
         prs.can_earn_reward,
         prs.can_redeem_reward,
 
+        c.category_name,
+        sc.subcategory_name
+
         p.product_name AS product_name,
         v.sku AS variant_name,
         rr.name AS rule_name
@@ -205,6 +208,8 @@ class RewardModel {
       FROM product_reward_settings prs
       JOIN eproducts p ON p.product_id = prs.product_id
       LEFT JOIN product_variants v ON v.variant_id = prs.variant_id
+      LEFT JOIN categories c on c.category_id= prs.category_id
+      LEFT JOIN sub_categories sc on sc.subcategory_id = prs.subcategory_id
       JOIN reward_rules rr ON rr.reward_rule_id = prs.reward_rule_id
 
       WHERE prs.is_active = 1
