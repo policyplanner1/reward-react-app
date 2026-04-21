@@ -149,7 +149,7 @@ class cartModel {
   //     totalDiscount,
   //   };
   // }
-  
+
   async getUserCart(userId) {
     const query = `
     SELECT 
@@ -484,13 +484,45 @@ class cartModel {
   }
 
   // Add to cart
+  // async addToCart({ userId, productId, variantId, quantity }) {
+  //   const [[variant]] = await db.execute(
+  //     `
+  //     SELECT variant_id, stock
+  //     FROM product_variants
+  //     WHERE variant_id = ? AND product_id = ?
+  //     `,
+  //     [variantId, productId],
+  //   );
+
+  //   if (!variant) {
+  //     throw new Error("INVALID_VARIANT");
+  //   }
+
+  //   if (variant.stock < quantity) {
+  //     throw new Error("INSUFFICIENT_STOCK");
+  //   }
+
+  //   // 2 Insert or update cart item
+  //   await db.execute(
+  //     `
+  //     INSERT INTO cart_items (user_id, product_id, variant_id, quantity)
+  //     VALUES (?, ?, ?, ?)
+  //     ON DUPLICATE KEY UPDATE
+  //       quantity = quantity + VALUES(quantity)
+  //     `,
+  //     [userId, productId, variantId, quantity],
+  //   );
+
+  //   return true;
+  // }
+
   async addToCart({ userId, productId, variantId, quantity }) {
     const [[variant]] = await db.execute(
       `
-      SELECT variant_id, stock
-      FROM product_variants
-      WHERE variant_id = ? AND product_id = ?
-      `,
+    SELECT variant_id, stock
+    FROM product_variants
+    WHERE variant_id = ? AND product_id = ?
+    `,
       [variantId, productId],
     );
 
@@ -498,20 +530,30 @@ class cartModel {
       throw new Error("INVALID_VARIANT");
     }
 
-    if (variant.stock < quantity) {
+    //  ATOMIC INSERT/UPDATE WITH CHECK
+    const [result] = await db.execute(
+      `
+    INSERT INTO cart_items (user_id, product_id, variant_id, quantity)
+    VALUES (?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      quantity = CASE 
+        WHEN quantity + VALUES(quantity) <= ?
+        THEN quantity + VALUES(quantity)
+        ELSE quantity
+      END
+    `,
+      [userId, productId, variantId, quantity, variant.stock],
+    );
+
+    //  VERIFY UPDATE SUCCESS
+    const [[updated]] = await db.execute(
+      `SELECT quantity FROM cart_items WHERE user_id = ? AND variant_id = ?`,
+      [userId, variantId],
+    );
+
+    if (updated.quantity > variant.stock) {
       throw new Error("INSUFFICIENT_STOCK");
     }
-
-    // 2 Insert or update cart item
-    await db.execute(
-      `
-      INSERT INTO cart_items (user_id, product_id, variant_id, quantity)
-      VALUES (?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE
-        quantity = quantity + VALUES(quantity)
-      `,
-      [userId, productId, variantId, quantity],
-    );
 
     return true;
   }
