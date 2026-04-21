@@ -32,7 +32,7 @@ const ProductRewardMapping = () => {
   }, []);
 
   const fetchProducts = async () => {
-    const res = await api.get("/product/all-products");
+    const res = await api.get("/product/product-list");
     setProducts(res.data?.products || []);
   };
 

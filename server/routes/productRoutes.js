@@ -72,6 +72,13 @@ router.get(
   ProductController.getAllProductDetails,
 );
 
+router.get(
+  "/product-list",
+  authenticateToken,
+  authorizeRoles("vendor_manager", "admin"),
+  ProductController.getAllProductList
+);
+
 // Download Report for products
 router.get(
   "/download-product-report",

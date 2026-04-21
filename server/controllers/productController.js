@@ -88,7 +88,7 @@ class ProductController {
             if (!file.mimetype.startsWith("image/")) {
               throw new Error("Invalid image file");
             }
-            
+
             const webpFilename = `${Date.now()}-${Math.random()
               .toString(36)
               .substring(2, 8)}.webp`;
@@ -773,6 +773,33 @@ class ProductController {
       });
     } catch (err) {
       console.error("GET ALL PRODUCTS ERROR:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message || "Internal server error",
+      });
+    }
+  }
+
+  async getAllProductList(req, res) {
+    try {
+      const user = req?.user;
+      const role = user?.role;
+
+      const search = req.query.search || "";
+      const status = req.query.status || "";
+
+      const products = await ProductModel.getAllProductList({
+        search,
+        status,
+        role,
+      });
+
+      return res.json({
+        success: true,
+        products,
+      });
+    } catch (err) {
+      console.error("GET PRODUCT IMAGES ERROR:", err);
       return res.status(500).json({
         success: false,
         message: err.message || "Internal server error",
