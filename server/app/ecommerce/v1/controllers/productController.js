@@ -444,55 +444,60 @@ class ProductController {
 
       const processedProduct = {
         ...product,
-        variants: product.variants.map((variant) => {
-          // Numbers only
-          const salePrice = Number(variant.sale_price) || 0;
-          const mrp = Number(variant.mrp) || 0;
+        variants: await Promise.all(
+          product.variants.map(async (variant) => {
+            const salePrice = Number(variant.sale_price) || 0;
+            const mrp = Number(variant.mrp) || 0;
 
-          // const rewardDiscountPercent =
-          //   Number(variant.reward_redemption_limit) || 0;
-
-          // // Reward discount on sale price
-          // const rewardDiscountAmount = Math.round(
-          //   (salePrice * rewardDiscountPercent) / 100,
-          // );
-          // const finalPrice = salePrice - rewardDiscountAmount;
-
-          /* ===============================
-              REDEMPTION (DISCOUNT)
+            /* ===============================
+                REDEMPTION
             =============================== */
-          const redeemPercent = Number(variant.reward_redemption_limit) || 0;
+            const redeemPercent = Number(variant.reward_redemption_limit) || 0;
+            const redeemAmount = Math.round((salePrice * redeemPercent) / 100);
+            const finalPrice = salePrice - redeemAmount;
 
-          const redeemAmount = Math.round((salePrice * redeemPercent) / 100);
+            const mrpDiscountPercent =
+              mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
 
-          const finalPrice = salePrice - redeemAmount;
+            /* ===============================
+                  REWARD (FIXED)
+              =============================== */
+            const rules = await RewardModel.getProductRewards(
+              product.product_id,
+              variant.variant_id,
+              product.category_id,
+              product.subcategory_id,
+              salePrice,
+            );
 
-          // Effective discount from MRP
-          const mrpDiscountPercent =
-            mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+            let rewardCoins = 0;
+            let canEarn = false;
 
-          const rewardCoins = calculateReward(salePrice, variant);
+            if (rules.length) {
+              rewardCoins = calculateReward(salePrice, rules);
+              canEarn = rules.some((r) => r.can_earn_reward);
+            }
 
-          return {
-            ...variant,
-            price: `₹${salePrice}`,
-            finalPrice: `₹${finalPrice}`,
-            discount: `${mrpDiscountPercent}%`,
-            redemption: {
-              percent: redeemPercent,
-              amount: redeemAmount,
-            },
-            rating: 4.6,
-            reviews: "18.9K",
-            // pointsPrice: finalPrice ? `₹${finalPrice}` : null,
-            // points: rewardDiscountAmount,
-            reward: {
-              enabled: variant.can_earn_reward === 1,
-              coins: rewardCoins,
-              label: rewardCoins > 0 ? `${rewardCoins} coins` : null,
-            },
-          };
-        }),
+            return {
+              ...variant,
+              price: `₹${salePrice}`,
+              finalPrice: `₹${finalPrice}`,
+              discount: `${mrpDiscountPercent}%`,
+              redemption: {
+                percent: redeemPercent,
+                amount: redeemAmount,
+              },
+              rating: 4.6,
+              reviews: "18.9K",
+
+              reward: {
+                enabled: canEarn && rewardCoins > 0,
+                coins: rewardCoins,
+                label: rewardCoins > 0 ? `${rewardCoins} coins` : null,
+              },
+            };
+          }),
+        ),
       };
 
       return res.json({
