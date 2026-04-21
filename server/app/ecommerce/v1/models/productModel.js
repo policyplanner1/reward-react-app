@@ -2232,6 +2232,8 @@ class ProductModel {
       const query = `
       SELECT
         p.product_id,
+        p.category_id,
+        p.subcategory_id,
         p.product_name,
         p.brand_name,
 
@@ -2284,7 +2286,75 @@ class ProductModel {
 
       const [rows] = await db.execute(query, [limit, offset]);
 
-      return rows;
+      /* ===============================
+       CACHE
+    =============================== */
+      const rewardCache = {};
+
+      return await Promise.all(
+        rows.map(async (row) => {
+          const salePrice = Number(row.sale_price) || 0;
+          const mrp = Number(row.mrp) || 0;
+
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
+
+          let image = null;
+          if (row.images) {
+            const first = row.images.split(",")[0];
+            const imagePath = first.split("::")[1];
+            image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
+          }
+
+          /* ===============================
+           CACHE KEY
+        =============================== */
+          const key = `${row.product_id}_${row.variant_id}_${row.category_id}_${row.subcategory_id}_${salePrice}`;
+
+          let rules = rewardCache[key];
+
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              row.product_id,
+              row.variant_id,
+              row.category_id,
+              row.subcategory_id,
+              salePrice,
+            );
+            rewardCache[key] = rules;
+          }
+
+          let rewardCoins = 0;
+          let canEarn = false;
+
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
+
+          return {
+            product_id: row.product_id,
+            product_name: row.product_name,
+            brand_name: row.brand_name,
+            variant_id: row.variant_id,
+
+            image,
+
+            price: `₹${salePrice}`,
+            originalPrice: `₹${mrp}`,
+            discount: `${mrpDiscountPercent}%`,
+
+            rating: Number(row.avg_rating || 0).toFixed(1),
+            reviews: row.total_reviews,
+
+            reward: {
+              enabled: canEarn && rewardCoins > 0,
+              coins: rewardCoins,
+              label: rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+            },
+          };
+        }),
+      );
     } catch (error) {
       console.error("Error fetching top rated products:", error);
       throw error;
