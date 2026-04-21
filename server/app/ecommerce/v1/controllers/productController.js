@@ -493,7 +493,8 @@ class ProductController {
               reward: {
                 enabled: canEarn && rewardCoins > 0,
                 coins: rewardCoins,
-                label: rewardCoins > 0 ? `${rewardCoins} coins` : null,
+                label:
+                  rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
               },
             };
           }),
