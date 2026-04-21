@@ -517,45 +517,46 @@ class cartModel {
   // }
 
   async addToCart({ userId, productId, variantId, quantity }) {
-    const [[variant]] = await db.execute(
-      `
-    SELECT variant_id, stock
-    FROM product_variants
-    WHERE variant_id = ? AND product_id = ?
-    `,
-      [variantId, productId],
-    );
+    const conn = await db.getConnection();
 
-    if (!variant) {
-      throw new Error("INVALID_VARIANT");
+    try {
+      await conn.beginTransaction();
+
+      const [[variant]] = await conn.execute(
+        `SELECT stock FROM product_variants WHERE variant_id = ? FOR UPDATE`,
+        [variantId],
+      );
+
+      if (!variant) throw new Error("INVALID_VARIANT");
+
+      const [[existing]] = await conn.execute(
+        `SELECT quantity FROM cart_items WHERE user_id = ? AND variant_id = ? FOR UPDATE`,
+        [userId, variantId],
+      );
+
+      const newQty = (existing?.quantity || 0) + quantity;
+
+      if (newQty > variant.stock) {
+        throw new Error("INSUFFICIENT_STOCK");
+      }
+
+      await conn.execute(
+        `
+      INSERT INTO cart_items (user_id, product_id, variant_id, quantity)
+      VALUES (?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE quantity = ?
+      `,
+        [userId, productId, variantId, quantity, newQty],
+      );
+
+      await conn.commit();
+      return true;
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
     }
-
-    //  ATOMIC INSERT/UPDATE WITH CHECK
-    const [result] = await db.execute(
-      `
-    INSERT INTO cart_items (user_id, product_id, variant_id, quantity)
-    VALUES (?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE
-      quantity = CASE 
-        WHEN quantity + VALUES(quantity) <= ?
-        THEN quantity + VALUES(quantity)
-        ELSE quantity
-      END
-    `,
-      [userId, productId, variantId, quantity, variant.stock],
-    );
-
-    //  VERIFY UPDATE SUCCESS
-    const [[updated]] = await db.execute(
-      `SELECT quantity FROM cart_items WHERE user_id = ? AND variant_id = ?`,
-      [userId, variantId],
-    );
-
-    if (updated.quantity > variant.stock) {
-      throw new Error("INSUFFICIENT_STOCK");
-    }
-
-    return true;
   }
 
   // check quantity
