@@ -116,6 +116,8 @@ class ProductController {
         offset,
       });
 
+      const rewardCache = {};
+
       const processedProducts = await Promise.all(
         products.map(async (product) => {
           const imagePath =
@@ -130,15 +132,32 @@ class ProductController {
           const salePrice = product.sale_price ? Number(product.sale_price) : 0;
           const mrp = product.mrp ? Number(product.mrp) : 0;
 
-          const rules = await RewardModel.getProductRewards(
-            product.product_id,
-            product.variant_id,
-            product.category_id,
-            product.subcategory_id,
-            salePrice,
-          );
+          let rewardCoins = 0;
+          let canEarn = false;
 
-          const rewardCoins = calculateReward(salePrice, rules);
+          /* ===============================
+              CACHE KEY
+            =============================== */
+          const key = `${product.product_id}_${product.variant_id}_${product.category_id}_${product.subcategory_id}_${salePrice}`;
+
+          let rules = rewardCache[key];
+
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              product.product_id,
+              product.variant_id,
+              product.category_id,
+              product.subcategory_id,
+              salePrice,
+            );
+
+            rewardCache[key] = rules;
+          }
+
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
 
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
@@ -157,13 +176,13 @@ class ProductController {
             discount: `${mrpDiscountPercent}%`,
             rating: 4.6,
             reviews: "18.9K",
-            rewardCoins: rewardCoins,
-            rewardLabel: rewardCoins > 0 ? `${rewardCoins} coins` : null,
+
+            rewardCoins,
+            rewardLabel:
+              rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+
             reward: {
-              enabled: product.can_earn_reward === 1,
-              type: product.reward_type,
-              value: product.reward_value,
-              max: product.max_reward,
+              enabled: canEarn && rewardCoins > 0,
             },
           };
         }),

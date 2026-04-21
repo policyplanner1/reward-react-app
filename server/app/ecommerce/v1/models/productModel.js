@@ -79,6 +79,213 @@ function calculateReward(orderAmount, rules) {
 
 class ProductModel {
   // Get all products
+  // async getAllProducts({ search, sortBy, sortOrder, limit, offset }) {
+  //   try {
+  //     const conditions = [];
+  //     const params = [];
+
+  //     /* ===============================
+  //        SEARCH
+  //     =============================== */
+  //     if (search) {
+  //       conditions.push("p.product_name LIKE ?");
+  //       params.push(`%${search}%`);
+  //     }
+
+  //     conditions.push("p.status = 'approved'");
+  //     conditions.push("p.is_visible = 1");
+  //     conditions.push("p.is_searchable = 1");
+  //     conditions.push("p.is_deleted = 0");
+
+  //     const whereClause = conditions.length
+  //       ? `WHERE ${conditions.join(" AND ")}`
+  //       : "";
+
+  //     /* ===============================
+  //        SORT
+  //     =============================== */
+  //     const sortableColumns = ["created_at", "product_name", "brand_name"];
+
+  //     if (!sortableColumns.includes(sortBy)) {
+  //       sortBy = "created_at";
+  //     }
+
+  //     sortOrder = sortOrder === "ASC" ? "ASC" : "DESC";
+
+  //     const query = `
+  //       SELECT
+  //         p.product_id,
+  //         p.category_id,
+  //         p.subcategory_id,
+  //         p.product_name,
+  //         p.brand_name,
+  //         p.created_at,
+  //         p.short_description,
+  //         c.category_name,
+  //         sc.subcategory_name,
+  //         ssc.name AS sub_subcategory_name,
+  //         v.mrp,
+  //         v.sale_price,
+  //         v.reward_redemption_limit,
+  //         prs.can_earn_reward,
+  //         rr.reward_type,
+  //         rr.reward_value,
+  //         rr.max_reward,
+
+  //         GROUP_CONCAT(
+  //           DISTINCT CONCAT(
+  //             pi.image_id, '::',
+  //             pi.image_url, '::',
+  //             pi.type, '::',
+  //             pi.sort_order
+  //           )
+  //           ORDER BY pi.sort_order ASC
+  //         ) AS images
+
+  //       FROM eproducts p
+
+  //       /* ---- First Variant Only ---- */
+  //      LEFT JOIN (
+  //         SELECT pv.*
+  //         FROM product_variants pv
+  //         INNER JOIN (
+  //           SELECT
+  //             product_id,
+  //             MIN(sale_price) AS min_sale_price
+  //           FROM product_variants
+  //           WHERE sale_price IS NOT NULL
+  //             AND is_visible = 1
+  //           GROUP BY product_id
+  //         ) minv
+  //           ON pv.product_id = minv.product_id
+  //         AND pv.sale_price = minv.min_sale_price
+  //         INNER JOIN (
+  //           SELECT product_id, MIN(variant_id) AS min_variant_id
+  //           FROM product_variants
+  //           WHERE is_visible = 1
+  //           GROUP BY product_id
+  //         ) tie
+  //           ON pv.product_id = tie.product_id
+  //           AND pv.variant_id = tie.min_variant_id
+  //           WHERE pv.is_visible = 1
+  //       ) v ON p.product_id = v.product_id
+
+  //       /* ---- Images ---- */
+  //       LEFT JOIN product_images pi
+  //         ON p.product_id = pi.product_id
+
+  //       /* ---- Reward Settings ---- */
+  //       LEFT JOIN product_reward_settings prs
+  //         ON prs.id = (
+  //           SELECT prs2.id
+  //           FROM product_reward_settings prs2
+  //           WHERE prs2.is_active = 1
+  //             AND (
+  //               (prs2.variant_id = v.variant_id AND prs2.product_id = p.product_id)
+  //               OR (prs2.product_id = p.product_id AND prs2.variant_id IS NULL)
+  //               OR (prs2.subcategory_id = p.subcategory_id)
+  //               OR (prs2.category_id = p.category_id)
+  //               OR (
+  //                 prs2.product_id IS NULL
+  //                 AND prs2.variant_id IS NULL
+  //                 AND prs2.category_id IS NULL
+  //                 AND prs2.subcategory_id IS NULL
+  //               )
+  //             )
+  //           ORDER BY
+  //             CASE
+  //               WHEN prs2.variant_id IS NOT NULL THEN 1
+  //               WHEN prs2.product_id IS NOT NULL THEN 2
+  //               WHEN prs2.subcategory_id IS NOT NULL THEN 3
+  //               WHEN prs2.category_id IS NOT NULL THEN 4
+  //               ELSE 5
+  //             END,
+  //             prs2.priority ASC
+  //           LIMIT 1
+  //       )
+
+  //       LEFT JOIN reward_rules rr
+  //         ON rr.reward_rule_id = prs.reward_rule_id
+  //         AND rr.is_active = 1
+
+  //       /* ---- Categories ---- */
+  //       LEFT JOIN categories c ON p.category_id = c.category_id
+  //       LEFT JOIN sub_categories sc ON p.subcategory_id = sc.subcategory_id
+  //       LEFT JOIN sub_sub_categories ssc ON p.sub_subcategory_id = ssc.sub_subcategory_id
+
+  //       ${whereClause}
+
+  //       GROUP BY p.product_id
+  //       ORDER BY p.${sortBy} ${sortOrder}
+  //       LIMIT ? OFFSET ?
+  //     `;
+
+  //     const dataParams = [...params, limit, offset];
+  //     const [rows] = await db.execute(query, dataParams);
+
+  //     /* ===============================
+  //        IMAGE PARSING
+  //     =============================== */
+  //     const products = rows.map((row) => {
+  //       let images = [];
+
+  //       if (row.images) {
+  //         images = row.images.split(",").map((item) => {
+  //           const [image_id, image_url, type, sort_order] = item.split("::");
+
+  //           return {
+  //             image_id: Number(image_id),
+  //             image_url,
+  //             type,
+  //             sort_order: Number(sort_order),
+  //           };
+  //         });
+  //       }
+
+  //       return {
+  //         product_id: row.product_id,
+  //         category_id: row.category_id,
+  //         subcategory_id: row.subcategory_id,
+  //         product_name: row.product_name,
+  //         category_name: row.category_name,
+  //         subcategory_name: row.subcategory_name,
+  //         sub_subcategory_name: row.sub_subcategory_name,
+  //         brand_name: row.brand_name,
+  //         short_description: row.short_description,
+  //         created_at: row.created_at,
+  //         mrp: row.mrp,
+  //         sale_price: row.sale_price,
+  //         reward_redemption_limit: row.reward_redemption_limit,
+  //         can_earn_reward: row.can_earn_reward ?? 0,
+  //         reward_type: row.reward_type,
+  //         reward_value: row.reward_value,
+  //         max_reward: row.max_reward,
+  //         images,
+  //       };
+  //     });
+
+  //     /* ===============================
+  //        TOTAL COUNT
+  //     =============================== */
+  //     const [[{ total }]] = await db.execute(
+  //       `
+  //         SELECT COUNT(DISTINCT p.product_id) AS total
+  //         FROM eproducts p
+  //         ${whereClause}
+  //       `,
+  //       params,
+  //     );
+
+  //     return {
+  //       products,
+  //       totalItems: total,
+  //     };
+  //   } catch (error) {
+  //     console.error("Error fetching all products:", error);
+  //     throw error;
+  //   }
+  // }
+
   async getAllProducts({ search, sortBy, sortOrder, limit, offset }) {
     try {
       const conditions = [];
@@ -127,10 +334,6 @@ class ProductModel {
           v.mrp,
           v.sale_price,
           v.reward_redemption_limit,
-          prs.can_earn_reward,
-          rr.reward_type,
-          rr.reward_value,
-          rr.max_reward,
 
           GROUP_CONCAT(
             DISTINCT CONCAT(
@@ -174,40 +377,6 @@ class ProductModel {
         /* ---- Images ---- */
         LEFT JOIN product_images pi 
           ON p.product_id = pi.product_id
-
-        /* ---- Reward Settings ---- */
-        LEFT JOIN product_reward_settings prs 
-          ON prs.id = (
-            SELECT prs2.id
-            FROM product_reward_settings prs2
-            WHERE prs2.is_active = 1
-              AND (
-                (prs2.variant_id = v.variant_id AND prs2.product_id = p.product_id)
-                OR (prs2.product_id = p.product_id AND prs2.variant_id IS NULL)
-                OR (prs2.subcategory_id = p.subcategory_id)
-                OR (prs2.category_id = p.category_id)
-                OR (
-                  prs2.product_id IS NULL 
-                  AND prs2.variant_id IS NULL 
-                  AND prs2.category_id IS NULL 
-                  AND prs2.subcategory_id IS NULL
-                )
-              )
-            ORDER BY 
-              CASE
-                WHEN prs2.variant_id IS NOT NULL THEN 1
-                WHEN prs2.product_id IS NOT NULL THEN 2
-                WHEN prs2.subcategory_id IS NOT NULL THEN 3
-                WHEN prs2.category_id IS NOT NULL THEN 4
-                ELSE 5
-              END,
-              prs2.priority ASC
-            LIMIT 1
-        )
-
-        LEFT JOIN reward_rules rr 
-          ON rr.reward_rule_id = prs.reward_rule_id
-          AND rr.is_active = 1
 
         /* ---- Categories ---- */
         LEFT JOIN categories c ON p.category_id = c.category_id
@@ -257,10 +426,6 @@ class ProductModel {
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,
-          can_earn_reward: row.can_earn_reward ?? 0,
-          reward_type: row.reward_type,
-          reward_value: row.reward_value,
-          max_reward: row.max_reward,
           images,
         };
       });
