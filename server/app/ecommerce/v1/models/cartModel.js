@@ -367,7 +367,8 @@ class cartModel {
       p.category_id,
       p.subcategory_id,
 
-      pv.sale_price
+      pv.sale_price,
+      pv.reward_redemption_limit
 
     FROM cart_items ci
     JOIN product_variants pv ON pv.variant_id = ci.variant_id
@@ -415,20 +416,15 @@ class cartModel {
       }
 
       let rewardEarn = 0;
-      let canRedeem = false;
-      let redemptionLimit = 0;
 
+      // earning still from rules
       if (rules.length) {
         rewardEarn = calculateReward(itemTotal, rules);
-
-        // check redeem eligibility
-        const redeemRule = rules.find((r) => r.can_redeem_reward);
-
-        if (redeemRule) {
-          canRedeem = true;
-          redemptionLimit = redeemRule.reward_redemption_limit || 0;
-        }
       }
+
+      //  redemption from variant (fallback / primary)
+      const redemptionLimit = Number(item.reward_redemption_limit || 0);
+      const canRedeem = redemptionLimit > 0;
 
       totalRewardEarn += rewardEarn;
 
