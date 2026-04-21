@@ -250,27 +250,44 @@ class ProductController {
           ratingMin,
         });
 
+      const rewardCache = {};
+
       const processedProducts = await Promise.all(
         products.map(async (product) => {
-          const imagePath =
-            product.images && product.images.length
-              ? product.images[0].image_url
-              : null;
+          const imagePath = product.images?.length
+            ? product.images[0].image_url
+            : null;
 
           const mainImage = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
 
-          const salePrice = product.sale_price ? Number(product.sale_price) : 0;
-          const mrp = product.mrp ? Number(product.mrp) : 0;
+          const salePrice = Number(product.sale_price) || 0;
+          const mrp = Number(product.mrp) || 0;
 
-          const rules = await RewardModel.getProductRewards(
-            product.product_id,
-            product.variant_id,
-            product.category_id,
-            product.subcategory_id,
-            salePrice,
-          );
+          /* ===============================
+              CACHE KEY
+            =============================== */
+          const key = `${product.product_id}_${product.variant_id}_${product.category_id}_${product.subcategory_id}_${salePrice}`;
 
-          const rewardCoins = calculateReward(salePrice, rules);
+          let rules = rewardCache[key];
+
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              product.product_id,
+              product.variant_id,
+              product.category_id,
+              product.subcategory_id,
+              salePrice,
+            );
+            rewardCache[key] = rules;
+          }
+
+          let rewardCoins = 0;
+          let canEarn = false;
+
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
 
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
@@ -283,18 +300,20 @@ class ProductController {
             subcategory: product.subcategory_name,
             sub_subcategory: product.sub_subcategory_name,
             image: mainImage,
+
             price: salePrice ? `₹${salePrice}` : null,
-            originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
+            originalPrice: mrp ? `₹${mrp}` : null,
             discount: `${mrpDiscountPercent}%`,
+
             rating: product.avg_rating,
             reviews: product.rating_count,
-            rewardCoins: rewardCoins,
-            rewardLabel: rewardCoins > 0 ? `${rewardCoins} coins` : null,
+
+            rewardCoins,
+            rewardLabel:
+              rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+
             reward: {
-              enabled: product.can_earn_reward === 1,
-              type: product.reward_type,
-              value: product.reward_value,
-              max: product.max_reward,
+              enabled: canEarn && rewardCoins > 0,
             },
           };
         }),
@@ -361,28 +380,44 @@ class ProductController {
           ratingMin,
         });
 
+      const rewardCache = {};
+
       const processedProducts = await Promise.all(
         products.map(async (product) => {
-          const imagePath =
-            product.images && product.images.length
-              ? product.images[0].image_url
-              : null;
+          const imagePath = product.images?.length
+            ? product.images[0].image_url
+            : null;
 
           const mainImage = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
 
-          const salePrice = product.sale_price ? Number(product.sale_price) : 0;
+          const salePrice = Number(product.sale_price) || 0;
+          const mrp = Number(product.mrp) || 0;
 
-          const mrp = product.mrp ? Number(product.mrp) : 0;
+          /* ===============================
+       CACHE KEY
+    =============================== */
+          const key = `${product.product_id}_${product.variant_id}_${product.category_id}_${product.subcategory_id}_${salePrice}`;
 
-          const rules = await RewardModel.getProductRewards(
-            product.product_id,
-            product.variant_id,
-            product.category_id,
-            product.subcategory_id,
-            salePrice,
-          );
+          let rules = rewardCache[key];
 
-          const rewardCoins = calculateReward(salePrice, rules);
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              product.product_id,
+              product.variant_id,
+              product.category_id,
+              product.subcategory_id,
+              salePrice,
+            );
+            rewardCache[key] = rules;
+          }
+
+          let rewardCoins = 0;
+          let canEarn = false;
+
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
 
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
@@ -395,18 +430,20 @@ class ProductController {
             subcategory: product.subcategory_name,
             sub_subcategory: product.sub_subcategory_name,
             image: mainImage,
+
             price: salePrice ? `₹${salePrice}` : null,
-            originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
+            originalPrice: mrp ? `₹${mrp}` : null,
             discount: `${mrpDiscountPercent}%`,
+
             rating: product.avg_rating,
             reviews: product.rating_count,
-            rewardCoins: rewardCoins,
-            rewardLabel: rewardCoins > 0 ? `${rewardCoins} coins` : null,
+
+            rewardCoins,
+            rewardLabel:
+              rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+
             reward: {
-              enabled: product.can_earn_reward === 1,
-              type: product.reward_type,
-              value: product.reward_value,
-              max: product.max_reward,
+              enabled: canEarn && rewardCoins > 0,
             },
           };
         }),

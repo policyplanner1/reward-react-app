@@ -637,11 +637,6 @@ class ProductModel {
         ssc.name AS sub_subcategory_name,
         v.mrp,
         v.sale_price,
-        v.reward_redemption_limit,
-        prs.can_earn_reward,
-        rr.reward_type,
-        rr.reward_value,
-        rr.max_reward,
 
         GROUP_CONCAT(
           DISTINCT CONCAT(
@@ -674,39 +669,6 @@ class ProductModel {
 
       /* ---- Images ---- */
       LEFT JOIN product_images pi ON p.product_id = pi.product_id
-
-      LEFT JOIN product_reward_settings prs 
-      ON prs.id = (
-        SELECT prs2.id
-        FROM product_reward_settings prs2
-        WHERE prs2.is_active = 1
-          AND (
-            (prs2.variant_id = v.variant_id AND prs2.product_id = p.product_id)
-            OR (prs2.product_id = p.product_id AND prs2.variant_id IS NULL)
-            OR (prs2.subcategory_id = p.subcategory_id)
-            OR (prs2.category_id = p.category_id)
-            OR (
-              prs2.product_id IS NULL 
-              AND prs2.variant_id IS NULL 
-              AND prs2.category_id IS NULL 
-              AND prs2.subcategory_id IS NULL
-            )
-          )
-        ORDER BY 
-          CASE
-            WHEN prs2.variant_id IS NOT NULL THEN 1
-            WHEN prs2.product_id IS NOT NULL THEN 2
-            WHEN prs2.subcategory_id IS NOT NULL THEN 3
-            WHEN prs2.category_id IS NOT NULL THEN 4
-            ELSE 5
-          END,
-          prs2.priority ASC
-        LIMIT 1
-      )
-
-      LEFT JOIN reward_rules rr 
-        ON rr.reward_rule_id = prs.reward_rule_id
-        AND rr.is_active = 1
 
       ${whereClause}
 
@@ -751,10 +713,6 @@ class ProductModel {
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,
-          can_earn_reward: row.can_earn_reward ?? 0,
-          reward_type: row.reward_type,
-          reward_value: row.reward_value,
-          max_reward: row.max_reward,
           images,
         };
       });
@@ -876,10 +834,6 @@ class ProductModel {
         v.mrp,
         v.sale_price,
         v.reward_redemption_limit,
-        prs.can_earn_reward,
-        rr.reward_type,
-        rr.reward_value,
-        rr.max_reward,
 
         GROUP_CONCAT(
           DISTINCT CONCAT(
@@ -912,40 +866,6 @@ class ProductModel {
 
       LEFT JOIN product_images pi 
         ON p.product_id = pi.product_id
-
-      LEFT JOIN product_reward_settings prs 
-      ON prs.id = (
-        SELECT prs2.id
-        FROM product_reward_settings prs2
-        WHERE prs2.is_active = 1
-          AND (
-            (prs2.variant_id = v.variant_id AND prs2.product_id = p.product_id)
-            OR (prs2.product_id = p.product_id AND prs2.variant_id IS NULL)
-            OR (prs2.subcategory_id = p.subcategory_id)
-            OR (prs2.category_id = p.category_id)
-            OR (
-              prs2.product_id IS NULL 
-              AND prs2.variant_id IS NULL 
-              AND prs2.category_id IS NULL 
-              AND prs2.subcategory_id IS NULL
-            )
-          )
-        ORDER BY 
-          CASE
-            WHEN prs2.variant_id IS NOT NULL THEN 1
-            WHEN prs2.product_id IS NOT NULL THEN 2
-            WHEN prs2.subcategory_id IS NOT NULL THEN 3
-            WHEN prs2.category_id IS NOT NULL THEN 4
-            ELSE 5
-          END,
-          prs2.priority ASC
-        LIMIT 1
-      )
-
-      LEFT JOIN reward_rules rr 
-        ON rr.reward_rule_id = prs.reward_rule_id
-        AND rr.is_active = 1
-
 
       ${whereClause}
       GROUP BY p.product_id
@@ -985,10 +905,6 @@ class ProductModel {
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,
-          can_earn_reward: row.can_earn_reward ?? 0,
-          reward_type: row.reward_type,
-          reward_value: row.reward_value,
-          max_reward: row.max_reward,
           images,
         };
       });
