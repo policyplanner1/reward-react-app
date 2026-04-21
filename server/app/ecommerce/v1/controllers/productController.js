@@ -758,6 +758,8 @@ class ProductController {
       SELECT
         p.product_id,
         p.product_name,
+        p.category_id,
+        p.subcategory_id,
         p.brand_name,
         v.variant_id,
         v.sale_price,
@@ -807,51 +809,74 @@ class ProductController {
 
       const [rows] = await db.execute(query, [userId]);
 
-      recentlyViewed = rows.map((row) => {
-        const salePrice = row.sale_price ? Number(row.sale_price) : 0;
-        const mrp = row.mrp ? Number(row.mrp) : 0;
-        const discountPercent = row.reward_redemption_limit
-          ? Number(row.reward_redemption_limit)
-          : 0;
+      const rewardCache = {};
 
-        // Reward discount amount
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+      recentlyViewed = await Promise.all(
+        rows.map(async (row) => {
+          const salePrice = Number(row.sale_price) || 0;
+          const mrp = Number(row.mrp) || 0;
 
-        // Final reward price
-        const finalPrice = salePrice - discountAmount;
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
-        // Total discount vs MRP
-        const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+          // Parse image
+          let image = null;
+          if (row.images) {
+            const first = row.images.split(",")[0];
+            const imagePath = first.split("::")[1];
+            image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
+          }
 
-        // Parse images
-        let images = [];
-        if (row.images) {
-          images = row.images.split(",").map((item) => {
-            const [, image_url] = item.split("::");
-            return { image_url };
-          });
-        }
+          /* ===============================
+              CACHE KEY
+            =============================== */
+          const key = `${row.product_id}_${row.variant_id}_${row.category_id}_${row.subcategory_id}_${salePrice}`;
 
-        return {
-          product_id: row.product_id,
-          product_name: row.product_name,
-          brand_name: row.brand_name,
-          variant_id: row.variant_id,
+          let rules = rewardCache[key];
 
-          image: images.length
-            ? `${CDN_BASE_URL}/${images[0].image_url}`
-            : null,
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              row.product_id,
+              row.variant_id,
+              row.category_id,
+              row.subcategory_id,
+              salePrice,
+            );
 
-          price: `₹${salePrice}`,
-          originalPrice: `₹${mrp}`,
-          discount: `${mrpDiscountPercent}%`,
-          pointsPrice: `₹${finalPrice}`,
-          points: discountAmount,
-          rating: 4.6,
-          reviews: "18.9K",
-        };
-      });
+            rewardCache[key] = rules;
+          }
+
+          let rewardCoins = 0;
+          let canEarn = false;
+
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
+
+          return {
+            product_id: row.product_id,
+            product_name: row.product_name,
+            brand_name: row.brand_name,
+            variant_id: row.variant_id,
+
+            image,
+
+            price: `₹${salePrice}`,
+            originalPrice: `₹${mrp}`,
+            discount: `${mrpDiscountPercent}%`,
+
+            rating: 4.6,
+            reviews: "18.9K",
+
+            reward: {
+              enabled: canEarn && rewardCoins > 0,
+              coins: rewardCoins,
+              label: rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+            },
+          };
+        }),
+      );
 
       return res.json({
         success: true,
