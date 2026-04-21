@@ -231,8 +231,6 @@ class ProductController {
           ratingMin,
         });
 
-      
-
       const processedProducts = await Promise.all(
         products.map(async (product) => {
           const imagePath =
@@ -344,46 +342,56 @@ class ProductController {
           ratingMin,
         });
 
-      const processedProducts = products.map((product) => {
-        const imagePath =
-          product.images && product.images.length
-            ? product.images[0].image_url
-            : null;
+      const processedProducts = await Promise.all(
+        products.map(async (product) => {
+          const imagePath =
+            product.images && product.images.length
+              ? product.images[0].image_url
+              : null;
 
-        const mainImage = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
+          const mainImage = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
 
-        const salePrice = product.sale_price ? Number(product.sale_price) : 0;
+          const salePrice = product.sale_price ? Number(product.sale_price) : 0;
 
-        const discountPercent = product.reward_redemption_limit
-          ? Number(product.reward_redemption_limit)
-          : 0;
+          const mrp = product.mrp ? Number(product.mrp) : 0;
 
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
+          const rules = await RewardModel.getProductRewards(
+            product.product_id,
+            product.variant_id,
+            product.category_id,
+            product.subcategory_id,
+            salePrice,
+          );
 
-        const finalPrice = salePrice - discountAmount;
+          const rewardCoins = calculateReward(salePrice, rules);
 
-        const mrp = product.mrp ? Number(product.mrp) : 0;
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
-        const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
-
-        return {
-          id: product.product_id,
-          title: product.product_name,
-          brand: product.brand_name,
-          category: product.category_name,
-          subcategory: product.subcategory_name,
-          sub_subcategory: product.sub_subcategory_name,
-          image: mainImage,
-          price: `₹${salePrice}`,
-          originalPrice: `₹${mrp}`,
-          discount: `${mrpDiscountPercent}%`,
-          pointsPrice: `₹${finalPrice}`,
-          points: discountAmount,
-          rating: product.avg_rating,
-          reviews: product.rating_count,
-        };
-      });
+          return {
+            id: product.product_id,
+            title: product.product_name,
+            brand: product.brand_name,
+            category: product.category_name,
+            subcategory: product.subcategory_name,
+            sub_subcategory: product.sub_subcategory_name,
+            image: mainImage,
+            price: salePrice ? `₹${salePrice}` : null,
+            originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
+            discount: `${mrpDiscountPercent}%`,
+            rating: product.avg_rating,
+            reviews: product.rating_count,
+            rewardCoins: rewardCoins,
+            rewardLabel: rewardCoins > 0 ? `${rewardCoins} coins` : null,
+            reward: {
+              enabled: product.can_earn_reward === 1,
+              type: product.reward_type,
+              value: product.reward_value,
+              max: product.max_reward,
+            },
+          };
+        }),
+      );
 
       return res.json({
         success: true,

@@ -654,6 +654,8 @@ class ProductModel {
       SELECT 
         p.product_id,
         p.product_name,
+        p.category_id,
+        p.subcategory_id,
         p.brand_name,
         p.avg_rating,
         p.rating_count,
@@ -664,6 +666,10 @@ class ProductModel {
         v.mrp,
         v.sale_price,
         v.reward_redemption_limit,
+        prs.can_earn_reward,
+        rr.reward_type,
+        rr.reward_value,
+        rr.max_reward,
 
         GROUP_CONCAT(
           DISTINCT CONCAT(
@@ -697,6 +703,40 @@ class ProductModel {
       LEFT JOIN product_images pi 
         ON p.product_id = pi.product_id
 
+      LEFT JOIN product_reward_settings prs 
+      ON prs.id = (
+        SELECT prs2.id
+        FROM product_reward_settings prs2
+        WHERE prs2.is_active = 1
+          AND (
+            (prs2.variant_id = v.variant_id AND prs2.product_id = p.product_id)
+            OR (prs2.product_id = p.product_id AND prs2.variant_id IS NULL)
+            OR (prs2.subcategory_id = p.subcategory_id)
+            OR (prs2.category_id = p.category_id)
+            OR (
+              prs2.product_id IS NULL 
+              AND prs2.variant_id IS NULL 
+              AND prs2.category_id IS NULL 
+              AND prs2.subcategory_id IS NULL
+            )
+          )
+        ORDER BY 
+          CASE
+            WHEN prs2.variant_id IS NOT NULL THEN 1
+            WHEN prs2.product_id IS NOT NULL THEN 2
+            WHEN prs2.subcategory_id IS NOT NULL THEN 3
+            WHEN prs2.category_id IS NOT NULL THEN 4
+            ELSE 5
+          END,
+          prs2.priority ASC
+        LIMIT 1
+      )
+
+      LEFT JOIN reward_rules rr 
+        ON rr.reward_rule_id = prs.reward_rule_id
+        AND rr.is_active = 1
+
+
       ${whereClause}
       GROUP BY p.product_id
       ORDER BY p.${sortBy} ${sortOrder}
@@ -722,17 +762,23 @@ class ProductModel {
 
         return {
           product_id: row.product_id,
+          category_id: row.category_id,
+          subcategory_id: row.subcategory_id,
           product_name: row.product_name,
           brand_name: row.brand_name,
           category_name: row.category_name,
+          subcategory_name: row.subcategory_name,
+          sub_subcategory_name: row.sub_subcategory_name,
           created_at: row.created_at,
           avg_rating: row.avg_rating,
           rating_count: row.rating_count,
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,
-          subcategory_name: row.subcategory_name,
-          sub_subcategory_name: row.sub_subcategory_name,
+          can_earn_reward: row.can_earn_reward ?? 0,
+          reward_type: row.reward_type,
+          reward_value: row.reward_value,
+          max_reward: row.max_reward,
           images,
         };
       });
