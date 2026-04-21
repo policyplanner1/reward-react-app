@@ -98,9 +98,12 @@ class CartController {
         quantity,
       });
 
+      const summary = await CartModel.getCartSummary(userId, true);
+
       return res.json({
         success: true,
         message: "Item added to cart",
+        cartSummary: summary,
       });
     } catch (error) {
       console.error("Add to cart error:", error);
@@ -199,11 +202,14 @@ class CartController {
         quantity,
       });
 
+      const summary = await CartModel.getCartSummary(userId, true);
+
       return res.json({
         success: true,
         message: result.removed
           ? "Item removed from cart"
           : "Cart updated successfully",
+        cartSummary: summary,
       });
     } catch (error) {
       console.error("Update cart error:", error);
