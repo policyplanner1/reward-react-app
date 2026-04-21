@@ -1271,6 +1271,11 @@ class ProductModel {
         offset,
       ]);
 
+      /* ===============================
+       CACHE OBJECT (IMPORTANT)
+    =============================== */
+      const rewardCache = {};
+
       /* -------------------------------
        3 Format response
     --------------------------------*/
@@ -1291,15 +1296,23 @@ class ProductModel {
           }
 
           /* ===============================
-        REWARD ENGINE
-    =============================== */
-          const rules = await RewardModel.getProductRewards(
-            row.product_id,
-            row.variant_id,
-            row.category_id,
-            row.subcategory_id,
-            salePrice,
-          );
+           CACHE KEY (VERY IMPORTANT)
+        =============================== */
+          const key = `${row.product_id}_${row.variant_id}_${row.category_id}_${row.subcategory_id}_${salePrice}`;
+
+          let rules = rewardCache[key];
+
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              row.product_id,
+              row.variant_id,
+              row.category_id,
+              row.subcategory_id,
+              salePrice,
+            );
+
+            rewardCache[key] = rules;
+          }
 
           let rewardCoins = 0;
           let canEarn = false;
