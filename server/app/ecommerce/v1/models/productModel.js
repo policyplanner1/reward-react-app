@@ -1356,6 +1356,8 @@ class ProductModel {
       const query = `
       SELECT 
         p.product_id,
+        p.category_id,
+        p.subcategory_id,
         p.product_name,
         p.brand_name,
         v.variant_id,
@@ -1444,41 +1446,75 @@ class ProductModel {
         offset,
       ]);
 
-      return rows.map((row) => {
-        const salePrice = Number(row.sale_price || 0);
-        const mrp = Number(row.mrp || 0);
-        const discountPercent = Number(row.reward_redemption_limit || 0);
+      /* ===============================
+       CACHE
+    =============================== */
+      const rewardCache = {};
 
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
-        const finalPrice = salePrice - discountAmount;
+      return await Promise.all(
+        rows.map(async (row) => {
+          const salePrice = Number(row.sale_price) || 0;
+          const mrp = Number(row.mrp) || 0;
 
-        const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
-        let image = null;
+          let image = null;
+          if (row.images) {
+            const first = row.images.split(",")[0];
+            const imagePath = first.split("::")[1];
+            image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
+          }
 
-        if (row.images) {
-          const first = row.images.split(",")[0];
-          const imagePath = first.split("::")[1];
-          image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
-        }
+          /* ===============================
+           CACHE KEY
+        =============================== */
+          const key = `${row.product_id}_${row.variant_id}_${row.category_id}_${row.subcategory_id}_${salePrice}`;
 
-        return {
-          product_id: row.product_id,
-          product_name: row.product_name,
-          brand_name: row.brand_name,
-          variant_id: row.variant_id,
-          image,
-          price: `₹${salePrice}`,
-          originalPrice: `₹${mrp}`,
-          discount: `${mrpDiscountPercent}%`,
-          pointsPrice: `₹${finalPrice}`,
-          points: discountAmount,
-          score: row.total_score,
-          rating: 4.6,
-          reviews: "18.9K",
-        };
-      });
+          let rules = rewardCache[key];
+
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              row.product_id,
+              row.variant_id,
+              row.category_id,
+              row.subcategory_id,
+              salePrice,
+            );
+            rewardCache[key] = rules;
+          }
+
+          let rewardCoins = 0;
+          let canEarn = false;
+
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
+
+          return {
+            product_id: row.product_id,
+            product_name: row.product_name,
+            brand_name: row.brand_name,
+            variant_id: row.variant_id,
+            image,
+
+            price: `₹${salePrice}`,
+            originalPrice: `₹${mrp}`,
+            discount: `${mrpDiscountPercent}%`,
+
+            score: row.total_score,
+            rating: 4.6,
+            reviews: "18.9K",
+
+            reward: {
+              enabled: canEarn && rewardCoins > 0,
+              coins: rewardCoins,
+              label: rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+            },
+          };
+        }),
+      );
     } catch (error) {
       console.error("Recommendation model error:", error);
       throw error;
