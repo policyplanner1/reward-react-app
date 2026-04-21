@@ -111,16 +111,30 @@ class ProductModel {
           ON prs.id = (
             SELECT prs2.id
             FROM product_reward_settings prs2
-            WHERE prs2.product_id = p.product_id
-              AND prs2.is_active = 1
+            WHERE prs2.is_active = 1
               AND (
-                prs2.variant_id = v.variant_id
-                OR prs2.variant_id IS NULL
+                (prs2.variant_id = v.variant_id AND prs2.product_id = p.product_id)
+                OR (prs2.product_id = p.product_id AND prs2.variant_id IS NULL)
+                OR (prs2.subcategory_id = p.subcategory_id)
+                OR (prs2.category_id = p.category_id)
+                OR (
+                  prs2.product_id IS NULL 
+                  AND prs2.variant_id IS NULL 
+                  AND prs2.category_id IS NULL 
+                  AND prs2.subcategory_id IS NULL
+                )
               )
             ORDER BY 
-              CASE WHEN prs2.variant_id = v.variant_id THEN 1 ELSE 2 END
+              CASE
+                WHEN prs2.variant_id IS NOT NULL THEN 1
+                WHEN prs2.product_id IS NOT NULL THEN 2
+                WHEN prs2.subcategory_id IS NOT NULL THEN 3
+                WHEN prs2.category_id IS NOT NULL THEN 4
+                ELSE 5
+              END,
+              prs2.priority ASC
             LIMIT 1
-          )
+        )
 
         LEFT JOIN reward_rules rr 
           ON rr.reward_rule_id = prs.reward_rule_id
@@ -451,18 +465,32 @@ class ProductModel {
       /* ---- Images ---- */
       LEFT JOIN product_images pi ON p.product_id = pi.product_id
 
-     LEFT JOIN product_reward_settings prs 
+      LEFT JOIN product_reward_settings prs 
       ON prs.id = (
         SELECT prs2.id
         FROM product_reward_settings prs2
-        WHERE prs2.product_id = p.product_id
-          AND prs2.is_active = 1
+        WHERE prs2.is_active = 1
           AND (
-            prs2.variant_id = v.variant_id
-            OR prs2.variant_id IS NULL
+            (prs2.variant_id = v.variant_id AND prs2.product_id = p.product_id)
+            OR (prs2.product_id = p.product_id AND prs2.variant_id IS NULL)
+            OR (prs2.subcategory_id = p.subcategory_id)
+            OR (prs2.category_id = p.category_id)
+            OR (
+              prs2.product_id IS NULL 
+              AND prs2.variant_id IS NULL 
+              AND prs2.category_id IS NULL 
+              AND prs2.subcategory_id IS NULL
+            )
           )
         ORDER BY 
-          CASE WHEN prs2.variant_id = v.variant_id THEN 1 ELSE 2 END
+          CASE
+            WHEN prs2.variant_id IS NOT NULL THEN 1
+            WHEN prs2.product_id IS NOT NULL THEN 2
+            WHEN prs2.subcategory_id IS NOT NULL THEN 3
+            WHEN prs2.category_id IS NOT NULL THEN 4
+            ELSE 5
+          END,
+          prs2.priority ASC
         LIMIT 1
       )
 
