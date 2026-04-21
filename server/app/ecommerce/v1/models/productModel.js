@@ -402,6 +402,8 @@ class ProductModel {
       SELECT 
         p.product_id,
         p.product_name,
+        p.category_id,
+        p.subcategory_id,
         p.brand_name,
         p.avg_rating,
         p.rating_count,
@@ -498,6 +500,8 @@ class ProductModel {
 
         return {
           product_id: row.product_id,
+          category_id: row.category_id,
+          subcategory_id: row.subcategory_id,
           product_name: row.product_name,
           brand_name: row.brand_name,
           category_name: row.category_name,
@@ -862,7 +866,11 @@ class ProductModel {
       image: getPublicUrl(prod.image),
     }));
 
-    return [...formattedCategories, ...formattedSubcategories, ...formattedProducts].slice(0, limit);
+    return [
+      ...formattedCategories,
+      ...formattedSubcategories,
+      ...formattedProducts,
+    ].slice(0, limit);
   }
 
   // async getSearchSuggestions({ search, limit }) {
