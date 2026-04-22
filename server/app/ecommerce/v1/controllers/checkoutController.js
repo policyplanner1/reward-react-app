@@ -36,6 +36,8 @@ class CheckoutController {
       }
 
       const addressId = req.body?.address_id;
+      const expectedTotal = req.body?.expected_total;
+      const expectedRedeemable = req.body?.expected_redeemable ?? 0;
       const useRewards = req.body?.use_rewards ?? true;
 
       if (!addressId) {
@@ -50,6 +52,8 @@ class CheckoutController {
         companyId,
         addressId,
         useRewards,
+        expectedTotal,
+        expectedRedeemable,
       );
 
       // await NotificationModel.create({
@@ -79,6 +83,13 @@ class CheckoutController {
         return res.status(400).json({
           success: false,
           message: "One or more items are out of stock",
+        });
+      }
+
+      if (error.message === "PRICE_MISMATCH") {
+        return res.status(400).json({
+          success: false,
+          message: "Incorrect expected price",
         });
       }
 
