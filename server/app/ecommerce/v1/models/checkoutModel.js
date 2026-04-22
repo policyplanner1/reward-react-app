@@ -1551,9 +1551,15 @@ class CheckoutModel {
       o.order_id,
       o.order_ref,
       o.address_id,
+      o.product_total,
+      o.reward_discount,
+      o.reward_coins_used,
+      o.reward_coins_earned,
+      o.shipping_total,
       o.total_amount,
       o.created_at,
       o.status,
+
       ca.address_type,
       ca.address1,
       ca.address2,
@@ -1563,7 +1569,8 @@ class CheckoutModel {
       ca.landmark,
       s.state_name,
       c.country_name
-    FROM eorders o
+      
+      FROM eorders o
       JOIN customer_addresses ca 
       ON o.address_id = ca.address_id
 
@@ -1593,6 +1600,7 @@ class CheckoutModel {
       oi.variant_id,
       oi.quantity,
       oi.price,
+      oi.final_price,
       oi.reward_discount,
       p.product_name,
 
@@ -1611,8 +1619,6 @@ class CheckoutModel {
       [orderId],
     );
 
-    const itemTotal = items.reduce((sum, i) => sum + i.quantity * i.price, 0);
-
     // 3 Fetch shipment dates
     const [shipments] = await db.execute(
       `
@@ -1628,8 +1634,6 @@ class CheckoutModel {
 
     let expectedDeliveryDate = null;
     let actualDeliveryDate = null;
-    let deliveryFee = 0;
-    let rewardDiscount = 0;
 
     if (shipments.length) {
       const expectedDates = shipments
@@ -1653,17 +1657,6 @@ class CheckoutModel {
           Math.max(...deliveredDates.map((d) => d.getTime())),
         );
       }
-
-      // Shipping Fee
-      deliveryFee = shipments.reduce(
-        (sum, s) => sum + Number(s.shipping_charges || 0),
-        0,
-      );
-
-      // rewardDiscount = items.reduce(
-      //   (sum, i) => sum + Number(i.reward_discount || 0),
-      //   0,
-      // );
     }
 
     if (!expectedDeliveryDate) {
@@ -1680,9 +1673,12 @@ class CheckoutModel {
 
     return {
       orderId: order.order_id,
+      orderRef: order.order_ref,
       orderDate: formatDate(new Date(order.created_at)),
       status: order.status,
+
       username: order.customer_name,
+
       address: {
         type: order.address_type,
         line1: order.address1,
@@ -1693,20 +1689,28 @@ class CheckoutModel {
         zipcode: order.zipcode,
         landmark: order.landmark,
       },
+
       items: items.map((i) => ({
         product_name: i.product_name,
         image: i.image,
         quantity: i.quantity,
-        price: i.price,
-        item_total: i.quantity * i.price,
+        price: Number(i.price),
+        item_total: Number(i.price) * i.quantity,
+        final_price: Number(i.final_price),
+        reward_discount: Number(i.reward_discount),
       })),
 
       bill: {
-        item_total: itemTotal,
-        delivery_fee: deliveryFee,
-        bag_discount: bagDiscount,
-        reward_discount: rewardDiscount,
-        order_total: order.total_amount,
+        item_total: Number(order.product_total),
+        delivery_fee: Number(order.shipping_total),
+        bag_discount: 0, // add later if coupons implemented
+        reward_discount: Number(order.reward_discount),
+        order_total: Number(order.total_amount),
+      },
+
+      rewards: {
+        earned: Number(order.reward_coins_earned),
+        used: Number(order.reward_coins_used),
       },
 
       deliveryDate: actualDeliveryDate
@@ -1714,8 +1718,9 @@ class CheckoutModel {
         : formatDate(expectedDeliveryDate),
 
       expectedDeliveryDate: formatDate(expectedDeliveryDate),
-      actualDeliveryDate: formatDate(actualDeliveryDate),
-      rewardsEarned: 462,
+      actualDeliveryDate: actualDeliveryDate
+        ? formatDate(actualDeliveryDate)
+        : null,
     };
   }
 }
