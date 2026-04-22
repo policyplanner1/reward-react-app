@@ -693,325 +693,7 @@ class CheckoutModel {
     }
   }
 
-  // Buy now items
-  // async buyNow({
-  //   userId,
-  //   productId,
-  //   variantId,
-  //   quantity,
-  //   companyId = null,
-  //   addressId,
-  //   useRewards = true,
-  // }) {
-  //   const conn = await db.getConnection();
-
-  //   try {
-  //     await conn.beginTransaction();
-
-  //     // 1 Fetch variant
-  //     const [[variant]] = await conn.execute(
-  //       `
-  //     SELECT
-  //       v.sale_price,
-  //       v.mrp,
-  //       v.stock,
-  //       v.weight,
-  //       v.length,
-  //       v.breadth,
-  //       v.height,
-  //       v.reward_redemption_limit,
-  //       p.vendor_id
-  //     FROM product_variants v
-  //     JOIN eproducts p ON v.product_id = p.product_id
-  //     WHERE v.variant_id = ? AND v.product_id = ?
-  //     `,
-  //       [variantId, productId],
-  //     );
-
-  //     if (!variant) {
-  //       throw new Error("INVALID_VARIANT");
-  //     }
-
-  //     if (quantity > variant.stock) {
-  //       throw new Error("OUT_OF_STOCK");
-  //     }
-
-  //     // 2 Get Customer address
-  //     const customerAddress = await AddressModel.getAddressById(
-  //       addressId,
-  //       userId,
-  //     );
-
-  //     if (!customerAddress) {
-  //       throw new Error("INVALID_ADDRESS");
-  //     }
-
-  //     // 3 Get vendor shipping address
-  //     const [[vendorAddress]] = await conn.execute(
-  //       `
-  //     SELECT pincode
-  //     FROM vendor_addresses
-  //     WHERE vendor_id = ?
-  //       AND type = 'shipping'
-  //     LIMIT 1
-  //     `,
-  //       [variant.vendor_id],
-  //     );
-
-  //     if (!vendorAddress) {
-  //       throw new Error("VENDOR_ADDRESS_MISSING");
-  //     }
-
-  //     const salePrice = Number(variant.sale_price) || 0;
-  //     const rewardPercent = Number(variant.reward_redemption_limit) || 0;
-
-  //     const productTotal = quantity * salePrice;
-
-  //     const rewardDiscountAmount = useRewards
-  //       ? Math.round((productTotal * rewardPercent) / 100)
-  //       : 0;
-
-  //     // =====================
-  //     //   Wallet validation (only if rewards applied)
-  //     // =====================
-  //     // if (useRewards && rewardDiscountAmount > 0) {
-  //     //   const [[wallet]] = await conn.execute(
-  //     //     `SELECT balance FROM customer_wallet WHERE user_id = ? LIMIT 1`,
-  //     //     [userId],
-  //     //   );
-
-  //     //   const balance = wallet?.balance || 0;
-
-  //     //   if (balance < rewardDiscountAmount) {
-  //     //     throw new Error("INSUFFICIENT_REWARDS");
-  //     //   }
-  //     // }
-
-  //     const finalProductTotal = productTotal - rewardDiscountAmount;
-
-  //     const weightGrams = Math.round(quantity * Number(variant.weight) * 1000);
-  //     const length = Math.round(variant.length);
-  //     const breadth = Math.round(variant.breadth);
-  //     const height = Math.round(quantity * Number(variant.height));
-
-  //     // 4 Serviceability
-  //     const serviceResponse = await xpressService.checkServiceability({
-  //       origin: vendorAddress.pincode,
-  //       destination: customerAddress.zipcode,
-  //       payment_type: "prepaid",
-  //       order_amount: productTotal.toString(),
-  // weight: weightGrams.toString(),
-  // length: length.toString(),
-  // breadth: breadth.toString(),
-  // height: height.toString(),
-  //     });
-
-  // if (!serviceResponse.status || !serviceResponse.data.length) {
-  //   throw new Error("NOT_SERVICEABLE");
-  // }
-
-  //     // const cheapest = serviceResponse.data
-  //     //   .filter((o) => o.total_charges > 0)
-  //     //   .sort((a, b) => a.total_charges - b.total_charges)[0];
-
-  //     // const shippingCharge = Number(cheapest.total_charges);
-
-  //     // =====================
-  //     // SERVICEABILITY
-  //     // =====================
-  //     const validOptions = serviceResponse.data.filter(
-  //       (o) => o.total_charges > 0,
-  //     );
-
-  //     if (!validOptions.length) {
-  //       throw new Error("NOT_SERVICEABLE");
-  //     }
-
-  //     const selectedCourier = [...validOptions].sort(
-  //       (a, b) => a.total_charges - b.total_charges,
-  //     )[0];
-
-  //     const shippingCharge = Number(selectedCourier.total_charges);
-
-  // // =====================
-  // // DELIVERY DATE (FIXED)
-  // // =====================
-  // let expectedDeliveryDate = null;
-
-  // if (selectedCourier.estimated_delivery_date) {
-  //   expectedDeliveryDate = new Date(
-  //     selectedCourier.estimated_delivery_date,
-  //   );
-  // } else if (selectedCourier.estimated_delivery_days) {
-  //   const date = new Date();
-  //   date.setDate(
-  //     date.getDate() + Number(selectedCourier.estimated_delivery_days),
-  //   );
-  //   expectedDeliveryDate = date;
-  // }
-
-  // // fallback
-  // if (!expectedDeliveryDate) {
-  //   const fallback = new Date();
-  //   fallback.setDate(fallback.getDate() + 5);
-  //   expectedDeliveryDate = fallback;
-  // }
-
-  //     // =====================
-  //     // FINAL TOTAL
-  //     // =====================
-  //     const finalTotal = finalProductTotal + shippingCharge;
-
-  //     // 5 Create order
-
-  //     const orderRef = generateOrderRef();
-
-  //     const [orderRes] = await conn.execute(
-  //       `
-  //     INSERT INTO eorders (user_id, company_id, total_amount, order_ref,address_id, product_total, reward_discount, reward_used)
-  //     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  //     `,
-  //       [
-  //         userId,
-  //         companyId,
-  //         finalTotal,
-  //         orderRef,
-  //         addressId,
-  //         productTotal,
-  //         rewardDiscountAmount,
-  //         useRewards ? 1 : 0,
-  //       ],
-  //     );
-
-  //     const orderId = orderRes.insertId;
-
-  //     //6 create vendor order
-  //     const [vendorOrderRes] = await conn.execute(
-  //       `
-  //       INSERT INTO vendor_orders
-  //       (order_id, vendor_id, vendor_total, shipping_status)
-  //       VALUES (?, ?, ?, 'pending')
-  //       `,
-  //       [orderId, variant.vendor_id, productTotal],
-  //     );
-
-  //     const vendorOrderId = vendorOrderRes.insertId;
-
-  //     // 7 Create order item
-  //     await conn.execute(
-  //       `
-  //       INSERT INTO eorder_items
-  //       (order_id, vendor_order_id, product_id, variant_id, quantity, price, reward_discount)
-  //       VALUES (?, ?, ?, ?, ?, ?, ?)
-  //       `,
-  //       [
-  //         orderId,
-  //         vendorOrderId,
-  //         productId,
-  //         variantId,
-  //         quantity,
-  //         variant.sale_price,
-  //         rewardDiscountAmount,
-  //       ],
-  //     );
-
-  //     // 8 Create shipment row
-  // await conn.execute(
-  //   `
-  //   INSERT INTO order_shipments
-  //   (order_id, vendor_order_id, vendor_id, courier_id, courier_name,
-  //   shipping_charges, chargeable_weight,
-  //   weight, length, breadth, height,
-  //   courier_options,
-  //   expected_delivery_date,
-  //   shipping_status)
-  //   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'awaiting_payment')
-  //   `,
-  //   [
-  //     orderId,
-  //     vendorOrderId,
-  //     variant.vendor_id,
-  //     cheapest.id,
-  //     cheapest.name,
-  //     shippingCharge,
-  //     cheapest.chargeable_weight,
-  //     weightGrams,
-  //     length,
-  //     breadth,
-  //     height,
-  //     JSON.stringify(serviceResponse.data),
-  //     expectedDeliveryDate,
-  //   ],
-  // );
-
-  //     // =====================
-  //     // WALLET DEDUCTION
-  //     // =====================
-
-  //     // if (useRewards && rewardDiscountAmount > 0) {
-  //     //   // Deduct balance
-  //     //   await conn.execute(
-  //     //     `
-  //     //     UPDATE customer_wallet
-  //     //     SET balance = balance - ?
-  //     //     WHERE user_id = ?
-  //     //     `,
-  //     //     [rewardDiscountAmount, userId],
-  //     //   );
-
-  //     //   // Insert wallet transaction
-  //     //   await conn.execute(
-  //     //     `
-  //     //     INSERT INTO wallet_transactions
-  //     //     (
-  //     //       user_id,
-  //     //       title,
-  //     //       description,
-  //     //       transaction_type,
-  //     //       coins,
-  //     //       category,
-  //     //       reference_id
-  //     //     )
-  //     //     VALUES (?, ?, ?, 'debit', ?, 'order', ?)
-  //     //     `,
-  //     //     [
-  //     //       userId,
-  //     //       "Coins used for order",
-  //     //       `Used ${rewardDiscountAmount} coins for order #${orderId}`,
-  //     //       rewardDiscountAmount,
-  //     //       orderId,
-  //     //     ],
-  //     //   );
-  //     // }
-
-  // // 9 Invoice generation
-  // await generateInvoices(orderId, conn);
-
-  //     // 10 Deduct stock
-  //     const [updateRes] = await conn.execute(
-  //       `
-  //     UPDATE product_variants
-  //     SET stock = stock - ?
-  //     WHERE variant_id = ?
-  //       AND stock >= ?
-  //     `,
-  //       [quantity, variantId, quantity],
-  //     );
-
-  //     if (updateRes.affectedRows === 0) {
-  //       throw new Error("STOCK_RACE_CONDITION");
-  //     }
-
-  //     await conn.commit();
-  //     return orderId;
-  //   } catch (error) {
-  //     await conn.rollback();
-  //     throw error;
-  //   } finally {
-  //     conn.release();
-  //   }
-  // }
-
+  // buy now
   async buyNow({
     userId,
     productId,
@@ -1020,6 +702,8 @@ class CheckoutModel {
     companyId,
     addressId,
     useRewards = true,
+    expectedTotal,
+    expectedRedeemable,
   }) {
     const conn = await db.getConnection();
 
@@ -1059,35 +743,11 @@ class CheckoutModel {
         v.reward_redemption_limit,
 
         p.vendor_id,
-
-        prs.can_earn_reward,
-        prs.can_redeem_reward,
-
-        rr.reward_type,
-        rr.reward_value,
-        rr.max_reward
+        p.category_id,
+        p.subcategory_id
 
       FROM product_variants v
       JOIN eproducts p ON v.product_id = p.product_id
-
-      LEFT JOIN product_reward_settings prs 
-        ON prs.id = (
-          SELECT prs2.id
-          FROM product_reward_settings prs2
-          WHERE prs2.product_id = p.product_id
-            AND prs2.is_active = 1
-            AND (
-              prs2.variant_id = v.variant_id
-              OR prs2.variant_id IS NULL
-            )
-          ORDER BY 
-            CASE WHEN prs2.variant_id = v.variant_id THEN 1 ELSE 2 END
-          LIMIT 1
-        )
-
-      LEFT JOIN reward_rules rr 
-        ON rr.reward_rule_id = prs.reward_rule_id
-        AND rr.is_active = 1
 
       WHERE v.variant_id = ? AND v.product_id = ?
       `,
@@ -1103,18 +763,19 @@ class CheckoutModel {
       // ===============================
       const itemTotal = Number(item.sale_price) * quantity;
 
+      const rules = await RewardModel.getProductRewards(
+        productId,
+        variantId,
+        item.category_id,
+        item.subcategory_id,
+        item.sale_price,
+      );
+
       let redeemable = 0;
+      const limit = Number(item.reward_redemption_limit || 0);
 
-      if (
-        useRewards &&
-        item.can_redeem_reward &&
-        item.reward_redemption_limit &&
-        walletBalance > 0
-      ) {
-        const maxAllowed = Math.floor(
-          (itemTotal * item.reward_redemption_limit) / 100,
-        );
-
+      if (useRewards && limit > 0 && walletBalance > 0) {
+        const maxAllowed = Math.floor((itemTotal * limit) / 100);
         redeemable = Math.min(walletBalance, maxAllowed, itemTotal);
         walletBalance -= redeemable;
       }
@@ -1125,19 +786,8 @@ class CheckoutModel {
       // 4. EARNING
       // ===============================
       let rewardEarn = 0;
-
-      if (item.can_earn_reward && item.reward_type) {
-        if (item.reward_type === "fixed") {
-          rewardEarn = item.reward_value;
-        } else {
-          rewardEarn = (finalItemTotal * item.reward_value) / 100;
-        }
-
-        if (item.max_reward) {
-          rewardEarn = Math.min(rewardEarn, item.max_reward);
-        }
-
-        rewardEarn = Math.floor(rewardEarn);
+      if (rules.length) {
+        rewardEarn = calculateReward(finalItemTotal, rules);
       }
 
       // ===============================
@@ -1208,6 +858,17 @@ class CheckoutModel {
 
       const finalTotal = finalItemTotal + shippingCharge;
 
+      /* ===============================
+       VALIDATION (ANTI-TAMPER)
+    =============================== */
+      if (Math.abs(finalTotal - expectedTotal) > 0.5) {
+        throw new Error("PRICE_MISMATCH");
+      }
+
+      if (Math.abs(redeemable - expectedRedeemable) > 0.5) {
+        throw new Error("PRICE_MISMATCH");
+      }
+
       // ===============================
       // 6. CREATE ORDER
       // ===============================
@@ -1217,8 +878,9 @@ class CheckoutModel {
         `
       INSERT INTO eorders
       (user_id, company_id, total_amount, order_ref, address_id,
-       product_total, reward_discount, reward_used, reward_earned, shipping_total)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       product_total, reward_discount, reward_coins_used,
+       reward_earned, reward_coins_earned, shipping_total)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
         [
           userId,
@@ -1228,7 +890,8 @@ class CheckoutModel {
           addressId,
           itemTotal,
           redeemable,
-          redeemable > 0 ? 1 : 0,
+          redeemable,
+          rewardEarn,
           rewardEarn,
           shippingCharge,
         ],
@@ -1255,8 +918,10 @@ class CheckoutModel {
         `
       INSERT INTO eorder_items
       (order_id, vendor_order_id, product_id, variant_id, quantity, price,
-       reward_discount, reward_used, reward_earned, final_price)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       reward_discount, reward_coins_used,
+       reward_earned, reward_coins_earned,
+       final_price)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
         [
           orderId,
@@ -1266,7 +931,8 @@ class CheckoutModel {
           quantity,
           item.sale_price,
           redeemable,
-          redeemable > 0 ? 1 : 0,
+          redeemable,
+          rewardEarn,
           rewardEarn,
           finalItemTotal,
         ],
@@ -1357,12 +1023,16 @@ class CheckoutModel {
       // ===============================
       // 11. STOCK
       // ===============================
-      await conn.execute(
+      const [updateRes] = await conn.execute(
         `UPDATE product_variants
        SET stock = stock - ?
        WHERE variant_id = ? AND stock >= ?`,
         [quantity, variantId, quantity],
       );
+
+      if (updateRes.affectedRows === 0) {
+        throw new Error("STOCK_RACE_CONDITION");
+      }
 
       await conn.commit();
       return orderId;

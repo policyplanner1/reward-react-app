@@ -159,6 +159,8 @@ class CheckoutController {
         quantity = 1,
         address_id,
         use_rewards = true,
+        expected_total,
+        expected_redeemable = 0,
       } = req.body;
 
       if (!address_id) {
@@ -183,6 +185,8 @@ class CheckoutController {
         companyId,
         addressId: address_id,
         useRewards: use_rewards,
+        expectedTotal: expected_total,
+        expectedRedeemable: expected_redeemable,
       });
 
       // await NotificationModel.create({
@@ -205,10 +209,38 @@ class CheckoutController {
       if (error.message === "OUT_OF_STOCK") {
         return res.status(400).json({
           success: false,
-          message: "Item out of stock",
+          message: "One or more items are out of stock",
         });
       }
 
+      if (error.message === "PRICE_MISMATCH") {
+        return res.status(400).json({
+          success: false,
+          message: "Incorrect expected price",
+        });
+      }
+
+      if (error.message === "INSUFFICIENT_REWARDS") {
+        return res.status(400).json({
+          success: false,
+          message: "Not enough reward coins",
+        });
+      }
+
+      if (error.message === "INVALID_ADDRESS") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid address",
+        });
+      }
+
+      if (error.message === "NOT_SERVICEABLE") {
+        return res.status(400).json({
+          success: false,
+          message: "Delivery not available for this address",
+        });
+      }
+      
       return res.status(500).json({
         success: false,
         message: "Checkout failed",
