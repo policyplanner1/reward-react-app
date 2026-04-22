@@ -122,6 +122,9 @@ class orderModel {
         o.order_id,
         o.order_ref,
         o.total_amount,
+        o.reward_coins_earned,
+        o.reward_coins_used,
+        o.reward_discount,
         o.status,
         o.created_at,
 
@@ -167,6 +170,17 @@ class orderModel {
       [...params, limit, offset],
     );
 
+    const [[summary]] = await db.execute(
+      `
+      SELECT
+        COALESCE(SUM(o.reward_coins_earned), 0) AS totalCoinsEarned,
+        COALESCE(SUM(o.reward_discount), 0) AS totalSavings
+      FROM eorders o
+      ${whereClause}
+      `,
+      params,
+    );
+
     const [[{ total }]] = await db.execute(
       `
       SELECT COUNT(*) AS total
@@ -177,8 +191,32 @@ class orderModel {
     );
 
     return {
-      orders: rows,
+      orders: rows.map((o) => ({
+        order_id: o.order_id,
+        order_ref: o.order_ref,
+
+        title: o.product_name,
+        brand: o.brand_name,
+        image: o.image,
+
+        item_count: o.item_count,
+
+        price: Number(o.total_amount),
+
+        status: o.status,
+        created_at: o.created_at,
+
+        reward: {
+          earned: Number(o.reward_coins_earned || 0),
+          used: Number(o.reward_coins_used || 0),
+          discount: Number(o.reward_discount || 0),
+        },
+      })),
       total,
+      summary: {
+        totalCoinsEarned: Number(summary.totalCoinsEarned || 0),
+        totalSavings: Number(summary.totalSavings || 0),
+      },
     };
   }
 
