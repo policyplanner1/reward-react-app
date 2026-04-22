@@ -229,6 +229,11 @@ class orderModel {
       o.order_id,
       o.order_ref,
       o.total_amount,
+      o.product_total,
+      o.reward_discount,
+      o.reward_coins_used,
+      o.reward_coins_earned,
+      o.shipping_total,
       o.status,
       o.created_at,
 
@@ -274,6 +279,8 @@ class orderModel {
       oi.variant_id,
       oi.quantity,
       oi.price,
+      oi.final_price,
+      oi.reward_discount,
 
       p.product_name,
       p.brand_name,
@@ -319,12 +326,11 @@ class orderModel {
         image: i.image,
         attributes,
         quantity: i.quantity,
-        price: i.price,
-        item_total: i.quantity * i.price,
+        price: Number(i.price),
+        item_total: Number(i.final_price),
+        reward_discount: Number(i.reward_discount || 0),
       };
     });
-
-    const itemTotal = processedItems.reduce((sum, i) => sum + i.item_total, 0);
 
     // 4 shipping
     const [shipments] = await db.execute(
@@ -362,12 +368,7 @@ class orderModel {
     const hasNdr = shipments.some((s) => s.shipping_status === "ndr");
     const hasRto = shipments.some((s) => s.shipping_status === "rto");
 
-    if (hasNdr) {
-      overallStep = 1; // stuck in transit
-    }
-
-    // optional
-    if (hasRto) {
+    if (hasNdr || hasRto) {
       overallStep = 1;
     }
 
@@ -382,11 +383,6 @@ class orderModel {
       current_step: overallStep,
       steps: orderSteps,
     };
-
-    const shippingTotal = shipments.reduce(
-      (sum, s) => sum + Number(s.shipping_charges ?? 0),
-      0,
-    );
 
     const shipmentDetails = shipments.map((s) => {
       const currentStep = mapStatusToStep(s.shipping_status);
@@ -423,6 +419,9 @@ class orderModel {
       };
     });
 
+    // static for Now
+    const bagDiscount = 1032;
+
     return {
       order: {
         order_id: order.order_id,
@@ -430,6 +429,7 @@ class orderModel {
         status: order.status,
         total_amount: order.total_amount,
         created_at: order.created_at,
+        is_reward_credited: order.status === "delivered",
       },
 
       address: {
@@ -449,10 +449,15 @@ class orderModel {
 
       shipments: shipmentDetails,
       order_progress: orderProgress,
+
       summary: {
-        item_total: itemTotal,
-        shipping_total: shippingTotal,
-        order_total: order.total_amount,
+        item_total: Number(order.product_total),
+        shipping_total: Number(order.shipping_total),
+        reward_discount: Number(order.reward_discount),
+        reward_coins_used: Number(order.reward_coins_used),
+        reward_coins_earned: Number(order.reward_coins_earned),
+        bag_discount: 0, 
+        order_total: Number(order.total_amount),
       },
     };
   }
