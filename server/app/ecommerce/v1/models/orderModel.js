@@ -20,6 +20,23 @@ function mapStatusToStep(status) {
   return 0;
 }
 
+function mapCancelEvent(event) {
+  switch (event) {
+    case "cancellation_requested":
+      return "Cancellation Requested";
+    case "cancellation_confirmed":
+      return "Cancellation Confirmed";
+    case "refund_initiated":
+      return "Refund Initiated";
+    case "refund_completed":
+      return "Refund Completed";
+    case "cancellation_rejected":
+      return "Cancellation Rejected";
+    default:
+      return event;
+  }
+}
+
 function getSpecialState(shipment) {
   if (shipment.shipping_status === "ndr") {
     return {
@@ -456,7 +473,7 @@ class orderModel {
         reward_discount: Number(order.reward_discount),
         reward_coins_used: Number(order.reward_coins_used),
         reward_coins_earned: Number(order.reward_coins_earned),
-        bag_discount: 0, 
+        bag_discount: 0,
         order_total: Number(order.total_amount),
       },
     };
@@ -610,6 +627,12 @@ class orderModel {
       o.status, 
       o.total_amount,
 
+      o.product_total,
+      o.shipping_total,
+      o.reward_discount,
+      o.reward_coins_used,
+      o.reward_coins_earned,
+
       ca.address_type,
       ca.address1,
       ca.address2,
@@ -663,13 +686,22 @@ class orderModel {
       [orderId],
     );
 
-    const totalRefund = refunds.reduce(
-      (sum, r) => sum + Number(r.refund_amount),
-      0,
-    );
+    let moneyRefund = 0;
+    let coinRefund = 0;
+
+    refunds.forEach((r) => {
+      if (r.refund_method === "original") {
+        moneyRefund += Number(r.refund_amount);
+      } else if (r.refund_method === "wallet") {
+        coinRefund += Number(r.refund_amount);
+      }
+    });
+
+    const totalRefund = moneyRefund + coinRefund;
 
     return {
       orderId: order.order_id,
+      orderRef: order.order_ref,
       status: order.status,
 
       customer: {
@@ -688,17 +720,33 @@ class orderModel {
       },
 
       timeline: timeline.map((t) => ({
-        label: t.event.replace(/_/g, " "),
+        label: mapCancelEvent(t.event),
         date: t.event_time,
       })),
 
-      refunds: refunds.map((r) => ({
-        amount: r.refund_amount,
-        method: r.refund_method,
-        status: r.status,
-      })),
+      refund: {
+        total: totalRefund,
+        money_refund: moneyRefund,
+        coin_refund: coinRefund,
+      },
 
-      totalRefund,
+      rewards: {
+        earned: Number(order.reward_coins_earned || 0),
+        used: Number(order.reward_coins_used || 0),
+        reversed: coinRefund,
+        is_credited: false, // cancelled orders never credit rewards
+      },
+
+      summary: {
+        item_total: Number(order.product_total),
+        shipping_total: Number(order.shipping_total),
+
+        reward_discount: Number(order.reward_discount),
+        reward_coins_used: Number(order.reward_coins_used),
+        reward_coins_earned: Number(order.reward_coins_earned),
+
+        order_total: Number(order.total_amount),
+      },
     };
   }
 
