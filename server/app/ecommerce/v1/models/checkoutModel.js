@@ -1691,6 +1691,8 @@ class CheckoutModel {
       p.product_id,
       p.product_name,
       p.vendor_id,
+      p.category_id,
+      p.subcategory_id,
 
       v.variant_id,
       v.mrp,
@@ -1702,37 +1704,10 @@ class CheckoutModel {
       v.breadth,
       v.height,
 
-      prs.can_earn_reward,
-      prs.can_redeem_reward,
-
-      rr.reward_type,
-      rr.reward_value,
-      rr.max_reward,
-
       GROUP_CONCAT(pi.image_url ORDER BY pi.sort_order ASC) AS images
 
     FROM product_variants v
     JOIN eproducts p ON v.product_id = p.product_id
-
-    /*  FIXED MAPPING */
-    LEFT JOIN product_reward_settings prs 
-      ON prs.id = (
-        SELECT prs2.id
-        FROM product_reward_settings prs2
-        WHERE prs2.product_id = p.product_id
-          AND prs2.is_active = 1
-          AND (
-            prs2.variant_id = v.variant_id
-            OR prs2.variant_id IS NULL
-          )
-        ORDER BY 
-          CASE WHEN prs2.variant_id = v.variant_id THEN 1 ELSE 2 END
-        LIMIT 1
-      )
-
-    LEFT JOIN reward_rules rr 
-      ON rr.reward_rule_id = prs.reward_rule_id
-      AND rr.is_active = 1
 
     LEFT JOIN product_images pi 
       ON p.product_id = pi.product_id
@@ -1749,50 +1724,49 @@ class CheckoutModel {
       throw new Error("OUT_OF_STOCK");
     }
 
-    // ===============================
-    // 3. BASE CALCULATION
-    // ===============================
     const salePrice = Number(row.sale_price || 0);
     const itemTotal = salePrice * quantity;
 
-    let redeemable = 0;
+    /* ===============================
+     3. REWARD ENGINE
+  =============================== */
+    const rules = await RewardModel.getProductRewards(
+      row.product_id,
+      row.variant_id,
+      row.category_id,
+      row.subcategory_id,
+      salePrice,
+    );
+
+    let remainingWallet = useRewards ? walletBalance : 0;
     let totalRedeemed = 0;
+    let redeemable = 0;
 
-    // ===============================
-    // 4. REDEMPTION
-    // ===============================
-    if (useRewards && row.can_redeem_reward && row.reward_redemption_limit) {
-      const maxAllowed = Math.floor(
-        (itemTotal * row.reward_redemption_limit) / 100,
-      );
+    /* ===============================
+     4. REDEMPTION (variant based)
+  =============================== */
+    const redemptionLimit = Number(row.reward_redemption_limit || 0);
 
-      redeemable = Math.min(walletBalance, maxAllowed, itemTotal);
+    if (useRewards && redemptionLimit > 0 && remainingWallet > 0) {
+      const maxAllowed = Math.floor((itemTotal * redemptionLimit) / 100);
+
+      redeemable = Math.min(remainingWallet, maxAllowed, itemTotal);
 
       totalRedeemed = redeemable;
+      remainingWallet -= redeemable;
+    }
+
+    /* ===============================
+     5. EARNING (after redemption)
+  =============================== */
+    let rewardEarn = 0;
+
+    if (rules.length) {
+      const effectiveAmount = itemTotal - redeemable;
+      rewardEarn = calculateReward(effectiveAmount, rules);
     }
 
     const finalItemTotal = itemTotal - totalRedeemed;
-
-    // ===============================
-    // 5. EARNING (POST REDEMPTION)
-    // ===============================
-    let rewardEarn = 0;
-
-    if (row.can_earn_reward && row.reward_type) {
-      const effectiveAmount = finalItemTotal;
-
-      if (row.reward_type === "fixed") {
-        rewardEarn = row.reward_value;
-      } else {
-        rewardEarn = (effectiveAmount * row.reward_value) / 100;
-      }
-
-      if (row.max_reward) {
-        rewardEarn = Math.min(rewardEarn, row.max_reward);
-      }
-
-      rewardEarn = Math.floor(rewardEarn);
-    }
 
     // ===============================
     // 6. SHIPPING (UNCHANGED)
