@@ -16,6 +16,8 @@ const {
   accountCreationSuccessMail,
 } = require("../../../../services/accountCreation");
 
+const { rewardCreditMail } = require("../../../../services/firstTimeReward");
+
 const { sendOtpMail } = require("../../../../services/sendOtp");
 
 const ACCESS_EXPIRES = "15m";
@@ -423,6 +425,22 @@ class AuthController {
       const firstLoginBonus = await WalletModel.createWalletOnFirstLogin(
         user.user_id,
       );
+
+      if (firstLoginBonus) {
+        // Send Email
+        await rewardCreditMail({
+          email: user.email,
+          name: user.name,
+          coins: 3000,
+        });
+
+        // Send WhatsApp
+        // await sendWhatsAppWalletCredit({
+        //   phone: user.phone,
+        //   name: user.name,
+        //   coins: 3000,
+        // });
+      }
 
       return res.json({
         success: true,
