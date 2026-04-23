@@ -88,11 +88,11 @@ export default function CategoryManagement() {
   const resolveImageUrl = (path?: string) => {
     if (!path) return "";
     if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path;
+      return `${path}?t=${Date.now()}`;
     }
-    return `${R2_BASE_URL}/${path.replace(/^\/+/, "")}`;
+    return `${R2_BASE_URL}/${path.replace(/^\/+/, "")}?t=${Date.now()}`;
   };
-
+  
   const fetchCategories = async () => {
     try {
       const res = await api.get("/category");
