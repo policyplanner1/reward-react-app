@@ -209,6 +209,18 @@ class ServiceOrderModel {
       so.bundle_id,
       so.created_at,
 
+      ca.address_type,
+      ca.address1,
+      ca.address2,
+      ca.city,
+      ca.zipcode,
+      ca.landmark,
+      ca.contact_name,
+      ca.contact_phone,
+
+      st.state_name,
+      c.country_name,
+
       s.name AS service_name,
       sv.variant_name,
       sv.title,
@@ -217,6 +229,15 @@ class ServiceOrderModel {
     FROM service_orders so
     JOIN services s ON s.id = so.service_id
     LEFT JOIN service_variants sv ON sv.id = so.variant_id
+    
+    LEFT JOIN customer_addresses ca
+      ON so.address_id = ca.address_id
+
+    LEFT JOIN states st
+      ON ca.state_id = st.state_id
+
+    LEFT JOIN countries c
+      ON ca.country_id = c.country_id
 
     WHERE so.parent_order_id = ? AND so.user_id = ?
     `,
@@ -242,6 +263,18 @@ class ServiceOrderModel {
       parent_order_id: parentId,
       status: finalStatus,
       created_at: rows[0].created_at,
+      address: {
+        address_type: rows[0].address_type,
+        address1: rows[0].address1,
+        address2: rows[0].address2,
+        city: rows[0].city,
+        zipcode: rows[0].zipcode,
+        landmark: rows[0].landmark,
+        contact_name: rows[0].contact_name,
+        contact_phone: rows[0].contact_phone,
+        state: rows[0].state_name,
+        country: rows[0].country_name,
+      },
       items: [],
       bundles: {},
       total_amount: 0,
