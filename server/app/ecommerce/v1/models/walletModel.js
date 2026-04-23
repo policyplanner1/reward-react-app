@@ -12,6 +12,11 @@ class WalletModel {
 
       const FIRST_LOGIN_REWARD = 3000;
 
+      const EXPIRY_MONTHS = parseInt(
+        process.env.WALLET_EXPIRY_MONTHS || "3",
+        10,
+      );
+
       // check wallet
       const [wallet] = await conn.execute(
         `SELECT wallet_id
@@ -33,11 +38,14 @@ class WalletModel {
         [userId, FIRST_LOGIN_REWARD],
       );
 
+      const expiryDate = new Date();
+      expiryDate.setMonth(expiryDate.getMonth() + EXPIRY_MONTHS);
+
       // insert transaction
       await conn.execute(
         `INSERT INTO wallet_transactions
-        (user_id, title, description, transaction_type, coins, category)
-        VALUES (?, ?, ?, ?, ?, ?)`,
+        (user_id, title, description, transaction_type, coins, category, expiry_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           userId,
           "Welcome Bonus",
@@ -45,6 +53,7 @@ class WalletModel {
           "credit",
           FIRST_LOGIN_REWARD,
           "reward",
+          expiryDate,
         ],
       );
 

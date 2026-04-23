@@ -98,10 +98,15 @@ class FitnessModel {
   }
 
   async addWalletTransaction(customerId, coins, activity) {
+    const EXPIRY_MONTHS = parseInt(process.env.WALLET_EXPIRY_MONTHS || "3", 10);
+
+    const expiryDate = new Date();
+    expiryDate.setMonth(expiryDate.getMonth() + EXPIRY_MONTHS);
+
     await db.execute(
-      `INSERT INTO wallet_transactions (user_id, coins, activity)
-       VALUES (?, ?, ?)`,
-      [customerId, coins, activity],
+      `INSERT INTO wallet_transactions (user_id, coins, activity, expiry_date)
+       VALUES (?, ?, ?, ?)`,
+      [customerId, coins, activity, expiryDate],
     );
 
     await db.execute(

@@ -282,10 +282,18 @@ class FitnessService {
           [totalReward, customerId],
         );
 
+        const EXPIRY_MONTHS = parseInt(
+          process.env.WALLET_EXPIRY_MONTHS || "3",
+          10,
+        );
+
+        const expiryDate = new Date();
+        expiryDate.setMonth(expiryDate.getMonth() + EXPIRY_MONTHS);
+
         await conn.execute(
-          `INSERT INTO wallet_transactions (user_id, coins, activity)
-         VALUES (?, ?, ?)`,
-          [customerId, totalReward, "Fitness Reward"],
+          `INSERT INTO wallet_transactions (user_id, coins, activity, expiry_date)
+         VALUES (?, ?, ?, ?)`,
+          [customerId, totalReward, "Fitness Reward", expiryDate],
         );
       }
 

@@ -815,18 +815,27 @@ class OrderModel {
           [order.reward_coins_used, order.user_id],
         );
 
+        const EXPIRY_MONTHS = parseInt(
+          process.env.WALLET_EXPIRY_MONTHS || "3",
+          10,
+        );
+
+        const expiryDate = new Date();
+        expiryDate.setMonth(expiryDate.getMonth() + EXPIRY_MONTHS);
+
         // 2. wallet transaction entry
         await conn.execute(
           `
           INSERT INTO wallet_transactions
-          (user_id, title, transaction_type, coins, category, reference_id)
-          VALUES (?, ?, 'credit', ?, 'refund', ?)
+          (user_id, title, transaction_type, coins, category, reference_id, expiry_date)
+          VALUES (?, ?, 'credit', ?, 'refund', ?, ?)
         `,
           [
             order.user_id,
             "Coins refunded for cancelled order",
             order.reward_coins_used,
             orderId,
+            expiryDate,
           ],
         );
 

@@ -627,6 +627,13 @@ class CheckoutModel {
       // =====================
       //  WALLET DEDUCTION
       // =====================
+      const EXPIRY_MONTHS = parseInt(
+        process.env.WALLET_EXPIRY_MONTHS || "3",
+        10,
+      );
+      const expiryDate = new Date();
+      expiryDate.setMonth(expiryDate.getMonth() + EXPIRY_MONTHS);
+
       if (useRewards && totalRedeemed > 0) {
         if (walletBalance < totalRedeemed) {
           throw new Error("INSUFFICIENT_REWARDS");
@@ -653,29 +660,30 @@ class CheckoutModel {
         );
       }
 
-      //   if (false && totalRewardEarn > 0) {
-      //     const [insertResult] = await conn.execute(
-      //       `INSERT IGNORE INTO wallet_transactions
-      //  (user_id, title, transaction_type, coins, category, reference_id, description)
-      //  VALUES (?, ?, 'credit', ?, 'order', ?, ?)`,
-      //       [
-      //         userId,
-      //         "Coins earned from order",
-      //         totalRewardEarn,
-      //         orderId,
-      //         `Earned ${totalRewardEarn} coins from order`,
-      //       ],
-      //     );
+      if (totalRewardEarn > 0) {
+        const [insertResult] = await conn.execute(
+          `INSERT IGNORE INTO wallet_transactions
+       (user_id, title, transaction_type, coins, category, reference_id, description, expiry_date)
+       VALUES (?, ?, 'credit', ?, 'order', ?, ?, ?)`,
+          [
+            userId,
+            "Coins earned from order",
+            totalRewardEarn,
+            orderId,
+            `Earned ${totalRewardEarn} coins from order`,
+            expiryDate,
+          ],
+        );
 
-      //     if (insertResult.affectedRows > 0) {
-      //       await conn.execute(
-      //         `UPDATE customer_wallet
-      //    SET balance = balance + ?
-      //    WHERE user_id = ?`,
-      //         [totalRewardEarn, userId],
-      //       );
-      //     }
-      //   }
+        if (insertResult.affectedRows > 0) {
+          await conn.execute(
+            `UPDATE customer_wallet
+         SET balance = balance + ?
+         WHERE user_id = ?`,
+            [totalRewardEarn, userId],
+          );
+        }
+      }
 
       // 11 Invoice generation
       await generateInvoices(orderId, conn);
@@ -972,6 +980,14 @@ class CheckoutModel {
       // ===============================
       // 9. WALLET DEBIT
       // ===============================
+      const EXPIRY_MONTHS = parseInt(
+        process.env.WALLET_EXPIRY_MONTHS || "3",
+        10,
+      );
+
+      const expiryDate = new Date();
+      expiryDate.setMonth(expiryDate.getMonth() + EXPIRY_MONTHS);
+
       if (useRewards && redeemable > 0) {
         await conn.execute(
           `UPDATE customer_wallet SET balance = balance - ? WHERE user_id = ?`,
@@ -998,14 +1014,15 @@ class CheckoutModel {
       if (rewardEarn > 0) {
         const [insertResult] = await conn.execute(
           `INSERT IGNORE INTO wallet_transactions
-         (user_id, title, transaction_type, coins, category, reference_id, description)
-         VALUES (?, ?, 'credit', ?, 'order', ?, ?)`,
+         (user_id, title, transaction_type, coins, category, reference_id, description,expiry_date)
+         VALUES (?, ?, 'credit', ?, 'order', ?, ?, ?)`,
           [
             userId,
             "Coins earned from order",
             rewardEarn,
             orderId,
             `Earned ${rewardEarn} coins`,
+            expiryDate,
           ],
         );
 
