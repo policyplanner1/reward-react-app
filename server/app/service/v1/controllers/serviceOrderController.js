@@ -272,6 +272,8 @@ class ServiceOrderController {
           [razorpay_payment_id, JSON.stringify(req.body), razorpay_order_id],
         );
 
+        // await InvoiceService.generateInvoice(parent_order_id);
+
         await db.commit();
       } catch (err) {
         await db.rollback();
