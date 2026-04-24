@@ -35,8 +35,11 @@ const pickFirstValue = (sources, keys) => {
 
 const normalizeFetchBillResponse = (providerResponse, requestPayload) => {
   const root =
-    providerResponse && typeof providerResponse === "object" ? providerResponse : {};
-  const levelOneData = root.data && typeof root.data === "object" ? root.data : null;
+    providerResponse && typeof providerResponse === "object"
+      ? providerResponse
+      : {};
+  const levelOneData =
+    root.data && typeof root.data === "object" ? root.data : null;
   const levelTwoData =
     levelOneData?.data && typeof levelOneData.data === "object"
       ? levelOneData.data
@@ -82,7 +85,8 @@ const normalizeFetchBillResponse = (providerResponse, requestPayload) => {
 
   return {
     customer: {
-      consumerNumber: requestPayload.consumer_number || requestPayload.utility_acc_no,
+      consumerNumber:
+        requestPayload.consumer_number || requestPayload.utility_acc_no,
       operatorId: requestPayload.operator_id,
       customerName,
     },
@@ -148,8 +152,12 @@ const toArray = (value) => {
   return Array.isArray(value) ? value : [value];
 };
 
-const normalizeParamName = (value) => String(value || "").trim().toLowerCase();
-const hasValue = (value) => value !== undefined && value !== null && String(value).trim() !== "";
+const normalizeParamName = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+const hasValue = (value) =>
+  value !== undefined && value !== null && String(value).trim() !== "";
 
 const getFirstFromKeys = (payload, keys) => {
   for (const key of keys) {
@@ -335,8 +343,11 @@ const isProviderValidationError = (providerResponse) => {
 
 const hasProviderBillData = (providerResponse) => {
   const root =
-    providerResponse && typeof providerResponse === "object" ? providerResponse : {};
-  const levelOneData = root.data && typeof root.data === "object" ? root.data : null;
+    providerResponse && typeof providerResponse === "object"
+      ? providerResponse
+      : {};
+  const levelOneData =
+    root.data && typeof root.data === "object" ? root.data : null;
   const levelTwoData =
     levelOneData?.data && typeof levelOneData.data === "object"
       ? levelOneData.data
@@ -519,13 +530,14 @@ class BillController {
   async fetchBill(req, res) {
     try {
       const { operator_id } = req.body || {};
-      const user = req.user;
+      const userId = req.user?.user_id;
+      // const userId = 1;
       const operatorId = String(operator_id || "").trim();
 
-      if (!user) {
+      if (!userId) {
         return res.status(401).json({
           success: false,
-          message: "Unauthorized",
+          message: "Unauthorized user",
         });
       }
 
@@ -557,7 +569,10 @@ class BillController {
         });
       }
 
-      const normalizedRequest = normalizeFetchBillRequest(req.body || {}, operatorRecord);
+      const normalizedRequest = normalizeFetchBillRequest(
+        req.body || {},
+        operatorRecord,
+      );
 
       if (normalizedRequest.missingRequired.length > 0) {
         return res.status(400).json({
@@ -578,10 +593,13 @@ class BillController {
         frontendPayload: normalizedRequest.frontendPayload,
         providerPayload: normalizedRequest.providerPayload,
         operatorInputParams: normalizedRequest.inputParams,
-        user_id: user._id || user.id,
+        user_id: userId,
       });
 
-      const data = await ekoService.fetchBill(normalizedRequest.providerPayload, req);
+      const data = await ekoService.fetchBill(
+        normalizedRequest.providerPayload,
+        req,
+      );
 
       console.info("[BBPS][fetch-bill] provider-response", {
         operator_id: operatorId,
@@ -589,7 +607,9 @@ class BillController {
       });
 
       if (isProviderValidationError(data)) {
-        const providerMessage = /no key for response/i.test(String(data?.message || ""))
+        const providerMessage = /no key for response/i.test(
+          String(data?.message || ""),
+        )
           ? "Provider returned an invalid fetch bill response. Please verify operator input mapping and EKO configuration."
           : data?.message || "Provider validation failed";
 
