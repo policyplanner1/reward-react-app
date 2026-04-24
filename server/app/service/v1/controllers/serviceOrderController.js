@@ -8,6 +8,7 @@ const { uploadToR2 } = require("../../../../utils/r2upload");
 const razorpay = require("../middlewares/razorpay");
 const db = require("../../../../config/database");
 const crypto = require("crypto");
+const InvoiceService = require("../../../../services/Invoice/service-invoice");
 
 // Utility
 const ALLOWED_STATUSES = [
@@ -272,7 +273,7 @@ class ServiceOrderController {
           [razorpay_payment_id, JSON.stringify(req.body), razorpay_order_id],
         );
 
-        // await InvoiceService.generateInvoice(parent_order_id);
+        await InvoiceService.generateInvoice(parent_order_id);
 
         await db.commit();
       } catch (err) {
@@ -385,6 +386,49 @@ class ServiceOrderController {
       res.status(500).json({
         success: false,
         message: err.message,
+      });
+    }
+  }
+
+  // invoice Details
+  async getInvoiceDetails(req, res) {
+    try {
+      // const userId = req.user?.user_id;
+      const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { parentId } = req.params;
+
+      const [[invoice]] = await db.execute(
+        `SELECT * FROM service_invoices WHERE parent_order_id = ?`,
+        [parentId],
+      );
+
+      if (!invoice) {
+        return res.status(404).json({
+          success: false,
+          message: "Invoice not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          ...invoice,
+          url: `/uploads/invoices/${invoice.invoice_url}`,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        success: false,
+        message: error.message,
       });
     }
   }
