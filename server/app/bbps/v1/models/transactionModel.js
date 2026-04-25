@@ -77,6 +77,14 @@ class TransactionModel {
     return rows[0];
   }
 
+  async getByIdForUpdate(id, conn) {
+    const [rows] = await conn.execute(
+      `SELECT * FROM bbps_transactions WHERE id=? FOR UPDATE`,
+      [id],
+    );
+    return rows[0];
+  }
+
   // Get transaction by status
   async getByStatus(status) {
     const [rows] = await db.execute(

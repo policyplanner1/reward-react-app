@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const TransactionModel = require("../../app/bbps/v1/models/transactionModel");
 const ekoService = require("../../app/bbps/v1/services/eko_service");
+const db = require("../../config/database");
 
 cron.schedule("*/5 * * * *", async () => {
   console.log("🔁 BBPS retry cron running...");
@@ -8,21 +9,40 @@ cron.schedule("*/5 * * * *", async () => {
   const failedTxns = await TransactionModel.getRetryable();
 
   for (const txn of failedTxns) {
+    const conn = await db.getConnection();
+
     try {
+      await conn.beginTransaction();
+
+      const freshTxn = await TransactionModel.getByIdForUpdate(txn.id, conn);
+
+      if (!freshTxn || freshTxn.bbps_status === "PAID") {
+        await conn.rollback();
+        conn.release();
+        continue;
+      }
+
       const res = await ekoService.payBill({
-        utility_acc_no: txn.utility_acc_no,
-        operator_id: txn.operator_id,
-        amount: txn.amount,
-        cycle_number: txn.cycle_number,
+        utility_acc_no: freshTxn.utility_acc_no,
+        operator_id: freshTxn.operator_id,
+        amount: freshTxn.amount,
+        cycle_number: freshTxn.cycle_number,
       });
 
-      await TransactionModel.updateStatus(txn.id, "PAID", res);
+      await TransactionModel.updateStatus(freshTxn.id, "PAID", res, conn);
 
-      console.log(`Retried success: ${txn.id}`);
+      await conn.commit();
+
+      console.log(`✅ Retried success: ${freshTxn.id}`);
     } catch (err) {
-      console.error(`Retry failed: ${txn.id}`);
+      await conn.rollback();
 
+      console.error(`❌ Retry failed: ${txn.id}`, err.message);
+
+      // increment retry OUTSIDE transaction
       await TransactionModel.incrementRetry(txn.id);
+    } finally {
+      conn.release();
     }
   }
 });
