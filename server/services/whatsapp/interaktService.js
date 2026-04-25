@@ -5,9 +5,9 @@ async function sendTemplateMessage({
   templateName,
   languageCode = "en",
   bodyValues = [],
-  buttonValues = null,     // ✅ add
-  headerValues = null,     // optional (future)
-  callbackData = null,     // optional (future)
+  buttonValues = null,     
+  headerValues = null,     
+  callbackData = null,     
 }) {
   const baseUrl = process.env.INTERAKT_BASE_URL;
   const apiKey = process.env.INTERAKT_API_KEY;

@@ -147,19 +147,19 @@ class authModel {
     return rows[0]?.is_verified === 1;
   }
 
-  async deleteOTP(email) {
-    await db.execute(
+  async deleteOTP(email,conn) {
+    await conn.execute(
       `DELETE FROM email_otps
      WHERE email = ?`,
       [email.toLowerCase()],
     );
   }
 
-  async createCustomer(data) {
+  async createCustomer(data,conn) {
     const { company_id, company_user_id, name, email, phone, password } = data;
     const normalizedPhone = phone ? phone : "";
 
-    const [result] = await db.execute(
+    const [result] = await conn.execute(
       `INSERT INTO customer
      (
        company_id,

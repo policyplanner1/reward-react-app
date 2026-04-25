@@ -1,4 +1,5 @@
 const AuthModel = require("../models/authModel");
+const db = require("../../../../config/database");
 const AddressModel = require("../models/addressModel");
 const WalletModel = require("../models/walletModel");
 const bcrypt = require("bcryptjs");
@@ -7,18 +8,17 @@ const crypto = require("crypto");
 const {
   sendVerificationMail,
 } = require("../../../../services/userVerification");
-
 const {
   sendNewDeviceLoginEmail,
 } = require("../../../../services/deviceNotification");
-
 const {
   accountCreationSuccessMail,
 } = require("../../../../services/accountCreation");
-
 const { rewardCreditMail } = require("../../../../services/firstTimeReward");
-
 const { sendOtpMail } = require("../../../../services/sendOtp");
+const {
+  enqueueWhatsApp,
+} = require("../../../../services/whatsapp/waEnqueueService");
 
 const ACCESS_EXPIRES = "15m";
 const REFRESH_EXPIRES_DAYS = 7;
@@ -186,6 +186,7 @@ class AuthController {
      SET PASSWORD
   ====================================================== */
   async setPassword(req, res) {
+    const conn = await db.getConnection();
     try {
       const { email, password } = req.body;
 
@@ -234,6 +235,8 @@ class AuthController {
 
       const hashedPassword = await bcrypt.hash(password.toString(), 12);
 
+      await conn.beginTransaction();
+
       await AuthModel.createCustomer({
         company_id: employee.company_id,
         company_user_id: employee.id,
@@ -241,26 +244,51 @@ class AuthController {
         email: employee.email,
         phone: employee.phone,
         password: hashedPassword,
+      },conn);
+
+      await AuthModel.deleteOTP(normalizedEmail, conn);
+
+      await conn.commit();
+
+      setImmediate(() => {
+        accountCreationSuccessMail({
+          name: employee.name,
+          email: employee.email,
+        }).catch((err) => {
+          console.error("Email send failed:", err);
+        });
       });
 
-      await AuthModel.deleteOTP(normalizedEmail);
-
-      await accountCreationSuccessMail({
-        name: employee.name,
-        email: employee.email,
-      });
+      //  NON-BLOCKING WHATSAPP
+      if (employee.phone) {
+        setImmediate(() => {
+          enqueueWhatsApp({
+            eventName: "account_creation",
+            ctx: {
+              phone: employee.phone,
+              company_id: employee.company_id ?? null,
+              customer_name: employee.name || "User",
+            },
+          }).catch((err) => {
+            console.error("WhatsApp enqueue failed:", err);
+          });
+        });
+      }
 
       return res.json({
         success: true,
         message: "Account activated successfully",
       });
     } catch (err) {
+      await conn.rollback();
       console.error("SET PASSWORD ERROR:", err);
 
       return res.status(500).json({
         success: false,
         message: "Server error",
       });
+    } finally {
+      conn.release();
     }
   }
 
