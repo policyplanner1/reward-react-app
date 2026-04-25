@@ -483,18 +483,6 @@ class BillController {
       const operatorData = await ekoService.getOperatorDetails(operatorId);
       const operatorRecord = extractOperatorRecord(operatorData);
 
-      console.info("[BBPS][check-customer-number][operator-details]", {
-        operator_id: operatorId,
-        hasData: Boolean(operatorData),
-        hasOperatorRecord: Boolean(operatorRecord),
-        fetchBillFlag:
-          operatorRecord?.fetchBill ??
-          operatorRecord?.fetch_bill ??
-          operatorRecord?.fetchbill ??
-          operatorRecord?.is_fetch_bill ??
-          operatorRecord?.supports_fetch_bill ??
-          null,
-      });
 
       if (!operatorRecord) {
         return res.status(400).json({
@@ -530,8 +518,8 @@ class BillController {
   async fetchBill(req, res) {
     try {
       const { operator_id } = req.body || {};
-      const userId = req.user?.user_id;
-      // const userId = 1;
+      // const userId = req.user?.user_id;
+      const userId = 1;
       const operatorId = String(operator_id || "").trim();
 
       if (!userId) {
