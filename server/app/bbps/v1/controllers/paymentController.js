@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const PaymentModel = require("../models/paymentModel");
 const TransactionModel = require("../models/transactionModel");
-const razorpayService = require("../services/razorpay_service");
+const razorpay = require("../services/razorpay_service");
 const ekoService = require("../services/eko_service");
 const db = require("../../../../config/database");
 
@@ -38,24 +38,32 @@ class PaymentController {
       });
 
       // 2. create razorpay order
-      const receipt = `txn_${transaction_id}`;
-      const order = await razorpayService.createOrder(amount, receipt);
-
-      // 3. save payment
-      const payment_id = await PaymentModel.create({
-        user_id: userId,
-        order_id: order.id,
-        amount,
-        status: "PENDING",
+      const razorpayOrder = await razorpay.orders.create({
+        amount: Math.round(amount * 100),
+        currency: "INR",
+        receipt: `bbps_${transaction_id}`,
+        notes: {
+          module: "bbps",
+          transaction_id,
+        },
       });
 
-      // 4. link transaction
-      await TransactionModel.linkPayment(transaction_id, payment_id);
+      await db.execute(
+        `INSERT INTO razorpay_orders
+      (razorpay_order_id, receipt, amount, status, module, ref_id)
+      VALUES (?, ?, ?, 'created', 'bbps', ?)`,
+        [razorpayOrder.id, `bbps_${transaction_id}`, amount, transaction_id],
+      );
 
       res.json({
-        order_id: order.id,
-        amount: order.amount,
-        currency: order.currency,
+        success: true,
+        data: {
+          key: process.env.RAZOR_API_KEY,
+          orderId: razorpayOrder.id,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          transaction_id,
+        },
       });
     } catch (err) {
       res.status(500).json({ error: err.message });
