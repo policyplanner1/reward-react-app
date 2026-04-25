@@ -9,8 +9,8 @@ class PaymentController {
   //   create Order
   async createOrder(req, res) {
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1;
+      const userId = req.user?.user_id;
+      // const userId = 1;
 
       if (!userId) {
         return res.status(401).json({
@@ -64,7 +64,11 @@ class PaymentController {
 
   //   verify Payment+Pay BBPS
   async verifyPayment(req, res) {
+    const conn = await db.getConnection();
+
     try {
+      await conn.beginTransaction();
+
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
         req.body;
 
@@ -75,13 +79,15 @@ class PaymentController {
         .digest("hex");
 
       if (generated !== razorpay_signature) {
+        await conn.rollback();
         return res.status(400).json({ error: "Invalid signature" });
       }
 
       // check if already processed
-      const existing = await PaymentModel.getByOrderId(razorpay_order_id);
+      const existing = await PaymentModel.getByOrderId(razorpay_order_id, conn);
 
       if (!existing) {
+        await conn.rollback();
         return res.status(404).json({
           success: false,
           message: "Payment not found",
@@ -89,20 +95,38 @@ class PaymentController {
       }
 
       if (existing.status === "SUCCESS") {
+        await conn.rollback();
         return res.json({ success: true, message: "Already processed" });
       }
 
       // update payment
-      await PaymentModel.updateStatus(razorpay_order_id, "SUCCESS", req.body);
+      await PaymentModel.updateStatus(
+        razorpay_order_id,
+        "SUCCESS",
+        req.body,
+        conn,
+      );
 
-      const payment = await PaymentModel.getByOrderId(razorpay_order_id);
+      const payment = await PaymentModel.getByOrderId(razorpay_order_id, conn);
 
-      const transaction = await TransactionModel.getByPaymentId(payment.id);
+      const transaction = await TransactionModel.getByPaymentId(
+        payment.id,
+        conn,
+      );
 
       if (!transaction) {
+        await conn.rollback();
         return res.status(404).json({
           success: false,
           message: "Transaction not found",
+        });
+      }
+
+      if (transaction.bbps_status === "PAID") {
+        await conn.rollback();
+        return res.json({
+          success: true,
+          message: "Already processed",
         });
       }
 
@@ -125,7 +149,10 @@ class PaymentController {
           transaction.id,
           "PAID",
           bbpsResponse,
+          conn,
         );
+
+        await conn.commit();
       } catch (err) {
         console.error("BBPS Error:", err);
 
@@ -134,7 +161,10 @@ class PaymentController {
           transaction.id,
           "FAILED_RETRY",
           err.message,
+          conn,
         );
+
+        await conn.commit();
 
         return res.status(500).json({
           success: false,
@@ -142,14 +172,17 @@ class PaymentController {
         });
       }
 
-      res.json({
+      return res.json({
         success: true,
         transaction_id: transaction.id,
         bbpsResponse,
       });
     } catch (err) {
+      await conn.rollback();
       console.error(err);
       res.status(500).json({ error: err.message });
+    } finally {
+      conn.release();
     }
   }
 

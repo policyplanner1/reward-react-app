@@ -17,18 +17,18 @@ class PaymentModel {
   }
 
   //   update payment status
-  async updateStatus(order_id, status, payload) {
+  async updateStatus(order_id, status, payload, conn) {
     const sql = `
     UPDATE bbps_payments 
     SET status=?, payment_response=? 
     WHERE order_id=?
   `;
-    await db.execute(sql, [status, JSON.stringify(payload), order_id]);
+    await conn.execute(sql, [status, JSON.stringify(payload), order_id]);
   }
 
   // get payment by order id
-  async getByOrderId(order_id) {
-    const [rows] = await db.execute(
+  async getByOrderId(order_id, conn) {
+    const [rows] = await conn.execute(
       `SELECT * FROM bbps_payments WHERE order_id=?`,
       [order_id],
     );

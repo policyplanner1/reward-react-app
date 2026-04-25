@@ -28,16 +28,16 @@ class TransactionModel {
   }
 
   //  update Transaction status
-  async updateStatus(transaction_id, status, response) {
-    await db.execute(
+  async updateStatus(transaction_id, status, response, conn) {
+    await conn.execute(
       `UPDATE bbps_transactions SET bbps_status=?, bbps_response=? WHERE id=?`,
       [status, JSON.stringify(response), transaction_id],
     );
   }
 
   // get transaction by id
-  async getByPaymentId(payment_id) {
-    const [rows] = await db.execute(
+  async getByPaymentId(payment_id, conn) {
+    const [rows] = await conn.execute(
       `SELECT * FROM bbps_transactions WHERE payment_id=?`,
       [payment_id],
     );
