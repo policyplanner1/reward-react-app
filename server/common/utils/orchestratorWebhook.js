@@ -2,6 +2,7 @@ const crypto = require("crypto");
 
 const ecommerceWebhook = require("./paymentWebHook");
 const serviceWebhook = require("../../app/service/v1/utils/webhook");
+const bbpsWebhook = require("../../app/bbps/v1/utils/webhook");
 
 async function handleWebhook(req, res) {
   try {
@@ -44,7 +45,9 @@ async function handleWebhook(req, res) {
         ? serviceWebhook
         : moduleType === "ecommerce"
           ? ecommerceWebhook
-          : null;
+          : moduleType === "bbps"
+            ? bbpsWebhook
+            : null;
 
     if (!handler) {
       console.warn("Unknown module in webhook", {
