@@ -188,7 +188,7 @@ class ServiceOrderController {
 
       await db.execute(
         `INSERT INTO razorpay_orders
-      (razorpay_order_id, receipt, amount, status, parent_order_id, module)
+      (razorpay_order_id, receipt, amount, status, ref_id, module)
       VALUES (?, ?, ?, 'created', ?, 'service')`,
         [razorpayOrder.id, parent_order_id, totalAmount, parent_order_id],
       );
@@ -234,7 +234,7 @@ class ServiceOrderController {
 
       //  GET parent_order_id FROM DB
       const [[rpOrder]] = await db.execute(
-        `SELECT parent_order_id FROM razorpay_orders 
+        `SELECT ref_id FROM razorpay_orders 
        WHERE razorpay_order_id = ?`,
         [razorpay_order_id],
       );
@@ -246,7 +246,7 @@ class ServiceOrderController {
         });
       }
 
-      const parent_order_id = rpOrder.parent_order_id;
+      const parent_order_id = rpOrder.ref_id;
 
       //  TRANSACTION
       await db.beginTransaction();
