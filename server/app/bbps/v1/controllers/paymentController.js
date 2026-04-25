@@ -83,46 +83,60 @@ class PaymentController {
       // verify signature
       const generated = crypto
         .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-        .update(razorpay_order_id + "|" + razorpay_payment_id)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
         .digest("hex");
 
-      if (generated !== razorpay_signature) {
+      const isValid = crypto.timingSafeEqual(
+        Buffer.from(generated),
+        Buffer.from(razorpay_signature),
+      );
+
+      if (!isValid) {
         await conn.rollback();
         return res.status(400).json({ error: "Invalid signature" });
       }
 
-      // check if already processed
-      const existing = await PaymentModel.getByOrderId(razorpay_order_id, conn);
+      //FETCH ORDER (LOCK)
+      const [[rpOrder]] = await conn.execute(
+        `SELECT * FROM razorpay_orders 
+       WHERE razorpay_order_id = ? 
+       FOR UPDATE`,
+        [razorpay_order_id],
+      );
 
-      if (!existing) {
+      if (!rpOrder) {
         await conn.rollback();
         return res.status(404).json({
           success: false,
-          message: "Payment not found",
+          message: "Razorpay order not found",
         });
       }
 
-      if (existing.status === "SUCCESS") {
+      // IDEMPOTENCY CHECK
+      if (rpOrder.status === "success") {
         await conn.rollback();
-        return res.json({ success: true, message: "Already processed" });
+        return res.json({
+          success: true,
+          message: "Already processed",
+        });
       }
 
       // update payment
-      await PaymentModel.updateStatus(
-        razorpay_order_id,
-        "SUCCESS",
-        req.body,
-        conn,
+      await conn.execute(
+        `UPDATE razorpay_orders
+       SET status = 'success',
+           razorpay_payment_id = ?,
+           raw_response = ?
+       WHERE razorpay_order_id = ?`,
+        [razorpay_payment_id, JSON.stringify(req.body), razorpay_order_id],
       );
 
-      const payment = await PaymentModel.getByOrderId(razorpay_order_id, conn);
+      // GET TRANSACTION (via ref_id)
+      const transaction_id = rpOrder.ref_id;
 
-      const transaction = await TransactionModel.getByPaymentId(
-        payment.id,
-        conn,
-      );
+      const txn = await TransactionModel.getByIdForUpdate(transaction_id, conn);
 
-      if (!transaction) {
+      if (!txn) {
         await conn.rollback();
         return res.status(404).json({
           success: false,
@@ -130,7 +144,8 @@ class PaymentController {
         });
       }
 
-      if (transaction.bbps_status === "PAID") {
+      // PREVENT DOUBLE BBPS
+      if (txn.bbps_status === "PAID") {
         await conn.rollback();
         return res.json({
           success: true,
@@ -144,29 +159,30 @@ class PaymentController {
       try {
         bbpsResponse = await ekoService.payBill(
           {
-            utility_acc_no: transaction.utility_acc_no,
-            operator_id: transaction.operator_id,
-            amount: transaction.amount,
-            cycle_number: transaction.cycle_number,
+            utility_acc_no: txn.utility_acc_no,
+            operator_id: txn.operator_id,
+            amount: txn.amount,
+            cycle_number: txn.cycle_number,
           },
           req,
         );
 
         //  Success → mark PAID
-        await TransactionModel.updateStatus(
-          transaction.id,
-          "PAID",
-          bbpsResponse,
-          conn,
-        );
+        await TransactionModel.updateStatus(txn.id, "PAID", bbpsResponse, conn);
 
         await conn.commit();
+
+        return res.json({
+          success: true,
+          transaction_id: txn.id,
+          bbpsResponse,
+        });
       } catch (err) {
         console.error("BBPS Error:", err);
 
         //  MARK FOR RETRY (NOT FINAL FAILURE)
         await TransactionModel.updateStatus(
-          transaction.id,
+          txn.id,
           "FAILED_RETRY",
           err.message,
           conn,
@@ -176,19 +192,17 @@ class PaymentController {
 
         return res.status(500).json({
           success: false,
-          message: "Payment processing failed, will retry automatically",
+          message: "Payment successful, bill will be retried automatically",
         });
       }
-
-      return res.json({
-        success: true,
-        transaction_id: transaction.id,
-        bbpsResponse,
-      });
     } catch (err) {
       await conn.rollback();
-      console.error(err);
-      res.status(500).json({ error: err.message });
+      console.error("verifyPayment error:", err);
+
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     } finally {
       conn.release();
     }
