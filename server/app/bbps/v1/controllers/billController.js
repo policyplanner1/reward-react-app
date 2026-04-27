@@ -1,4 +1,5 @@
 const ekoService = require("../services/eko_service");
+const TransactionModel = require("../models/transactionModel");
 
 /**
  * @typedef {Object} FrontendFetchBillPayload
@@ -483,7 +484,6 @@ class BillController {
       const operatorData = await ekoService.getOperatorDetails(operatorId);
       const operatorRecord = extractOperatorRecord(operatorData);
 
-
       if (!operatorRecord) {
         return res.status(400).json({
           success: false,
@@ -647,6 +647,94 @@ class BillController {
         success: false,
         message,
         ...(safeDetails ? { data: safeDetails } : {}),
+      });
+    }
+  }
+
+  async checkStatus(req, res) {
+    try {
+      const { transaction_id } = req.params;
+
+      if (!transaction_id) {
+        return res.status(400).json({
+          success: false,
+          message: "transaction_id required",
+        });
+      }
+
+      // =========================
+      // 1. GET TRANSACTION
+      // =========================
+      const txn = await TransactionModel.getById(transaction_id);
+
+      if (!txn) {
+        return res.status(404).json({
+          success: false,
+          message: "Transaction not found",
+        });
+      }
+
+      // =========================
+      // 2. GET PAYMENT (razorpay_orders)
+      // =========================
+      const [rpOrderRows] = await db.execute(
+        `SELECT razorpay_order_id, razorpay_payment_id, status 
+       FROM razorpay_orders 
+       WHERE ref_id = ? AND module='bbps'`,
+        [transaction_id],
+      );
+
+      const rpOrder = rpOrderRows[0] || null;
+
+      // =========================
+      // 3. MAP STATUS FOR FRONTEND
+      // =========================
+      let finalStatus = "PENDING";
+
+      if (txn.bbps_status === "PAID") {
+        finalStatus = "SUCCESS";
+      } else if (txn.bbps_status === "FAILED_FINAL") {
+        finalStatus = "FAILED";
+      } else if (txn.bbps_status === "FAILED_RETRY") {
+        finalStatus = "RETRYING";
+      } else if (txn.bbps_status === "INIT") {
+        finalStatus = "PENDING";
+      }
+
+      // =========================
+      // 4. RESPONSE
+      // =========================
+      return res.json({
+        success: true,
+        data: {
+          transaction_id: txn.id,
+          operator_id: txn.operator_id,
+          amount: txn.amount,
+
+          bbps_status: txn.bbps_status,
+          payment_status: rpOrder?.status || "unknown",
+
+          final_status: finalStatus,
+
+          retry_count: txn.retry_count,
+          max_retry: txn.max_retry,
+
+          razorpay: rpOrder
+            ? {
+                order_id: rpOrder.razorpay_order_id,
+                payment_id: rpOrder.razorpay_payment_id,
+              }
+            : null,
+
+          response: txn.bbps_response ? JSON.parse(txn.bbps_response) : null,
+        },
+      });
+    } catch (err) {
+      console.error("checkStatus error:", err);
+
+      return res.status(500).json({
+        success: false,
+        message: err.message,
       });
     }
   }
