@@ -5,7 +5,12 @@ import logoImage from "../assets/logo.svg";
 // import { User, Lock, Facebook, Twitter, Chrome } from "lucide-react";
 import { User, Lock, Eye, EyeOff } from "lucide-react";
 
-type Role = "vendor" | "vendor_manager" | "admin" | "warehouse_manager";
+type Role =
+  | "vendor"
+  | "vendor_manager"
+  | "admin"
+  | "warehouse_manager"
+  | "hr";
 
 interface LoginForm {
   email: string;
@@ -13,10 +18,18 @@ interface LoginForm {
   role: Role;
 }
 
+type LocationState = {
+  message?: string;
+};
+
+/* ================= COMPONENT ================= */
+
 export default function LoginPage() {
   const { login, loading, error: authError } = useAuth();
+
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>("");
+
   const [formData, setFormData] = useState<LoginForm>({
     email: "",
     password: "",
@@ -24,38 +37,50 @@ export default function LoginPage() {
   });
 
   const location = useLocation();
-  const successMessage = location.state?.message;
+  const state = location.state as LocationState | null;
+  const successMessage = state?.message;
+
+  /* ================= HANDLERS ================= */
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     setError("");
 
+    const { name, value } = e.target;
+
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value as Role | string,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
     try {
-      await login(formData.email.trim(), formData.password, formData.role);
-    } catch (err: unknown) {
+      await login(
+        formData.email.trim(),
+        formData.password,
+        formData.role
+      );
+    } catch (err) {
       setError("Login failed. Please check your credentials.");
       console.error(err);
     }
   };
 
+
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-tr from-[#38bdf8] via-[#a855f7] to-[#ec4899] font-sans px-4">
-      <div className="w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        <div className="relative hidden md:block bg-white">
+      <div className="grid w-full max-w-5xl grid-cols-1 overflow-hidden bg-white shadow-2xl rounded-3xl md:grid-cols-2">
+        <div className="relative hidden bg-white md:block">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_20%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(900px_circle_at_85%_30%,rgba(168,85,247,0.10),transparent_55%),radial-gradient(900px_circle_at_50%_110%,rgba(236,72,153,0.08),transparent_55%)]" />
           <div className="pointer-events-none absolute inset-0 opacity-[0.08] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:18px_18px]" />
 
-          <div className="relative h-full w-full flex items-center justify-center p-10">
+          <div className="relative flex items-center justify-center w-full h-full p-10">
             <img
               src={logoImage}
               alt="Login Illustration"
@@ -77,7 +102,7 @@ export default function LoginPage() {
           <div className="pointer-events-none absolute top-0 right-[-10px] h-full w-[22px] bg-gradient-to-l from-[#852BAF]/10 via-[#FC3F78]/5 to-transparent blur-xl" />
         </div>
 
-        <div className="w-full bg-white py-5 px-10 relative">
+        <div className="relative w-full px-10 py-5 bg-white">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_0%,rgba(133,43,175,0.05),transparent_45%)]" />
 
           {/* Header */}
@@ -85,18 +110,18 @@ export default function LoginPage() {
             Hello!
           </h2>
 
-          <p className="mt-1 text-xl text-center text-gray-500 mb-8">
+          <p className="mt-1 mb-8 text-xl text-center text-gray-500">
             Sign in to your Account
           </p>
 
           {successMessage && (
-            <div className="mb-4 p-3 text-green-700 bg-green-50 border border-green-200 rounded-xl">
+            <div className="p-3 mb-4 text-green-700 border border-green-200 bg-green-50 rounded-xl">
               {successMessage}
             </div>
           )}
 
           {(error || authError) && (
-            <div className="relative mb-4 p-3 text-sm text-red-700 rounded-xl bg-red-50 border border-red-200 shadow-sm">
+            <div className="relative p-3 mb-4 text-sm text-red-700 border border-red-200 shadow-sm rounded-xl bg-red-50">
               {error || authError}
             </div>
           )}
@@ -106,7 +131,7 @@ export default function LoginPage() {
             <div className="space-y-6">
               {/* Email Field */}
               <div className="relative">
-                <label className="text-sm font-semibold text-slate-700 tracking-wide">
+                <label className="text-sm font-semibold tracking-wide text-slate-700">
                   Email
                 </label>
 
@@ -124,7 +149,7 @@ export default function LoginPage() {
                     name="email"
                     type="email"
                     required
-                    className="w-full bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
+                    className="w-full text-gray-800 bg-transparent outline-none placeholder:text-gray-400"
                     placeholder="name@company.com"
                     value={formData.email}
                     onChange={(e) =>
@@ -140,7 +165,7 @@ export default function LoginPage() {
 
               {/* Password Field */}
               <div className="relative">
-                <label className="text-sm font-semibold text-slate-700 tracking-wide">
+                <label className="text-sm font-semibold tracking-wide text-slate-700">
                   Password
                 </label>
 
@@ -158,7 +183,7 @@ export default function LoginPage() {
                     name="password"
                     type={showPassword ? "text" : "password"}
                     required
-                    className="w-full bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
+                    className="w-full text-gray-800 bg-transparent outline-none placeholder:text-gray-400"
                     placeholder="********"
                     value={formData.password}
                     onChange={handleChange}
@@ -168,7 +193,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer"
+                    className="text-gray-400 cursor-pointer hover:text-gray-600 focus:outline-none"
                   >
                     {showPassword ? (
                       <EyeOff className="w-5 h-5" />
@@ -226,7 +251,7 @@ export default function LoginPage() {
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span className="w-4 h-4 border-2 border-white rounded-full animate-spin border-t-transparent" />
                   Logging in...
                 </span>
               ) : (
@@ -236,7 +261,7 @@ export default function LoginPage() {
           </form>
 
           <div className="relative mt-5 text-center">
-            <p className="mt-5 text-md text-center text-gray-700">
+            <p className="mt-5 text-center text-gray-700 text-md">
               Don&apos;t have an account?{" "}
               <Link
                 to="/register"

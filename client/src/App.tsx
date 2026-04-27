@@ -15,10 +15,14 @@ import VerifyOtpPage from "./auth/VerifyOtpPage";
 import VendorLayout from "./layouts/VendorLayout";
 import ManagerLayout from "./layouts/ManagerLayout";
 import AdminLayout from "./layouts/AdminLayout";
+import HrLayout from "./layouts/HrLayout";
 
 /* Dashboards */
 import VendorDashboard from "./pages/vendor/Dashboard";
 import ManagerDashboard from "./pages/vendor_manager/Dashboard";
+import HrDashboard from "./pages/hr/Dashboard";
+import EmployeeOnboarding from "./components/feature/hr/onboarding/EmployeeOnboarding.tsx";
+import EmployeeList from "./components/feature/hr/EmployeeList.tsx";
 
 import ProductApprovalList from "./components/feature/manager/product/ProductApprovalList";
 import CategoryManagement from "./components/feature/manager/category/Categories";
@@ -68,6 +72,7 @@ import FlashSaleList from "./components/feature/manager/flashSale/FlashSaleList"
 import FlashSaleVariant from "./components/feature/manager/flashSale/FlashSaleVariant";
 import CancellationRequest from "./components/feature/manager/order/CancellationRequest";
 import CancellationDetail from "./components/feature/manager/order/CancellationDetail";
+import ManageRewards from "./components/feature/hr/ManageRewards.tsx";
 
 export default function App() {
   // const { user, loading } = useAuth();
@@ -80,7 +85,7 @@ export default function App() {
   if (initializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-[#38bdf8] via-[#a855f7] to-[#ec4899]">
-        <div className="bg-white px-8 py-6 rounded-2xl shadow-xl text-center">
+        <div className="px-8 py-6 text-center bg-white shadow-xl rounded-2xl">
           <div className="animate-spin h-8 w-8 mx-auto mb-3 rounded-full border-4 border-[#852BAF] border-t-transparent" />
           <p className="text-sm font-semibold text-gray-600">
             Preparing application...
@@ -269,6 +274,16 @@ export default function App() {
         <Route path={routes.admin.productView} element={<AdminProductViewPage />} />
         <Route path={routes.admin.vendorReview} element={<AdminVendorApprovalForm />} />
         <Route path={routes.admin.services} element={<AdminServicesPage />} />
+      </Route>
+
+      {/* ========== HR ========== */}
+      <Route element={<HrLayout />}>
+        <Route path={routes.hr.dashboard} element={<HrDashboard />} />
+        <Route path={routes.hr.onboarding} element={<EmployeeOnboarding />} />
+        <Route path={routes.hr.employees} element={<EmployeeList />} />
+        <Route path={routes.hr.changePassword} element={<ChangePasswordPage />} />
+          <Route path={routes.hr.rewards} element={<ManageRewards />} />
+
       </Route>
 
       {/* ========== FALLBACK ========== */}

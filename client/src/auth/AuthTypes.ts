@@ -2,7 +2,7 @@ export interface User {
   name: string;
   user_id: number;
   email: string;
-  role: "vendor" | "vendor_manager" | "admin" | "warehouse_manager";
+  role: "vendor" | "vendor_manager" | "admin" | "warehouse_manager" | "hr";
   phone?: string;
 }
 

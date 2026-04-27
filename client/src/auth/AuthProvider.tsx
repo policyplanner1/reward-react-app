@@ -30,24 +30,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setInitializing(false);
   }, []);
 
-  const resolveRoute = (role: User["role"]) =>
-    role === "vendor"
-      ? "vendor"
-      : role === "vendor_manager"
-        ? "manager"
-        : role === "warehouse_manager"
-          ? "warehouse_manager"
-          : "admin";
+  const resolveRoute = (role: User["role"]) => {
+  switch (role) {
+    case "vendor":
+      return "vendor";
 
-  const resolveDashboard = (role: User["role"]) =>
-    role === "vendor"
-      ? "/vendor/dashboard"
-      : role === "vendor_manager"
-        ? "/manager/dashboard"
-        : role === "warehouse_manager"
-          ? "/warehouse/dashboard"
-          : "/admin/dashboard";
+    case "vendor_manager":
+      return "manager";
 
+    case "warehouse_manager":
+      return "warehouse_manager";
+
+    case "hr":
+      return "hr";
+
+    case "admin":
+      return "admin";
+
+    default:
+      return "admin";
+  }
+};
+
+  const resolveDashboard = (role: User["role"]) => {
+  switch (role) {
+    case "vendor":
+      return "/vendor/dashboard";
+
+    case "vendor_manager":
+      return "/manager/dashboard";
+
+    case "warehouse_manager":
+      return "/warehouse/dashboard";
+
+    case "hr":
+      return "/hr/dashboard";
+
+    case "admin":
+      return "/admin/dashboard";
+
+    default:
+      return "/";
+  }
+};
   const login = async (email: string, password: string, role: User["role"]) => {
     try {
       setLoading(true);

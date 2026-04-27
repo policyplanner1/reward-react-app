@@ -58,4 +58,12 @@ export const routes = {
     vendorReview: "/admin/vendor-review/:id",
   
   },
+  hr: {
+    dashboard: "/hr/dashboard",
+    changePassword: "/hr/change-password",
+    onboarding: "/hr/onboarding",
+    employees: "/hr/employees",
+      rewards: "/hr/rewards", // ✅ ADD THIS
+
+  },
 };
