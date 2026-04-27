@@ -1,5 +1,4 @@
 const crypto = require("crypto");
-const PaymentModel = require("../models/paymentModel");
 const TransactionModel = require("../models/transactionModel");
 const razorpay = require("../services/razorpay_service");
 const ekoService = require("../services/eko_service");

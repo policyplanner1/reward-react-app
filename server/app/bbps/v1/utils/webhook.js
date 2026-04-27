@@ -17,6 +17,14 @@ async function processEvent(req) {
 
       const txn = await TransactionModel.getById(transactionId);
 
+      if (!txn) return;
+
+      //  DOUBLE EXECUTION PROTECTION
+      if (txn.bbps_status === "PAID") {
+        console.log("Skipping already paid txn:", txn.id);
+        return;
+      }
+
       try {
         const res = await ekoService.payBill({
           utility_acc_no: txn.utility_acc_no,
@@ -53,20 +61,14 @@ async function processEvent(req) {
       const parentOrderId = rpOrder[0].ref_id;
 
       await db.execute(
-        `UPDATE service_orders
-         SET payment_status = 'failed'
-         WHERE parent_order_id = ?
-         AND payment_status != 'failed'`,
-        [parentOrderId],
-      );
-
-      await db.execute(
         `UPDATE razorpay_orders
-         SET status = 'failed',
-             raw_response = ?
-         WHERE razorpay_order_id = ?`,
+          SET status='failed',
+              raw_response=?
+          WHERE razorpay_order_id=?`,
         [JSON.stringify(body), razorpayOrderId],
       );
+
+      await TransactionModel.updateStatus(txn.id, "FAILED_RETRY", body);
     }
   } catch (err) {
     console.error("Webhook error:", err);

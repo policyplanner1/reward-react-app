@@ -20,15 +20,15 @@ class TransactionModel {
   }
 
   //   Link payment reference number to transaction
-  async linkPayment(transaction_id, payment_id) {
-    await db.execute(`UPDATE bbps_transactions SET payment_id=? WHERE id=?`, [
-      payment_id,
-      transaction_id,
-    ]);
-  }
+  // async linkPayment(transaction_id, payment_id) {
+  //   await db.execute(`UPDATE bbps_transactions SET payment_id=? WHERE id=?`, [
+  //     payment_id,
+  //     transaction_id,
+  //   ]);
+  // }
 
   //  update Transaction status
-  async updateStatus(transaction_id, status, response, conn) {
+  async updateStatus(transaction_id, status, response, conn=db) {
     await conn.execute(
       `UPDATE bbps_transactions SET bbps_status=?, bbps_response=? WHERE id=?`,
       [status, JSON.stringify(response), transaction_id],

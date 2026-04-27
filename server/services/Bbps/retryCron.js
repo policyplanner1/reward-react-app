@@ -10,15 +10,15 @@ cron.schedule("*/5 * * * *", async () => {
 
   for (const txn of failedTxns) {
     const conn = await db.getConnection();
+    let freshTxn;
 
     try {
       await conn.beginTransaction();
 
-      const freshTxn = await TransactionModel.getByIdForUpdate(txn.id, conn);
+      freshTxn = await TransactionModel.getByIdForUpdate(txn.id, conn);
 
       if (!freshTxn || freshTxn.bbps_status === "PAID") {
         await conn.rollback();
-        conn.release();
         continue;
       }
 
@@ -40,7 +40,15 @@ cron.schedule("*/5 * * * *", async () => {
       console.error(`❌ Retry failed: ${txn.id}`, err.message);
 
       // increment retry OUTSIDE transaction
-      await TransactionModel.incrementRetry(txn.id);
+      if (freshTxn && freshTxn.retry_count + 1 >= freshTxn.max_retry) {
+        await TransactionModel.updateStatus(
+          txn.id,
+          "FAILED_FINAL",
+          err.message,
+        );
+      } else {
+        await TransactionModel.incrementRetry(txn.id);
+      }
     } finally {
       conn.release();
     }
