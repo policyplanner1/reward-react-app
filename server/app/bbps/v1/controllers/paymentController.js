@@ -243,11 +243,11 @@ class PaymentController {
           );
         } else {
           //  RECHARGE FLOW
-          result = await rechargeService.recharge({
-            mobile: txn.utility_acc_no.trim(),
-            operator_id: txn.operator_id,
-            amount: txn.amount,
-          });
+          // result = await rechargeService.recharge({
+          //   mobile: txn.utility_acc_no.trim(),
+          //   operator_id: txn.operator_id,
+          //   amount: txn.amount,
+          // });
         }
         //  Success → mark PAID
         await TransactionModel.updateStatus(txn.id, "PAID", result, conn);
