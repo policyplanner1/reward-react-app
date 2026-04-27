@@ -40,6 +40,17 @@ class PaymentController {
         });
       }
 
+      // Operator Details
+      const operator = await ekoService.getOperatorDetails(operator_id);
+
+      if (!operator) {
+        await conn.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Invalid operator",
+        });
+      }
+
       // 1. create transaction
       const transaction_id = await TransactionModel.create(
         {
@@ -217,25 +228,36 @@ class PaymentController {
       });
 
       try {
-        const bbpsResponse = await ekoService.payBill(
-          {
-            utility_acc_no: txn.utility_acc_no.trim(),
+        let result;
+
+        if (txn.fetch_bill === 1) {
+          //  BBPS FLOW
+          result = await ekoService.payBill(
+            {
+              utility_acc_no: txn.utility_acc_no.trim(),
+              operator_id: txn.operator_id,
+              amount: txn.amount,
+              cycle_number: txn.cycle_number,
+            },
+            req,
+          );
+        } else {
+          //  RECHARGE FLOW
+          result = await rechargeService.recharge({
+            mobile: txn.utility_acc_no.trim(),
             operator_id: txn.operator_id,
             amount: txn.amount,
-            cycle_number: txn.cycle_number,
-          },
-          req,
-        );
-
+          });
+        }
         //  Success → mark PAID
-        await TransactionModel.updateStatus(txn.id, "PAID", bbpsResponse, conn);
+        await TransactionModel.updateStatus(txn.id, "PAID", result, conn);
 
         await conn.commit();
 
         return res.json({
           success: true,
           transaction_id: txn.id,
-          bbpsResponse,
+          result,
         });
       } catch (err) {
         console.error("BBPS Error:", err);
