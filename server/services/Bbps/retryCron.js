@@ -47,7 +47,7 @@ cron.schedule("*/5 * * * *", async () => {
           err.message,
         );
       } else {
-        await TransactionModel.incrementRetry(txn.id);
+        await TransactionModel.incrementRetry(txn.id, conn);
       }
     } finally {
       conn.release();
