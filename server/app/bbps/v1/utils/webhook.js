@@ -3,6 +3,7 @@ const TransactionModel = require("../models/transactionModel");
 const ekoService = require("../services/eko_service");
 
 async function processEvent(req) {
+  const conn = await db.getConnection();
   try {
     const body = req.parsedBody;
     const event = body.event;
@@ -11,11 +12,12 @@ async function processEvent(req) {
     //  PAYMENT SUCCESS
     // =========================
     if (event === "payment.captured") {
-      const payment = body.payload.payment.entity;
+      await conn.beginTransaction();
 
+      const payment = body.payload.payment.entity;
       const transactionId = payment.notes.transaction_id;
 
-      const txn = await TransactionModel.getById(transactionId);
+      const txn = await TransactionModel.getByIdForUpdate(transactionId, conn);
 
       if (!txn) return;
 
@@ -33,13 +35,18 @@ async function processEvent(req) {
           cycle_number: txn.cycle_number,
         });
 
-        await TransactionModel.updateStatus(txn.id, "PAID", res);
+        await TransactionModel.updateStatus(txn.id, "PAID", res, conn);
+
+        await conn.commit();
       } catch (err) {
         await TransactionModel.updateStatus(
           txn.id,
           "FAILED_RETRY",
           err.message,
+          conn,
         );
+
+        await conn.commit();
       }
     }
 
@@ -47,18 +54,34 @@ async function processEvent(req) {
     //  PAYMENT FAILED
     // =========================
     if (event === "payment.failed") {
-      const payment = body.payload.payment.entity;
+      await conn.beginTransaction();
 
+      const payment = body.payload.payment.entity;
       const razorpayOrderId = payment.order_id;
 
-      const [rpOrder] = await db.execute(
-        `SELECT ref_id FROM razorpay_orders WHERE razorpay_order_id = ?`,
+      const [[rpOrder]] = await conn.execute(
+        `SELECT ref_id FROM razorpay_orders 
+         WHERE razorpay_order_id=? 
+         FOR UPDATE`,
         [razorpayOrderId],
       );
 
-      if (!rpOrder.length) return;
+      if (!rpOrder) {
+        await conn.rollback();
+        return;
+      }
 
-      const parentOrderId = rpOrder[0].ref_id;
+      const txn = await TransactionModel.getByIdForUpdate(rpOrder.ref_id, conn);
+
+      if (!txn) {
+        await conn.rollback();
+        return;
+      }
+
+      if (txn.bbps_status === "PAID") {
+        await conn.rollback();
+        return;
+      }
 
       await db.execute(
         `UPDATE razorpay_orders
@@ -68,11 +91,16 @@ async function processEvent(req) {
         [JSON.stringify(body), razorpayOrderId],
       );
 
-      await TransactionModel.updateStatus(txn.id, "FAILED_RETRY", body);
+      await TransactionModel.updateStatus(txn.id, "FAILED_RETRY", body, conn);
+
+      await conn.commit();
     }
   } catch (err) {
+    await conn.rollback();
     console.error("Webhook error:", err);
     throw err;
+  } finally {
+    conn.release();
   }
 }
 
