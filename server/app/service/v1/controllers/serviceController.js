@@ -66,10 +66,15 @@ class ServiceController {
   // Find all services
   async getServices(req, res) {
     try {
-      const { category_id } = req.query;
+      const { category_id, search, page = 1, limit = 10 } = req.query;
+
+      const offset = (page - 1) * limit;
 
       const services = await ServiceModel.findAll({
         category_id,
+        search,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
       });
 
       res.json({
@@ -324,6 +329,49 @@ class ServiceController {
       });
     } catch (err) {
       console.log(err.message);
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // advertisement pov
+  async getHomeServices(req, res) {
+    try {
+      const sections = await ServiceModel.getHomeSections();
+
+      res.json({
+        success: true,
+        data: sections,
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  async getRelatedServices(req, res) {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "Service ID required",
+        });
+      }
+
+      const services = await ServiceModel.getRelatedServices(id);
+
+      res.json({
+        success: true,
+        data: services,
+      });
+    } catch (err) {
+      console.log(err);
       res.status(500).json({
         success: false,
         message: err.message,

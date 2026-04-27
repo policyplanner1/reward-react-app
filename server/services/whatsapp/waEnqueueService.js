@@ -74,7 +74,7 @@ async function enqueueWhatsApp({ eventName, ctx }) {
       AND (company_id = ? OR company_id IS NULL)
     ORDER BY (company_id IS NULL) ASC, priority ASC
     `,
-    [eventName, ctx.company_id ?? null]
+    [eventName, ctx.company_id ?? null],
   );
 
   let picked = null;
@@ -98,7 +98,7 @@ async function enqueueWhatsApp({ eventName, ctx }) {
     ORDER BY (company_id IS NULL) ASC
     LIMIT 1
     `,
-    [picked.template_key, ctx.company_id ?? null]
+    [picked.template_key, ctx.company_id ?? null],
   );
 
   if (!tplRows.length) return { ok: false, reason: "TEMPLATE_NOT_FOUND" };
@@ -108,7 +108,7 @@ async function enqueueWhatsApp({ eventName, ctx }) {
   // 3) Build Body Values (exact placeholders {{1}}, {{2}}...)
   const bodyValues = buildBodyValues(picked.template_key, ctx);
 
-  // ✅ Validate body_values_count to avoid Interakt 400
+  //  Validate body_values_count to avoid Interakt 400
   const expectedCount = Number(tpl.body_values_count ?? 0);
   if (expectedCount && bodyValues.length !== expectedCount) {
     return {
@@ -117,11 +117,11 @@ async function enqueueWhatsApp({ eventName, ctx }) {
       template_key: picked.template_key,
       expected: expectedCount,
       got: bodyValues.length,
-      bodyValues
+      bodyValues,
     };
   }
 
-  // ✅ Build Button Values from template button_config (for authentication/button templates)
+  //  Build Button Values from template button_config (for authentication/button templates)
   const buttonValues = buildButtonValuesFromConfig(tpl.button_config, ctx);
 
   // 4) Create Unique Key for Idempotency (prevents double send)
@@ -130,7 +130,7 @@ async function enqueueWhatsApp({ eventName, ctx }) {
   }|${phone_full}|${ctx.order_id || Date.now()}`;
 
   try {
-    // ✅ Store both body_values and button_values in queue
+    //  Store both body_values and button_values in queue
     await pool.query(
       `
       INSERT INTO wa_queue
@@ -146,15 +146,15 @@ async function enqueueWhatsApp({ eventName, ctx }) {
         JSON.stringify(bodyValues),
         buttonValues ? JSON.stringify(buttonValues) : null,
         ctx.order_id || null,
-        idem_key
-      ]
+        idem_key,
+      ],
     );
 
     return {
       ok: true,
       queued: true,
       template_key: picked.template_key,
-      has_buttons: !!buttonValues
+      has_buttons: !!buttonValues,
     };
   } catch (e) {
     if (
@@ -170,6 +170,7 @@ async function enqueueWhatsApp({ eventName, ctx }) {
 function buildBodyValues(templateKey, ctx) {
   // Safe defaults to prevent crashes if data is missing
   const name = ctx.customer_name || "User";
+  const coins = ctx.coins || "0";
   const orderId = String(ctx.order_id || "");
   const otp = String(ctx.otp || "");
   const amount = String(ctx.total_amount || "0");
@@ -219,9 +220,15 @@ function buildBodyValues(templateKey, ctx) {
     case "return_order_refund_approved":
       return [name, orderId, refundAmount];
 
+    case "reward_credited":
+      return [name, coins];
+
+    case "account_creation":
+      return [name];
+
     default:
       console.warn(
-        `⚠️ Warning: No mapping found for template '${templateKey}'. Using default.`
+        `⚠️ Warning: No mapping found for template '${templateKey}'. Using default.`,
       );
       return [name];
   }

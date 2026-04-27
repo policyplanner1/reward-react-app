@@ -147,19 +147,19 @@ class authModel {
     return rows[0]?.is_verified === 1;
   }
 
-  async deleteOTP(email) {
-    await db.execute(
+  async deleteOTP(email,conn) {
+    await conn.execute(
       `DELETE FROM email_otps
      WHERE email = ?`,
       [email.toLowerCase()],
     );
   }
 
-  async createCustomer(data) {
+  async createCustomer(data,conn) {
     const { company_id, company_user_id, name, email, phone, password } = data;
     const normalizedPhone = phone ? phone : "";
 
-    const [result] = await db.execute(
+    const [result] = await conn.execute(
       `INSERT INTO customer
      (
        company_id,
@@ -171,7 +171,14 @@ class authModel {
        is_verified
      )
      VALUES (?,?, ?, ?, ?, ?, 1)`,
-      [company_id, company_user_id, name, email.toLowerCase(), normalizedPhone , password],
+      [
+        company_id,
+        company_user_id,
+        name,
+        email.toLowerCase(),
+        normalizedPhone,
+        password,
+      ],
     );
 
     return result.insertId;
@@ -353,6 +360,8 @@ class authModel {
       cu.email,
       cu.phone,
 
+      cw.balance AS reward_points,
+
       ca.address_id,
       ca.address_type,
       ca.address1,
@@ -365,6 +374,9 @@ class authModel {
       c.country_name
 
     FROM customer cu
+
+    LEFT JOIN customer_wallet cw
+    ON cu.user_id = cw.user_id
 
     LEFT JOIN customer_addresses ca
       ON cu.user_id = ca.user_id
@@ -392,6 +404,8 @@ class authModel {
       name: user.name,
       email: user.email,
       phone: user.phone,
+
+      rewardPoints: user.reward_points ?? 0,
 
       defaultAddress: user.address_id
         ? {

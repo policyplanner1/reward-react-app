@@ -18,7 +18,6 @@ import { api } from "../../../../api/api";
 // const API_BASEIMAGE_URL = "https://rewardplanners.com/api/crm";
 const R2_BASE_URL = "https://cdn.rewardplanners.com";
 
-
 type Status = "active" | "inactive";
 
 interface Category {
@@ -79,9 +78,9 @@ export default function SubcategoryManagement() {
   const resolveImageUrl = (path?: string) => {
     if (!path) return "";
     if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path;
+      return `${path}?t=${Date.now()}`;
     }
-    return `${R2_BASE_URL}/${path.replace(/^\/+/, "")}`;
+    return `${R2_BASE_URL}/${path.replace(/^\/+/, "")}?t=${Date.now()}`;
   };
 
   const fetchCategories = async () => {

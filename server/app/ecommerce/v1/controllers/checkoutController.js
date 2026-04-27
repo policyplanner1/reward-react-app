@@ -16,8 +16,28 @@ class CheckoutController {
         });
       }
 
-      const companyId = req.body?.company_id ?? null;
+      // Fetch company
+      const [rows] = await db.execute(
+        `SELECT company_id FROM customer WHERE user_id = ?`,
+        [userId],
+      );
+
+      if (!rows.length) {
+        throw new Error("CUSTOMER_NOT_FOUND");
+      }
+
+      const companyId = rows[0].company_id;
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: "company not found",
+        });
+      }
+
       const addressId = req.body?.address_id;
+      const expectedTotal = req.body?.expected_total;
+      const expectedRedeemable = req.body?.expected_redeemable ?? 0;
       const useRewards = req.body?.use_rewards ?? true;
 
       if (!addressId) {
@@ -32,6 +52,8 @@ class CheckoutController {
         companyId,
         addressId,
         useRewards,
+        expectedTotal,
+        expectedRedeemable,
       );
 
       // await NotificationModel.create({
@@ -61,6 +83,13 @@ class CheckoutController {
         return res.status(400).json({
           success: false,
           message: "One or more items are out of stock",
+        });
+      }
+
+      if (error.message === "PRICE_MISMATCH") {
+        return res.status(400).json({
+          success: false,
+          message: "Incorrect expected price",
         });
       }
 
@@ -105,13 +134,33 @@ class CheckoutController {
         });
       }
 
+      // Fetch company
+      const [rows] = await db.execute(
+        `SELECT company_id FROM customer WHERE user_id = ?`,
+        [userId],
+      );
+
+      if (!rows.length) {
+        throw new Error("CUSTOMER_NOT_FOUND");
+      }
+
+      const companyId = rows[0].company_id;
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: "company not found",
+        });
+      }
+
       const {
         product_id,
         variant_id,
         quantity = 1,
-        company_id,
         address_id,
         use_rewards = true,
+        expected_total,
+        expected_redeemable = 0,
       } = req.body;
 
       if (!address_id) {
@@ -133,9 +182,11 @@ class CheckoutController {
         productId: product_id,
         variantId: variant_id,
         quantity,
-        companyId: company_id || null,
+        companyId,
         addressId: address_id,
         useRewards: use_rewards,
+        expectedTotal: expected_total,
+        expectedRedeemable: expected_redeemable,
       });
 
       // await NotificationModel.create({
@@ -158,10 +209,38 @@ class CheckoutController {
       if (error.message === "OUT_OF_STOCK") {
         return res.status(400).json({
           success: false,
-          message: "Item out of stock",
+          message: "One or more items are out of stock",
         });
       }
 
+      if (error.message === "PRICE_MISMATCH") {
+        return res.status(400).json({
+          success: false,
+          message: "Incorrect expected price",
+        });
+      }
+
+      if (error.message === "INSUFFICIENT_REWARDS") {
+        return res.status(400).json({
+          success: false,
+          message: "Not enough reward coins",
+        });
+      }
+
+      if (error.message === "INVALID_ADDRESS") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid address",
+        });
+      }
+
+      if (error.message === "NOT_SERVICEABLE") {
+        return res.status(400).json({
+          success: false,
+          message: "Delivery not available for this address",
+        });
+      }
+      
       return res.status(500).json({
         success: false,
         message: "Checkout failed",

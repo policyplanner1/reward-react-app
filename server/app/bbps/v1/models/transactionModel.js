@@ -2,46 +2,29 @@ const db = require("../../../../config/database");
 
 class TransactionModel {
   // create a new transaction
-  async create(data) {
+  async create(data, conn = db) {
     const sql = `
     INSERT INTO bbps_transactions 
     (user_id, operator_id, utility_acc_no, cycle_number, amount, bbps_status)
-    VALUES (?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, 'INIT')
   `;
     const [res] = await db.execute(sql, [
       data.user_id,
       data.operator_id,
-      data.utility_acc_no,
+      data.utility_acc_no?.trim(),
       data.cycle_number,
       data.amount,
-      "INIT",
     ]);
+
     return res.insertId;
   }
 
-  //   Link payment reference number to transaction
-  async linkPayment(transaction_id, payment_id) {
-    await db.execute(`UPDATE bbps_transactions SET payment_id=? WHERE id=?`, [
-      payment_id,
-      transaction_id,
-    ]);
-  }
-
   //  update Transaction status
-  async updateStatus(transaction_id, status, response) {
-    await db.execute(
+  async updateStatus(id, status, response, conn = db) {
+    await conn.execute(
       `UPDATE bbps_transactions SET bbps_status=?, bbps_response=? WHERE id=?`,
-      [status, JSON.stringify(response), transaction_id],
+      [status, JSON.stringify(response), id],
     );
-  }
-
-  // get transaction by id
-  async getByPaymentId(payment_id) {
-    const [rows] = await db.execute(
-      `SELECT * FROM bbps_transactions WHERE payment_id=?`,
-      [payment_id],
-    );
-    return rows[0];
   }
 
   // get retryable transactions
@@ -56,13 +39,11 @@ class TransactionModel {
   }
 
   // Increment retry count
-  async incrementRetry(id) {
-    await db.execute(
-      `
-    UPDATE bbps_transactions 
-    SET retry_count = retry_count + 1 
-    WHERE id = ?
-  `,
+  async incrementRetry(id, conn = db) {
+    await conn.execute(
+      `UPDATE bbps_transactions 
+       SET retry_count = retry_count + 1 
+       WHERE id=?`,
       [id],
     );
   }
@@ -77,6 +58,14 @@ class TransactionModel {
     return rows[0];
   }
 
+  async getByIdForUpdate(id, conn) {
+    const [rows] = await conn.execute(
+      `SELECT * FROM bbps_transactions WHERE id=? FOR UPDATE`,
+      [id],
+    );
+    return rows[0];
+  }
+
   // Get transaction by status
   async getByStatus(status) {
     const [rows] = await db.execute(
@@ -85,6 +74,16 @@ class TransactionModel {
     );
 
     return rows;
+  }
+
+  // Mark final failure
+  async markFinalFailure(id, response, conn = db) {
+    await conn.execute(
+      `UPDATE bbps_transactions 
+       SET bbps_status='FAILED_FINAL', bbps_response=? 
+       WHERE id=?`,
+      [JSON.stringify(response), id],
+    );
   }
 }
 

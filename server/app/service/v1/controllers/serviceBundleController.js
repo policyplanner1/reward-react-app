@@ -2,6 +2,14 @@ const db = require("../../../../config/database");
 const ServiceBundleModel = require("../models/serviceBundleModel");
 const ServiceFormModel = require("../models/serviceFormModel");
 
+// helper function
+const CDN_BASE_URL = "https://cdn.rewardplanners.com";
+function getPublicUrl(path) {
+  if (!path) return null;
+  return `${CDN_BASE_URL}/${path}`;
+}
+
+
 // Helper function
 function formatBundleSections(sections) {
   const formatted = {
@@ -103,7 +111,7 @@ class ServiceBundleController {
 
       const formattedItems = items.map((i) => ({
         ...i,
-
+        image_url: i.image_url ? getPublicUrl(i.image_url) : null,
         individual_price: Number(i.price),
         bundle_price: Number(i.bundle_price),
       }));
@@ -112,6 +120,7 @@ class ServiceBundleController {
         success: true,
         data: {
           bundle,
+          bundle_type:bundle.type,
           items: formattedItems,
           sections,
           enquiry_fields: enquiryFields,

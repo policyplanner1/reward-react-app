@@ -19,6 +19,13 @@ router.get("/by-category/:categoryId", ServiceController.getServicesByCategory);
 // Aggregated api call for service details
 router.get("/details/:id", ServiceController.getServiceDetails);
 
+// Api for advertisement
+router.get("/home", ServiceController.getHomeServices);
+
+// Related
+router.get("/related/:id", ServiceController.getRelatedServices);
+
+
 // ======================Admin Routes===================================
 // Create a services
 router.post(

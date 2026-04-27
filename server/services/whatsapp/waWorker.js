@@ -104,7 +104,7 @@ async function runOnce() {
       templateName: tpl.interakt_name,
       languageCode: tpl.language_code || "en",
       bodyValues,
-      buttonValues, // ✅ will be null if not present
+      buttonValues, //  will be null if not present
     });
 
     // mark sent

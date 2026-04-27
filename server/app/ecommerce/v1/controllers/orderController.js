@@ -286,7 +286,7 @@ class OrderController {
       const toDate = req.query.to_date || null;
       const timeFilter = req.query.time_filter || null;
 
-      const { orders, total } = await OrderModel.getOrderHistory({
+      const { orders, total, summary } = await OrderModel.getOrderHistory({
         userId,
         orderId,
         status,
@@ -302,6 +302,7 @@ class OrderController {
         success: true,
         orders,
         total,
+        summary,
         totalPages: Math.ceil(total / limit),
         currentPage: page,
       });

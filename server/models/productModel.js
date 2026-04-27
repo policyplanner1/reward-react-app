@@ -1428,6 +1428,80 @@ class ProductModel {
 
     return result.affectedRows;
   }
+
+  // Gte product List
+  async getAllProductList({ search, status, role }) {
+    try {
+      const conditions = ["p.is_deleted = 0"];
+      const params = [];
+
+      if (status) {
+        conditions.push("p.status = ?");
+        params.push(status);
+      }
+
+      if (search) {
+        conditions.push("p.product_name LIKE ?");
+        params.push(`%${search}%`);
+      }
+
+      if (role === "vendor_manager" || role === "admin") {
+        conditions.push("p.status != 'pending'");
+      }
+
+      const whereClause = conditions.length
+        ? `WHERE ${conditions.join(" AND ")}`
+        : "";
+
+      const query = `
+      SELECT 
+        p.product_id,
+        p.product_name,
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            pi.image_id, '::',
+            pi.image_url, '::',
+            pi.type, '::',
+            pi.sort_order
+          )
+          ORDER BY pi.sort_order ASC
+        ) AS images
+      FROM eproducts p
+      LEFT JOIN product_images pi ON p.product_id = pi.product_id
+      ${whereClause}
+      GROUP BY p.product_id
+    `;
+
+      const [rows] = await db.execute(query, params);
+
+      const products = rows.map((row) => {
+        let images = [];
+
+        if (row.images) {
+          images = row.images.split(",").map((item) => {
+            const [image_id, image_url, type, sort_order] = item.split("::");
+            return {
+              image_id: Number(image_id),
+              image_url,
+              type,
+              sort_order: Number(sort_order),
+            };
+          });
+        }
+
+        return {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          images,
+        };
+      });
+
+      return products;
+    } catch (error) {
+      console.error("Error fetching product images:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new ProductModel();

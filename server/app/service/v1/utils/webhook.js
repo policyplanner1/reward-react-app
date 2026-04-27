@@ -16,14 +16,14 @@ async function processEvent(req) {
 
       //  Fetch receipt (parent_order_id)
       const [rpOrder] = await db.execute(
-        `SELECT parent_order_id FROM razorpay_orders 
+        `SELECT ref_id FROM razorpay_orders 
          WHERE razorpay_order_id = ?`,
         [razorpayOrderId],
       );
 
       if (!rpOrder.length) return;
 
-      const parentOrderId = rpOrder[0].parent_order_id;
+      const parentOrderId = rpOrder[0].ref_id;
 
       //  Update ALL service orders
       await db.execute(
@@ -55,13 +55,13 @@ async function processEvent(req) {
       const razorpayOrderId = payment.order_id;
 
       const [rpOrder] = await db.execute(
-        `SELECT parent_order_id FROM razorpay_orders WHERE razorpay_order_id = ?`,
+        `SELECT ref_id FROM razorpay_orders WHERE razorpay_order_id = ?`,
         [razorpayOrderId],
       );
 
       if (!rpOrder.length) return;
 
-      const parentOrderId = rpOrder[0].parent_order_id;
+      const parentOrderId = rpOrder[0].ref_id;
 
       await db.execute(
         `UPDATE service_orders

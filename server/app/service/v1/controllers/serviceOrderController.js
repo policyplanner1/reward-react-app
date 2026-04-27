@@ -8,7 +8,9 @@ const { uploadToR2 } = require("../../../../utils/r2upload");
 const razorpay = require("../middlewares/razorpay");
 const db = require("../../../../config/database");
 const crypto = require("crypto");
+const InvoiceService = require("../../../../services/Invoice/service-invoice");
 
+// Utility
 const ALLOWED_STATUSES = [
   "pending_payment",
   "payment_done",
@@ -18,6 +20,49 @@ const ALLOWED_STATUSES = [
   "completed",
   "cancelled",
 ];
+
+// Helper function
+//calculate summary utility function
+function calculateSummary({ bundles = [], individual_items = [] }) {
+  // 1 Individual items total
+  const individual_total = individual_items.reduce(
+    (sum, item) => sum + item.price * (item.quantity || 1),
+    0,
+  );
+
+  // 2 Bundle total
+  const bundle_total = bundles.reduce(
+    (sum, bundle) => sum + bundle.bundle_total,
+    0,
+  );
+
+  // 3 Combined item total
+  const item_total = individual_total + bundle_total;
+
+  // 4 Other fields (same as before)
+  const discount = 0;
+  const reward_discount = 0;
+  const delivery_fee = 0;
+  const handling_fee = 0;
+
+  const total =
+    item_total - discount - reward_discount + delivery_fee + handling_fee;
+
+  return {
+    item_total,
+    discount,
+    reward_discount,
+    delivery_fee,
+    handling_fee,
+    total,
+
+    //  extra clarity (optional but useful)
+    breakdown: {
+      individual_total,
+      bundle_total,
+    },
+  };
+}
 
 class ServiceOrderController {
   // direct order
@@ -143,7 +188,7 @@ class ServiceOrderController {
 
       await db.execute(
         `INSERT INTO razorpay_orders
-      (razorpay_order_id, receipt, amount, status, parent_order_id, module)
+      (razorpay_order_id, receipt, amount, status, ref_id, module)
       VALUES (?, ?, ?, 'created', ?, 'service')`,
         [razorpayOrder.id, parent_order_id, totalAmount, parent_order_id],
       );
@@ -189,7 +234,7 @@ class ServiceOrderController {
 
       //  GET parent_order_id FROM DB
       const [[rpOrder]] = await db.execute(
-        `SELECT parent_order_id FROM razorpay_orders 
+        `SELECT ref_id FROM razorpay_orders 
        WHERE razorpay_order_id = ?`,
         [razorpay_order_id],
       );
@@ -201,7 +246,7 @@ class ServiceOrderController {
         });
       }
 
-      const parent_order_id = rpOrder.parent_order_id;
+      const parent_order_id = rpOrder.ref_id;
 
       //  TRANSACTION
       await db.beginTransaction();
@@ -227,6 +272,8 @@ class ServiceOrderController {
          WHERE razorpay_order_id = ?`,
           [razorpay_payment_id, JSON.stringify(req.body), razorpay_order_id],
         );
+
+        await InvoiceService.generateInvoice(parent_order_id);
 
         await db.commit();
       } catch (err) {
@@ -319,8 +366,7 @@ class ServiceOrderController {
         },
         {
           status: "Order in Progress",
-          completed:
-            order.status === "in_progress" || order.status === "completed",
+          completed: ["in_progress", "completed"].includes(order.status),
         },
         {
           status: "Order Delivered",
@@ -340,6 +386,49 @@ class ServiceOrderController {
       res.status(500).json({
         success: false,
         message: err.message,
+      });
+    }
+  }
+
+  // invoice Details
+  async getInvoiceDetails(req, res) {
+    try {
+      // const userId = req.user?.user_id;
+      const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { parentId } = req.params;
+
+      const [[invoice]] = await db.execute(
+        `SELECT * FROM service_invoices WHERE parent_order_id = ?`,
+        [parentId],
+      );
+
+      if (!invoice) {
+        return res.status(404).json({
+          success: false,
+          message: "Invoice not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          ...invoice,
+          url: `/uploads/invoices/${invoice.invoice_url}`,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        success: false,
+        message: error.message,
       });
     }
   }

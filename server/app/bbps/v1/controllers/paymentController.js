@@ -1,18 +1,22 @@
 const crypto = require("crypto");
-const PaymentModel = require("../models/paymentModel");
 const TransactionModel = require("../models/transactionModel");
-const razorpayService = require("../services/razorpay_service");
+const razorpay = require("../services/razorpay_service");
 const ekoService = require("../services/eko_service");
 const db = require("../../../../config/database");
 
 class PaymentController {
   //   create Order
   async createOrder(req, res) {
+    const conn = await db.getConnection();
+
     try {
-      // const userId = req.user?.user_id;
-      const userId = 1;
+      await conn.beginTransaction();
+
+      const userId = req.user?.user_id;
+      // const userId = 1;
 
       if (!userId) {
+        await conn.rollback();
         return res.status(401).json({
           success: false,
           message: "Unauthorized user",
@@ -21,7 +25,15 @@ class PaymentController {
 
       const { amount, operator_id, utility_acc_no, cycle_number } = req.body;
 
-      if (!amount || !operator_id || !utility_acc_no) {
+      if (!amount || amount <= 0 || amount > 5000) {
+        await conn.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Invalid amount",
+        });
+      }
+
+      if (!operator_id || !utility_acc_no) {
         return res.status(400).json({
           success: false,
           message: "Missing required fields",
@@ -29,156 +41,284 @@ class PaymentController {
       }
 
       // 1. create transaction
-      const transaction_id = await TransactionModel.create({
-        user_id: userId,
-        operator_id,
-        utility_acc_no,
-        cycle_number,
-        amount,
-      });
+      const transaction_id = await TransactionModel.create(
+        {
+          user_id: userId,
+          operator_id,
+          utility_acc_no: utility_acc_no.trim(),
+          cycle_number,
+          amount,
+        },
+        conn,
+      );
 
       // 2. create razorpay order
-      const receipt = `txn_${transaction_id}`;
-      const order = await razorpayService.createOrder(amount, receipt);
-
-      // 3. save payment
-      const payment_id = await PaymentModel.create({
-        user_id: userId,
-        order_id: order.id,
-        amount,
-        status: "PENDING",
+      const razorpayOrder = await razorpay.orders.create({
+        amount: Math.round(amount * 100),
+        currency: "INR",
+        receipt: `bbps_${transaction_id}`,
+        notes: {
+          module: "bbps",
+          transaction_id,
+        },
       });
 
-      // 4. link transaction
-      await TransactionModel.linkPayment(transaction_id, payment_id);
+      await conn.execute(
+        `INSERT INTO razorpay_orders
+      (razorpay_order_id, receipt, amount, status, module, ref_id)
+      VALUES (?, ?, ?, 'created', 'bbps', ?)`,
+        [razorpayOrder.id, `bbps_${transaction_id}`, amount, transaction_id],
+      );
+
+      await conn.commit();
 
       res.json({
-        order_id: order.id,
-        amount: order.amount,
-        currency: order.currency,
+        success: true,
+        data: {
+          key: process.env.RAZOR_API_KEY,
+          orderId: razorpayOrder.id,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          transaction_id,
+        },
       });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      await conn.rollback();
+      console.error("createOrder error:", err);
+
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    } finally {
+      conn.release();
     }
   }
 
   //   verify Payment+Pay BBPS
   async verifyPayment(req, res) {
+    const conn = await db.getConnection();
+
     try {
+      await conn.beginTransaction();
+
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
         req.body;
 
       // verify signature
       const generated = crypto
         .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-        .update(razorpay_order_id + "|" + razorpay_payment_id)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
         .digest("hex");
 
-      if (generated !== razorpay_signature) {
+      const isValid = crypto.timingSafeEqual(
+        Buffer.from(generated),
+        Buffer.from(razorpay_signature),
+      );
+
+      if (!isValid) {
+        await conn.rollback();
         return res.status(400).json({ error: "Invalid signature" });
       }
 
-      // check if already processed
-      const existing = await PaymentModel.getByOrderId(razorpay_order_id);
+      //  FETCH PAYMENT FROM RAZORPAY (IMPORTANT)
+      const paymentDetails = await razorpay.payments.fetch(razorpay_payment_id);
 
-      if (!existing) {
-        return res.status(404).json({
+      if (paymentDetails.status !== "captured") {
+        await conn.rollback();
+        return res.status(400).json({
           success: false,
-          message: "Payment not found",
+          message: "Payment not captured",
         });
       }
 
-      if (existing.status === "SUCCESS") {
-        return res.json({ success: true, message: "Already processed" });
+      //FETCH ORDER (LOCK)
+      const [[rpOrder]] = await conn.execute(
+        `SELECT * FROM razorpay_orders 
+       WHERE razorpay_order_id = ? 
+       FOR UPDATE`,
+        [razorpay_order_id],
+      );
+
+      if (!rpOrder) {
+        await conn.rollback();
+        return res.status(404).json({
+          success: false,
+          message: "Razorpay order not found",
+        });
+      }
+
+      // IDEMPOTENCY CHECK
+      if (rpOrder.status === "success") {
+        await conn.rollback();
+        return res.json({
+          success: true,
+          message: "Already processed",
+        });
+      }
+
+      if (rpOrder.status === "failed") {
+        await conn.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Payment already failed",
+        });
+      }
+
+      // DUPLICATE PAYMENT PROTECTION
+      const [existingPayment] = await conn.execute(
+        `SELECT id FROM razorpay_orders WHERE razorpay_payment_id=?`,
+        [razorpay_payment_id],
+      );
+
+      if (existingPayment.length) {
+        await conn.rollback();
+        return res.json({
+          success: true,
+          message: "Already processed",
+        });
       }
 
       // update payment
-      await PaymentModel.updateStatus(razorpay_order_id, "SUCCESS", req.body);
+      await conn.execute(
+        `UPDATE razorpay_orders
+       SET status = 'success',
+           razorpay_payment_id = ?,
+           raw_response = ?
+       WHERE razorpay_order_id = ?`,
+        [razorpay_payment_id, JSON.stringify(req.body), razorpay_order_id],
+      );
 
-      const payment = await PaymentModel.getByOrderId(razorpay_order_id);
+      // GET TRANSACTION (via ref_id)
+      const txn = await TransactionModel.getByIdForUpdate(rpOrder.ref_id, conn);
 
-      const transaction = await TransactionModel.getByPaymentId(payment.id);
-
-      if (!transaction) {
+      if (!txn) {
+        await conn.rollback();
         return res.status(404).json({
           success: false,
           message: "Transaction not found",
         });
       }
 
-      //  CALL BBPS
-      let bbpsResponse;
+      // PREVENT DOUBLE BBPS
+      if (txn.bbps_status === "PAID") {
+        await conn.rollback();
+        return res.json({
+          success: true,
+          message: "Already processed",
+        });
+      }
+
+      console.info("[BBPS][VERIFY]", {
+        txn_id: txn.id,
+        operator_id: txn.operator_id,
+        amount: txn.amount,
+      });
 
       try {
-        bbpsResponse = await ekoService.payBill(
+        const bbpsResponse = await ekoService.payBill(
           {
-            utility_acc_no: transaction.utility_acc_no,
-            operator_id: transaction.operator_id,
-            amount: transaction.amount,
-            cycle_number: transaction.cycle_number,
+            utility_acc_no: txn.utility_acc_no.trim(),
+            operator_id: txn.operator_id,
+            amount: txn.amount,
+            cycle_number: txn.cycle_number,
           },
           req,
         );
 
         //  Success → mark PAID
-        await TransactionModel.updateStatus(
-          transaction.id,
-          "PAID",
+        await TransactionModel.updateStatus(txn.id, "PAID", bbpsResponse, conn);
+
+        await conn.commit();
+
+        return res.json({
+          success: true,
+          transaction_id: txn.id,
           bbpsResponse,
-        );
+        });
       } catch (err) {
         console.error("BBPS Error:", err);
 
         //  MARK FOR RETRY (NOT FINAL FAILURE)
         await TransactionModel.updateStatus(
-          transaction.id,
+          txn.id,
           "FAILED_RETRY",
           err.message,
+          conn,
         );
+
+        await conn.commit();
 
         return res.status(500).json({
           success: false,
-          message: "Payment processing failed, will retry automatically",
+          message: "Payment successful, bill will be retried automatically",
         });
       }
-
-      res.json({
-        success: true,
-        transaction_id: transaction.id,
-        bbpsResponse,
-      });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: err.message });
+      await conn.rollback();
+      console.error("verifyPayment error:", err);
+
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    } finally {
+      conn.release();
     }
   }
 
   // Retry Transaction
   async retryTransaction(req, res) {
+    const conn = await db.getConnection();
     try {
+      await conn.beginTransaction();
       const { transaction_id } = req.body;
 
-      const txn = await TransactionModel.getById(transaction_id);
+      const txn = await TransactionModel.getByIdForUpdate(transaction_id, conn);
 
       if (!txn) {
-        return res.status(404).json({ message: "Transaction not found" });
+        await conn.rollback();
+        return res.status(404).json({
+          message: "Transaction not found",
+        });
+      }
+
+      if (txn.bbps_status === "PAID") {
+        await conn.rollback();
+        return res.json({
+          success: true,
+          message: "Already processed",
+        });
+      }
+
+      if (txn.retry_count >= txn.max_retry) {
+        await conn.rollback();
+        return res.status(400).json({
+          message: "Max retry reached",
+        });
       }
 
       const result = await ekoService.payBill({
-        utility_acc_no: txn.utility_acc_no,
+        utility_acc_no: txn.utility_acc_no.trim(),
         operator_id: txn.operator_id,
         amount: txn.amount,
         cycle_number: txn.cycle_number,
       });
 
-      await TransactionModel.updateStatus(txn.id, "PAID", result);
+      await TransactionModel.updateStatus(txn.id, "PAID", result, conn);
 
-      res.json({ success: true, result });
+      await conn.commit();
+
+      return res.json({ success: true, result });
     } catch (err) {
-      res.status(500).json({
+      await conn.rollback();
+
+      return res.status(500).json({
         success: false,
         message: "Retry failed",
       });
+    } finally {
+      conn.release();
     }
   }
 }

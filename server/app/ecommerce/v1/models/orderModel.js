@@ -20,6 +20,23 @@ function mapStatusToStep(status) {
   return 0;
 }
 
+function mapCancelEvent(event) {
+  switch (event) {
+    case "cancellation_requested":
+      return "Cancellation Requested";
+    case "cancellation_confirmed":
+      return "Cancellation Confirmed";
+    case "refund_initiated":
+      return "Refund Initiated";
+    case "refund_completed":
+      return "Refund Completed";
+    case "cancellation_rejected":
+      return "Cancellation Rejected";
+    default:
+      return event;
+  }
+}
+
 function getSpecialState(shipment) {
   if (shipment.shipping_status === "ndr") {
     return {
@@ -122,6 +139,9 @@ class orderModel {
         o.order_id,
         o.order_ref,
         o.total_amount,
+        o.reward_coins_earned,
+        o.reward_coins_used,
+        o.reward_discount,
         o.status,
         o.created_at,
 
@@ -167,6 +187,17 @@ class orderModel {
       [...params, limit, offset],
     );
 
+    const [[summary]] = await db.execute(
+      `
+      SELECT
+        COALESCE(SUM(o.reward_coins_earned), 0) AS totalCoinsEarned,
+        COALESCE(SUM(o.reward_discount), 0) AS totalSavings
+      FROM eorders o
+      ${whereClause}
+      `,
+      params,
+    );
+
     const [[{ total }]] = await db.execute(
       `
       SELECT COUNT(*) AS total
@@ -177,8 +208,32 @@ class orderModel {
     );
 
     return {
-      orders: rows,
+      orders: rows.map((o) => ({
+        order_id: o.order_id,
+        order_ref: o.order_ref,
+
+        title: o.product_name,
+        brand: o.brand_name,
+        image: o.image,
+
+        item_count: o.item_count,
+
+        price: Number(o.total_amount),
+
+        status: o.status,
+        created_at: o.created_at,
+
+        reward: {
+          earned: Number(o.reward_coins_earned || 0),
+          used: Number(o.reward_coins_used || 0),
+          discount: Number(o.reward_discount || 0),
+        },
+      })),
       total,
+      summary: {
+        totalCoinsEarned: Number(summary.totalCoinsEarned || 0),
+        totalSavings: Number(summary.totalSavings || 0),
+      },
     };
   }
 
@@ -191,6 +246,11 @@ class orderModel {
       o.order_id,
       o.order_ref,
       o.total_amount,
+      o.product_total,
+      o.reward_discount,
+      o.reward_coins_used,
+      o.reward_coins_earned,
+      o.shipping_total,
       o.status,
       o.created_at,
 
@@ -236,6 +296,8 @@ class orderModel {
       oi.variant_id,
       oi.quantity,
       oi.price,
+      oi.final_price,
+      oi.reward_discount,
 
       p.product_name,
       p.brand_name,
@@ -281,12 +343,11 @@ class orderModel {
         image: i.image,
         attributes,
         quantity: i.quantity,
-        price: i.price,
-        item_total: i.quantity * i.price,
+        price: Number(i.price),
+        item_total: Number(i.final_price),
+        reward_discount: Number(i.reward_discount || 0),
       };
     });
-
-    const itemTotal = processedItems.reduce((sum, i) => sum + i.item_total, 0);
 
     // 4 shipping
     const [shipments] = await db.execute(
@@ -324,12 +385,7 @@ class orderModel {
     const hasNdr = shipments.some((s) => s.shipping_status === "ndr");
     const hasRto = shipments.some((s) => s.shipping_status === "rto");
 
-    if (hasNdr) {
-      overallStep = 1; // stuck in transit
-    }
-
-    // optional
-    if (hasRto) {
+    if (hasNdr || hasRto) {
       overallStep = 1;
     }
 
@@ -344,11 +400,6 @@ class orderModel {
       current_step: overallStep,
       steps: orderSteps,
     };
-
-    const shippingTotal = shipments.reduce(
-      (sum, s) => sum + Number(s.shipping_charges ?? 0),
-      0,
-    );
 
     const shipmentDetails = shipments.map((s) => {
       const currentStep = mapStatusToStep(s.shipping_status);
@@ -385,6 +436,9 @@ class orderModel {
       };
     });
 
+    // static for Now
+    const bagDiscount = 1032;
+
     return {
       order: {
         order_id: order.order_id,
@@ -392,6 +446,7 @@ class orderModel {
         status: order.status,
         total_amount: order.total_amount,
         created_at: order.created_at,
+        is_reward_credited: order.status === "delivered",
       },
 
       address: {
@@ -411,10 +466,15 @@ class orderModel {
 
       shipments: shipmentDetails,
       order_progress: orderProgress,
+
       summary: {
-        item_total: itemTotal,
-        shipping_total: shippingTotal,
-        order_total: order.total_amount,
+        item_total: Number(order.product_total),
+        shipping_total: Number(order.shipping_total),
+        reward_discount: Number(order.reward_discount),
+        reward_coins_used: Number(order.reward_coins_used),
+        reward_coins_earned: Number(order.reward_coins_earned),
+        bag_discount: 0,
+        order_total: Number(order.total_amount),
       },
     };
   }
@@ -567,6 +627,12 @@ class orderModel {
       o.status, 
       o.total_amount,
 
+      o.product_total,
+      o.shipping_total,
+      o.reward_discount,
+      o.reward_coins_used,
+      o.reward_coins_earned,
+
       ca.address_type,
       ca.address1,
       ca.address2,
@@ -620,13 +686,22 @@ class orderModel {
       [orderId],
     );
 
-    const totalRefund = refunds.reduce(
-      (sum, r) => sum + Number(r.refund_amount),
-      0,
-    );
+    let moneyRefund = 0;
+    let coinRefund = 0;
+
+    refunds.forEach((r) => {
+      if (r.refund_method === "original") {
+        moneyRefund += Number(r.refund_amount);
+      } else if (r.refund_method === "wallet") {
+        coinRefund += Number(r.refund_amount);
+      }
+    });
+
+    const totalRefund = moneyRefund + coinRefund;
 
     return {
       orderId: order.order_id,
+      orderRef: order.order_ref,
       status: order.status,
 
       customer: {
@@ -645,17 +720,33 @@ class orderModel {
       },
 
       timeline: timeline.map((t) => ({
-        label: t.event.replace(/_/g, " "),
+        label: mapCancelEvent(t.event),
         date: t.event_time,
       })),
 
-      refunds: refunds.map((r) => ({
-        amount: r.refund_amount,
-        method: r.refund_method,
-        status: r.status,
-      })),
+      refund: {
+        total: totalRefund,
+        money_refund: moneyRefund,
+        coin_refund: coinRefund,
+      },
 
-      totalRefund,
+      rewards: {
+        earned: Number(order.reward_coins_earned || 0),
+        used: Number(order.reward_coins_used || 0),
+        reversed: coinRefund,
+        is_credited: false, // cancelled orders never credit rewards
+      },
+
+      summary: {
+        item_total: Number(order.product_total),
+        shipping_total: Number(order.shipping_total),
+
+        reward_discount: Number(order.reward_discount),
+        reward_coins_used: Number(order.reward_coins_used),
+        reward_coins_earned: Number(order.reward_coins_earned),
+
+        order_total: Number(order.total_amount),
+      },
     };
   }
 

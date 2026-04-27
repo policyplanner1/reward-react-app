@@ -12,6 +12,11 @@ class WalletModel {
 
       const FIRST_LOGIN_REWARD = 3000;
 
+      const EXPIRY_MONTHS = parseInt(
+        process.env.WALLET_EXPIRY_MONTHS || "3",
+        10,
+      );
+
       // check wallet
       const [wallet] = await conn.execute(
         `SELECT wallet_id
@@ -33,11 +38,14 @@ class WalletModel {
         [userId, FIRST_LOGIN_REWARD],
       );
 
+      const expiryDate = new Date();
+      expiryDate.setMonth(expiryDate.getMonth() + EXPIRY_MONTHS);
+
       // insert transaction
       await conn.execute(
         `INSERT INTO wallet_transactions
-        (user_id, title, description, transaction_type, coins, category)
-        VALUES (?, ?, ?, ?, ?, ?)`,
+        (user_id, title, description, transaction_type, coins, category, expiry_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           userId,
           "Welcome Bonus",
@@ -45,6 +53,7 @@ class WalletModel {
           "credit",
           FIRST_LOGIN_REWARD,
           "reward",
+          expiryDate,
         ],
       );
 
@@ -61,14 +70,29 @@ class WalletModel {
 
   // Get wallet
   async getWalletSummary(userId) {
-    const [rows] = await db.execute(
+    const [[wallet]] = await db.execute(
       `SELECT balance
      FROM customer_wallet
      WHERE user_id = ?`,
       [userId],
     );
 
-    return rows[0] || { balance: 0 };
+    const [[expiry]] = await db.execute(
+      `SELECT 
+        SUM(coins) AS expiring_coins,
+        MIN(DATE_ADD(created_at, INTERVAL 1 MONTH)) AS expiry_date
+     FROM wallet_transactions
+     WHERE user_id = ?
+     AND transaction_type = 'credit'
+     AND DATE_ADD(created_at, INTERVAL 1 MONTH) > NOW()`,
+      [userId],
+    );
+
+    return {
+      balance: wallet?.balance ?? 0,
+      expiring_coins: expiry?.expiring_coins || 0,
+      expiry_date: expiry?.expiry_date || null,
+    };
   }
 
   // Get wallet transactions
@@ -77,13 +101,15 @@ class WalletModel {
 
     if (type === "credit") {
       condition = "AND transaction_type = 'credit'";
-    }
-
-    if (type === "debit") {
+    } else if (type === "debit") {
       condition = "AND transaction_type = 'debit'";
+    } else if (type === "expired") {
+      condition = "AND DATE_ADD(created_at, INTERVAL 1 MONTH) < NOW()";
     }
 
-    const offset = (page - 1) * limit;
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit) || 10));
+    const offset = (pageNum - 1) * limitNum;
 
     const [rows] = await db.execute(
       `SELECT
@@ -93,14 +119,19 @@ class WalletModel {
       transaction_type,
       coins,
       category,
-      created_at
+      created_at,
+      DATE_ADD(created_at, INTERVAL 1 MONTH) AS expiry_date,
+      CASE 
+        WHEN DATE_ADD(created_at, INTERVAL 1 MONTH) < NOW() 
+        THEN 1 ELSE 0 
+      END AS is_expired
      FROM wallet_transactions
      WHERE user_id = ?
      ${condition}
      ORDER BY transaction_id DESC
      LIMIT ? OFFSET ?`,
 
-      [userId, Number(limit), Number(offset)],
+      [userId, limitNum, offset],
     );
 
     return rows;

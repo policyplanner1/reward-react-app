@@ -32,7 +32,7 @@ const generateRequestHash = (payloadString) => {
 
 const buildBaseHeaders = (timestamp, secret_key) => ({
   "Content-Type": "application/json",
-  developer_key: process.env.EKO_DEVELOPER_KEY,
+  "developer_key": process.env.EKO_DEVELOPER_KEY,
   "secret-key": secret_key,
   "secret-key-timestamp": timestamp,
 });
@@ -43,12 +43,6 @@ exports.fetchHeaders = async () => {
   const secret_key = generateSecretKey(timestamp);
   const headers = buildBaseHeaders(timestamp, secret_key);
 
-  console.info("[BBPS][headers][fetch]", {
-    timestamp,
-    secret_key,
-    developer_key: process.env.EKO_DEVELOPER_KEY,
-    headers,
-  });
 
   return headers;
 };

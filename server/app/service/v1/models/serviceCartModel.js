@@ -112,11 +112,17 @@ class ServiceCartModel {
       }
 
       if (item.document_id) {
-        itemMap[itemId].documents.push({
-          id: item.document_id,
-          document_name: item.document_name,
-          is_mandatory: item.is_mandatory,
-        });
+        const exists = itemMap[itemId].documents.find(
+          (d) => d.id === item.document_id,
+        );
+
+        if (!exists) {
+          itemMap[itemId].documents.push({
+            id: item.document_id,
+            document_name: item.document_name,
+            is_mandatory: item.is_mandatory,
+          });
+        }
       }
     });
 
@@ -166,6 +172,15 @@ class ServiceCartModel {
       // normal item
       await db.execute(`DELETE FROM service_cart_items WHERE id = ?`, [itemId]);
     }
+  }
+
+  // remove bundle from cart
+  async removeBundle(cartId, bundleId) {
+    await db.execute(
+      `DELETE FROM service_cart_items 
+     WHERE cart_id = ? AND bundle_id = ?`,
+      [cartId, bundleId],
+    );
   }
 
   // clear cart

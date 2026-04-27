@@ -85,9 +85,28 @@ class ServiceCartController {
       // get cart
       const cart = await CartModel.getOrCreateCart(userId);
 
+      // remove duplicate bundle if present
+      await db.execute(
+        `DELETE FROM service_cart_items 
+       WHERE cart_id = ? AND bundle_id = ?`,
+        [cart.id, bundleId],
+      );
+
       // get bundle items
       const [items] = await db.execute(
-        `SELECT * FROM service_bundle_items WHERE bundle_id = ?`,
+        `SELECT 
+            bi.id,
+            bi.service_id,
+            bi.variant_id,
+            bi.price AS bundle_price,
+            bi.is_required,
+
+            sv.price AS individual_price
+
+          FROM service_bundle_items bi
+          JOIN service_variants sv ON sv.id = bi.variant_id
+
+          WHERE bi.bundle_id = ?`,
         [bundleId],
       );
 
@@ -122,11 +141,16 @@ class ServiceCartController {
           }
         }
 
+        let finalPrice =
+          bundle.type === "fixed"
+            ? Number(item.bundle_price)
+            : Number(item.individual_price);
+
         // add to cart
         await CartModel.addItem(cart.id, {
           service_id: item.service_id,
           variant_id: item.variant_id,
-          price: item.price,
+          price: finalPrice,
           bundle_id: bundleId,
         });
 
@@ -203,6 +227,43 @@ class ServiceCartController {
       });
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  // remove bundle item
+  async removeBundle(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { bundleId } = req.params;
+
+      if (!bundleId) {
+        return res.status(400).json({
+          success: false,
+          message: "bundleId required",
+        });
+      }
+
+      const cart = await CartModel.getOrCreateCart(userId);
+
+      await CartModel.removeBundle(cart.id, bundleId);
+
+      res.json({
+        success: true,
+        message: "Bundle removed",
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     }
   }
 

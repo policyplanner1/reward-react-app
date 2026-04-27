@@ -9,12 +9,13 @@ const {
 } = require("../utils/network");
 
 const resolveBaseUrl = () => {
-  if (process.env.EKO_BASE_URL) {
-    return process.env.EKO_BASE_URL;
-  }
+  // if (process.env.EKO_BASE_URL) {
+  //   return process.env.EKO_BASE_URL;
+  // }
 
-  const isProduction = process.env.NODE_ENV === "production";
-  return isProduction ? process.env.EKO_BASE_URL_PROD : process.env.EKO_BASE_URL_UAT;
+  // const isProduction = process.env.NODE_ENV === "production";
+  // return isProduction ? process.env.EKO_BASE_URL_PROD : process.env.EKO_BASE_URL_UAT;
+  return process.env.EKO_BASE_URL_PROD;
 };
 
 const ensureTrailingSlash = (url = "") => {
@@ -143,7 +144,10 @@ exports.getFetchBillReadiness = async (req, operatorId) => {
     );
   }
 
-  if (sourceIpDetails.configuredIp && !sourceIpDetails.configuredMatchesServer) {
+  if (
+    sourceIpDetails.configuredIp &&
+    !sourceIpDetails.configuredMatchesServer
+  ) {
     warnings.push(
       "Configured EKO_SOURCE_IP does not match the server public IP. EKO allowlisting may fail.",
     );
@@ -246,12 +250,16 @@ exports.fetchBill = async (body, req) => {
       initiator_id: process.env.EKO_INITIATOR_ID,
       source_ip: payload.source_ip,
       headers,
-      endpoint: ekoUrl(`billpayments/fetchbill?initiator_id=${process.env.EKO_INITIATOR_ID}`),
+      endpoint: ekoUrl(
+        `billpayments/fetchbill?initiator_id=${process.env.EKO_INITIATOR_ID}`,
+      ),
     });
 
     const res = await retry(() =>
       axios.post(
-        ekoUrl(`billpayments/fetchbill?initiator_id=${process.env.EKO_INITIATOR_ID}`),
+        ekoUrl(
+          `billpayments/fetchbill?initiator_id=${process.env.EKO_INITIATOR_ID}`,
+        ),
         payload,
         { headers, timeout: 15000 },
       ),
@@ -273,7 +281,9 @@ exports.fetchBill = async (body, req) => {
     const providerMessage =
       (typeof providerData === "object" &&
         (providerData?.message || providerData?.error)) ||
-      (typeof providerData === "string" && !hasHtmlBody ? providerData : null) ||
+      (typeof providerData === "string" && !hasHtmlBody
+        ? providerData
+        : null) ||
       error.message;
 
     const normalizedError = new Error(
@@ -281,11 +291,13 @@ exports.fetchBill = async (body, req) => {
         ? "Provider authorization failed"
         : statusCode === 403
           ? "Provider access forbidden"
-        : providerMessage || "Provider request failed",
+          : providerMessage || "Provider request failed",
     );
     normalizedError.statusCode = statusCode;
     normalizedError.details =
-      providerData && typeof providerData === "object" ? providerData : undefined;
+      providerData && typeof providerData === "object"
+        ? providerData
+        : undefined;
 
     console.error("[BBPS][provider][fetch-bill] error", {
       statusCode,
@@ -316,7 +328,9 @@ exports.payBill = async (body, req) => {
 
   const res = await retry(() =>
     axios.post(
-      ekoUrl(`billpayments/paybill?initiator_id=${process.env.EKO_INITIATOR_ID}`),
+      ekoUrl(
+        `billpayments/paybill?initiator_id=${process.env.EKO_INITIATOR_ID}`,
+      ),
       payload,
       { headers, timeout: 10000 },
     ),
@@ -324,4 +338,3 @@ exports.payBill = async (body, req) => {
 
   return res.data;
 };
-

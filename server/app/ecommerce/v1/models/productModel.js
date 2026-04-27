@@ -1,4 +1,5 @@
 const db = require("../../../../config/database");
+const RewardModel = require("../../../../models/rewardModel");
 const fs = require("fs");
 const path = require("path");
 
@@ -8,8 +9,283 @@ function getPublicUrl(path) {
   return `${CDN_BASE_URL}/${path}`;
 }
 
+function calculateReward(orderAmount, rules) {
+  if (!rules || !rules.length) return 0;
+
+  const now = new Date();
+
+  // 1. filter valid rules
+  const validRules = rules.filter((rule) => {
+    if (!rule.is_active) return false;
+
+    if (rule.start_date && new Date(rule.start_date) > now) return false;
+    if (rule.end_date && new Date(rule.end_date) < now) return false;
+
+    if (orderAmount < rule.min_order_amount) return false;
+    if (rule.max_order_amount && orderAmount > rule.max_order_amount)
+      return false;
+
+    return true;
+  });
+
+  if (!validRules.length) return 0;
+
+  // 2. split rules
+  const stackable = validRules.filter((r) => r.is_stackable);
+  const nonStackable = validRules.filter((r) => !r.is_stackable);
+
+  let applicable = [];
+
+  // 3. pick highest priority non-stackable
+  if (nonStackable.length) {
+    nonStackable.sort((a, b) => a.priority - b.priority);
+    applicable.push(nonStackable[0]);
+  }
+
+  // 4. add stackable
+  applicable.push(...stackable);
+
+  // 5. remove duplicates
+  const seen = new Set();
+  applicable = applicable.filter((r) => {
+    if (seen.has(r.reward_rule_id)) return false;
+    seen.add(r.reward_rule_id);
+    return true;
+  });
+
+  // 6. calculate reward
+  let total = 0;
+
+  for (const rule of applicable) {
+    if (!rule.can_earn_reward) continue;
+
+    let reward = 0;
+
+    if (rule.reward_type === "percentage") {
+      reward = (orderAmount * rule.reward_value) / 100;
+    } else {
+      reward = rule.reward_value;
+    }
+
+    if (rule.max_reward) {
+      reward = Math.min(reward, rule.max_reward);
+    }
+
+    total += Math.floor(reward);
+  }
+
+  return total;
+}
+
 class ProductModel {
   // Get all products
+  // async getAllProducts({ search, sortBy, sortOrder, limit, offset }) {
+  //   try {
+  //     const conditions = [];
+  //     const params = [];
+
+  //     /* ===============================
+  //        SEARCH
+  //     =============================== */
+  //     if (search) {
+  //       conditions.push("p.product_name LIKE ?");
+  //       params.push(`%${search}%`);
+  //     }
+
+  //     conditions.push("p.status = 'approved'");
+  //     conditions.push("p.is_visible = 1");
+  //     conditions.push("p.is_searchable = 1");
+  //     conditions.push("p.is_deleted = 0");
+
+  //     const whereClause = conditions.length
+  //       ? `WHERE ${conditions.join(" AND ")}`
+  //       : "";
+
+  //     /* ===============================
+  //        SORT
+  //     =============================== */
+  //     const sortableColumns = ["created_at", "product_name", "brand_name"];
+
+  //     if (!sortableColumns.includes(sortBy)) {
+  //       sortBy = "created_at";
+  //     }
+
+  //     sortOrder = sortOrder === "ASC" ? "ASC" : "DESC";
+
+  //     const query = `
+  //       SELECT
+  //         p.product_id,
+  //         p.category_id,
+  //         p.subcategory_id,
+  //         p.product_name,
+  //         p.brand_name,
+  //         p.created_at,
+  //         p.short_description,
+  //         c.category_name,
+  //         sc.subcategory_name,
+  //         ssc.name AS sub_subcategory_name,
+  //         v.mrp,
+  //         v.sale_price,
+  //         v.reward_redemption_limit,
+  //         prs.can_earn_reward,
+  //         rr.reward_type,
+  //         rr.reward_value,
+  //         rr.max_reward,
+
+  //         GROUP_CONCAT(
+  //           DISTINCT CONCAT(
+  //             pi.image_id, '::',
+  //             pi.image_url, '::',
+  //             pi.type, '::',
+  //             pi.sort_order
+  //           )
+  //           ORDER BY pi.sort_order ASC
+  //         ) AS images
+
+  //       FROM eproducts p
+
+  //       /* ---- First Variant Only ---- */
+  //      LEFT JOIN (
+  //         SELECT pv.*
+  //         FROM product_variants pv
+  //         INNER JOIN (
+  //           SELECT
+  //             product_id,
+  //             MIN(sale_price) AS min_sale_price
+  //           FROM product_variants
+  //           WHERE sale_price IS NOT NULL
+  //             AND is_visible = 1
+  //           GROUP BY product_id
+  //         ) minv
+  //           ON pv.product_id = minv.product_id
+  //         AND pv.sale_price = minv.min_sale_price
+  //         INNER JOIN (
+  //           SELECT product_id, MIN(variant_id) AS min_variant_id
+  //           FROM product_variants
+  //           WHERE is_visible = 1
+  //           GROUP BY product_id
+  //         ) tie
+  //           ON pv.product_id = tie.product_id
+  //           AND pv.variant_id = tie.min_variant_id
+  //           WHERE pv.is_visible = 1
+  //       ) v ON p.product_id = v.product_id
+
+  //       /* ---- Images ---- */
+  //       LEFT JOIN product_images pi
+  //         ON p.product_id = pi.product_id
+
+  //       /* ---- Reward Settings ---- */
+  //       LEFT JOIN product_reward_settings prs
+  //         ON prs.id = (
+  //           SELECT prs2.id
+  //           FROM product_reward_settings prs2
+  //           WHERE prs2.is_active = 1
+  //             AND (
+  //               (prs2.variant_id = v.variant_id AND prs2.product_id = p.product_id)
+  //               OR (prs2.product_id = p.product_id AND prs2.variant_id IS NULL)
+  //               OR (prs2.subcategory_id = p.subcategory_id)
+  //               OR (prs2.category_id = p.category_id)
+  //               OR (
+  //                 prs2.product_id IS NULL
+  //                 AND prs2.variant_id IS NULL
+  //                 AND prs2.category_id IS NULL
+  //                 AND prs2.subcategory_id IS NULL
+  //               )
+  //             )
+  //           ORDER BY
+  //             CASE
+  //               WHEN prs2.variant_id IS NOT NULL THEN 1
+  //               WHEN prs2.product_id IS NOT NULL THEN 2
+  //               WHEN prs2.subcategory_id IS NOT NULL THEN 3
+  //               WHEN prs2.category_id IS NOT NULL THEN 4
+  //               ELSE 5
+  //             END,
+  //             prs2.priority ASC
+  //           LIMIT 1
+  //       )
+
+  //       LEFT JOIN reward_rules rr
+  //         ON rr.reward_rule_id = prs.reward_rule_id
+  //         AND rr.is_active = 1
+
+  //       /* ---- Categories ---- */
+  //       LEFT JOIN categories c ON p.category_id = c.category_id
+  //       LEFT JOIN sub_categories sc ON p.subcategory_id = sc.subcategory_id
+  //       LEFT JOIN sub_sub_categories ssc ON p.sub_subcategory_id = ssc.sub_subcategory_id
+
+  //       ${whereClause}
+
+  //       GROUP BY p.product_id
+  //       ORDER BY p.${sortBy} ${sortOrder}
+  //       LIMIT ? OFFSET ?
+  //     `;
+
+  //     const dataParams = [...params, limit, offset];
+  //     const [rows] = await db.execute(query, dataParams);
+
+  //     /* ===============================
+  //        IMAGE PARSING
+  //     =============================== */
+  //     const products = rows.map((row) => {
+  //       let images = [];
+
+  //       if (row.images) {
+  //         images = row.images.split(",").map((item) => {
+  //           const [image_id, image_url, type, sort_order] = item.split("::");
+
+  //           return {
+  //             image_id: Number(image_id),
+  //             image_url,
+  //             type,
+  //             sort_order: Number(sort_order),
+  //           };
+  //         });
+  //       }
+
+  //       return {
+  //         product_id: row.product_id,
+  //         category_id: row.category_id,
+  //         subcategory_id: row.subcategory_id,
+  //         product_name: row.product_name,
+  //         category_name: row.category_name,
+  //         subcategory_name: row.subcategory_name,
+  //         sub_subcategory_name: row.sub_subcategory_name,
+  //         brand_name: row.brand_name,
+  //         short_description: row.short_description,
+  //         created_at: row.created_at,
+  //         mrp: row.mrp,
+  //         sale_price: row.sale_price,
+  //         reward_redemption_limit: row.reward_redemption_limit,
+  //         can_earn_reward: row.can_earn_reward ?? 0,
+  //         reward_type: row.reward_type,
+  //         reward_value: row.reward_value,
+  //         max_reward: row.max_reward,
+  //         images,
+  //       };
+  //     });
+
+  //     /* ===============================
+  //        TOTAL COUNT
+  //     =============================== */
+  //     const [[{ total }]] = await db.execute(
+  //       `
+  //         SELECT COUNT(DISTINCT p.product_id) AS total
+  //         FROM eproducts p
+  //         ${whereClause}
+  //       `,
+  //       params,
+  //     );
+
+  //     return {
+  //       products,
+  //       totalItems: total,
+  //     };
+  //   } catch (error) {
+  //     console.error("Error fetching all products:", error);
+  //     throw error;
+  //   }
+  // }
+
   async getAllProducts({ search, sortBy, sortOrder, limit, offset }) {
     try {
       const conditions = [];
@@ -46,6 +322,8 @@ class ProductModel {
       const query = `
         SELECT 
           p.product_id,
+          p.category_id,
+          p.subcategory_id,
           p.product_name,
           p.brand_name,
           p.created_at,
@@ -56,10 +334,6 @@ class ProductModel {
           v.mrp,
           v.sale_price,
           v.reward_redemption_limit,
-          prs.can_earn_reward,
-          rr.reward_type,
-          rr.reward_value,
-          rr.max_reward,
 
           GROUP_CONCAT(
             DISTINCT CONCAT(
@@ -104,26 +378,6 @@ class ProductModel {
         LEFT JOIN product_images pi 
           ON p.product_id = pi.product_id
 
-        /* ---- Reward Settings ---- */
-        LEFT JOIN product_reward_settings prs 
-          ON prs.id = (
-            SELECT prs2.id
-            FROM product_reward_settings prs2
-            WHERE prs2.product_id = p.product_id
-              AND prs2.is_active = 1
-              AND (
-                prs2.variant_id = v.variant_id
-                OR prs2.variant_id IS NULL
-              )
-            ORDER BY 
-              CASE WHEN prs2.variant_id = v.variant_id THEN 1 ELSE 2 END
-            LIMIT 1
-          )
-
-        LEFT JOIN reward_rules rr 
-          ON rr.reward_rule_id = prs.reward_rule_id
-          AND rr.is_active = 1
-
         /* ---- Categories ---- */
         LEFT JOIN categories c ON p.category_id = c.category_id
         LEFT JOIN sub_categories sc ON p.subcategory_id = sc.subcategory_id
@@ -160,6 +414,8 @@ class ProductModel {
 
         return {
           product_id: row.product_id,
+          category_id: row.category_id,
+          subcategory_id: row.subcategory_id,
           product_name: row.product_name,
           category_name: row.category_name,
           subcategory_name: row.subcategory_name,
@@ -170,10 +426,6 @@ class ProductModel {
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,
-          can_earn_reward: row.can_earn_reward ?? 0,
-          reward_type: row.reward_type,
-          reward_value: row.reward_value,
-          max_reward: row.max_reward,
           images,
         };
       });
@@ -241,32 +493,8 @@ class ProductModel {
       // 3 Get product variants
       const [variants] = await db.execute(
         `SELECT 
-          v.*,
-          prs.can_earn_reward,
-          rr.reward_type,
-          rr.reward_value,
-          rr.max_reward
+          v.*
         FROM product_variants v
-
-        LEFT JOIN product_reward_settings prs 
-          ON prs.id = (
-            SELECT prs2.id
-            FROM product_reward_settings prs2
-            WHERE prs2.product_id = v.product_id
-              AND prs2.is_active = 1
-              AND (
-                prs2.variant_id = v.variant_id
-                OR prs2.variant_id IS NULL
-              )
-            ORDER BY 
-              CASE WHEN prs2.variant_id = v.variant_id THEN 1 ELSE 2 END
-            LIMIT 1
-          )
-
-        LEFT JOIN reward_rules rr 
-          ON rr.reward_rule_id = prs.reward_rule_id
-          AND rr.is_active = 1
-
         WHERE v.product_id = ? 
         AND v.is_visible = 1`,
         [productId],
@@ -398,6 +626,8 @@ class ProductModel {
       SELECT 
         p.product_id,
         p.product_name,
+        p.category_id,
+        p.subcategory_id,
         p.brand_name,
         p.avg_rating,
         p.rating_count,
@@ -407,11 +637,6 @@ class ProductModel {
         ssc.name AS sub_subcategory_name,
         v.mrp,
         v.sale_price,
-        v.reward_redemption_limit,
-        prs.can_earn_reward,
-        rr.reward_type,
-        rr.reward_value,
-        rr.max_reward,
 
         GROUP_CONCAT(
           DISTINCT CONCAT(
@@ -445,25 +670,6 @@ class ProductModel {
       /* ---- Images ---- */
       LEFT JOIN product_images pi ON p.product_id = pi.product_id
 
-     LEFT JOIN product_reward_settings prs 
-      ON prs.id = (
-        SELECT prs2.id
-        FROM product_reward_settings prs2
-        WHERE prs2.product_id = p.product_id
-          AND prs2.is_active = 1
-          AND (
-            prs2.variant_id = v.variant_id
-            OR prs2.variant_id IS NULL
-          )
-        ORDER BY 
-          CASE WHEN prs2.variant_id = v.variant_id THEN 1 ELSE 2 END
-        LIMIT 1
-      )
-
-      LEFT JOIN reward_rules rr 
-        ON rr.reward_rule_id = prs.reward_rule_id
-        AND rr.is_active = 1
-
       ${whereClause}
 
       GROUP BY p.product_id
@@ -494,6 +700,8 @@ class ProductModel {
 
         return {
           product_id: row.product_id,
+          category_id: row.category_id,
+          subcategory_id: row.subcategory_id,
           product_name: row.product_name,
           brand_name: row.brand_name,
           category_name: row.category_name,
@@ -505,10 +713,6 @@ class ProductModel {
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,
-          can_earn_reward: row.can_earn_reward ?? 0,
-          reward_type: row.reward_type,
-          reward_value: row.reward_value,
-          max_reward: row.max_reward,
           images,
         };
       });
@@ -618,6 +822,8 @@ class ProductModel {
       SELECT 
         p.product_id,
         p.product_name,
+        p.category_id,
+        p.subcategory_id,
         p.brand_name,
         p.avg_rating,
         p.rating_count,
@@ -686,17 +892,19 @@ class ProductModel {
 
         return {
           product_id: row.product_id,
+          category_id: row.category_id,
+          subcategory_id: row.subcategory_id,
           product_name: row.product_name,
           brand_name: row.brand_name,
           category_name: row.category_name,
+          subcategory_name: row.subcategory_name,
+          sub_subcategory_name: row.sub_subcategory_name,
           created_at: row.created_at,
           avg_rating: row.avg_rating,
           rating_count: row.rating_count,
           mrp: row.mrp,
           sale_price: row.sale_price,
           reward_redemption_limit: row.reward_redemption_limit,
-          subcategory_name: row.subcategory_name,
-          sub_subcategory_name: row.sub_subcategory_name,
           images,
         };
       });
@@ -858,7 +1066,11 @@ class ProductModel {
       image: getPublicUrl(prod.image),
     }));
 
-    return [...formattedCategories, ...formattedSubcategories, ...formattedProducts].slice(0, limit);
+    return [
+      ...formattedCategories,
+      ...formattedSubcategories,
+      ...formattedProducts,
+    ].slice(0, limit);
   }
 
   // async getSearchSuggestions({ search, limit }) {
@@ -988,6 +1200,8 @@ class ProductModel {
       const query = `
       SELECT
         p.product_id,
+        p.category_id,
+        p.subcategory_id,
         p.product_name,
         p.brand_name,
         p.created_at,
@@ -1057,44 +1271,79 @@ class ProductModel {
         offset,
       ]);
 
+      /* ===============================
+       CACHE OBJECT (IMPORTANT)
+    =============================== */
+      const rewardCache = {};
+
       /* -------------------------------
        3 Format response
     --------------------------------*/
-      return rows.map((row) => {
-        const salePrice = Number(row.sale_price || 0);
-        const mrp = Number(row.mrp || 0);
-        const discountPercent = Number(row.reward_redemption_limit || 0);
+      return await Promise.all(
+        rows.map(async (row) => {
+          const salePrice = Number(row.sale_price || 0);
+          const mrp = Number(row.mrp || 0);
 
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
-        const finalPrice = salePrice - discountAmount;
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
-        const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+          let image = null;
 
-        let image = null;
+          if (row.images) {
+            const first = row.images.split(",")[0];
+            const imagePath = first.split("::")[1];
+            image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
+          }
 
-        if (row.images) {
-          const first = row.images.split(",")[0];
-          const imagePath = first.split("::")[1];
+          /* ===============================
+           CACHE KEY (VERY IMPORTANT)
+        =============================== */
+          const key = `${row.product_id}_${row.variant_id}_${row.category_id}_${row.subcategory_id}_${salePrice}`;
 
-          image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
-        }
+          let rules = rewardCache[key];
 
-        return {
-          product_id: row.product_id,
-          product_name: row.product_name,
-          brand_name: row.brand_name,
-          variant_id: row.variant_id,
-          image,
-          price: `₹${salePrice}`,
-          originalPrice: `₹${mrp}`,
-          discount: `${mrpDiscountPercent}%`,
-          pointsPrice: `₹${finalPrice}`,
-          points: discountAmount,
-          rating: 4.6,
-          reviews: "18.9K",
-        };
-      });
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              row.product_id,
+              row.variant_id,
+              row.category_id,
+              row.subcategory_id,
+              salePrice,
+            );
+
+            rewardCache[key] = rules;
+          }
+
+          let rewardCoins = 0;
+          let canEarn = false;
+
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
+
+          return {
+            product_id: row.product_id,
+            product_name: row.product_name,
+            brand_name: row.brand_name,
+            variant_id: row.variant_id,
+            image,
+
+            price: `₹${salePrice}`,
+            originalPrice: `₹${mrp}`,
+            discount: `${mrpDiscountPercent}%`,
+
+            rating: 4.6,
+            reviews: "18.9K",
+
+            reward: {
+              enabled: canEarn && rewardCoins > 0,
+              coins: rewardCoins,
+              label: rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+            },
+          };
+        }),
+      );
     } catch (error) {
       console.error("Error fetching similar products:", error);
       throw error;
@@ -1107,6 +1356,8 @@ class ProductModel {
       const query = `
       SELECT 
         p.product_id,
+        p.category_id,
+        p.subcategory_id,
         p.product_name,
         p.brand_name,
         v.variant_id,
@@ -1195,41 +1446,75 @@ class ProductModel {
         offset,
       ]);
 
-      return rows.map((row) => {
-        const salePrice = Number(row.sale_price || 0);
-        const mrp = Number(row.mrp || 0);
-        const discountPercent = Number(row.reward_redemption_limit || 0);
+      /* ===============================
+       CACHE
+    =============================== */
+      const rewardCache = {};
 
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
-        const finalPrice = salePrice - discountAmount;
+      return await Promise.all(
+        rows.map(async (row) => {
+          const salePrice = Number(row.sale_price) || 0;
+          const mrp = Number(row.mrp) || 0;
 
-        const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
-        let image = null;
+          let image = null;
+          if (row.images) {
+            const first = row.images.split(",")[0];
+            const imagePath = first.split("::")[1];
+            image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
+          }
 
-        if (row.images) {
-          const first = row.images.split(",")[0];
-          const imagePath = first.split("::")[1];
-          image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
-        }
+          /* ===============================
+           CACHE KEY
+        =============================== */
+          const key = `${row.product_id}_${row.variant_id}_${row.category_id}_${row.subcategory_id}_${salePrice}`;
 
-        return {
-          product_id: row.product_id,
-          product_name: row.product_name,
-          brand_name: row.brand_name,
-          variant_id: row.variant_id,
-          image,
-          price: `₹${salePrice}`,
-          originalPrice: `₹${mrp}`,
-          discount: `${mrpDiscountPercent}%`,
-          pointsPrice: `₹${finalPrice}`,
-          points: discountAmount,
-          score: row.total_score,
-          rating: 4.6,
-          reviews: "18.9K",
-        };
-      });
+          let rules = rewardCache[key];
+
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              row.product_id,
+              row.variant_id,
+              row.category_id,
+              row.subcategory_id,
+              salePrice,
+            );
+            rewardCache[key] = rules;
+          }
+
+          let rewardCoins = 0;
+          let canEarn = false;
+
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
+
+          return {
+            product_id: row.product_id,
+            product_name: row.product_name,
+            brand_name: row.brand_name,
+            variant_id: row.variant_id,
+            image,
+
+            price: `₹${salePrice}`,
+            originalPrice: `₹${mrp}`,
+            discount: `${mrpDiscountPercent}%`,
+
+            score: row.total_score,
+            rating: 4.6,
+            reviews: "18.9K",
+
+            reward: {
+              enabled: canEarn && rewardCoins > 0,
+              coins: rewardCoins,
+              label: rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+            },
+          };
+        }),
+      );
     } catch (error) {
       console.error("Recommendation model error:", error);
       throw error;
@@ -1242,6 +1527,8 @@ class ProductModel {
       const query = `
       SELECT
         p.product_id,
+        p.category_id,
+        p.subcategory_id,
         p.product_name,
         p.brand_name,
         p.created_at,
@@ -1301,50 +1588,77 @@ class ProductModel {
 
       const [rows] = await db.execute(query, [limit, offset]);
 
-      const products = rows.map((row) => {
-        const salePrice = Number(row.sale_price || 0);
-        const mrp = Number(row.mrp || 0);
-        const discountPercent = Number(row.reward_redemption_limit || 0);
+      /* ===============================
+       CACHE
+    =============================== */
+      const rewardCache = {};
 
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
-        const finalPrice = salePrice - discountAmount;
+      return await Promise.all(
+        rows.map(async (row) => {
+          const salePrice = Number(row.sale_price) || 0;
+          const mrp = Number(row.mrp) || 0;
 
-        const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
-        let images = [];
+          let image = null;
+          if (row.images) {
+            const first = row.images.split(",")[0];
+            const imagePath = first.split("::")[1];
+            image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
+          }
 
-        if (row.images) {
-          images = row.images.split(",").map((item) => {
-            const [, image_url] = item.split("::");
-            return { image_url };
-          });
-        }
+          /* ===============================
+           CACHE KEY
+        =============================== */
+          const key = `${row.product_id}_${row.variant_id}_${row.category_id}_${row.subcategory_id}_${salePrice}`;
 
-        return {
-          product_id: row.product_id,
-          product_name: row.product_name,
-          brand_name: row.brand_name,
-          variant_id: row.variant_id,
+          let rules = rewardCache[key];
 
-          image: images.length
-            ? `${CDN_BASE_URL}/${images[0].image_url}`
-            : null,
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              row.product_id,
+              row.variant_id,
+              row.category_id,
+              row.subcategory_id,
+              salePrice,
+            );
+            rewardCache[key] = rules;
+          }
 
-          price: `₹${salePrice}`,
-          originalPrice: `₹${mrp}`,
-          discount: `${mrpDiscountPercent}%`,
-          pointsPrice: `₹${finalPrice}`,
-          points: discountAmount,
+          let rewardCoins = 0;
+          let canEarn = false;
 
-          rating: 4.6,
-          reviews: "18.9K",
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
 
-          created_at: row.created_at,
-        };
-      });
+          return {
+            product_id: row.product_id,
+            product_name: row.product_name,
+            brand_name: row.brand_name,
+            variant_id: row.variant_id,
 
-      return products;
+            image,
+
+            price: `₹${salePrice}`,
+            originalPrice: `₹${mrp}`,
+            discount: `${mrpDiscountPercent}%`,
+
+            rating: 4.6,
+            reviews: "18.9K",
+
+            created_at: row.created_at,
+
+            reward: {
+              enabled: canEarn && rewardCoins > 0,
+              coins: rewardCoins,
+              label: rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+            },
+          };
+        }),
+      );
     } catch (error) {
       console.error("Error fetching new arrivals:", error);
       throw error;
@@ -1357,6 +1671,8 @@ class ProductModel {
       const query = `
       SELECT
         p.product_id,
+        p.category_id,
+        p.subcategory_id,
         p.product_name,
         p.brand_name,
 
@@ -1422,49 +1738,75 @@ class ProductModel {
         offset,
       ]);
 
-      const products = rows.map((row) => {
-        const salePrice = Number(row.sale_price || 0);
-        const mrp = Number(row.mrp || 0);
-        const discountPercent = Number(row.reward_redemption_limit || 0);
+      /* ===============================
+       CACHE
+    =============================== */
+      const rewardCache = {};
 
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
-        const finalPrice = salePrice - discountAmount;
+      return await Promise.all(
+        rows.map(async (row) => {
+          const salePrice = Number(row.sale_price) || 0;
+          const mrp = Number(row.mrp) || 0;
 
-        const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
-        let images = [];
-        let imagePath = null;
+          let image = null;
+          if (row.images) {
+            const first = row.images.split(",")[0];
+            const imagePath = first.split("::")[1];
+            image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
+          }
 
-        if (row.images) {
-          images = row.images.split(",").map((item) => {
-            const [, image_url] = item.split("::");
-            return { image_url };
-          });
+          /* ===============================
+           CACHE KEY
+        =============================== */
+          const key = `${row.product_id}_${row.variant_id}_${row.category_id}_${row.subcategory_id}_${salePrice}`;
 
-          imagePath = images.length ? images[0].image_url : null;
-        }
+          let rules = rewardCache[key];
 
-        return {
-          product_id: row.product_id,
-          product_name: row.product_name,
-          brand_name: row.brand_name,
-          variant_id: row.variant_id,
-          image: imagePath ? `${CDN_BASE_URL}/${imagePath}` : null,
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              row.product_id,
+              row.variant_id,
+              row.category_id,
+              row.subcategory_id,
+              salePrice,
+            );
+            rewardCache[key] = rules;
+          }
 
-          price: `₹${salePrice}`,
-          originalPrice: `₹${mrp}`,
-          discount: `${mrpDiscountPercent}%`,
-          pointsPrice: `₹${finalPrice}`,
-          points: discountAmount,
+          let rewardCoins = 0;
+          let canEarn = false;
 
-          frequency: row.frequency,
-          rating: 4.6,
-          reviews: "18.9K",
-        };
-      });
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
 
-      return products;
+          return {
+            product_id: row.product_id,
+            product_name: row.product_name,
+            brand_name: row.brand_name,
+            variant_id: row.variant_id,
+            image,
+
+            price: `₹${salePrice}`,
+            originalPrice: `₹${mrp}`,
+            discount: `${mrpDiscountPercent}%`,
+
+            frequency: row.frequency,
+            rating: 4.6,
+            reviews: "18.9K",
+
+            reward: {
+              enabled: canEarn && rewardCoins > 0,
+              coins: rewardCoins,
+              label: rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+            },
+          };
+        }),
+      );
     } catch (error) {
       console.error("Error fetching customers also bought:", error);
       throw error;
@@ -1477,6 +1819,8 @@ class ProductModel {
       const query = `
       SELECT
         p.product_id,
+        p.category_id,
+        p.subcategory_id,
         p.product_name,
         p.brand_name,
 
@@ -1532,50 +1876,76 @@ class ProductModel {
 
       const [rows] = await db.execute(query, [days, limit, offset]);
 
-      const products = rows.map((row) => {
-        const salePrice = Number(row.sale_price || 0);
-        const mrp = Number(row.mrp || 0);
-        const discountPercent = Number(row.reward_redemption_limit || 0);
+      /* ===============================
+       CACHE
+    =============================== */
+      const rewardCache = {};
 
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
-        const finalPrice = salePrice - discountAmount;
+      return await Promise.all(
+        rows.map(async (row) => {
+          const salePrice = Number(row.sale_price) || 0;
+          const mrp = Number(row.mrp) || 0;
 
-        const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
-        let images = [];
-        let imagePath = null;
+          let image = null;
+          if (row.images) {
+            const first = row.images.split(",")[0];
+            const imagePath = first.split("::")[1];
+            image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
+          }
 
-        if (row.images) {
-          images = row.images.split(",").map((item) => {
-            const [, image_url] = item.split("::");
-            return { image_url };
-          });
+          /* ===============================
+           CACHE KEY
+        =============================== */
+          const key = `${row.product_id}_${row.variant_id}_${row.category_id}_${row.subcategory_id}_${salePrice}`;
 
-          imagePath = images.length ? images[0].image_url : null;
-        }
+          let rules = rewardCache[key];
 
-        return {
-          product_id: row.product_id,
-          product_name: row.product_name,
-          brand_name: row.brand_name,
-          variant_id: row.variant_id,
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              row.product_id,
+              row.variant_id,
+              row.category_id,
+              row.subcategory_id,
+              salePrice,
+            );
+            rewardCache[key] = rules;
+          }
 
-          image: imagePath ? `${CDN_BASE_URL}/${imagePath}` : null,
+          let rewardCoins = 0;
+          let canEarn = false;
 
-          price: `₹${salePrice}`,
-          originalPrice: `₹${mrp}`,
-          discount: `${mrpDiscountPercent}%`,
-          pointsPrice: `₹${finalPrice}`,
-          points: discountAmount,
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
 
-          total_sold: row.total_sold,
-          rating: 4.6,
-          reviews: "18.9K",
-        };
-      });
+          return {
+            product_id: row.product_id,
+            product_name: row.product_name,
+            brand_name: row.brand_name,
+            variant_id: row.variant_id,
 
-      return products;
+            image,
+
+            price: `₹${salePrice}`,
+            originalPrice: `₹${mrp}`,
+            discount: `${mrpDiscountPercent}%`,
+
+            total_sold: row.total_sold,
+            rating: 4.6,
+            reviews: "18.9K",
+
+            reward: {
+              enabled: canEarn && rewardCoins > 0,
+              coins: rewardCoins,
+              label: rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+            },
+          };
+        }),
+      );
     } catch (error) {
       console.error("Error fetching trending products:", error);
       throw error;
@@ -1588,6 +1958,8 @@ class ProductModel {
       const query = `
       SELECT
         p.product_id,
+        p.category_id,
+        p.subcategory_id,
         p.product_name,
         p.brand_name,
 
@@ -1643,50 +2015,76 @@ class ProductModel {
 
       const [rows] = await db.execute(query, [days, limit, offset]);
 
-      const products = rows.map((row) => {
-        const salePrice = Number(row.sale_price || 0);
-        const mrp = Number(row.mrp || 0);
-        const discountPercent = Number(row.reward_redemption_limit || 0);
+      /* ===============================
+       CACHE
+    =============================== */
+      const rewardCache = {};
 
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
-        const finalPrice = salePrice - discountAmount;
+      return await Promise.all(
+        rows.map(async (row) => {
+          const salePrice = Number(row.sale_price) || 0;
+          const mrp = Number(row.mrp) || 0;
 
-        const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
-        let images = [];
-        let imagePath = null;
+          let image = null;
+          if (row.images) {
+            const first = row.images.split(",")[0];
+            const imagePath = first.split("::")[1];
+            image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
+          }
 
-        if (row.images) {
-          images = row.images.split(",").map((item) => {
-            const [, image_url] = item.split("::");
-            return { image_url };
-          });
+          /* ===============================
+           CACHE KEY
+        =============================== */
+          const key = `${row.product_id}_${row.variant_id}_${row.category_id}_${row.subcategory_id}_${salePrice}`;
 
-          imagePath = images.length ? images[0].image_url : null;
-        }
+          let rules = rewardCache[key];
 
-        return {
-          product_id: row.product_id,
-          product_name: row.product_name,
-          brand_name: row.brand_name,
-          variant_id: row.variant_id,
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              row.product_id,
+              row.variant_id,
+              row.category_id,
+              row.subcategory_id,
+              salePrice,
+            );
+            rewardCache[key] = rules;
+          }
 
-          image: imagePath ? `${CDN_BASE_URL}/${imagePath}` : null,
+          let rewardCoins = 0;
+          let canEarn = false;
 
-          price: `₹${salePrice}`,
-          originalPrice: `₹${mrp}`,
-          discount: `${mrpDiscountPercent}%`,
-          pointsPrice: `₹${finalPrice}`,
-          points: discountAmount,
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
 
-          total_sold: row.total_sold,
-          rating: 4.6,
-          reviews: "18.9K",
-        };
-      });
+          return {
+            product_id: row.product_id,
+            product_name: row.product_name,
+            brand_name: row.brand_name,
+            variant_id: row.variant_id,
 
-      return products;
+            image,
+
+            price: `₹${salePrice}`,
+            originalPrice: `₹${mrp}`,
+            discount: `${mrpDiscountPercent}%`,
+
+            total_sold: row.total_sold,
+            rating: 4.6,
+            reviews: "18.9K",
+
+            reward: {
+              enabled: canEarn && rewardCoins > 0,
+              coins: rewardCoins,
+              label: rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+            },
+          };
+        }),
+      );
     } catch (error) {
       console.error("Error fetching best sellers:", error);
       throw error;
@@ -1699,6 +2097,8 @@ class ProductModel {
       const query = `
       SELECT
         p.product_id,
+        p.category_id,
+        p.subcategory_id,
         p.product_name,
         p.brand_name,
 
@@ -1750,49 +2150,76 @@ class ProductModel {
 
       const [rows] = await db.execute(query, [days, limit, offset]);
 
-      const products = rows.map((row) => {
-        const salePrice = Number(row.sale_price || 0);
-        const mrp = Number(row.mrp || 0);
-        const discountPercent = Number(row.reward_redemption_limit || 0);
+      /* ===============================
+          CACHE
+        =============================== */
+      const rewardCache = {};
 
-        const discountAmount = Math.round((salePrice * discountPercent) / 100);
-        const finalPrice = salePrice - discountAmount;
+      return await Promise.all(
+        rows.map(async (row) => {
+          const salePrice = Number(row.sale_price) || 0;
+          const mrp = Number(row.mrp) || 0;
 
-        const mrpDiscountPercent =
-          mrp > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
-        let images = [];
-        let imagePath = null;
+          let image = null;
+          if (row.images) {
+            const first = row.images.split(",")[0];
+            const imagePath = first.split("::")[1];
+            image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
+          }
 
-        if (row.images) {
-          images = row.images.split(",").map((item) => {
-            const [, image_url] = item.split("::");
-            return { image_url };
-          });
-          imagePath = images.length ? images[0].image_url : null;
-        }
+          /* ===============================
+           CACHE KEY
+        =============================== */
+          const key = `${row.product_id}_${row.variant_id}_${row.category_id}_${row.subcategory_id}_${salePrice}`;
 
-        return {
-          product_id: row.product_id,
-          product_name: row.product_name,
-          brand_name: row.brand_name,
-          variant_id: row.variant_id,
+          let rules = rewardCache[key];
 
-          image: imagePath ? `${CDN_BASE_URL}/${imagePath}` : null,
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              row.product_id,
+              row.variant_id,
+              row.category_id,
+              row.subcategory_id,
+              salePrice,
+            );
+            rewardCache[key] = rules;
+          }
 
-          price: `₹${salePrice}`,
-          originalPrice: `₹${mrp}`,
-          discount: `${mrpDiscountPercent}%`,
-          pointsPrice: `₹${finalPrice}`,
-          points: discountAmount,
+          let rewardCoins = 0;
+          let canEarn = false;
 
-          view_count: row.view_count,
-          rating: 4.6,
-          reviews: "18.9K",
-        };
-      });
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
 
-      return products;
+          return {
+            product_id: row.product_id,
+            product_name: row.product_name,
+            brand_name: row.brand_name,
+            variant_id: row.variant_id,
+
+            image,
+
+            price: `₹${salePrice}`,
+            originalPrice: `₹${mrp}`,
+            discount: `${mrpDiscountPercent}%`,
+
+            view_count: row.view_count,
+            rating: 4.6,
+            reviews: "18.9K",
+
+            reward: {
+              enabled: canEarn && rewardCoins > 0,
+              coins: rewardCoins,
+              label: rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+            },
+          };
+        }),
+      );
     } catch (error) {
       console.error("Error fetching most viewed products:", error);
       throw error;
@@ -1805,6 +2232,8 @@ class ProductModel {
       const query = `
       SELECT
         p.product_id,
+        p.category_id,
+        p.subcategory_id,
         p.product_name,
         p.brand_name,
 
@@ -1857,7 +2286,75 @@ class ProductModel {
 
       const [rows] = await db.execute(query, [limit, offset]);
 
-      return rows;
+      /* ===============================
+       CACHE
+    =============================== */
+      const rewardCache = {};
+
+      return await Promise.all(
+        rows.map(async (row) => {
+          const salePrice = Number(row.sale_price) || 0;
+          const mrp = Number(row.mrp) || 0;
+
+          const mrpDiscountPercent =
+            mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
+
+          let image = null;
+          if (row.images) {
+            const first = row.images.split(",")[0];
+            const imagePath = first.split("::")[1];
+            image = imagePath ? `${CDN_BASE_URL}/${imagePath}` : null;
+          }
+
+          /* ===============================
+           CACHE KEY
+        =============================== */
+          const key = `${row.product_id}_${row.variant_id}_${row.category_id}_${row.subcategory_id}_${salePrice}`;
+
+          let rules = rewardCache[key];
+
+          if (!rules) {
+            rules = await RewardModel.getProductRewards(
+              row.product_id,
+              row.variant_id,
+              row.category_id,
+              row.subcategory_id,
+              salePrice,
+            );
+            rewardCache[key] = rules;
+          }
+
+          let rewardCoins = 0;
+          let canEarn = false;
+
+          if (rules.length) {
+            rewardCoins = calculateReward(salePrice, rules);
+            canEarn = rules.some((r) => r.can_earn_reward);
+          }
+
+          return {
+            product_id: row.product_id,
+            product_name: row.product_name,
+            brand_name: row.brand_name,
+            variant_id: row.variant_id,
+
+            image,
+
+            price: `₹${salePrice}`,
+            originalPrice: `₹${mrp}`,
+            discount: `${mrpDiscountPercent}%`,
+
+            rating: Number(row.avg_rating || 0).toFixed(1),
+            reviews: row.total_reviews,
+
+            reward: {
+              enabled: canEarn && rewardCoins > 0,
+              coins: rewardCoins,
+              label: rewardCoins > 0 ? `Earn up to ${rewardCoins} coins` : null,
+            },
+          };
+        }),
+      );
     } catch (error) {
       console.error("Error fetching top rated products:", error);
       throw error;

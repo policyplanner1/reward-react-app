@@ -15,6 +15,9 @@ router.get("/cart-items", auth, ServiceCartController.getCart);
 // Remove item from cart
 router.delete("/item/:id", auth, ServiceCartController.removeItem);
 
+// remove bundle item from cart
+router.delete("/bundle/:bundleId", auth, ServiceCartController.removeBundle);
+
 // Clear cart
 router.delete("/clear", auth, ServiceCartController.clearCart);
 

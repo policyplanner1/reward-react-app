@@ -1,14 +1,14 @@
 .order-page {
   background: #f5f7fb;
   min-height: 100vh;
-  padding: 40px 16px;
+  padding: 20px 16px;
   display: flex;
   justify-content: center;
 }
 
 .form-container {
   width: 100%;
-  max-width: 800px;
+  /* max-width: 800px; */
   background: #ffffff;
   padding: 30px;
   border-radius: 12px;
@@ -126,4 +126,53 @@
 
 .toggle.active .toggle-circle {
   transform: translateX(24px);
+}
+
+/* Add these to your existing CSS file */
+
+/* Spacing between sections */
+h3 {
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 8px;
+  margin-top: 24px !important;
+  color: #2563eb !important; /* Makes section titles pop */
+}
+
+/* Toggle alignment */
+.toggle-section {
+  display: flex;
+  gap: 40px;
+  margin-top: 20px;
+  background: #f9fafb;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.label-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #444;
+}
+
+/* Specific styling for the textarea */
+textarea {
+  font-family: inherit;
+  resize: vertical;
+}
+
+/* Responsive fix for small screens */
+@media (max-width: 600px) {
+  .form-row, .form-row-3 {
+    grid-template-columns: 1fr;
+  }
+  .toggle-section {
+    flex-direction: column;
+    gap: 15px;
+  }
 }

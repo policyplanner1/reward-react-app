@@ -57,11 +57,19 @@ class ServiceCheckoutController {
   async addToCheckout(req, res) {
     try {
       const userId = req.user?.user_id;
+      const addressId = req.body?.address_id;
 
       if (!userId) {
         return res.status(401).json({
           success: false,
           message: "Unauthorized user",
+        });
+      }
+
+      if (!addressId) {
+        return res.status(400).json({
+          success: false,
+          message: "Address is required",
         });
       }
 
@@ -84,6 +92,7 @@ class ServiceCheckoutController {
       for (let item of individual_items) {
         const order = await ServiceOrderModel.create({
           user_id: userId,
+          addressId,
           service_id: item.service_id,
           variant_id: item.variant_id,
           enquiry_id: null,
@@ -202,11 +211,19 @@ class ServiceCheckoutController {
       }
 
       const { service_id, variant_id } = req.body;
+      const addressId = req.body?.address_id;
 
       if (!service_id || !variant_id) {
         return res.status(400).json({
           success: false,
           message: "service_id and variant_id required",
+        });
+      }
+
+      if (!addressId) {
+        return res.status(400).json({
+          success: false,
+          message: "Address is required",
         });
       }
 
@@ -228,6 +245,7 @@ class ServiceCheckoutController {
       // create single order
       const order = await ServiceOrderModel.create({
         user_id: userId,
+        addressId,
         service_id,
         variant_id,
         enquiry_id: null,
@@ -243,6 +261,153 @@ class ServiceCheckoutController {
         data: {
           orders: [order],
           parent_order_id: parentOrderId,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // buy now bundle
+  async buyNowBundle(req, res) {
+    try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { bundle_id, selected_items } = req.body;
+      const addressId = req.body?.address_id;
+
+      if (!bundle_id) {
+        return res.status(400).json({
+          success: false,
+          message: "bundle_id required",
+        });
+      }
+
+      if (!addressId) {
+        return res.status(400).json({
+          success: false,
+          message: "Address is required",
+        });
+      }
+
+      // get bundle
+      const [[bundle]] = await db.execute(
+        `SELECT id,type FROM service_bundles WHERE id = ?`,
+        [bundle_id],
+      );
+
+      if (!bundle) {
+        return res.status(404).json({
+          success: false,
+          message: "Bundle not found",
+        });
+      }
+
+      // get bundle items
+      const [items] = await db.execute(
+        `SELECT 
+          bi.id,
+          bi.service_id,
+          bi.variant_id,
+          bi.price AS bundle_price,
+          bi.is_required,
+          sv.price AS individual_price
+        FROM service_bundle_items bi
+        JOIN service_variants sv ON sv.id = bi.variant_id
+        WHERE bi.bundle_id = ?`,
+        [bundle_id],
+      );
+
+      if (!items.length) {
+        return res.status(400).json({
+          success: false,
+          message: "No items found in bundle",
+        });
+      }
+
+      // 3 Required items
+      const requiredItems = items
+        .filter((i) => i.is_required === 1)
+        .map((i) => i.id);
+
+      // 4 Selection set (required always included)
+      const selectedSet = new Set([
+        ...requiredItems,
+        ...(selected_items || []),
+      ]);
+
+      // 5 validation
+      const hasOptional = items.some((i) => i.is_required === 0);
+
+      if (
+        bundle.type === "custom" &&
+        hasOptional &&
+        (!selected_items || selected_items.length === 0)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select at least one service",
+        });
+      }
+
+      // 6 Detect full bundle selection
+      const isFullBundleSelected = selectedSet.size === items.length;
+
+      const parentOrderId = crypto.randomUUID();
+
+      const createdOrders = [];
+
+      // 7 create orders
+      for (let item of items) {
+        // apply selection logic
+        if (bundle.type === "custom") {
+          if (item.is_required === 0 && !selectedSet.has(item.id)) {
+            continue;
+          }
+        }
+
+        let finalPrice;
+
+        if (bundle.type === "fixed") {
+          finalPrice = Number(item.bundle_price);
+        } else {
+          finalPrice = isFullBundleSelected
+            ? Number(item.bundle_price) //  apply discount
+            : Number(item.individual_price); //  partial
+        }
+
+        const order = await ServiceOrderModel.create({
+          user_id: userId,
+          addressId,
+          service_id: item.service_id,
+          variant_id: item.variant_id,
+          enquiry_id: null,
+          price: finalPrice,
+          parent_order_id: parentOrderId,
+          bundle_id: bundle_id,
+          status: "pending_payment",
+        });
+
+        createdOrders.push(order);
+      }
+
+      res.json({
+        success: true,
+        message: "Bundle order created",
+        data: {
+          orders: createdOrders,
+          parent_order_id: parentOrderId,
+          is_bundle_applied: bundle.type === "fixed" || isFullBundleSelected,
         },
       });
     } catch (err) {
@@ -305,7 +470,7 @@ class ServiceCheckoutController {
 
   async getBuyNowPreview(req, res) {
     try {
-      const { service_id, variant_id } = req.body;
+      const { service_id, variant_id } = req.query;
 
       if (!service_id || !variant_id) {
         return res.status(400).json({
@@ -360,6 +525,164 @@ class ServiceCheckoutController {
         data: {
           type: "buy_now",
           items,
+          summary,
+        },
+      });
+    } catch (err) {
+      console.log(err);
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // bundle buy now preview
+  async getBuyNowBundlePreview(req, res) {
+    try {
+      const { bundle_id, selected_items } = req.query;
+
+      if (!bundle_id) {
+        return res.status(400).json({
+          success: false,
+          message: "bundle_id required",
+        });
+      }
+
+      // 1 Get bundle
+      const [[bundle]] = await db.execute(
+        `SELECT id, name, type FROM service_bundles WHERE id = ?`,
+        [bundle_id],
+      );
+
+      if (!bundle) {
+        return res.status(404).json({
+          success: false,
+          message: "Bundle not found",
+        });
+      }
+
+      // 2 Get bundle items (+ both prices)
+      const [items] = await db.execute(
+        `SELECT 
+          bi.id,
+          bi.service_id,
+          bi.variant_id,
+          bi.price AS bundle_price,
+          bi.is_required,
+
+          s.name AS service_name,
+          sv.variant_name,
+          sv.title,
+          sv.image_url,
+          sv.price AS individual_price
+
+        FROM service_bundle_items bi
+        JOIN services s ON s.id = bi.service_id
+        JOIN service_variants sv ON sv.id = bi.variant_id
+
+        WHERE bi.bundle_id = ?
+        ORDER BY bi.sort_order`,
+        [bundle_id],
+      );
+
+      if (!items.length) {
+        return res.status(400).json({
+          success: false,
+          message: "No items found in bundle",
+        });
+      }
+
+      // 3 Prepare selection sets
+      const requiredItems = items
+        .filter((i) => i.is_required === 1)
+        .map((i) => i.id);
+
+      const selectedSet = new Set([
+        ...requiredItems,
+        ...(selected_items || []),
+      ]);
+
+      // 4 Validate selection (only for custom bundles)
+      const hasOptional = items.some((i) => i.is_required === 0);
+
+      if (
+        bundle.type === "custom" &&
+        hasOptional &&
+        (!selected_items || selected_items.length === 0)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select at least one service",
+        });
+      }
+
+      // 4 Detect full bundle selection
+      const isFullBundleSelected = selectedSet.size === items.length;
+
+      // 5 Build selected items
+      const selectedItems = [];
+
+      for (let item of items) {
+        // apply custom selection
+        if (bundle.type === "custom") {
+          if (item.is_required === 0 && !selectedSet.has(item.id)) {
+            continue;
+          }
+        }
+
+        let finalPrice;
+
+        if (bundle.type === "fixed") {
+          finalPrice = Number(item.bundle_price);
+        } else {
+          finalPrice = isFullBundleSelected
+            ? Number(item.bundle_price) //  apply bundle pricing
+            : Number(item.individual_price); //  partial → individual pricing
+        }
+
+        selectedItems.push({
+          id: item.id,
+          service_id: item.service_id,
+          variant_id: item.variant_id,
+
+          service_name: item.service_name,
+          variant_name: item.variant_name,
+          title: item.title,
+          image_url: getPublicUrl(item.image_url),
+
+          price: finalPrice,
+          quantity: 1,
+
+          // helpful for UI
+          is_required: item.is_required,
+        });
+      }
+
+      // 5 Build bundle structure (same as cart)
+      const bundleData = {
+        bundle_id: bundle.id,
+        bundle_name: bundle.name,
+        items: selectedItems,
+        bundle_total: selectedItems.reduce(
+          (sum, i) => sum + Number(i.price),
+          0,
+        ),
+
+        is_bundle_applied: bundle.type === "fixed" || isFullBundleSelected,
+      };
+
+      // 6 Summary (reuse your helper)
+      const summary = calculateSummary({
+        bundles: [bundleData],
+        individual_items: [],
+      });
+
+      res.json({
+        success: true,
+        data: {
+          type: "buy_now_bundle",
+          bundle: bundleData,
           summary,
         },
       });

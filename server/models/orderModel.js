@@ -709,7 +709,11 @@ class OrderModel {
     //  0 Validate Order
     const [[order]] = await conn.execute(
       `
-    SELECT status, cancellation_status
+      SELECT 
+      status, 
+      cancellation_status,
+      user_id,
+      reward_coins_used
     FROM eorders
     WHERE order_id = ?
     `,
@@ -782,6 +786,69 @@ class OrderModel {
       `,
         [item.quantity, item.variant_id],
       );
+    }
+
+    /* ===============================
+        3.5 REVERSE REWARD COINS
+      ================================ */
+    if (order.reward_coins_used > 0) {
+      // prevent duplicate wallet refund
+      const [[walletRefundExists]] = await conn.execute(
+        `
+        SELECT 1 
+        FROM order_refunds
+        WHERE order_id = ? 
+          AND refund_method = 'wallet'
+        LIMIT 1
+        `,
+        [orderId],
+      );
+
+      if (!walletRefundExists) {
+        // 1. update wallet balance
+        await conn.execute(
+          `
+            UPDATE customer_wallet
+            SET balance = balance + ?
+            WHERE user_id = ?
+          `,
+          [order.reward_coins_used, order.user_id],
+        );
+
+        const EXPIRY_MONTHS = parseInt(
+          process.env.WALLET_EXPIRY_MONTHS || "3",
+          10,
+        );
+
+        const expiryDate = new Date();
+        expiryDate.setMonth(expiryDate.getMonth() + EXPIRY_MONTHS);
+
+        // 2. wallet transaction entry
+        await conn.execute(
+          `
+          INSERT INTO wallet_transactions
+          (user_id, title, transaction_type, coins, category, reference_id, expiry_date)
+          VALUES (?, ?, 'credit', ?, 'refund', ?, ?)
+        `,
+          [
+            order.user_id,
+            "Coins refunded for cancelled order",
+            order.reward_coins_used,
+            orderId,
+            expiryDate,
+          ],
+        );
+
+        // 3. refund record (wallet)
+        await conn.execute(
+          `
+          INSERT INTO order_refunds
+          (order_id, refund_amount, refund_method, status)
+          VALUES (?, ?, 'wallet', 'completed')
+          `,
+          [orderId, order.reward_coins_used],
+        );
+      }
     }
 
     // 4 Cancel order
@@ -886,7 +953,6 @@ class OrderModel {
 
   async processRefund(payment, orderId) {
     try {
-
       // Idempotency check again
       const [existing] = await db.execute(
         `
