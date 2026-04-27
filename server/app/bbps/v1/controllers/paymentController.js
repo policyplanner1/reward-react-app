@@ -48,6 +48,7 @@ class PaymentController {
           utility_acc_no: utility_acc_no.trim(),
           cycle_number,
           amount,
+          fetch_bill: operator.fetchBill,
         },
         conn,
       );
