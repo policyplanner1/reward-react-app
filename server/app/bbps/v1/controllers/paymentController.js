@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const TransactionModel = require("../models/transactionModel");
 const razorpay = require("../services/razorpay_service");
 const ekoService = require("../services/eko_service");
+const rechargeService = require("../services/recharge_service");
 const db = require("../../../../config/database");
 
 class PaymentController {
@@ -221,7 +222,7 @@ class PaymentController {
         });
       }
 
-      console.info("[BBPS][VERIFY]", {
+      console.info("[PAYMENT][VERIFY]", {
         txn_id: txn.id,
         operator_id: txn.operator_id,
         amount: txn.amount,
@@ -243,11 +244,15 @@ class PaymentController {
           );
         } else {
           //  RECHARGE FLOW
-          // result = await rechargeService.recharge({
-          //   mobile: txn.utility_acc_no.trim(),
-          //   operator_id: txn.operator_id,
-          //   amount: txn.amount,
-          // });
+          result = await rechargeService.recharge({
+            mobile: txn.utility_acc_no.trim(),
+            operator_id: txn.operator_id,
+            amount: txn.amount,
+          });
+
+          if (!result || result.status !== "SUCCESS") {
+            throw new Error("Recharge failed");
+          }
         }
         //  Success → mark PAID
         await TransactionModel.updateStatus(txn.id, "PAID", result, conn);
