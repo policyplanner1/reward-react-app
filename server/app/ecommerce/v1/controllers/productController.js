@@ -269,6 +269,11 @@ class ProductController {
 
           const salePrice = Number(product.sale_price) || 0;
           const mrp = Number(product.mrp) || 0;
+          const redeem_limit = product.reward_redemption_limit
+            ? Number(product.reward_redemption_limit)
+            : 0;
+          const redeem_coins = Math.floor((salePrice * redeem_limit) / 100);
+          const rp_price = salePrice - redeem_coins;
 
           /* ===============================
               CACHE KEY
@@ -311,7 +316,8 @@ class ProductController {
             price: salePrice ? `₹${salePrice}` : null,
             originalPrice: mrp ? `₹${mrp}` : null,
             discount: `${mrpDiscountPercent}%`,
-
+            rp_price: redeem_limit > 0 ? `₹${rp_price}` : 0,
+            redeem_coins: redeem_limit > 0 ? redeem_coins : 0,
             rating: product.avg_rating,
             reviews: product.rating_count,
 
