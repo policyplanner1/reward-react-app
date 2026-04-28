@@ -131,6 +131,11 @@ class ProductController {
 
           const salePrice = product.sale_price ? Number(product.sale_price) : 0;
           const mrp = product.mrp ? Number(product.mrp) : 0;
+          const redeem_limit = product.reward_redemption_limit
+            ? Number(product.reward_redemption_limit)
+            : 0;
+          const redeem_coins = Math.floor((salePrice * redeem_limit) / 100);
+          const rp_price = salePrice - redeem_coins;
 
           let rewardCoins = 0;
           let canEarn = false;
@@ -173,6 +178,8 @@ class ProductController {
             image: mainImage,
             price: salePrice ? `₹${salePrice}` : null,
             originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
+            rp_price: redeem_limit > 0 ? `₹${rp_price}` : 0,
+            redeem_coins: redeem_limit > 0 ? redeem_coins : 0,
             discount: `${mrpDiscountPercent}%`,
             rating: 4.6,
             reviews: "18.9K",
