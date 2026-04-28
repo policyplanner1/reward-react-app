@@ -237,14 +237,17 @@ class AuthController {
 
       await conn.beginTransaction();
 
-      await AuthModel.createCustomer({
-        company_id: employee.company_id,
-        company_user_id: employee.id,
-        name: employee.name,
-        email: employee.email,
-        phone: employee.phone,
-        password: hashedPassword,
-      },conn);
+      await AuthModel.createCustomer(
+        {
+          company_id: employee.company_id,
+          company_user_id: employee.id,
+          name: employee.name,
+          email: employee.email,
+          phone: employee.phone,
+          password: hashedPassword,
+        },
+        conn,
+      );
 
       await AuthModel.deleteOTP(normalizedEmail, conn);
 
@@ -396,6 +399,15 @@ class AuthController {
       const user = await AuthModel.findByEmail(normalizedEmail);
       if (!user) return res.status(401).json({ success: false });
 
+      const employee = await AuthModel.findEmployeeByEmail(normalizedEmail);
+
+      if (!employee) {
+        return res.status(404).json({
+          success: false,
+          message: "Employee not found",
+        });
+      }
+
       if (Number(user.status) !== 1)
         return res
           .status(403)
@@ -463,11 +475,15 @@ class AuthController {
         });
 
         // Send WhatsApp
-        // await sendWhatsAppWalletCredit({
-        //   phone: user.phone,
-        //   name: user.name,
-        //   coins: 3000,
-        // });
+        await enqueueWhatsApp({
+          eventName: "reward_credited",
+          ctx: {
+            phone: employee.phone,
+            company_id: employee.company_id,
+            customer_name: employee.name || "User",
+            coins: 3000,
+          },
+        });
       }
 
       return res.json({

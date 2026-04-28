@@ -20,7 +20,6 @@ function safeJsonParse(value, fallback) {
 }
 
 function toErrorString(e) {
-  // store useful axios/interakt errors in DB
   const status = e?.response?.status;
   const data = e?.response?.data;
 
@@ -37,6 +36,13 @@ function toErrorString(e) {
   return String(e?.message || e);
 }
 
+function normalizeLanguageCode(code) {
+  if (!code) return "en";
+  if (code.toLowerCase() === "en_US") return "en";
+  return code;
+}
+
+
 async function pickJob() {
   const [rows] = await pool.query(
     `
@@ -52,7 +58,6 @@ async function pickJob() {
 
   const job = rows[0];
 
-  // lock atomically
   const [res] = await pool.query(
     `
     UPDATE wa_queue
@@ -70,8 +75,10 @@ async function runOnce() {
   const job = await pickJob();
   if (!job) return false;
 
+  let requestPayload = null;
+
   try {
-    // fetch template for this job
+    // fetch template
     const [tplRows] = await pool.query(
       `
       SELECT * FROM wa_templates
@@ -88,24 +95,34 @@ async function runOnce() {
 
     const tpl = tplRows[0];
 
-    // parse body_values (required)
     const bodyValues = safeJsonParse(job.body_values, null);
     if (!Array.isArray(bodyValues)) {
       throw new Error("Invalid body_values JSON in wa_queue");
     }
 
-    // parse button_values (optional)
-    // if column/value missing, keep null
     const buttonValues = safeJsonParse(job.button_values, null);
 
-    // send message
-    await sendTemplateMessage({
+    //  FIX: normalize language
+    const languageCode = normalizeLanguageCode(tpl.language_code);
+
+    // store request payload for logging
+    requestPayload = {
       phone: job.phone_full,
       templateName: tpl.interakt_name,
-      languageCode: tpl.language_code || "en",
+      languageCode,
       bodyValues,
-      buttonValues, //  will be null if not present
-    });
+      buttonValues,
+    };
+
+    // send message
+    const response = await sendTemplateMessage(requestPayload);
+
+    //  log success
+    await pool.query(
+      `INSERT INTO wa_logs (wa_queue_id, request_json, response_json)
+       VALUES (?, ?, ?)`,
+      [job.id, JSON.stringify(requestPayload), JSON.stringify(response)]
+    );
 
     // mark sent
     await pool.query(
@@ -122,11 +139,18 @@ async function runOnce() {
   } catch (e) {
     const msg = toErrorString(e);
 
-    // increment retry count
+    //  log failure
+    await pool.query(
+      `INSERT INTO wa_logs (wa_queue_id, request_json, response_json)
+       VALUES (?, ?, ?)`,
+      [job.id, JSON.stringify(requestPayload), JSON.stringify({ error: msg })]
+    );
+
     const [curRows] = await pool.query(
       `SELECT retry_count FROM wa_queue WHERE id=?`,
       [job.id]
     );
+
     const retryCount = (curRows[0]?.retry_count ?? 0) + 1;
 
     if (retryCount >= MAX_RETRY) {
