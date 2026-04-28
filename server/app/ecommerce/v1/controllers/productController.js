@@ -913,6 +913,7 @@ class ProductController {
   async getUserRecommendations(req, res) {
     try {
       const userId = req.user?.user_id;
+      // const userId = 1;
       const limit = req.query.limit ? Number(req.query.limit) : 10;
       const offset = req.query.offset ? Number(req.query.offset) : 0;
 
