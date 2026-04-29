@@ -223,7 +223,7 @@ function buildBodyValues(templateKey, ctx) {
     case "reward_credited":
       return [name, coins];
 
-    case "account_creation":
+    case "account_created_notification":
       return [name];
 
     default:

@@ -266,7 +266,7 @@ class AuthController {
       if (employee.phone) {
         setImmediate(() => {
           enqueueWhatsApp({
-            eventName: "account_creation",
+            eventName: "account_created_notification",
             ctx: {
               phone: employee.phone,
               company_id: employee.company_id ?? null,
