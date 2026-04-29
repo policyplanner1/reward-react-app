@@ -223,7 +223,7 @@ function buildBodyValues(templateKey, ctx) {
     case "wallet_credit_first_login":
       return [name, coins];
 
-    case "account_created_notification":
+    case "create_account_notification":
       return [name];
 
     default:
