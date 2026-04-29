@@ -23,12 +23,24 @@ cron.schedule("*/5 * * * *", async () => {
         continue;
       }
 
-      const res = await ekoService.payBill({
-        utility_acc_no: freshTxn.utility_acc_no,
-        operator_id: freshTxn.operator_id,
-        amount: freshTxn.amount,
-        cycle_number: freshTxn.cycle_number,
-      });
+      let res;
+
+      if (freshTxn.fetch_bill === 1) {
+        // BBPS
+        res = await ekoService.payBill({
+          utility_acc_no: freshTxn.utility_acc_no,
+          operator_id: freshTxn.operator_id,
+          amount: freshTxn.amount,
+          cycle_number: freshTxn.cycle_number,
+        });
+      } else {
+        // RECHARGE
+        res = await rechargeService.recharge({
+          mobile: freshTxn.utility_acc_no.trim(),
+          operator_id: freshTxn.operator_id,
+          amount: freshTxn.amount,
+        });
+      }
 
       await TransactionModel.updateStatus(freshTxn.id, "PAID", res, conn);
 
