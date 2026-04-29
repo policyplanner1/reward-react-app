@@ -476,7 +476,7 @@ class AuthController {
 
         // Send WhatsApp
         await enqueueWhatsApp({
-          eventName: "reward_credited",
+          eventName: "wallet_credit_first_login",
           ctx: {
             phone: employee.phone,
             company_id: employee.company_id,
