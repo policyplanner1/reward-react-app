@@ -107,7 +107,8 @@ class AuthController {
       });
     }
 
-    const existingAccount = await AuthModel.findByEmail(email);
+    // const existingAccount = await AuthModel.findByEmail(email);
+    const existingAccount = await AuthModel.findByCompanyUserId(employee.id);
 
     if (existingAccount) {
       return res.status(400).json({
