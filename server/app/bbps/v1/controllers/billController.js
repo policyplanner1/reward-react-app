@@ -655,6 +655,16 @@ class BillController {
     try {
       const { transaction_id } = req.params;
 
+      // const userId = req.user?.user_id;
+      const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       if (!transaction_id) {
         return res.status(400).json({
           success: false,
@@ -672,6 +682,10 @@ class BillController {
           success: false,
           message: "Transaction not found",
         });
+      }
+
+      if (txn.user_id !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
       }
 
       // =========================
