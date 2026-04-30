@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { sendMail } = require("./mailservice");
+const { sendMail } = require("./mailService");
 
 function loadTemplate(templateName) {
   const templatePath = path.join(
