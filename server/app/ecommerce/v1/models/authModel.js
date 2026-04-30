@@ -1,19 +1,29 @@
 const db = require("../../../../config/database");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 class authModel {
   /* ======================================================
      BASIC USER QUERIES
   ====================================================== */
-
   async findByEmail(email) {
     const [rows] = await db.execute(
-      `SELECT user_id, name, email, password, status, is_verified, token_version
-       FROM customer
-       WHERE email = ?`,
+      `SELECT 
+       user_id,
+       name,
+       email,
+       password,
+       status,
+       is_verified,
+       token_version,
+       device_id,
+       device_name
+     FROM customer
+     WHERE email = ?`,
       [email],
     );
+
     return rows[0];
   }
 
@@ -37,33 +47,6 @@ class authModel {
     return rows[0];
   }
 
-  // async createCustomer(data) {
-  //   const {
-  //     name,
-  //     email,
-  //     phone,
-  //     password,
-  //     verification_token,
-  //     verification_token_expiry,
-  //   } = data;
-
-  //   const [result] = await db.execute(
-  //     `INSERT INTO customer
-  //      (name, email, phone, password,
-  //       verification_token, verification_token_expiry)
-  //      VALUES (?, ?, ?, ?, ?, ?)`,
-  //     [
-  //       name,
-  //       email,
-  //       phone,
-  //       password,
-  //       verification_token,
-  //       verification_token_expiry,
-  //     ],
-  //   );
-
-  //   return result.insertId;
-  // }
 
   /* ======================================================
      ACCOUNT ACTIVATION
@@ -142,6 +125,24 @@ class authModel {
      LIMIT 1`,
       [email],
     );
+  }
+
+  async saveVerifiedDevice(email, deviceName) {
+    const deviceId = crypto.randomUUID();
+
+    await db.execute(
+      `UPDATE customer
+     SET 
+       device_id = ?,
+       device_name = ?,
+       is_verified = 1,
+       updated_at = NOW()
+     WHERE email = ?
+     LIMIT 1`,
+      [deviceId, deviceName, email],
+    );
+
+    return deviceId;
   }
 
   async checkOTPVerified(email) {
@@ -484,6 +485,107 @@ class authModel {
     } finally {
       connection.release();
     }
+  }
+
+  // sakshi edits
+
+  /* ======================================================
+   DEVICE CHANGE REQUEST MANAGEMENT
+====================================================== */
+
+  async createDeviceChangeRequest({
+    userId,
+    email,
+    oldDeviceId,
+    newDeviceId,
+    newDeviceName,
+    token,
+    ipAddress,
+    userAgent,
+    expiresAt,
+  }) {
+    await db.execute(
+      `INSERT INTO customer_device_change_requests
+     (
+       user_id,
+       email,
+       old_device_id,
+       new_device_id,
+       new_device_name,
+       token,
+       ip_address,
+       user_agent,
+       expires_at
+     )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        email,
+        oldDeviceId,
+        newDeviceId,
+        newDeviceName,
+        token,
+        ipAddress,
+        userAgent,
+        expiresAt,
+      ],
+    );
+  }
+
+  async getPendingDeviceRequest(token) {
+    const [rows] = await db.execute(
+      `SELECT *
+     FROM customer_device_change_requests
+     WHERE token = ?
+       AND status = 'pending'
+     LIMIT 1`,
+      [token],
+    );
+
+    return rows[0];
+  }
+
+  async updateDeviceRequestStatus(token, status) {
+    await db.execute(
+      `UPDATE customer_device_change_requests
+     SET status = ?
+     WHERE token = ?
+     LIMIT 1`,
+      [status, token],
+    );
+  }
+
+  async updateCustomerDevice({ userId, deviceId, deviceName, ipAddress }) {
+    await db.execute(
+      `UPDATE customer
+     SET 
+       device_id = ?,
+       device_name = ?,
+       is_verified = 1,
+       last_login_at = NOW(),
+       last_login_ip = ?,
+       updated_at = NOW()
+     WHERE user_id = ?
+     LIMIT 1`,
+      [deviceId, deviceName, ipAddress, userId],
+    );
+  }
+
+  async deleteUserRefreshTokensByUserId(userId) {
+    await db.execute(
+      `DELETE FROM customer_refresh_tokens
+     WHERE user_id = ?`,
+      [userId],
+    );
+  }
+  async deletePendingDeviceRequests(userId) {
+    await db.execute(
+      `UPDATE customer_device_change_requests
+     SET status = 'expired'
+     WHERE user_id = ?
+       AND status = 'pending'`,
+      [userId],
+    );
   }
 }
 
