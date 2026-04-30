@@ -102,27 +102,29 @@ const normalizeFetchBillResponse = (providerResponse, requestPayload) => {
 };
 
 const extractOperatorRecord = (operatorData) => {
-  const candidates = [
-    operatorData?.data?.data,
-    operatorData?.data,
-    operatorData,
-  ];
+  if (!operatorData) return null;
 
-  for (const item of candidates) {
-    if (!item) {
-      continue;
-    }
+  // EKO MOST COMMON FORMAT
+  if (Array.isArray(operatorData?.data) && operatorData.data.length > 0) {
+    return operatorData.data[0];
+  }
 
-    if (Array.isArray(item)) {
-      if (item.length > 0 && item[0] && typeof item[0] === "object") {
-        return item[0];
-      }
-      continue;
-    }
+  // Nested case (some APIs wrap again)
+  if (
+    Array.isArray(operatorData?.data?.data) &&
+    operatorData.data.data.length > 0
+  ) {
+    return operatorData.data.data[0];
+  }
 
-    if (typeof item === "object") {
-      return item;
-    }
+  // Sometimes direct array
+  if (Array.isArray(operatorData) && operatorData.length > 0) {
+    return operatorData[0];
+  }
+
+  // Already a clean operator object (has operator_id)
+  if (typeof operatorData === "object" && operatorData.operator_id) {
+    return operatorData;
   }
 
   return null;
@@ -175,7 +177,8 @@ const parseInputParams = (operatorRecord) => {
     operatorRecord?.input_params ??
     operatorRecord?.inputParams ??
     operatorRecord?.operator_input_params ??
-    operatorRecord?.params;
+    operatorRecord?.params ??
+    operatorRecord?.data;
 
   if (!rawInputParams) {
     return [];
@@ -370,40 +373,42 @@ const isProviderValidationError = (providerResponse) => {
 };
 
 const hasProviderBillData = (providerResponse) => {
-  const root =
-    providerResponse && typeof providerResponse === "object"
-      ? providerResponse
-      : {};
+  if (!providerResponse || typeof providerResponse !== "object") {
+    return false;
+  }
+
+  const root = providerResponse;
+
   const levelOneData =
     root.data && typeof root.data === "object" ? root.data : null;
+
   const levelTwoData =
     levelOneData?.data && typeof levelOneData.data === "object"
       ? levelOneData.data
       : null;
+
   const bill =
     levelOneData?.bill && typeof levelOneData.bill === "object"
       ? levelOneData.bill
       : null;
 
   const sources = [levelTwoData, bill, levelOneData, root];
-  const billKeys = [
-    "customer_name",
-    "consumer_name",
-    "name",
-    "amount",
-    "bill_amount",
-    "due_date",
-    "bill_due_date",
-    "bill_number",
-    "bill_no",
-    "reference_id",
-  ];
 
-  return sources.some((source) =>
-    source && typeof source === "object"
-      ? billKeys.some((key) => hasValue(source[key]))
-      : false,
-  );
+  for (const source of sources) {
+    if (!source || typeof source !== "object") continue;
+
+    const amount = source.amount || source.bill_amount || source.billAmount;
+
+    const customerName =
+      source.customer_name || source.consumer_name || source.name;
+
+    //  STRICT CHECK
+    if (hasValue(amount) && hasValue(customerName)) {
+      return true;
+    }
+  }
+
+  return false;
 };
 
 class BillController {
