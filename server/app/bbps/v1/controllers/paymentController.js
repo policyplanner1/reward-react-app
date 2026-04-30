@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const TransactionModel = require("../models/transactionModel");
 const razorpay = require("../services/razorpay_service");
 const ekoService = require("../services/eko_service");
+const rechargeService = require("../services/recharge_service");
 const db = require("../../../../config/database");
 
 class PaymentController {
@@ -34,11 +35,32 @@ class PaymentController {
       }
 
       if (!operator_id || !utility_acc_no) {
+        await conn.rollback();
         return res.status(400).json({
           success: false,
           message: "Missing required fields",
         });
       }
+
+      // Operator Details
+      const operator = await ekoService.getOperatorDetails(operator_id);
+
+      if (!operator) {
+        await conn.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Invalid operator",
+        });
+      }
+
+      const operatorRecord =
+        operator?.data?.data?.[0] || operator?.data || operator;
+
+      const fetchBillFlag =
+        operatorRecord?.fetchBill ??
+        operatorRecord?.fetch_bill ??
+        operatorRecord?.fetchbill ??
+        1;
 
       // 1. create transaction
       const transaction_id = await TransactionModel.create(
@@ -48,6 +70,7 @@ class PaymentController {
           utility_acc_no: utility_acc_no.trim(),
           cycle_number,
           amount,
+          fetch_bill: fetchBillFlag,
         },
         conn,
       );
@@ -209,32 +232,47 @@ class PaymentController {
         });
       }
 
-      console.info("[BBPS][VERIFY]", {
+      console.info("[PAYMENT][VERIFY]", {
         txn_id: txn.id,
         operator_id: txn.operator_id,
         amount: txn.amount,
       });
 
       try {
-        const bbpsResponse = await ekoService.payBill(
-          {
-            utility_acc_no: txn.utility_acc_no.trim(),
+        let result;
+
+        if (txn.fetch_bill === 1) {
+          //  BBPS FLOW
+          result = await ekoService.payBill(
+            {
+              utility_acc_no: txn.utility_acc_no.trim(),
+              operator_id: txn.operator_id,
+              amount: txn.amount,
+              cycle_number: txn.cycle_number,
+            },
+            req,
+          );
+        } else {
+          //  RECHARGE FLOW
+          result = await rechargeService.recharge({
+            mobile: txn.utility_acc_no.trim(),
             operator_id: txn.operator_id,
             amount: txn.amount,
-            cycle_number: txn.cycle_number,
-          },
-          req,
-        );
+          });
 
+          if (!result || result.status !== "SUCCESS") {
+            throw new Error("Recharge failed");
+          }
+        }
         //  Success → mark PAID
-        await TransactionModel.updateStatus(txn.id, "PAID", bbpsResponse, conn);
+        await TransactionModel.updateStatus(txn.id, "PAID", result, conn);
 
         await conn.commit();
 
         return res.json({
           success: true,
           transaction_id: txn.id,
-          bbpsResponse,
+          result,
         });
       } catch (err) {
         console.error("BBPS Error:", err);
@@ -270,11 +308,14 @@ class PaymentController {
   // Retry Transaction
   async retryTransaction(req, res) {
     const conn = await db.getConnection();
+    let transaction_id;
+    let txn;
+
     try {
       await conn.beginTransaction();
-      const { transaction_id } = req.body;
+      transaction_id = req.body.transaction_id;
 
-      const txn = await TransactionModel.getByIdForUpdate(transaction_id, conn);
+      txn = await TransactionModel.getByIdForUpdate(transaction_id, conn);
 
       if (!txn) {
         await conn.rollback();
@@ -298,12 +339,26 @@ class PaymentController {
         });
       }
 
-      const result = await ekoService.payBill({
-        utility_acc_no: txn.utility_acc_no.trim(),
-        operator_id: txn.operator_id,
-        amount: txn.amount,
-        cycle_number: txn.cycle_number,
-      });
+      let result;
+
+      if (Number(txn.fetch_bill) === 1) {
+        result = await ekoService.payBill({
+          utility_acc_no: txn.utility_acc_no.trim(),
+          operator_id: txn.operator_id,
+          amount: txn.amount,
+          cycle_number: txn.cycle_number,
+        });
+      } else {
+        result = await rechargeService.recharge({
+          mobile: txn.utility_acc_no.trim(),
+          operator_id: txn.operator_id,
+          amount: txn.amount,
+        });
+
+        if (!result || result.status !== "SUCCESS") {
+          throw new Error("Recharge failed");
+        }
+      }
 
       await TransactionModel.updateStatus(txn.id, "PAID", result, conn);
 
@@ -312,6 +367,16 @@ class PaymentController {
       return res.json({ success: true, result });
     } catch (err) {
       await conn.rollback();
+
+      if (txn && txn.retry_count + 1 >= txn.max_retry) {
+        await TransactionModel.updateStatus(
+          txn.id,
+          "FAILED_FINAL",
+          err.message,
+        );
+      } else {
+        await TransactionModel.incrementRetry(transaction_id);
+      }
 
       return res.status(500).json({
         success: false,

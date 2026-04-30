@@ -637,6 +637,7 @@ class ProductModel {
         ssc.name AS sub_subcategory_name,
         v.mrp,
         v.sale_price,
+        v.reward_redemption_limit,
 
         GROUP_CONCAT(
           DISTINCT CONCAT(
@@ -1287,6 +1288,12 @@ class ProductModel {
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
+          const redeem_limit = row.reward_redemption_limit
+            ? Number(row.reward_redemption_limit)
+            : 0;
+          const redeem_coins = Math.floor((salePrice * redeem_limit) / 100);
+          const rp_price = salePrice - redeem_coins;
+
           let image = null;
 
           if (row.images) {
@@ -1332,6 +1339,8 @@ class ProductModel {
             price: `₹${salePrice}`,
             originalPrice: `₹${mrp}`,
             discount: `${mrpDiscountPercent}%`,
+            rp_price: redeem_limit > 0 ? `₹${rp_price}` : 0,
+            redeem_coins: redeem_limit > 0 ? redeem_coins : 0,
 
             rating: 4.6,
             reviews: "18.9K",
@@ -1459,6 +1468,12 @@ class ProductModel {
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
+          const redeem_limit = row.reward_redemption_limit
+            ? Number(row.reward_redemption_limit)
+            : 0;
+          const redeem_coins = Math.floor((salePrice * redeem_limit) / 100);
+          const rp_price = salePrice - redeem_coins;
+
           let image = null;
           if (row.images) {
             const first = row.images.split(",")[0];
@@ -1502,6 +1517,8 @@ class ProductModel {
             price: `₹${salePrice}`,
             originalPrice: `₹${mrp}`,
             discount: `${mrpDiscountPercent}%`,
+            rp_price: redeem_limit > 0 ? `₹${rp_price}` : 0,
+            redeem_coins: redeem_limit > 0 ? redeem_coins : 0,
 
             score: row.total_score,
             rating: 4.6,
@@ -1601,6 +1618,12 @@ class ProductModel {
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
+          const redeem_limit = row.reward_redemption_limit
+            ? Number(row.reward_redemption_limit)
+            : 0;
+          const redeem_coins = Math.floor((salePrice * redeem_limit) / 100);
+          const rp_price = salePrice - redeem_coins;
+
           let image = null;
           if (row.images) {
             const first = row.images.split(",")[0];
@@ -1645,6 +1668,8 @@ class ProductModel {
             price: `₹${salePrice}`,
             originalPrice: `₹${mrp}`,
             discount: `${mrpDiscountPercent}%`,
+            rp_price: redeem_limit > 0 ? `₹${rp_price}` : 0,
+            redeem_coins: redeem_limit > 0 ? redeem_coins : 0,
 
             rating: 4.6,
             reviews: "18.9K",
@@ -1751,6 +1776,12 @@ class ProductModel {
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
+          const redeem_limit = row.reward_redemption_limit
+            ? Number(row.reward_redemption_limit)
+            : 0;
+          const redeem_coins = Math.floor((salePrice * redeem_limit) / 100);
+          const rp_price = salePrice - redeem_coins;
+
           let image = null;
           if (row.images) {
             const first = row.images.split(",")[0];
@@ -1794,6 +1825,8 @@ class ProductModel {
             price: `₹${salePrice}`,
             originalPrice: `₹${mrp}`,
             discount: `${mrpDiscountPercent}%`,
+            rp_price: redeem_limit > 0 ? `₹${rp_price}` : 0,
+            redeem_coins: redeem_limit > 0 ? redeem_coins : 0,
 
             frequency: row.frequency,
             rating: 4.6,
@@ -1889,6 +1922,12 @@ class ProductModel {
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
+          const redeem_limit = row.reward_redemption_limit
+            ? Number(row.reward_redemption_limit)
+            : 0;
+          const redeem_coins = Math.floor((salePrice * redeem_limit) / 100);
+          const rp_price = salePrice - redeem_coins;
+
           let image = null;
           if (row.images) {
             const first = row.images.split(",")[0];
@@ -1933,6 +1972,8 @@ class ProductModel {
             price: `₹${salePrice}`,
             originalPrice: `₹${mrp}`,
             discount: `${mrpDiscountPercent}%`,
+            rp_price: redeem_limit > 0 ? `₹${rp_price}` : 0,
+            redeem_coins: redeem_limit > 0 ? redeem_coins : 0,
 
             total_sold: row.total_sold,
             rating: 4.6,
@@ -2028,6 +2069,12 @@ class ProductModel {
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
+          const redeem_limit = row.reward_redemption_limit
+            ? Number(row.reward_redemption_limit)
+            : 0;
+          const redeem_coins = Math.floor((salePrice * redeem_limit) / 100);
+          const rp_price = salePrice - redeem_coins;
+
           let image = null;
           if (row.images) {
             const first = row.images.split(",")[0];
@@ -2072,6 +2119,8 @@ class ProductModel {
             price: `₹${salePrice}`,
             originalPrice: `₹${mrp}`,
             discount: `${mrpDiscountPercent}%`,
+            rp_price: redeem_limit > 0 ? `₹${rp_price}` : 0,
+            redeem_coins: redeem_limit > 0 ? redeem_coins : 0,
 
             total_sold: row.total_sold,
             rating: 4.6,
@@ -2163,6 +2212,12 @@ class ProductModel {
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
+          const redeem_limit = row.reward_redemption_limit
+            ? Number(row.reward_redemption_limit)
+            : 0;
+          const redeem_coins = Math.floor((salePrice * redeem_limit) / 100);
+          const rp_price = salePrice - redeem_coins;
+
           let image = null;
           if (row.images) {
             const first = row.images.split(",")[0];
@@ -2207,6 +2262,8 @@ class ProductModel {
             price: `₹${salePrice}`,
             originalPrice: `₹${mrp}`,
             discount: `${mrpDiscountPercent}%`,
+            rp_price: redeem_limit > 0 ? `₹${rp_price}` : 0,
+            redeem_coins: redeem_limit > 0 ? redeem_coins : 0,
 
             view_count: row.view_count,
             rating: 4.6,
@@ -2299,6 +2356,12 @@ class ProductModel {
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
+          const redeem_limit = row.reward_redemption_limit
+            ? Number(row.reward_redemption_limit)
+            : 0;
+          const redeem_coins = Math.floor((salePrice * redeem_limit) / 100);
+          const rp_price = salePrice - redeem_coins;
+
           let image = null;
           if (row.images) {
             const first = row.images.split(",")[0];
@@ -2343,6 +2406,8 @@ class ProductModel {
             price: `₹${salePrice}`,
             originalPrice: `₹${mrp}`,
             discount: `${mrpDiscountPercent}%`,
+            rp_price: redeem_limit > 0 ? `₹${rp_price}` : 0,
+            redeem_coins: redeem_limit > 0 ? redeem_coins : 0,
 
             rating: Number(row.avg_rating || 0).toFixed(1),
             reviews: row.total_reviews,

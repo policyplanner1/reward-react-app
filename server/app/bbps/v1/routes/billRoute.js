@@ -28,7 +28,7 @@ router.get(
 // check consumer number and fetch bill details for UI
 router.post(
   "/check-customer-number",
-    // auth,
+  // auth,
   fetchBillRateLimit,
   fetchBillValidation,
   BillController.checkCustomerNumber,
@@ -41,6 +41,12 @@ router.post(
   fetchBillRateLimit,
   fetchBillValidation,
   BillController.fetchBill,
+);
+
+router.get(
+  "/check-status/:transaction_id",
+  // auth,
+  BillController.checkStatus,
 );
 
 module.exports = router;

@@ -17,6 +17,16 @@ class authModel {
     return rows[0];
   }
 
+  async findByCompanyUserId(company_user_id) {
+    const [rows] = await db.execute(
+      `SELECT user_id, name, email, company_user_id
+     FROM customer
+     WHERE company_user_id = ?`,
+      [company_user_id],
+    );
+    return rows[0];
+  }
+
   async findById(userId) {
     const [rows] = await db.execute(
       `SELECT user_id, name, email, status, is_verified, token_version,last_login_at
@@ -147,7 +157,7 @@ class authModel {
     return rows[0]?.is_verified === 1;
   }
 
-  async deleteOTP(email,conn) {
+  async deleteOTP(email, conn) {
     await conn.execute(
       `DELETE FROM email_otps
      WHERE email = ?`,
@@ -155,7 +165,7 @@ class authModel {
     );
   }
 
-  async createCustomer(data,conn) {
+  async createCustomer(data, conn) {
     const { company_id, company_user_id, name, email, phone, password } = data;
     const normalizedPhone = phone ? phone : "";
 

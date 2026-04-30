@@ -1,4 +1,5 @@
 const ekoService = require("../services/eko_service");
+const TransactionModel = require("../models/transactionModel");
 
 /**
  * @typedef {Object} FrontendFetchBillPayload
@@ -254,44 +255,55 @@ const getFieldAliases = (name) => {
  */
 const normalizeFetchBillRequest = (requestBody, operatorRecord) => {
   const normalizedOperatorId = String(requestBody?.operator_id || "").trim();
-  const inputParams = parseInputParams(operatorRecord);
+
+  const inputParams = parseInputParams(operatorRecord) || [];
   const requiredParams = inputParams.filter((param) => param.required);
 
   const providerPayload = {
     operator_id: normalizedOperatorId,
   };
 
+  // =========================
+  // 1. MAP REQUIRED PARAMS (from operator config)
+  // =========================
   for (const param of requiredParams) {
     const value = getFirstFromKeys(requestBody, getFieldAliases(param.name));
 
-    if (value) {
-      providerPayload[param.name] = value;
+    if (hasValue(value)) {
+      providerPayload[param.name] = String(value).trim();
     }
   }
 
+  // =========================
+  // 2. MAP ALL OTHER PARAMS (fallback)
+  // =========================
   Object.entries(requestBody || {}).forEach(([key, value]) => {
-    if (!hasValue(value) || key === "operator_id") {
-      return;
-    }
+    if (!hasValue(value) || key === "operator_id") return;
 
     if (providerPayload[key] === undefined) {
       providerPayload[key] = String(value).trim();
     }
   });
 
-  if (!providerPayload.utility_acc_no) {
+  // =========================
+  // 3. ENSURE utility_acc_no (CRITICAL)
+  // =========================
+  if (!hasValue(providerPayload.utility_acc_no)) {
     const accountNo = getFirstFromKeys(requestBody, [
       "utility_acc_no",
       "consumer_number",
       "consumerNumber",
     ]);
 
-    if (accountNo) {
-      providerPayload.utility_acc_no = accountNo;
+    if (hasValue(accountNo)) {
+      providerPayload.utility_acc_no = String(accountNo).trim();
     }
   }
 
-  if (!providerPayload.confirmation_mobile_no) {
+  // =========================
+  // 4. ENSURE confirmation_mobile_no (CRITICAL FIX)
+  // =========================
+  if (!hasValue(providerPayload.confirmation_mobile_no)) {
     const mobileNo = getFirstFromKeys(requestBody, [
       "confirmation_mobile_no",
       "mobile_number",
@@ -300,23 +312,40 @@ const normalizeFetchBillRequest = (requestBody, operatorRecord) => {
       "mobile",
     ]);
 
-    if (mobileNo) {
-      providerPayload.confirmation_mobile_no = mobileNo;
+    if (hasValue(mobileNo)) {
+      providerPayload.confirmation_mobile_no = String(mobileNo).trim();
     }
   }
 
-  const missingRequired = requiredParams
+  // =========================
+  // 5. BUILD missingRequired (FIXED)
+  // =========================
+  let missingRequired = requiredParams
     .map((param) => param.name)
     .filter((name) => !hasValue(providerPayload[name]));
 
+  // Always enforce these
   if (!hasValue(providerPayload.utility_acc_no)) {
     missingRequired.push("utility_acc_no");
   }
 
+  const requiresMobile = inputParams.some(
+    (p) => p.name === "confirmation_mobile_no" && p.required,
+  );
+
+  if (requiresMobile && !hasValue(providerPayload.confirmation_mobile_no)) {
+    missingRequired.push("confirmation_mobile_no");
+  }
+  // remove duplicates
+  missingRequired = Array.from(new Set(missingRequired));
+
+  // =========================
+  // 6. RETURN
+  // =========================
   return {
     providerPayload,
     inputParams,
-    missingRequired: Array.from(new Set(missingRequired)),
+    missingRequired,
     frontendPayload: {
       operator_id: normalizedOperatorId,
       consumer_number: providerPayload.utility_acc_no || "",
@@ -324,7 +353,6 @@ const normalizeFetchBillRequest = (requestBody, operatorRecord) => {
     },
   };
 };
-
 /**
  * @param {EkoFetchBillError | Record<string, any>} providerResponse
  */
@@ -482,7 +510,6 @@ class BillController {
 
       const operatorData = await ekoService.getOperatorDetails(operatorId);
       const operatorRecord = extractOperatorRecord(operatorData);
-
 
       if (!operatorRecord) {
         return res.status(400).json({
@@ -647,6 +674,108 @@ class BillController {
         success: false,
         message,
         ...(safeDetails ? { data: safeDetails } : {}),
+      });
+    }
+  }
+
+  async checkStatus(req, res) {
+    try {
+      const { transaction_id } = req.params;
+
+      // const userId = req.user?.user_id;
+      const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      if (!transaction_id) {
+        return res.status(400).json({
+          success: false,
+          message: "transaction_id required",
+        });
+      }
+
+      // =========================
+      // 1. GET TRANSACTION
+      // =========================
+      const txn = await TransactionModel.getById(transaction_id);
+
+      if (!txn) {
+        return res.status(404).json({
+          success: false,
+          message: "Transaction not found",
+        });
+      }
+
+      if (txn.user_id !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      // =========================
+      // 2. GET PAYMENT (razorpay_orders)
+      // =========================
+      const [rpOrderRows] = await db.execute(
+        `SELECT razorpay_order_id, razorpay_payment_id, status 
+       FROM razorpay_orders 
+       WHERE ref_id = ? AND module='bbps'`,
+        [transaction_id],
+      );
+
+      const rpOrder = rpOrderRows[0] || null;
+
+      // =========================
+      // 3. MAP STATUS FOR FRONTEND
+      // =========================
+      let finalStatus = "PENDING";
+
+      if (txn.bbps_status === "PAID") {
+        finalStatus = "SUCCESS";
+      } else if (txn.bbps_status === "FAILED_FINAL") {
+        finalStatus = "FAILED";
+      } else if (txn.bbps_status === "FAILED_RETRY") {
+        finalStatus = "RETRYING";
+      } else if (txn.bbps_status === "INIT") {
+        finalStatus = "PENDING";
+      }
+
+      // =========================
+      // 4. RESPONSE
+      // =========================
+      return res.json({
+        success: true,
+        data: {
+          transaction_id: txn.id,
+          operator_id: txn.operator_id,
+          amount: txn.amount,
+
+          bbps_status: txn.bbps_status,
+          payment_status: rpOrder?.status || "unknown",
+
+          final_status: finalStatus,
+
+          retry_count: txn.retry_count,
+          max_retry: txn.max_retry,
+
+          razorpay: rpOrder
+            ? {
+                order_id: rpOrder.razorpay_order_id,
+                payment_id: rpOrder.razorpay_payment_id,
+              }
+            : null,
+
+          response: txn.bbps_response ? JSON.parse(txn.bbps_response) : null,
+        },
+      });
+    } catch (err) {
+      console.error("checkStatus error:", err);
+
+      return res.status(500).json({
+        success: false,
+        message: err.message,
       });
     }
   }

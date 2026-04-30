@@ -220,10 +220,10 @@ function buildBodyValues(templateKey, ctx) {
     case "return_order_refund_approved":
       return [name, orderId, refundAmount];
 
-    case "reward_credited":
+    case "wallet_credit_first_login":
       return [name, coins];
 
-    case "account_creation":
+    case "create_account_notification":
       return [name];
 
     default:

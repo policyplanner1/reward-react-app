@@ -131,6 +131,11 @@ class ProductController {
 
           const salePrice = product.sale_price ? Number(product.sale_price) : 0;
           const mrp = product.mrp ? Number(product.mrp) : 0;
+          const redeem_limit = product.reward_redemption_limit
+            ? Number(product.reward_redemption_limit)
+            : 0;
+          const redeem_coins = Math.floor((salePrice * redeem_limit) / 100);
+          const rp_price = salePrice - redeem_coins;
 
           let rewardCoins = 0;
           let canEarn = false;
@@ -173,6 +178,8 @@ class ProductController {
             image: mainImage,
             price: salePrice ? `₹${salePrice}` : null,
             originalPrice: product.mrp ? `₹${Number(product.mrp)}` : null,
+            rp_price: redeem_limit > 0 ? `₹${rp_price}` : 0,
+            redeem_coins: redeem_limit > 0 ? redeem_coins : 0,
             discount: `${mrpDiscountPercent}%`,
             rating: 4.6,
             reviews: "18.9K",
@@ -262,6 +269,11 @@ class ProductController {
 
           const salePrice = Number(product.sale_price) || 0;
           const mrp = Number(product.mrp) || 0;
+          const redeem_limit = product.reward_redemption_limit
+            ? Number(product.reward_redemption_limit)
+            : 0;
+          const redeem_coins = Math.floor((salePrice * redeem_limit) / 100);
+          const rp_price = salePrice - redeem_coins;
 
           /* ===============================
               CACHE KEY
@@ -304,7 +316,8 @@ class ProductController {
             price: salePrice ? `₹${salePrice}` : null,
             originalPrice: mrp ? `₹${mrp}` : null,
             discount: `${mrpDiscountPercent}%`,
-
+            rp_price: redeem_limit > 0 ? `₹${rp_price}` : 0,
+            redeem_coins: redeem_limit > 0 ? redeem_coins : 0,
             rating: product.avg_rating,
             reviews: product.rating_count,
 
@@ -819,6 +832,12 @@ class ProductController {
           const mrpDiscountPercent =
             mrp > 0 ? Math.round(((mrp - salePrice) / mrp) * 100) : 0;
 
+          const redeem_limit = row.reward_redemption_limit
+            ? Number(row.reward_redemption_limit)
+            : 0;
+          const redeem_coins = Math.floor((salePrice * redeem_limit) / 100);
+          const rp_price = salePrice - redeem_coins;
+
           // Parse image
           let image = null;
           if (row.images) {
@@ -865,6 +884,8 @@ class ProductController {
             price: `₹${salePrice}`,
             originalPrice: `₹${mrp}`,
             discount: `${mrpDiscountPercent}%`,
+            rp_price: redeem_limit > 0 ? `₹${rp_price}` : 0,
+            redeem_coins: redeem_limit > 0 ? redeem_coins : 0,
 
             rating: 4.6,
             reviews: "18.9K",
@@ -892,6 +913,7 @@ class ProductController {
   async getUserRecommendations(req, res) {
     try {
       const userId = req.user?.user_id;
+      // const userId = 1;
       const limit = req.query.limit ? Number(req.query.limit) : 10;
       const offset = req.query.offset ? Number(req.query.offset) : 0;
 

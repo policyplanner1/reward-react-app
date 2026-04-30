@@ -1,6 +1,7 @@
 const db = require("../../../../config/database");
 const TransactionModel = require("../models/transactionModel");
 const ekoService = require("../services/eko_service");
+const rechargeService = require("../services/recharge_service");
 
 async function processEvent(req) {
   const conn = await db.getConnection();
@@ -28,14 +29,26 @@ async function processEvent(req) {
       }
 
       try {
-        const res = await ekoService.payBill({
-          utility_acc_no: txn.utility_acc_no,
-          operator_id: txn.operator_id,
-          amount: txn.amount,
-          cycle_number: txn.cycle_number,
-        });
+        let result;
 
-        await TransactionModel.updateStatus(txn.id, "PAID", res, conn);
+        if (txn.fetch_bill === 1) {
+          //  BBPS FLOW
+          result = await ekoService.payBill({
+            utility_acc_no: txn.utility_acc_no.trim(),
+            operator_id: txn.operator_id,
+            amount: txn.amount,
+            cycle_number: txn.cycle_number,
+          });
+        } else {
+          //  RECHARGE FLOW
+          result = await rechargeService.recharge({
+            mobile: txn.utility_acc_no.trim(),
+            operator_id: txn.operator_id,
+            amount: txn.amount,
+          });
+        }
+
+        await TransactionModel.updateStatus(txn.id, "PAID", result, conn);
 
         await conn.commit();
       } catch (err) {
