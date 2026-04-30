@@ -255,44 +255,55 @@ const getFieldAliases = (name) => {
  */
 const normalizeFetchBillRequest = (requestBody, operatorRecord) => {
   const normalizedOperatorId = String(requestBody?.operator_id || "").trim();
-  const inputParams = parseInputParams(operatorRecord);
+
+  const inputParams = parseInputParams(operatorRecord) || [];
   const requiredParams = inputParams.filter((param) => param.required);
 
   const providerPayload = {
     operator_id: normalizedOperatorId,
   };
 
+  // =========================
+  // 1. MAP REQUIRED PARAMS (from operator config)
+  // =========================
   for (const param of requiredParams) {
     const value = getFirstFromKeys(requestBody, getFieldAliases(param.name));
 
-    if (value) {
-      providerPayload[param.name] = value;
+    if (hasValue(value)) {
+      providerPayload[param.name] = String(value).trim();
     }
   }
 
+  // =========================
+  // 2. MAP ALL OTHER PARAMS (fallback)
+  // =========================
   Object.entries(requestBody || {}).forEach(([key, value]) => {
-    if (!hasValue(value) || key === "operator_id") {
-      return;
-    }
+    if (!hasValue(value) || key === "operator_id") return;
 
     if (providerPayload[key] === undefined) {
       providerPayload[key] = String(value).trim();
     }
   });
 
-  if (!providerPayload.utility_acc_no) {
+  // =========================
+  // 3. ENSURE utility_acc_no (CRITICAL)
+  // =========================
+  if (!hasValue(providerPayload.utility_acc_no)) {
     const accountNo = getFirstFromKeys(requestBody, [
       "utility_acc_no",
       "consumer_number",
       "consumerNumber",
     ]);
 
-    if (accountNo) {
-      providerPayload.utility_acc_no = accountNo;
+    if (hasValue(accountNo)) {
+      providerPayload.utility_acc_no = String(accountNo).trim();
     }
   }
 
-  if (!providerPayload.confirmation_mobile_no) {
+  // =========================
+  // 4. ENSURE confirmation_mobile_no (CRITICAL FIX)
+  // =========================
+  if (!hasValue(providerPayload.confirmation_mobile_no)) {
     const mobileNo = getFirstFromKeys(requestBody, [
       "confirmation_mobile_no",
       "mobile_number",
@@ -301,23 +312,40 @@ const normalizeFetchBillRequest = (requestBody, operatorRecord) => {
       "mobile",
     ]);
 
-    if (mobileNo) {
-      providerPayload.confirmation_mobile_no = mobileNo;
+    if (hasValue(mobileNo)) {
+      providerPayload.confirmation_mobile_no = String(mobileNo).trim();
     }
   }
 
-  const missingRequired = requiredParams
+  // =========================
+  // 5. BUILD missingRequired (FIXED)
+  // =========================
+  let missingRequired = requiredParams
     .map((param) => param.name)
     .filter((name) => !hasValue(providerPayload[name]));
 
+  // Always enforce these
   if (!hasValue(providerPayload.utility_acc_no)) {
     missingRequired.push("utility_acc_no");
   }
 
+  const requiresMobile = inputParams.some(
+    (p) => p.name === "confirmation_mobile_no" && p.required,
+  );
+
+  if (requiresMobile && !hasValue(providerPayload.confirmation_mobile_no)) {
+    missingRequired.push("confirmation_mobile_no");
+  }
+  // remove duplicates
+  missingRequired = Array.from(new Set(missingRequired));
+
+  // =========================
+  // 6. RETURN
+  // =========================
   return {
     providerPayload,
     inputParams,
-    missingRequired: Array.from(new Set(missingRequired)),
+    missingRequired,
     frontendPayload: {
       operator_id: normalizedOperatorId,
       consumer_number: providerPayload.utility_acc_no || "",
@@ -325,7 +353,6 @@ const normalizeFetchBillRequest = (requestBody, operatorRecord) => {
     },
   };
 };
-
 /**
  * @param {EkoFetchBillError | Record<string, any>} providerResponse
  */
