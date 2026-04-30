@@ -13,6 +13,13 @@ router.post('/verify-activation-otp', authController.verifyActivationOTP);
 router.post('/set-password', authController.setPassword);
 router.post("/login", authController.loginUser);
 // router.get("/verify-email", authController.verifyEmail);
+
+// sakshi edits
+router.get("/device-change/allow", authController.allowDeviceChange);
+
+router.get("/device-change/deny", authController.denyDeviceChange);
+
+
 router.post("/refresh", authController.refreshAccessToken);
 router.post("/logout", auth, authController.logoutUser);
 router.post("/logout-all", auth, authController.logoutAllDevices);
@@ -54,5 +61,7 @@ router.get("/address/:address_id", auth, authController.getAddressById);
 router.get("/user-info", optionalAuth, authController.getUserInfo);
 
 router.delete("/delete-customer", auth, authController.deleteCustomer);
+
+
 
 module.exports = router;

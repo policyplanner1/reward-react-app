@@ -19,7 +19,10 @@ const { sendOtpMail } = require("../../../../services/sendOtp");
 const {
   enqueueWhatsApp,
 } = require("../../../../services/whatsapp/waEnqueueService");
-
+// sakshi edits
+const {
+  sendDeviceChangeApprovalMail,
+} = require("../../../../services/deviceChangeApproval");
 const ACCESS_EXPIRES = "15m";
 const REFRESH_EXPIRES_DAYS = 7;
 
@@ -134,11 +137,11 @@ class AuthController {
   }
 
   /* ======================================================
-     VERIFY OTP
-  ====================================================== */
+   VERIFY OTP
+====================================================== */
   async verifyActivationOTP(req, res) {
     try {
-      const { email, otp } = req.body;
+      const { email, otp, device_name } = req.body;
 
       if (!email || !otp) {
         return res.status(400).json({
@@ -171,11 +174,24 @@ class AuthController {
 
       await AuthModel.markOTPVerified(normalizedEmail);
 
+      const finalDeviceName = device_name
+        ? device_name.toLowerCase()
+        : "unknown";
+
+      const deviceId = await AuthModel.saveVerifiedDevice(
+        normalizedEmail,
+        finalDeviceName,
+      );
+
       return res.json({
         success: true,
         message: "OTP verified successfully",
+        device_id: deviceId,
+        device_name: finalDeviceName,
       });
     } catch (err) {
+      console.error("Verify activation OTP error:", err);
+
       return res.status(500).json({
         success: false,
         message: "Server error",
@@ -392,13 +408,140 @@ class AuthController {
   /* ======================================================
      LOGIN
   ====================================================== */
+  // async loginUser(req, res) {
+  //   try {
+  //     const { email, password } = req.body;
+  //     const normalizedEmail = email.trim().toLowerCase();
+
+  //     const user = await AuthModel.findByEmail(normalizedEmail);
+  //     if (!user) return res.status(401).json({ success: false });
+
+  //     if (Number(user.status) !== 1)
+  //       return res
+  //         .status(403)
+  //         .json({ success: false, message: "Account inactive" });
+
+  //     if (!user.is_verified)
+  //       return res
+  //         .status(403)
+  //         .json({ success: false, message: "Email not verified" });
+
+  //     const match = await bcrypt.compare(password, user.password);
+  //     if (!match) return res.status(401).json({ success: false });
+  //     const accessToken = jwt.sign(
+  //       { user_id: user.user_id, token_version: user.token_version },
+  //       process.env.ACCESS_TOKEN_SECRET,
+  //       { expiresIn: ACCESS_EXPIRES },
+  //     );
+  //     const refreshToken = jwt.sign(
+  //       { user_id: user.user_id },
+  //       process.env.REFRESH_TOKEN_SECRET,
+  //       { expiresIn: `${REFRESH_EXPIRES_DAYS}d` },
+  //     );
+  //     const expiryDate = new Date(
+  //       Date.now() + REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
+  //     );
+  //     // check existing device
+  //     const deviceInfo = req.headers["user-agent"];
+  //     const ipAddress = req.ip;
+
+  //     // check if device already exists
+  //     const existingDevice = await AuthModel.checkExistingDevice(
+  //       user.user_id,
+  //       deviceInfo,
+  //     );
+
+  //     if (!existingDevice) {
+  //       await sendNewDeviceLoginEmail({
+  //         email: user.email,
+  //         name: user.name,
+  //         ip: ipAddress,
+  //         device: deviceInfo,
+  //       });
+  //     }
+
+  //     await AuthModel.storeRefreshToken(
+  //       user.user_id,
+  //       refreshToken,
+  //       expiryDate,
+  //       deviceInfo,
+  //       ipAddress,
+  //     );
+
+  //     await AuthModel.updateLoginMeta(user.user_id, req.ip);
+
+  //     const firstLoginBonus = await WalletModel.createWalletOnFirstLogin(
+  //       user.user_id,
+  //     );
+
+  //     if (firstLoginBonus) {
+  //       // Send Email
+  //       await rewardCreditMail({
+  //         email: user.email,
+  //         name: user.name,
+  //         coins: 3000,
+  //       });
+
+  //       // Send WhatsApp
+  //       // await sendWhatsAppWalletCredit({
+  //       //   phone: user.phone,
+  //       //   name: user.name,
+  //       //   coins: 3000,
+  //       // });
+  //     }
+
+  //     return res.json({
+  //       success: true,
+  //       accessToken,
+  //       refreshToken,
+  //       firstLoginReward: {
+  //         awarded: firstLoginBonus,
+  //         coins: firstLoginBonus ? 3000 : 0,
+  //       },
+  //     });
+  //   } catch (err) {
+  //     return res.status(500).json({ success: false });
+  //   }
+  // }
+
+  /* ======================================================
+   LOGIN  // sakshi edits
+====================================================== */
+
   async loginUser(req, res) {
     try {
-      const { email, password } = req.body;
+      const { email, password, device_id, device_name } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and password are required",
+        });
+      }
+
       const normalizedEmail = email.trim().toLowerCase();
 
       const user = await AuthModel.findByEmail(normalizedEmail);
-      if (!user) return res.status(401).json({ success: false });
+
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+        });
+      }
+
+      if (Number(user.status) !== 1) {
+        return res.status(403).json({
+          success: false,
+          message: "Account inactive",
+        });
+      }
+
+      if (!user.is_verified) {
+        return res.status(403).json({
+          success: false,
+          message: "Email not verified",
+        });
+      }
 
       const employee = await AuthModel.findEmployeeByEmail(normalizedEmail);
 
@@ -409,66 +552,118 @@ class AuthController {
         });
       }
 
-      if (Number(user.status) !== 1)
-        return res
-          .status(403)
-          .json({ success: false, message: "Account inactive" });
-
-      if (!user.is_verified)
-        return res
-          .status(403)
-          .json({ success: false, message: "Email not verified" });
-
       const match = await bcrypt.compare(password, user.password);
-      if (!match) return res.status(401).json({ success: false });
+
+      if (!match) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid email or password",
+        });
+      }
+
+      if (!device_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Device ID is required",
+        });
+      }
+
+      const currentDeviceId = device_id.toString();
+      const currentDeviceName = device_name
+        ? device_name.toString().toLowerCase()
+        : "unknown";
+
+      const ipAddress = req.ip;
+      const userAgent = req.headers["user-agent"] || "Unknown";
+
+  
+      if (!user.device_id) {
+        await AuthModel.updateCustomerDevice({
+          userId: user.user_id,
+          deviceId: currentDeviceId,
+          deviceName: currentDeviceName,
+          ipAddress,
+        });
+
+        user.device_id = currentDeviceId;
+        user.device_name = currentDeviceName;
+      }
+
+      if (user.device_id && user.device_id !== currentDeviceId) {
+        const approvalToken = crypto.randomBytes(32).toString("hex");
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+        await AuthModel.deletePendingDeviceRequests(user.user_id);
+
+        await AuthModel.createDeviceChangeRequest({
+          userId: user.user_id,
+          email: user.email,
+          oldDeviceId: user.device_id,
+          newDeviceId: currentDeviceId,
+          newDeviceName: currentDeviceName,
+          token: approvalToken,
+          ipAddress,
+          userAgent,
+          expiresAt,
+        });
+
+        await sendDeviceChangeApprovalMail({
+          email: user.email,
+          name: user.name,
+          deviceName: currentDeviceName,
+          ipAddress,
+          userAgent,
+          token: approvalToken,
+        });
+
+        return res.status(403).json({
+          success: false,
+          device_verification_required: true,
+          message:
+            "New device detected. Approval email has been sent to your registered email.",
+        });
+      }
+
       const accessToken = jwt.sign(
-        { user_id: user.user_id, token_version: user.token_version },
+        {
+          user_id: user.user_id,
+          token_version: user.token_version,
+        },
         process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: ACCESS_EXPIRES },
+        {
+          expiresIn: ACCESS_EXPIRES,
+        },
       );
+
       const refreshToken = jwt.sign(
-        { user_id: user.user_id },
+        {
+          user_id: user.user_id,
+        },
         process.env.REFRESH_TOKEN_SECRET,
-        { expiresIn: `${REFRESH_EXPIRES_DAYS}d` },
+        {
+          expiresIn: `${REFRESH_EXPIRES_DAYS}d`,
+        },
       );
+
       const expiryDate = new Date(
         Date.now() + REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
       );
-      // check existing device
-      const deviceInfo = req.headers["user-agent"];
-      const ipAddress = req.ip;
-
-      // check if device already exists
-      const existingDevice = await AuthModel.checkExistingDevice(
-        user.user_id,
-        deviceInfo,
-      );
-
-      if (!existingDevice) {
-        await sendNewDeviceLoginEmail({
-          email: user.email,
-          name: user.name,
-          ip: ipAddress,
-          device: deviceInfo,
-        });
-      }
 
       await AuthModel.storeRefreshToken(
         user.user_id,
         refreshToken,
         expiryDate,
-        deviceInfo,
+        userAgent,
         ipAddress,
       );
 
-      await AuthModel.updateLoginMeta(user.user_id, req.ip);
+      await AuthModel.updateLoginMeta(user.user_id, ipAddress);
 
       const firstLoginBonus = await WalletModel.createWalletOnFirstLogin(
         user.user_id,
       );
 
       if (firstLoginBonus) {
-        // Send Email
         await rewardCreditMail({
           email: user.email,
           name: user.name,
@@ -489,15 +684,189 @@ class AuthController {
 
       return res.json({
         success: true,
+        message: "Login successful",
         accessToken,
         refreshToken,
+        device_id: currentDeviceId,
+        device_name: currentDeviceName,
         firstLoginReward: {
           awarded: firstLoginBonus,
           coins: firstLoginBonus ? 3000 : 0,
         },
       });
     } catch (err) {
-      return res.status(500).json({ success: false });
+      console.error("LOGIN ERROR:", err);
+
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+      });
+    }
+  }
+
+  /* ======================================================
+   ALLOW DEVICE CHANGE
+====================================================== */
+  async allowDeviceChange(req, res) {
+    try {
+      const { token } = req.query;
+
+      if (!token) {
+        return res.status(400).send(`
+        <html>
+          <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 60px;">
+            <h2>Invalid Request</h2>
+            <p>Device approval token is missing.</p>
+          </body>
+        </html>
+      `);
+      }
+
+      const request = await AuthModel.getPendingDeviceRequest(token);
+
+      if (!request) {
+        return res.status(400).send(`
+        <html>
+          <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 60px;">
+            <h2>Invalid or Already Used Link</h2>
+            <p>This device approval link is invalid or already used.</p>
+          </body>
+        </html>
+      `);
+      }
+
+      if (new Date(request.expires_at) < new Date()) {
+        await AuthModel.updateDeviceRequestStatus(token, "expired");
+
+        return res.status(400).send(`
+        <html>
+          <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 60px;">
+            <h2>Link Expired</h2>
+            <p>This device approval request has expired. Please try login again.</p>
+          </body>
+        </html>
+      `);
+      }
+
+      await AuthModel.updateCustomerDevice({
+        userId: request.user_id,
+        deviceId: request.new_device_id,
+        deviceName: request.new_device_name,
+        ipAddress: request.ip_address,
+      });
+
+      await AuthModel.deleteUserRefreshTokensByUserId(request.user_id);
+
+      await AuthModel.updateDeviceRequestStatus(token, "allowed");
+
+      return res.send(`
+      <html>
+        <body style="font-family: Arial, sans-serif; background:#f6f6f6; margin:0; padding:0;">
+          <div style="max-width:600px;margin:60px auto;background:#ffffff;padding:40px;border-radius:12px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+            <h2 style="color:#16a34a;">Device Allowed Successfully</h2>
+
+            <p style="font-size:16px;color:#333;line-height:1.6;">
+              Your new device has been verified successfully.
+            </p>
+
+            <p style="font-size:15px;color:#555;line-height:1.6;">
+              Please open the app and login again from your new device.
+            </p>
+
+            <div style="margin:30px 0;">
+              <a href="rewardplanners://login"
+                style="padding:14px 28px;background:#111827;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">
+                Open RewardPlanners App
+              </a>
+            </div>
+          </div>
+
+          <script>
+            setTimeout(function() {
+              window.location.href = "rewardplanners://login";
+            }, 500);
+
+            setTimeout(function() {
+              window.location.href = "intent://login#Intent;scheme=rewardplanners;package=com.rewardsplanners;end";
+            }, 1500);
+          </script>
+        </body>
+      </html>
+    `);
+    } catch (err) {
+      console.error("ALLOW DEVICE ERROR:", err);
+
+      return res.status(500).send(`
+      <html>
+        <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 60px;">
+          <h2>Server Error</h2>
+          <p>Something went wrong while approving the device.</p>
+        </body>
+      </html>
+    `);
+    }
+  }
+  /* ======================================================
+   DENY DEVICE CHANGE
+====================================================== */
+  async denyDeviceChange(req, res) {
+    try {
+      const { token } = req.query;
+
+      if (!token) {
+        return res.status(400).send(`
+        <html>
+          <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 60px;">
+            <h2>Invalid Request</h2>
+            <p>Device denial token is missing.</p>
+          </body>
+        </html>
+      `);
+      }
+
+      const request = await AuthModel.getPendingDeviceRequest(token);
+
+      if (!request) {
+        return res.status(400).send(`
+        <html>
+          <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 60px;">
+            <h2>Invalid or Already Used Link</h2>
+            <p>This device request link is invalid or already used.</p>
+          </body>
+        </html>
+      `);
+      }
+
+      await AuthModel.updateDeviceRequestStatus(token, "denied");
+
+      return res.send(`
+      <html>
+        <body style="font-family: Arial, sans-serif; background:#f6f6f6; margin:0; padding:0;">
+          <div style="max-width:600px;margin:60px auto;background:#ffffff;padding:40px;border-radius:12px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+            <h2 style="color:#dc2626;">Device Login Denied</h2>
+
+            <p style="font-size:16px;color:#333;line-height:1.6;">
+              This new device login request has been blocked.
+            </p>
+
+            <p style="font-size:15px;color:#555;line-height:1.6;">
+              If this was not you, please change your password immediately.
+            </p>
+          </div>
+        </body>
+      </html>
+    `);
+    } catch (err) {
+      console.error("DENY DEVICE ERROR:", err);
+
+      return res.status(500).send(`
+      <html>
+        <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 60px;">
+          <h2>Server Error</h2>
+          <p>Something went wrong while denying the device.</p>
+        </body>
+      </html>
+    `);
     }
   }
 
