@@ -364,18 +364,6 @@ class ServiceOrderController {
 
       const canGiveFeedback = order.status === "completed" && !feedback;
 
-      let feedbackData = null;
-
-      if (feedback) {
-        const [[fullFeedback]] = await db.execute(
-          `SELECT * FROM service_feedback 
-            WHERE id = ?`,
-          [feedback.id],
-        );
-
-        feedbackData = fullFeedback;
-      }
-
       // documents
       const documents = await ServiceOrderDocumentModel.getRequiredDocs(id);
 
@@ -404,7 +392,8 @@ class ServiceOrderController {
 
           feedback: {
             can_submit: canGiveFeedback,
-            data: feedbackData,
+            submitted: !!feedback,
+            data: feedback || null,
           },
         },
       });
