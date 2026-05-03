@@ -622,6 +622,21 @@ class ServiceOrderController {
         });
       }
 
+      const allowedIssues = [
+        "document_missing",
+        "incorrect_details",
+        "status_issue",
+        "payment_issue",
+        "other",
+      ];
+
+      if (!allowedIssues.includes(issue_type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid issue type",
+        });
+      }
+
       // 1 Insert request
       const [result] = await db.execute(
         `INSERT INTO order_support_requests 
@@ -639,7 +654,7 @@ class ServiceOrderController {
             `INSERT INTO order_support_attachments 
            (request_id, file_url)
            VALUES (?, ?)`,
-            [requestId, file.filename],
+            [requestId, `/uploads/support/${file.filename}`],
           );
         }
       }

@@ -3,6 +3,7 @@ const router = express.Router();
 const ServiceOrderController = require("../controllers/serviceOrderController");
 const auth = require("../../../ecommerce/v1/middlewares/auth");
 const upload = require("../../../../middleware/serviceDocumentUpload");
+const supportUpload = require("../../../../middleware/serviceSupportUpload");
 const {
   authenticateToken,
   authorizeRoles,
@@ -64,12 +65,15 @@ router.put(
 router.post(
   "/order-help",
   auth,
-  upload.single("file"),
+  supportUpload.array("files", 5),
   ServiceOrderController.createSupportRequest,
 );
 
 // support request list for admin
-router.get("/order-help/:parentId", auth,getSupportRequestsByOrderId);
-
+router.get(
+  "/order-help/:parentId",
+  auth,
+  ServiceOrderController.getSupportRequestsByOrderId,
+);
 
 module.exports = router;
