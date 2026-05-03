@@ -131,7 +131,7 @@ class ServiceOrderModel {
           // preview (bundle)
           order.preview.push({
             type: "bundle",
-            name: `Bundle #${row.bundle_id}`, // later replace with actual bundle name
+            name: `Bundle #${row.bundle_id}`, 
           });
         }
 
