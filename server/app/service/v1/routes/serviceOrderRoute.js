@@ -19,7 +19,7 @@ router.post(
 );
 
 // create razorpay order
-router.post("/create-order",auth,ServiceOrderController.createPaymentOrder);
+router.post("/create-order", auth, ServiceOrderController.createPaymentOrder);
 
 // verify payment
 router.post("/verify-payment", auth, ServiceOrderController.verifyPayment);
@@ -28,16 +28,12 @@ router.post("/verify-payment", auth, ServiceOrderController.verifyPayment);
 router.get("/my-orders", auth, ServiceOrderController.getMyOrders);
 
 // get order details
-router.get(
-  "/order-details/:id",
-  auth,
-  ServiceOrderController.getOrderDetails,
-);
+router.get("/order-details/:id", auth, ServiceOrderController.getOrderDetails);
 
 // Get invoice
 router.get(
   "/invoice-details/:parentId",
-   auth,
+  auth,
   ServiceOrderController.getInvoiceDetails,
 );
 
@@ -63,5 +59,17 @@ router.put(
   authorizeRoles("admin", "vendor_manager"),
   ServiceOrderController.updateOrderStatus,
 );
+
+// ========================================Help section========================================================
+router.post(
+  "/order-help",
+  auth,
+  upload.single("file"),
+  ServiceOrderController.createSupportRequest,
+);
+
+// support request list for admin
+router.get("/order-help/:parentId", auth,getSupportRequestsByOrderId);
+
 
 module.exports = router;

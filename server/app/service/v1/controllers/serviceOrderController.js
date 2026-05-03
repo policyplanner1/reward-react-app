@@ -599,6 +599,85 @@ class ServiceOrderController {
       });
     }
   }
+
+  // create support request
+  async createSupportRequest(req, res) {
+    try {
+      // const userId = req.user?.user_id;
+      const userId = 1;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
+      const { parent_order_id, issue_type, description } = req.body;
+
+      if (!parent_order_id || !issue_type) {
+        return res.status(400).json({
+          success: false,
+          message: "parent_order_id and issue_type required",
+        });
+      }
+
+      // 1 Insert request
+      const [result] = await db.execute(
+        `INSERT INTO order_support_requests 
+       (parent_order_id, user_id, issue_type, description)
+       VALUES (?, ?, ?, ?)`,
+        [parent_order_id, userId, issue_type, description || null],
+      );
+
+      const requestId = result.insertId;
+
+      // 2 Handle files (if any)
+      if (req.files && req.files.length) {
+        for (let file of req.files) {
+          await db.execute(
+            `INSERT INTO order_support_attachments 
+           (request_id, file_url)
+           VALUES (?, ?)`,
+            [requestId, file.filename],
+          );
+        }
+      }
+
+      res.json({
+        success: true,
+        message: "Support request submitted",
+        data: {
+          request_id: requestId,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  async getSupportRequestsByOrderId(req, res) {
+    try {
+      const { parentId } = req.params;
+      const [rows] = await db.execute(
+        `SELECT * FROM order_support_requests WHERE parent_order_id = ?`,
+        [parentId],
+      );
+
+      res.json({
+        success: true,
+        data: rows,
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
 }
 
 module.exports = new ServiceOrderController();
