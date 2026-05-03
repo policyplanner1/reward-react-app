@@ -61,6 +61,9 @@ router.put(
   ServiceOrderController.updateOrderStatus,
 );
 
+// ================================================Cancel order======================================================
+router.post("/cancel-order", auth, ServiceOrderController.cancelOrder);
+
 // ========================================Help section========================================================
 router.post(
   "/order-help",

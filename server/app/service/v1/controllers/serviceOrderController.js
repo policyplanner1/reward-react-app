@@ -364,16 +364,23 @@ class ServiceOrderController {
 
       const canGiveFeedback = order.status === "completed" && !feedback;
 
+      // Cancel orders
+      const canCancel = [
+        "pending_payment",
+        "documents_pending",
+        "in_progress",
+      ].includes(order.status);
+
       // documents
       const documents = await ServiceOrderDocumentModel.getRequiredDocs(id);
 
       // Ratings
       const [services] = await db.execute(
-      `SELECT DISTINCT service_id 
+        `SELECT DISTINCT service_id 
         FROM service_orders 
         WHERE parent_order_id = ?`,
-              [parent_order_id],
-            );
+        [parent_order_id],
+      );
 
       for (let s of services) {
         await db.execute(
@@ -386,8 +393,8 @@ class ServiceOrderController {
         WHERE so.service_id = ?
       )
       WHERE id = ?`,
-            [s.service_id, s.service_id],
-          );
+          [s.service_id, s.service_id],
+        );
       }
 
       // timeline (UI stepper)
@@ -412,7 +419,9 @@ class ServiceOrderController {
           order,
           documents,
           timeline,
-
+          cancellation: {
+            can_cancel: canCancel,
+          },
           feedback: {
             can_submit: canGiveFeedback,
             submitted: !!feedback,
@@ -723,6 +732,92 @@ class ServiceOrderController {
       res.json({
         success: true,
         data: rows,
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+
+  // =================================================Cancel order=======================================================
+  async cancelOrder(req, res) {
+    try {
+      // const userId = req.user?.user_id;
+      const userId = 1;
+
+      const { parent_order_id, reason, comment } = req.body;
+
+      if (!parent_order_id || !reason) {
+        return res.status(400).json({
+          success: false,
+          message: "parent_order_id and reason required",
+        });
+      }
+
+      // 1 Validate order
+      const [[order]] = await db.execute(
+        `SELECT status FROM service_orders 
+       WHERE parent_order_id = ? AND user_id = ?
+       LIMIT 1`,
+        [parent_order_id, userId],
+      );
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      // 2 Check allowed states
+      const allowedStatuses = [
+        "pending_payment",
+        "documents_pending",
+        "in_progress",
+      ];
+
+      if (!allowedStatuses.includes(order.status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Order cannot be cancelled at this stage",
+        });
+      }
+
+      // 3 Prevent duplicate requests
+      const [[existing]] = await db.execute(
+        `SELECT id FROM service_order_cancellations 
+       WHERE parent_order_id = ? AND user_id = ?`,
+        [parent_order_id, userId],
+      );
+
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: "Cancellation already requested",
+        });
+      }
+
+      // 4 Insert cancellation request
+      await db.execute(
+        `INSERT INTO service_order_cancellations 
+       (parent_order_id, user_id, reason, comment)
+       VALUES (?, ?, ?, ?)`,
+        [parent_order_id, userId, reason, comment || null],
+      );
+
+      // 5 (MVP) Immediately cancel order
+      await db.execute(
+        `UPDATE service_orders 
+       SET status = 'cancelled'
+       WHERE parent_order_id = ?`,
+        [parent_order_id],
+      );
+
+      res.json({
+        success: true,
+        message: "Order cancelled successfully",
       });
     } catch (err) {
       res.status(500).json({
