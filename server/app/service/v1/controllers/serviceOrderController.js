@@ -77,7 +77,14 @@ class ServiceOrderController {
         });
       }
 
-      const { service_id, variant_id, price } = req.body;
+      const { service_id, variant_id } = req.body;
+
+      const [[variant]] = await db.execute(
+        `SELECT price FROM service_variants WHERE id = ?`,
+        [variant_id],
+      );
+
+      const price = variant.price;
 
       if (!service_id || !price) {
         return res.status(400).json({
@@ -150,6 +157,15 @@ class ServiceOrderController {
   // create razorpay order
   async createPaymentOrder(req, res) {
     try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       const { parent_order_id } = req.body;
 
       if (!parent_order_id) {
@@ -162,9 +178,10 @@ class ServiceOrderController {
       //  Get total amount from DB
       const [orders] = await db.execute(
         `SELECT SUM(price) as total 
-       FROM service_orders 
-       WHERE parent_order_id = ?`,
-        [parent_order_id],
+        FROM service_orders 
+        WHERE parent_order_id = ?
+        AND user_id = ?`,
+        [parent_order_id, userId],
       );
 
       const totalAmount = Number(orders[0]?.total);
@@ -214,6 +231,15 @@ class ServiceOrderController {
   // verify payment
   async verifyPayment(req, res) {
     try {
+      const userId = req.user?.user_id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized user",
+        });
+      }
+
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
         req.body;
 
@@ -247,6 +273,16 @@ class ServiceOrderController {
       }
 
       const parent_order_id = rpOrder.ref_id;
+
+      const [[alreadyPaid]] = await db.execute(
+        `SELECT id FROM service_orders 
+          WHERE parent_order_id = ? AND payment_status = 'paid' LIMIT 1`,
+        [parent_order_id],
+      );
+
+      if (alreadyPaid) {
+        return res.json({ success: true, message: "Already processed" });
+      }
 
       //  TRANSACTION
       await db.beginTransaction();
