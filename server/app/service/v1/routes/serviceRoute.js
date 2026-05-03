@@ -6,6 +6,8 @@ const {
   authenticateToken,
   authorizeRoles,
 } = require("../../../../middleware/auth");
+const auth = require("../../../ecommerce/v1/middlewares/auth");
+
 
 // Fetch Active Services
 router.get("/all-services", ServiceController.getServices);
@@ -52,5 +54,10 @@ router.delete(
   authorizeRoles("vendor_manager", "admin"),
   ServiceController.deleteService,
 );
+
+
+
+// ======================================Feedback from user====================================================
+router.post("/feedback", auth, ServiceController.submitFeedback);
 
 module.exports = router;
