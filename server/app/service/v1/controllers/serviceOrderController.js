@@ -367,6 +367,29 @@ class ServiceOrderController {
       // documents
       const documents = await ServiceOrderDocumentModel.getRequiredDocs(id);
 
+      // Ratings
+      const [services] = await db.execute(
+      `SELECT DISTINCT service_id 
+        FROM service_orders 
+        WHERE parent_order_id = ?`,
+              [parent_order_id],
+            );
+
+      for (let s of services) {
+        await db.execute(
+          `UPDATE services 
+      SET rating = (
+        SELECT ROUND(AVG(rating), 1)
+        FROM service_feedback sf
+        JOIN service_orders so 
+          ON so.parent_order_id = sf.parent_order_id
+        WHERE so.service_id = ?
+      )
+      WHERE id = ?`,
+            [s.service_id, s.service_id],
+          );
+      }
+
       // timeline (UI stepper)
       const timeline = [
         {
