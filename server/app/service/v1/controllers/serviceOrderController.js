@@ -374,44 +374,58 @@ class ServiceOrderController {
       // documents
       const documents = await ServiceOrderDocumentModel.getRequiredDocs(id);
 
-      // Ratings
-      const [services] = await db.execute(
-        `SELECT DISTINCT service_id 
-        FROM service_orders 
-        WHERE parent_order_id = ?`,
-        [parent_order_id],
-      );
-
-      for (let s of services) {
-        await db.execute(
-          `UPDATE services 
-      SET rating = (
-        SELECT ROUND(AVG(rating), 1)
-        FROM service_feedback sf
-        JOIN service_orders so 
-          ON so.parent_order_id = sf.parent_order_id
-        WHERE so.service_id = ?
-      )
-      WHERE id = ?`,
-          [s.service_id, s.service_id],
-        );
+      // Timeline
+      let timeline = null;
+      if (order.status !== "cancelled") {
+        timeline = [
+          { status: "Order Confirmed", completed: true },
+          {
+            status: "Order in Progress",
+            completed: ["in_progress", "completed"].includes(order.status),
+          },
+          {
+            status: "Order Delivered",
+            completed: order.status === "completed",
+          },
+        ];
       }
 
-      // timeline (UI stepper)
-      const timeline = [
-        {
-          status: "Order Confirmed",
-          completed: true,
-        },
-        {
-          status: "Order in Progress",
-          completed: ["in_progress", "completed"].includes(order.status),
-        },
-        {
-          status: "Order Delivered",
-          completed: order.status === "completed",
-        },
-      ];
+      // Cancellation
+      const [[cancellation]] = await db.execute(
+        `SELECT * FROM service_order_cancellations 
+          WHERE parent_order_id = ?`,
+        [order.parent_order_id],
+      );
+
+      let cancellationTimeline = null;
+
+      if (cancellation) {
+        cancellationTimeline = [
+          { status: "Cancellation Requested", completed: true },
+          {
+            status: "Cancellation Confirmed",
+            completed: cancellation.status === "approved",
+          },
+          {
+            status: "Refund Initiated",
+            completed: ["initiated", "completed"].includes(
+              cancellation.refund_status,
+            ),
+          },
+          {
+            status: "Refund Completed",
+            completed: cancellation.refund_status === "completed",
+          },
+        ];
+      }
+      // Refund Summary
+      const refund = cancellation
+        ? {
+            total_refund: Number(cancellation.refund_amount),
+            refund_method: "original",
+            status: cancellation.refund_status,
+          }
+        : null;
 
       res.json({
         success: true,
@@ -419,9 +433,18 @@ class ServiceOrderController {
           order,
           documents,
           timeline,
-          cancellation: {
-            can_cancel: canCancel,
-          },
+          cancellation: cancellation
+            ? {
+                can_cancel: canCancel,
+                status: cancellation.status,
+                timeline: cancellationTimeline,
+              }
+            : {
+                can_cancel: canCancel,
+              },
+
+          refund,
+
           feedback: {
             can_submit: canGiveFeedback,
             submitted: !!feedback,
@@ -743,6 +766,8 @@ class ServiceOrderController {
 
   // =================================================Cancel order=======================================================
   async cancelOrder(req, res) {
+    let connection;
+
     try {
       // const userId = req.user?.user_id;
       const userId = 1;
@@ -756,8 +781,11 @@ class ServiceOrderController {
         });
       }
 
+      connection = await db.getConnection();
+      await connection.beginTransaction();
+
       // 1 Validate order
-      const [[order]] = await db.execute(
+      const [[order]] = await connection.execute(
         `SELECT status FROM service_orders 
        WHERE parent_order_id = ? AND user_id = ?
        LIMIT 1`,
@@ -765,6 +793,7 @@ class ServiceOrderController {
       );
 
       if (!order) {
+        await connection.rollback();
         return res.status(404).json({
           success: false,
           message: "Order not found",
@@ -779,6 +808,8 @@ class ServiceOrderController {
       ];
 
       if (!allowedStatuses.includes(order.status)) {
+        await connection.rollback();
+
         return res.status(400).json({
           success: false,
           message: "Order cannot be cancelled at this stage",
@@ -786,44 +817,65 @@ class ServiceOrderController {
       }
 
       // 3 Prevent duplicate requests
-      const [[existing]] = await db.execute(
+      const [[existing]] = await connection.execute(
         `SELECT id FROM service_order_cancellations 
        WHERE parent_order_id = ? AND user_id = ?`,
         [parent_order_id, userId],
       );
 
       if (existing) {
+        await connection.rollback();
+
         return res.status(400).json({
           success: false,
           message: "Cancellation already requested",
         });
       }
 
-      // 4 Insert cancellation request
-      await db.execute(
-        `INSERT INTO service_order_cancellations 
-       (parent_order_id, user_id, reason, comment)
-       VALUES (?, ?, ?, ?)`,
-        [parent_order_id, userId, reason, comment || null],
-      );
-
-      // 5 (MVP) Immediately cancel order
-      await db.execute(
-        `UPDATE service_orders 
-       SET status = 'cancelled'
-       WHERE parent_order_id = ?`,
+      // 4 Calculate refund (MVP: full refund)
+      const [orders] = await connection.execute(
+        `SELECT price FROM service_orders WHERE parent_order_id = ?`,
         [parent_order_id],
       );
+
+      const totalRefund = orders.reduce((sum, o) => sum + Number(o.price), 0);
+
+      // 5 Insert cancellation
+      await connection.execute(
+        `INSERT INTO service_order_cancellations 
+       (parent_order_id, user_id, reason, comment, status, refund_amount, refund_status)
+       VALUES (?, ?, ?, ?, 'approved', ?, 'completed')`,
+        [parent_order_id, userId, reason, comment || null, totalRefund],
+      );
+
+      // 6 Update orders
+      await connection.execute(
+        `UPDATE service_orders 
+          SET status = 'cancelled',
+              cancelled_at = NOW(),
+              refund_amount = ?
+          WHERE parent_order_id = ?`,
+        [totalRefund, parent_order_id],
+      );
+
+      await connection.commit();
 
       res.json({
         success: true,
         message: "Order cancelled successfully",
+        data: {
+          refund_amount: totalRefund,
+        },
       });
     } catch (err) {
+      if (connection) await connection.rollback();
+
       res.status(500).json({
         success: false,
         message: err.message,
       });
+    } finally {
+      if (connection) connection.release();
     }
   }
 }

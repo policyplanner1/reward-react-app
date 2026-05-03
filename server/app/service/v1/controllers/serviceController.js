@@ -502,6 +502,15 @@ class ServiceController {
         });
       }
 
+      if (rating < 1 || rating > 5) {
+        return res.status(400).json({
+          success: false,
+          message: "Rating must be between 1 and 5",
+        });
+      }
+
+      await db.beginTransaction();
+
       //  Check order belongs to user & is delivered
       const [[order]] = await db.execute(
         `SELECT status FROM service_orders 
@@ -511,6 +520,7 @@ class ServiceController {
       );
 
       if (!order) {
+        await db.rollback();
         return res.status(404).json({
           success: false,
           message: "Order not found",
@@ -518,6 +528,7 @@ class ServiceController {
       }
 
       if (order.status !== "completed") {
+        await db.rollback();
         return res.status(400).json({
           success: false,
           message: "Feedback allowed only after completion",
@@ -532,6 +543,7 @@ class ServiceController {
       );
 
       if (existing) {
+        await db.rollback();
         return res.status(400).json({
           success: false,
           message: "Feedback already submitted",
@@ -557,11 +569,40 @@ class ServiceController {
         ],
       );
 
+      // Get services
+      const [services] = await db.execute(
+        `SELECT DISTINCT service_id 
+              FROM service_orders 
+              WHERE parent_order_id = ?`,
+        [parent_order_id],
+      );
+
+      // update rating for each service
+      for (let s of services) {
+        await db.execute(
+          `UPDATE services 
+         SET rating = (
+           SELECT ROUND(AVG(sf.rating), 1)
+           FROM service_feedback sf
+           WHERE sf.parent_order_id IN (
+             SELECT parent_order_id 
+             FROM service_orders 
+             WHERE service_id = ?
+           )
+         )
+         WHERE id = ?`,
+          [s.service_id, s.service_id],
+        );
+      }
+
+      await db.commit();
+
       res.json({
         success: true,
         message: "Feedback submitted successfully",
       });
     } catch (err) {
+      await db.rollback();
       res.status(500).json({
         success: false,
         message: err.message,
