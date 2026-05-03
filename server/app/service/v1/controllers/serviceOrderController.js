@@ -355,6 +355,14 @@ class ServiceOrderController {
         });
       }
 
+      const [[feedback]] = await db.execute(
+        `SELECT id FROM service_feedback 
+       WHERE parent_order_id = ? AND user_id = ?`,
+        [order.parent_order_id, userId],
+      );
+
+      const canGiveFeedback = order.status === "completed" && !feedback;
+
       // documents
       const documents = await ServiceOrderDocumentModel.getRequiredDocs(id);
 
@@ -380,6 +388,10 @@ class ServiceOrderController {
           order,
           documents,
           timeline,
+
+          feedback: {
+            can_submit: canGiveFeedback,
+          },
         },
       });
     } catch (err) {
