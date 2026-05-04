@@ -884,6 +884,15 @@ class ServiceOrderController {
       const refundToWallet = coinsUsed;
       const refundToCard = totalRefund - coinsUsed;
 
+      if (refundToCard > 0) {
+        await connection.execute(
+          `INSERT INTO service_order_refunds
+        (parent_order_id, user_id, refund_amount, refund_method, status)
+        VALUES (?, ?, ?, 'original', 'pending')`,
+          [parent_order_id, userId, refundToCard],
+        );
+      }
+
       const [[alreadyRefunded]] = await connection.execute(
         `SELECT refund_amount 
        FROM service_orders 
@@ -958,7 +967,23 @@ class ServiceOrderController {
         );
       }
 
+      const [[payment]] = await connection.execute(
+        `SELECT payment_id 
+        FROM service_orders
+        WHERE parent_order_id = ?
+        LIMIT 1`,
+        [parent_order_id],
+      );
+
       await connection.commit();
+
+      if (payment?.payment_id && refundToCard > 0) {
+        await this.processRefund({
+          razorpay_payment_id: payment.payment_id,
+          amount: refundToCard,
+          parent_order_id,
+        });
+      }
 
       res.json({
         success: true,
@@ -971,7 +996,6 @@ class ServiceOrderController {
           },
         },
       });
-      
     } catch (err) {
       if (connection) await connection.rollback();
 
@@ -981,6 +1005,55 @@ class ServiceOrderController {
       });
     } finally {
       if (connection) connection.release();
+    }
+  }
+
+  async processRefund(data) {
+    try {
+      const { razorpay_payment_id, amount, parent_order_id } = data;
+
+      // idempotency check
+      const [existing] = await db.execute(
+        `SELECT id FROM service_order_refunds
+       WHERE parent_order_id = ?
+       AND status = 'completed'
+       LIMIT 1`,
+        [parent_order_id],
+      );
+
+      if (existing.length) {
+        console.log("Refund already processed");
+        return;
+      }
+
+      // call Razorpay
+      const refund = await razorpay.payments.refund(razorpay_payment_id, {
+        amount: Math.round(Number(amount) * 100),
+      });
+
+      // update refund record
+      await db.execute(
+        `UPDATE service_order_refunds
+       SET status = 'completed',
+           razorpay_refund_id = ?
+       WHERE parent_order_id = ?
+       AND status = 'pending'
+       ORDER BY created_at DESC
+       LIMIT 1`,
+        [refund.id, parent_order_id],
+      );
+    } catch (error) {
+      console.error("Refund failed:", error);
+
+      await db.execute(
+        `UPDATE service_order_refunds
+       SET status = 'failed'
+       WHERE parent_order_id = ?
+       AND status = 'pending'
+       ORDER BY created_at DESC
+       LIMIT 1`,
+        [parent_order_id],
+      );
     }
   }
 }
