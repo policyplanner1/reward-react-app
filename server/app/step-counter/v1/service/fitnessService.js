@@ -325,7 +325,7 @@ class FitnessService {
       throw new Error("Invalid sensor data");
     }
 
-    const date = new Date(timestamp).toISOString().split("T")[0];
+    const date = new Date(timestamp).toLocaleDateString("en-CA");
 
     // -------------------------------
     // 1. GET EXISTING DATA
