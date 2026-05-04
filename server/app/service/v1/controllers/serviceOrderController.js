@@ -868,13 +868,37 @@ class ServiceOrderController {
         });
       }
 
-      // 4 Calculate refund (MVP: full refund)
+      // 4 Calculate refund
       const [orders] = await connection.execute(
-        `SELECT price FROM service_orders WHERE parent_order_id = ?`,
+        `SELECT price, reward_coins_used FROM service_orders WHERE parent_order_id = ?`,
         [parent_order_id],
       );
 
       const totalRefund = orders.reduce((sum, o) => sum + Number(o.price), 0);
+
+      const coinsUsed = orders.reduce(
+        (sum, o) => sum + Number(o.reward_coins_used || 0),
+        0,
+      );
+
+      const refundToWallet = coinsUsed;
+      const refundToCard = totalRefund - coinsUsed;
+
+      const [[alreadyRefunded]] = await connection.execute(
+        `SELECT refund_amount 
+       FROM service_orders 
+       WHERE parent_order_id = ? 
+       AND refund_amount > 0 LIMIT 1`,
+        [parent_order_id],
+      );
+
+      if (alreadyRefunded) {
+        await connection.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Refund already processed",
+        });
+      }
 
       // 5 Insert cancellation
       await connection.execute(
@@ -894,15 +918,60 @@ class ServiceOrderController {
         [totalRefund, parent_order_id],
       );
 
+      // 7 Refund coins (wallet)
+      if (coinsUsed > 0) {
+        // ensure wallet exists
+        await connection.execute(
+          `INSERT INTO customer_wallet (user_id, balance)
+         VALUES (?, 0)
+         ON DUPLICATE KEY UPDATE user_id = user_id`,
+          [userId],
+        );
+
+        // update balance
+        await connection.execute(
+          `UPDATE customer_wallet 
+         SET balance = balance + ?
+         WHERE user_id = ?`,
+          [coinsUsed, userId],
+        );
+
+        // fetch updated balance
+        const [[wallet]] = await connection.execute(
+          `SELECT balance FROM customer_wallet WHERE user_id = ?`,
+          [userId],
+        );
+
+        // log transaction
+        await connection.execute(
+          `INSERT INTO wallet_transactions
+         (user_id, title, description, transaction_type, coins, balance_after, category, reference_id, reason_code)
+         VALUES (?, ?, ?, 'credit', ?, ?, 'order', ?, 'ADMIN_ADJUSTMENT')`,
+          [
+            userId,
+            "Order Cancellation Refund",
+            `Coins refunded for order ${parent_order_id}`,
+            coinsUsed,
+            wallet.balance,
+            parent_order_id,
+          ],
+        );
+      }
+
       await connection.commit();
 
       res.json({
         success: true,
         message: "Order cancelled successfully",
         data: {
-          refund_amount: totalRefund,
+          total_refund: totalRefund,
+          breakdown: {
+            to_card: refundToCard,
+            coins_reversed: refundToWallet,
+          },
         },
       });
+      
     } catch (err) {
       if (connection) await connection.rollback();
 
