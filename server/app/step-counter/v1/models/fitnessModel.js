@@ -153,9 +153,20 @@ class FitnessModel {
     await conn.execute(query, [customerId, date, type, referenceId, coins]);
   }
 
+  // async getStepsByDate(customerId, date) {
+  //   const [rows] = await db.execute(
+  //     `SELECT steps FROM fitness_steps
+  //    WHERE user_id = ? AND step_date = ?`,
+  //     [customerId, date],
+  //   );
+
+  //   return rows[0];
+  // }
+
   async getStepsByDate(customerId, date) {
     const [rows] = await db.execute(
-      `SELECT steps FROM fitness_steps
+      `SELECT steps, last_sensor_value, distance_km, calories, active_minutes
+     FROM fitness_steps
      WHERE user_id = ? AND step_date = ?`,
       [customerId, date],
     );
