@@ -7,86 +7,402 @@ const formatDate = (date) => {
 
 class FitnessService {
   // steps
-  async syncSteps(customerId, payload) {
-    const { steps, distance_km, calories, active_minutes, date } = payload;
+  // async syncSteps(customerId, payload) {
+  //   const { steps, distance_km, calories, active_minutes, date } = payload;
 
-    // -------------------------------
-    // Anti cheat
-    // -------------------------------
-    if (steps > 40000) {
-      throw new Error("Invalid step count");
+  //   // -------------------------------
+  //   // Anti cheat
+  //   // -------------------------------
+  //   if (steps > 40000) {
+  //     throw new Error("Invalid step count");
+  //   }
+
+  //   // -------------------------------
+  //   // 1. Get goal
+  //   // -------------------------------
+  //   const goal = await FitnessModel.getGoal(customerId);
+
+  //   if (!goal) {
+  //     return { message: "No goal set" };
+  //   }
+
+  //   // -------------------------------
+  //   // 2. STEP DELTA VALIDATION
+  //   // -------------------------------
+  //   const streakData = await FitnessModel.getStreak(customerId);
+
+  //   const existingSteps = await FitnessModel.getStepsByDate(customerId, date);
+
+  //   if (existingSteps) {
+  //     const previousSteps = existingSteps.steps;
+
+  //     //  Case 1: Same or lower steps → ignore
+  //     if (steps <= previousSteps) {
+  //       return {
+  //         message: "No new steps to process",
+  //         goalAchieved: Math.max(previousSteps, steps) >= goal.daily_steps,
+  //         reward: 0,
+  //         currentStreak: streakData?.current_streak || 0,
+  //       };
+  //     }
+
+  //     //  Case 2: Unrealistic jump (anti-cheat)
+  //     const stepDiff = steps - previousSteps;
+
+  //     if (stepDiff > 20000) {
+  //       throw new Error("Suspicious step increase detected");
+  //     }
+
+  //     if (stepDiff > 5000 && active_minutes < 5) {
+  //       throw new Error("Invalid activity pattern");
+  //     }
+  //   }
+
+  //   // -------------------------------
+  //   // 3. SAVE STEPS (ALWAYS if valid)
+  //   // -------------------------------
+  //   await FitnessModel.upsertSteps({
+  //     customer_id: customerId,
+  //     step_date: date,
+  //     steps,
+  //     distance_km,
+  //     calories,
+  //     active_minutes,
+  //   });
+
+  //   // -------------------------------
+  //   // 4. CHECK GOAL (AFTER SAVE)
+  //   // -------------------------------
+  //   let goalAchieved = false;
+
+  //   if (steps >= goal.daily_steps) {
+  //     goalAchieved = true;
+  //   } else {
+  //     return {
+  //       message: "Steps synced",
+  //       goalAchieved: false,
+  //       reward: 0,
+  //     };
+  //   }
+
+  //   // -------------------------------
+  //   // 5. STREAK LOGIC
+  //   // -------------------------------
+  //   let currentStreak = 1;
+  //   let longestStreak = 1;
+
+  //   const today = new Date(date);
+  //   const yesterday = new Date(today);
+  //   yesterday.setDate(today.getDate() - 1);
+
+  //   if (streakData) {
+  //     const lastDate = new Date(streakData.last_goal_completed_date);
+
+  //     const lastDateStr = formatDate(lastDate);
+  //     const todayStr = formatDate(today);
+  //     const yesterdayStr = formatDate(yesterday);
+
+  //     if (lastDateStr === yesterdayStr) {
+  //       currentStreak = streakData.current_streak + 1;
+  //     } else if (lastDateStr === todayStr) {
+  //       // already processed today → don't increase
+  //       currentStreak = streakData.current_streak;
+  //     } else {
+  //       currentStreak = 1;
+  //     }
+
+  //     longestStreak = Math.max(streakData.longest_streak, currentStreak);
+  //   }
+
+  //   // -------------------------------
+  //   // 6. TRANSACTION START
+  //   // -------------------------------
+  //   const conn = await db.getConnection();
+  //   await conn.beginTransaction();
+
+  //   try {
+  //     let totalReward = 0;
+  //     let unlockedAchievements = [];
+
+  //     // -------------------------------
+  //     // Update streak INSIDE TX
+  //     // -------------------------------
+  //     await conn.execute(
+  //       `INSERT INTO fitness_streaks
+  //      (user_id, current_streak, longest_streak, last_goal_completed_date)
+  //      VALUES (?, ?, ?, ?)
+  //      ON DUPLICATE KEY UPDATE
+  //        current_streak = ?,
+  //        longest_streak = ?,
+  //        last_goal_completed_date = ?`,
+  //       [
+  //         customerId,
+  //         currentStreak,
+  //         longestStreak,
+  //         date,
+  //         currentStreak,
+  //         longestStreak,
+  //         date,
+  //       ],
+  //     );
+
+  //     // -------------------------------
+  //     // GOAL REWARD (once per day)
+  //     // -------------------------------
+  //     const alreadyGoalRewarded = await FitnessModel.hasReward(
+  //       customerId,
+  //       date,
+  //       "goal",
+  //       null,
+  //       conn,
+  //     );
+
+  //     let showGoalPopup = false;
+  //     if (!alreadyGoalRewarded) {
+  //       showGoalPopup = true;
+
+  //       const goalCoins = 50;
+
+  //       try {
+  //         await FitnessModel.insertRewardLog(
+  //           customerId,
+  //           date,
+  //           "goal",
+  //           null,
+  //           goalCoins,
+  //           conn,
+  //         );
+
+  //         totalReward += goalCoins;
+  //       } catch (err) {
+  //         if (err.code !== "ER_DUP_ENTRY") throw err;
+  //       }
+  //     }
+
+  //     // -------------------------------
+  //     // STREAK BONUS
+  //     // -------------------------------
+  //     if (currentStreak === 7 || currentStreak === 14) {
+  //       const alreadyStreakRewarded = await FitnessModel.hasReward(
+  //         customerId,
+  //         date,
+  //         "streak",
+  //         currentStreak,
+  //         conn,
+  //       );
+
+  //       if (!alreadyStreakRewarded) {
+  //         const streakCoins = currentStreak === 7 ? 100 : 200;
+
+  //         await FitnessModel.insertRewardLog(
+  //           customerId,
+  //           date,
+  //           "streak",
+  //           currentStreak,
+  //           streakCoins,
+  //           conn,
+  //         );
+
+  //         totalReward += streakCoins;
+  //       }
+  //     }
+
+  //     // -------------------------------
+  //     // ACHIEVEMENTS
+  //     // -------------------------------
+  //     const allAchievements = await FitnessModel.getAllAchievements();
+  //     const userAchievements =
+  //       await FitnessModel.getUserAchievements(customerId);
+
+  //     for (const achievement of allAchievements) {
+  //       if (userAchievements.includes(achievement.achievement_id)) continue;
+
+  //       let unlock = false;
+
+  //       if (achievement.type === "steps" && steps >= achievement.target_value) {
+  //         unlock = true;
+  //       }
+
+  //       if (
+  //         achievement.type === "streak" &&
+  //         currentStreak >= achievement.target_value
+  //       ) {
+  //         unlock = true;
+  //       }
+
+  //       if (unlock) {
+  //         const alreadyGiven = await FitnessModel.hasReward(
+  //           customerId,
+  //           date,
+  //           "achievement",
+  //           achievement.achievement_id,
+  //           conn,
+  //         );
+
+  //         if (!alreadyGiven) {
+  //           await FitnessModel.unlockAchievement(
+  //             customerId,
+  //             achievement.achievement_id,
+  //           );
+
+  //           await FitnessModel.insertRewardLog(
+  //             customerId,
+  //             date,
+  //             "achievement",
+  //             achievement.achievement_id,
+  //             achievement.reward_coins,
+  //             conn,
+  //           );
+
+  //           totalReward += achievement.reward_coins || 0;
+
+  //           unlockedAchievements.push({
+  //             id: achievement.achievement_id,
+  //             title: achievement.title,
+  //           });
+  //         }
+  //       }
+  //     }
+
+  //     // -------------------------------
+  //     // WALLET UPDATE
+  //     // -------------------------------
+  //     if (totalReward > 0) {
+  //       await conn.execute(
+  //         `INSERT INTO customer_wallet (user_id, balance)
+  //           VALUES (?, 0)
+  //           ON DUPLICATE KEY UPDATE user_id = user_id`,
+  //         [customerId],
+  //       );
+
+  //       await conn.execute(
+  //         `UPDATE customer_wallet
+  //        SET balance = balance + ?
+  //        WHERE user_id = ?`,
+  //         [totalReward, customerId],
+  //       );
+
+  //       const EXPIRY_MONTHS = parseInt(
+  //         process.env.WALLET_EXPIRY_MONTHS || "3",
+  //         10,
+  //       );
+
+  //       const expiryDate = new Date();
+  //       expiryDate.setMonth(expiryDate.getMonth() + EXPIRY_MONTHS);
+
+  //       await conn.execute(
+  //         `INSERT INTO wallet_transactions (user_id, coins, activity, expiry_date)
+  //        VALUES (?, ?, ?, ?)`,
+  //         [customerId, totalReward, "Fitness Reward", expiryDate],
+  //       );
+  //     }
+
+  //     // -------------------------------
+  //     // COMMIT
+  //     // -------------------------------
+  //     await conn.commit();
+
+  //     return {
+  //       message: "Steps synced",
+  //       goalAchieved,
+  //       reward: totalReward,
+  //       currentStreak,
+  //       unlockedAchievements,
+  //       showGoalPopup,
+  //     };
+  //   } catch (err) {
+  //     await conn.rollback();
+  //     throw err;
+  //   } finally {
+  //     conn.release();
+  //   }
+  // }
+
+  async syncSteps(customerId, payload) {
+    const { sensor_total, timestamp } = payload;
+
+    if (!sensor_total || sensor_total < 0) {
+      throw new Error("Invalid sensor data");
     }
 
+    const date = new Date(timestamp).toISOString().split("T")[0];
+
     // -------------------------------
-    // 1. Get goal
+    // 1. GET EXISTING DATA
     // -------------------------------
     const goal = await FitnessModel.getGoal(customerId);
-
     if (!goal) {
       return { message: "No goal set" };
     }
 
-    // -------------------------------
-    // 2. STEP DELTA VALIDATION
-    // -------------------------------
     const streakData = await FitnessModel.getStreak(customerId);
+    const existing = await FitnessModel.getStepsByDate(customerId, date);
 
-    const existingSteps = await FitnessModel.getStepsByDate(customerId, date);
+    let lastSensor = existing?.last_sensor_value || sensor_total;
+    let currentSteps = existing?.steps || 0;
 
-    if (existingSteps) {
-      const previousSteps = existingSteps.steps;
+    // -------------------------------
+    // 2. DELTA CALCULATION
+    // -------------------------------
+    let delta = sensor_total - lastSensor;
 
-      //  Case 1: Same or lower steps → ignore
-      if (steps <= previousSteps) {
-        return {
-          message: "No new steps to process",
-          goalAchieved: Math.max(previousSteps, steps) >= goal.daily_steps,
-          reward: 0,
-          currentStreak: streakData?.current_streak || 0,
-        };
-      }
+    // Handle reboot / reset
+    if (delta < 0) {
+      delta = sensor_total;
+    }
 
-      //  Case 2: Unrealistic jump (anti-cheat)
-      const stepDiff = steps - previousSteps;
+    // Anti-cheat spike
+    if (delta > 20000) {
+      throw new Error("Suspicious step spike detected");
+    }
 
-      if (stepDiff > 20000) {
-        throw new Error("Suspicious step increase detected");
-      }
+    // Update total steps
+    let steps = currentSteps + delta;
 
-      if (stepDiff > 5000 && active_minutes < 5) {
-        throw new Error("Invalid activity pattern");
-      }
+    // Hard limit safety
+    if (steps > 50000) {
+      throw new Error("Daily step limit exceeded");
     }
 
     // -------------------------------
-    // 3. SAVE STEPS (ALWAYS if valid)
+    // 3. CALCULATIONS (backend controlled)
+    // -------------------------------
+    const distance_km = (steps * 0.75) / 1000;
+    const calories = steps * 0.04;
+    const active_minutes = Math.floor(steps / 100);
+
+    // -------------------------------
+    // 4. SAVE STEPS
     // -------------------------------
     await FitnessModel.upsertSteps({
       customer_id: customerId,
       step_date: date,
       steps,
+      last_sensor_value: sensor_total,
       distance_km,
       calories,
       active_minutes,
     });
 
     // -------------------------------
-    // 4. CHECK GOAL (AFTER SAVE)
+    // 5. GOAL CHECK
     // -------------------------------
-    let goalAchieved = false;
+    let goalAchieved = steps >= goal.daily_steps;
 
-    if (steps >= goal.daily_steps) {
-      goalAchieved = true;
-    } else {
+    if (!goalAchieved) {
       return {
         message: "Steps synced",
         goalAchieved: false,
+        steps,
+        distance_km,
+        calories,
+        active_minutes,
         reward: 0,
       };
     }
 
     // -------------------------------
-    // 5. STREAK LOGIC
+    // 6. STREAK LOGIC
     // -------------------------------
     let currentStreak = 1;
     let longestStreak = 1;
@@ -105,7 +421,6 @@ class FitnessService {
       if (lastDateStr === yesterdayStr) {
         currentStreak = streakData.current_streak + 1;
       } else if (lastDateStr === todayStr) {
-        // already processed today → don't increase
         currentStreak = streakData.current_streak;
       } else {
         currentStreak = 1;
@@ -115,7 +430,7 @@ class FitnessService {
     }
 
     // -------------------------------
-    // 6. TRANSACTION START
+    // 7. TRANSACTION START
     // -------------------------------
     const conn = await db.getConnection();
     await conn.beginTransaction();
@@ -125,7 +440,7 @@ class FitnessService {
       let unlockedAchievements = [];
 
       // -------------------------------
-      // Update streak INSIDE TX
+      // Update streak
       // -------------------------------
       await conn.execute(
         `INSERT INTO fitness_streaks 
@@ -147,7 +462,7 @@ class FitnessService {
       );
 
       // -------------------------------
-      // GOAL REWARD (once per day)
+      // GOAL REWARD
       // -------------------------------
       const alreadyGoalRewarded = await FitnessModel.hasReward(
         customerId,
@@ -158,6 +473,7 @@ class FitnessService {
       );
 
       let showGoalPopup = false;
+
       if (!alreadyGoalRewarded) {
         showGoalPopup = true;
 
@@ -270,8 +586,8 @@ class FitnessService {
       if (totalReward > 0) {
         await conn.execute(
           `INSERT INTO customer_wallet (user_id, balance)
-            VALUES (?, 0)
-            ON DUPLICATE KEY UPDATE user_id = user_id`,
+         VALUES (?, 0)
+         ON DUPLICATE KEY UPDATE user_id = user_id`,
           [customerId],
         );
 
@@ -297,14 +613,15 @@ class FitnessService {
         );
       }
 
-      // -------------------------------
-      // COMMIT
-      // -------------------------------
       await conn.commit();
 
       return {
         message: "Steps synced",
         goalAchieved,
+        steps,
+        distance_km,
+        calories,
+        active_minutes,
         reward: totalReward,
         currentStreak,
         unlockedAchievements,

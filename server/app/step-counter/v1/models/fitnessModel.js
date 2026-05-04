@@ -6,6 +6,7 @@ class FitnessModel {
       customer_id,
       step_date,
       steps,
+      last_sensor_value,
       distance_km,
       calories,
       active_minutes,
@@ -13,10 +14,11 @@ class FitnessModel {
 
     const query = `
       INSERT INTO fitness_steps
-      (user_id, step_date, steps, distance_km, calories, active_minutes)
-      VALUES (?, ?, ?, ?, ?, ?)
+      (user_id, step_date, steps, last_sensor_value, distance_km, calories, active_minutes)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
-        steps = GREATEST(steps, VALUES(steps)),
+        steps = VALUES(steps),
+        last_sensor_value = VALUES(last_sensor_value),
         distance_km = VALUES(distance_km),
         calories = VALUES(calories),
         active_minutes = VALUES(active_minutes)
@@ -26,6 +28,7 @@ class FitnessModel {
       customer_id,
       step_date,
       steps,
+      last_sensor_value,
       distance_km,
       calories,
       active_minutes,
